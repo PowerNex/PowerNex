@@ -2,10 +2,11 @@ module kmain;
 
 import io.textmode;
 
+alias scr = GetScreen;
+
 void main() {
-	auto scr = Screen!(80, 25)(Colors.Cyan, Colors.Black);
 	scr.Clear();
-	scr.Print("Hello World!");
+	scr.Print("Hello World!\n");
 	asm {
 		forever:
 			hlt;

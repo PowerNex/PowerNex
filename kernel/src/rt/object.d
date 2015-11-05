@@ -72,7 +72,7 @@ version(linux) {
 	// first we want to be able to write some stuff to see progress
 
 	version(bare_metal) {
-		//import bare_metal.textmode;
+		import io.textmode;
 	} else {
 		version=compiler_dso; // FIXME: it doesn't actually work without libc!
 	}
@@ -86,7 +86,7 @@ version(linux) {
 		version(with_libc) {
 			fwrite(a.ptr, 1, a.length, stdout);
 		} else version(bare_metal) {
-			//addText(a);
+			GetScreen.Print(cast(char[])a);
 		} else {
 			auto sptr = a.ptr;
 			auto slen = a.length;

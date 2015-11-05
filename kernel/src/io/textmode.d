@@ -52,13 +52,14 @@ struct Screen(int w, int h) {
 	ubyte x, y;
 	Color defaultColor;
 
+	@disable this();
+
 	this(Colors fg, Colors bg) {
 		this.screen = cast(slot[25*80] *)0xB8000;
 		this.x = 0;
 		this.y = 0;
 		this.defaultColor.Foreground = fg;
 		this.defaultColor.Background = bg;
-		Clear();
 	}
 
 	void Clear() {
@@ -104,8 +105,8 @@ struct Screen(int w, int h) {
 		MoveCursor();
 	}
 
-	void Print(string str) {
-		foreach (char ch; str)
+	void Print(T : char)(in T[] str) {
+		foreach (T ch; str)
 			Print(ch);
 	}
 
@@ -117,3 +118,5 @@ struct Screen(int w, int h) {
 		Out!ubyte(0x3D5, cast(ubyte)pos);
 	}
 }
+
+__gshared Screen!(80, 25) GetScreen = Screen!(80, 25)(Colors.Cyan, Colors.Black);
