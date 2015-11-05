@@ -1,0 +1,41 @@
+#!./wild
+{
+	"variables": {
+	},
+	"processors": {
+		"dc": {
+			"command": "dmd",
+			"arguments": "-m32 -debug -c -gc -Ikernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+		},
+		"cc": {
+			"command": "gcc",
+			"arguments": "-m32 -c -o $out $in"
+		},
+		"ld": {
+			"command": "gcc",
+			"arguments": "-m32 -g -nostdlib -T kernel/src/os.ld -o $out $in"
+		}
+	},
+	"phonies": {
+
+	},
+	"missing": {
+	},
+	"rules": {
+		"kernel/obj/*.o": {
+			"processor": "dc",
+			"input": "kernel/src/*.d"
+		},
+		"kernel/obj/S/*.o": {
+			"processor": "cc",
+			"input": "kernel/src/*.S"
+		},
+		"powernex.krl": {
+			"processor": "ld",
+			"input": "kernel/obj/*.o"
+		}
+	},
+	"targets": [
+		"powernex.krl"
+	]
+}
