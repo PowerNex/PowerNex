@@ -1,6 +1,7 @@
 module io.textmode;
 
 import io.port;
+import data.util;
 
 enum Colors : ubyte {
 	Black        = 0,
@@ -105,9 +106,43 @@ struct Screen(int w, int h) {
 		MoveCursor();
 	}
 
-	void Print(T : char)(in T[] str) {
-		foreach (T ch; str)
-			Print(ch);
+	void Print(in char[] str) {
+		foreach (char ch; str)
+			if (ch) // Add C-String support
+				Print(ch);
+			else
+				break;
+	}
+
+	void Print(int base = 10, T)(T n) if (isNumber!T && base <= 16 && base > 1) {
+		const char BASE_CHARS[] = "0123456789ABCDEF";
+		char tmp[T.sizeof * 8 + 1]; // TODO: better size, currently supports 64-bit binary number + 1 negative
+		bool neg = n < 0;
+		if (neg)
+		 n *= -1;
+
+		//Calculate the amount of digits there are.
+		int len = 0;
+		T tmpN = n;
+		do {
+			len++;
+			tmpN /= base;
+		} while (tmpN > base);
+
+		// Use len as a index
+		// We don't need to save a space if it's not negative
+		if (neg)
+			len++;
+
+		do {
+			tmp[len--] = BASE_CHARS[n % base];
+			n /= base;
+		} while (n > 0);
+
+		if (neg)
+			tmp[len] = '-';
+
+		Print(tmp);
 	}
 
 	void MoveCursor() {
