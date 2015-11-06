@@ -1140,23 +1140,6 @@ version (deh2)
 
 extern (C)
 {
-    version (OSX)
-    {
-        // Set by rt.memory_osx.onAddImage()
-        __gshared ubyte[] _deh_eh_array;
-    }
-    else
-    {
-        extern __gshared
-        {
-            /* Symbols created by the compiler and inserted into the object file
-             * that 'bracket' the __deh_eh segment
-             */
-            void* _deh_beg;
-            void* _deh_end;
-        }
-    }
-
     Throwable.TraceInfo _d_traceContext(void* ptr = null);
 
     int _d_isbaseof(ClassInfo oc, ClassInfo c);
@@ -1229,25 +1212,10 @@ void terminate()
 	exit();
 }
 
-/*******************************************
- * Given address that is inside a function,
- * figure out which function it is in.
- * Return DHandlerTable if there is one, NULL if not.
- */
-
 FuncTable *__eh_finddata(void *address)
 {
-
-    version (OSX)
-    {
-        auto pstart = cast(FuncTable *)_deh_eh_array.ptr;
-        auto pend   = cast(FuncTable *)(_deh_eh_array.ptr + _deh_eh_array.length);
-    }
-    else
-    {
-        auto pstart = cast(FuncTable *)&_deh_beg;
-        auto pend   = cast(FuncTable *)&_deh_end;
-    }
+    auto pstart = cast(FuncTable *)&_deh_beg;
+    auto pend   = cast(FuncTable *)&_deh_end;
 
     for (auto ft = pstart; 1; ft++)
     {
@@ -1786,6 +1754,8 @@ version(without_moduleinfo) {
 		/* moved from version(compiler_dso) below */
 		__gshared void* _minfo_beg;
 		__gshared void* _minfo_end;
+		__gshared immutable(void)* _deh_beg;
+		__gshared immutable(void)* _deh_end;
 		struct CompilerDSOData
 		{
 		    size_t _version;
@@ -1796,6 +1766,8 @@ version(without_moduleinfo) {
 		extern(C) void _d_dso_registry(CompilerDSOData* data) {
 			_minfo_beg = data._minfo_beg;
 			_minfo_end = data._minfo_end;
+			_deh_beg = data._deh_beg;
+			_deh_end = data._deh_end;
 		}
 
 
