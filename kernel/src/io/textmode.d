@@ -71,7 +71,7 @@ struct Screen(int w, int h) {
 		x = y = 0;
 	}
 
-	void Print(char ch) {
+	void Write(char ch) {
 		if (ch == '\n') {
 			y++;
 			x = 0;
@@ -80,6 +80,8 @@ struct Screen(int w, int h) {
 		} else if (ch == '\b') {
 			if (x)
 				x--;
+		} else if (ch == '\t') {
+			x = cast(ubyte)(x + 8) & ~7;
 		} else {
 			(*screen)[y*w + x].ch = ch;
 			x++;
@@ -106,43 +108,58 @@ struct Screen(int w, int h) {
 		MoveCursor();
 	}
 
-	void Print(in char[] str) {
+	void Write(in char[] str) {
 		foreach (char ch; str)
-			if (ch) // Add C-String support
-				Print(ch);
-			else
-				break;
+			Write(ch);
 	}
 
-	void Print(int base = 10, T)(T n) if (isNumber!T && base <= 16 && base > 1) {
-		const char BASE_CHARS[] = "0123456789ABCDEF";
-		char tmp[T.sizeof * 8 + 1]; // TODO: better size, currently supports 64-bit binary number + 1 negative
-		bool neg = n < 0;
-		if (neg)
-		 n *= -1;
+	void Write(char * str) {
+		while (*str)
+			Write(*(str++));
+	}
 
-		//Calculate the amount of digits there are.
-		int len = 0;
-		T tmpN = n;
+	size_t itoa(S)(S v, ubyte* buf, size_t len, uint base = 10) if(isNumber!S) {
+		assert(1 < base && base <= 16);
+		Unqual!S value = v;
+		immutable ubyte BASE_CHARS[] = cast(immutable ubyte[])"0123456789ABCDEF";
+		size_t pos = len;
+		bool sign = false;
+		if(value < 0) {
+			sign = true;
+			value = -value;
+		}
 		do {
-			len++;
-			tmpN /= base;
-		} while (tmpN > base);
+			buf[--pos] = BASE_CHARS[value % base];
+			value /= base;
+		} while(value);
+		if(sign)
+			buf[--pos] = '-';
+		return pos;
+	}
 
-		// Use len as a index
-		// We don't need to save a space if it's not negative
-		if (neg)
-			len++;
+	void WriteNumber(S = int)(S value, uint base) if(isNumber!S) {
+		ubyte[S.sizeof * 8] buf;
+		auto start = itoa(value, buf.ptr, buf.length, base);
+		for (size_t i = start; i < buf.length; i++)
+			Write(buf[i]);
+	}
 
-		do {
-			tmp[len--] = BASE_CHARS[n % base];
-			n /= base;
-		} while (n > 0);
+	void Write(Args...)(Args args) {
+		foreach(arg; args) {
+			alias T = Unqual!(typeof(arg));
+			static if (is(T : const char[]))
+				Write(arg);
+			else static if (is(T : char))
+				Write(arg);
+			else static if (isNumber!T)
+				WriteNumber(arg, 10);
+			else
+				Write("UNKNOWN TYPE '", T.stringof, "'");
+		}
+	}
 
-		if (neg)
-			tmp[len] = '-';
-
-		Print(tmp);
+	void Writeln(Args...)(Args arg) {
+		Write(arg, '\n');
 	}
 
 	void MoveCursor() {

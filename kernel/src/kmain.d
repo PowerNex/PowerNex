@@ -4,15 +4,15 @@ import io.textmode;
 
 alias scr = GetScreen;
 
+immutable uint major = __VERSION__ / 1000;
+immutable uint minor = __VERSION__ % 1000;
+
 void main() {
 	scr.Clear();
-	scr.Print("Hello World!\n");
-	scr.Print("Int test: ");
-	scr.Print(-1337);
-	scr.Print("\n");
-	scr.Print("Hex test: ");
-	scr.Print(0xDEADC0DE);
-	scr.Print("\n");
+	scr.Writeln("Welcome to PowerNex!");
+	scr.Writeln("\tThe number one D kernel!");
+	scr.Write("Compiled using '", __VENDOR__, "', D version ", major, ".", minor, "\n");
+
 	asm {
 		forever:
 			hlt;
