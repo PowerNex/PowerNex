@@ -86,7 +86,7 @@ version(linux) {
 		version(with_libc) {
 			fwrite(a.ptr, 1, a.length, stdout);
 		} else version(bare_metal) {
-			GetScreen.Writeln(cast(char[])a);
+			GetScreen.Write(cast(char[])a);
 		} else {
 			auto sptr = a.ptr;
 			auto slen = a.length;
