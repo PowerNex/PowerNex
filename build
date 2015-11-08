@@ -14,6 +14,14 @@
 		"ld": {
 			"command": "gcc",
 			"arguments": "-m32 -g -nostdlib -T kernel/src/os.ld -o $out $in"
+		},
+		"cp": {
+			"command": "cp",
+			"arguments": "-rf $in $out"
+		},
+		"iso": {
+			"command": "grub-mkrescue",
+			"arguments": "-d /usr/lib/grub/i386-pc -o $out $in"
 		}
 	},
 	"phonies": {
@@ -33,9 +41,19 @@
 		"powernex.krl": {
 			"processor": "ld",
 			"input": "kernel/obj/*.o"
+		},
+		"disk/boot/powernex.krl": {
+			"processor": "cp",
+			"input": "powernex.krl"
+		},
+		"powernex.iso": {
+			"processor": "iso",
+			"input": "disk"
 		}
 	},
 	"targets": [
-		"powernex.krl"
+		"powernex.krl",
+		"disk/boot/powernex.krl",
+		"powernex.iso"
 	]
 }
