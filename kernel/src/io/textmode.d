@@ -26,6 +26,10 @@ enum Colors : ubyte {
 struct Color {
 	private ubyte color;
 
+	this(Colors fg, Colors bg) {
+		color = ((bg & 0xF) << 4) | (fg & 0xF);
+	}
+
 	@property Colors Foreground() {
 		return cast(Colors)(color & 0xF);
 	}
@@ -60,8 +64,7 @@ struct Screen(int w, int h) {
 		this.screen = cast(slot[25*80] *)0xB8000;
 		this.x = 0;
 		this.y = 0;
-		this.defaultColor.Foreground = fg;
-		this.defaultColor.Background = bg;
+		this.defaultColor = Color(fg, bg);
 	}
 
 	void Clear() {
@@ -85,6 +88,7 @@ struct Screen(int w, int h) {
 			x = cast(ubyte)(x + 8) & ~7;
 		} else {
 			(*screen)[y*w + x].ch = ch;
+			(*screen)[y*w + x].color = defaultColor;
 			x++;
 
 			if (x >= w) {
