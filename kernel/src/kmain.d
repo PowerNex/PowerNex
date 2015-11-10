@@ -1,5 +1,6 @@
 module kmain;
 
+import io.log;
 import io.textmode;
 
 alias scr = GetScreen;
@@ -13,6 +14,7 @@ void main() {
 	scr.Writeln("\tThe number one D kernel!");
 	scr.Write("Compiled using '", __VENDOR__, "', D version ", major, ".", minor, "\n");
 
+	log.Info("Welcome to PowerNexs serial console!");
 	asm {
 		forever:
 			hlt;
