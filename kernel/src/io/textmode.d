@@ -56,7 +56,7 @@ struct Screen(int w, int h) {
 
 	slot[w*h] * screen;
 	ubyte x, y;
-	Color defaultColor;
+	Color color;
 
 	@disable this();
 
@@ -64,13 +64,13 @@ struct Screen(int w, int h) {
 		this.screen = cast(slot[25*80] *)0xB8000;
 		this.x = 0;
 		this.y = 0;
-		this.defaultColor = Color(fg, bg);
+		this.color = Color(fg, bg);
 	}
 
 	void Clear() {
 		foreach (ref slot slot; *screen) {
 			slot.ch = ' ';
-			slot.color = defaultColor;
+			slot.color = color;
 		}
 		x = y = 0;
 	}
@@ -88,7 +88,7 @@ struct Screen(int w, int h) {
 			x = cast(ubyte)(x + 8) & ~7;
 		} else {
 			(*screen)[y*w + x].ch = ch;
-			(*screen)[y*w + x].color = defaultColor;
+			(*screen)[y*w + x].color = color;
 			x++;
 
 			if (x >= w) {
@@ -107,7 +107,7 @@ struct Screen(int w, int h) {
 			for (int x = 0; x < w; x++) {
 				auto slot = &(*screen)[y*w + x];
 				slot.ch = ' ';
-				slot.color = defaultColor;
+				slot.color = color;
 			}
 		}
 		MoveCursor();

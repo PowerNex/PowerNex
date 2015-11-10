@@ -14,7 +14,7 @@ void main() {
 	scr.Writeln("\tThe number one D kernel!");
 	scr.Write("Compiled using '", __VENDOR__, "', D version ", major, ".", minor, "\n");
 
-	log.Info("Welcome to PowerNexs serial console!");
+	log.Info("Welcome to PowerNex's serial console!");
 	asm {
 		forever:
 			hlt;

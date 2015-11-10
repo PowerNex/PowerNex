@@ -1,11 +1,11 @@
 module data.util;
 
 template Unqual(T) {
-       static if (is(T U == shared(const U))) alias Unqual = U;
-  else static if (is(T U ==        const U )) alias Unqual = U;
-  else static if (is(T U ==    immutable U )) alias Unqual = U;
-  else static if (is(T U ==       shared U )) alias Unqual = U;
-  else                                        alias Unqual = T;
+	     static if (is(T U == shared(const U))) alias Unqual = U;
+	else static if (is(T U ==        const U )) alias Unqual = U;
+	else static if (is(T U ==    immutable U )) alias Unqual = U;
+	else static if (is(T U ==       shared U )) alias Unqual = U;
+	else                                        alias Unqual = T;
 }
 
 enum isByte(T)     = is(Unqual!T == byte)  || is(Unqual!T == ubyte);
