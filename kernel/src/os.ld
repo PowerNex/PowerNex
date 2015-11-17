@@ -1,49 +1,89 @@
-/* The bootloader will look at this image and start execution at the symbol
-   designated as the entry point. */
-ENTRY(_start)
+OUTPUT_FORMAT(elf64-x86-64)
+ENTRY(lstart)
+KERNEL_LMA = 1M;
+KERNEL_VMA = 0xFFFFFFFF80000000;
+lstart = start - KERNEL_VMA;
+SECTIONS {
+	. = KERNEL_LMA;
 
-/* Tell where the various sections of the object files will be put in the final
-   kernel image. */
-SECTIONS
-{
-	/* Begin putting sections at 1 MiB, a conventional place for kernels to be
-	   loaded at by the bootloader. */
-	. = 1M;
-
-	/* First put the multiboot header, as it is required to be put very early
-	   early in the image or the bootloader won't recognize the file format.
-	   Next we'll put the .text section. */
-	.text BLOCK(4K) : ALIGN(4K)
-	{
+	.multiboot : AT(ADDR(.multiboot)) {
+		LONG(0x0)
 		*(.multiboot)
-		*(.text)
 	}
 
-	/* Read-only data. */
-	.rodata BLOCK(4K) : ALIGN(4K)
-	{
-		*(.rodata)
+	. += KERNEL_VMA;
+
+	.text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_VMA) {
+		*(.text .text.*)
 	}
 
-	/* Read-write data (initialized) */
-	.data BLOCK(4K) : ALIGN(4K)
-	{
-		*(.data)
+	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_VMA) {
+		*(.initpd)
+		*(.rodata .rodata.*)
+		*(.rdata)
 	}
 
-	.minfo_beg :{ _minfo_beg = 0; }
-	.minfo : {*(.minfo) }
-	.minfo_end :{ _minfo_end = 0; }
+	.minfo ALIGN(0x1000) : AT(ADDR(.minfo) - KERNEL_VMA) {
+		*(.minfo)
+	}
 
-	/* Read-write data (uninitialized) and stack */
-	.bss BLOCK(4K) : ALIGN(4K)
-	{
-		*(COMMON)
+	.deh_eh ALIGN(0x1000) : AT(ADDR(.deh_eh) - KERNEL_VMA) {
+		*(.deh_eh)
+	}
+
+	.dtors.d_dso_dtor ALIGN(0x1000) : AT(ADDR(.dtors.d_dso_dtor) - KERNEL_VMA) {
+		*(.dtors .dtors.*)
+		 *(.dtors.d_dso_dtor)
+	}
+
+	.ctors.d_dso_ctor ALIGN(0x1000) : AT(ADDR(.ctors.d_dso_ctor) - KERNEL_VMA) {
+		*(.ctors .ctors.*)
+		*(.ctors.d_dso_ctor)
+	}
+
+	.eh_frame ALIGN(0x1000) : AT(ADDR(.eh_frame) - KERNEL_VMA) {
+		*(.eh_frame)
+	}
+
+	.data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_VMA) {
+		*(.padata)
+		*(.data .data.*)
+
+		KERNEL_MODULES_START = .;
+		*(.KMODULES)
+		KERNEL_MODULES_END = .;
+	}
+
+	.symbols ALIGN(0x1000) : AT(ADDR(.symbols) - KERNEL_VMA) {
+		KERNEL_SYMBOLS_START = .;
+		*(.symbols .symbols.*)
+		KERNEL_SYMBOLS_END = .;
+	}
+
+	.tdata ALIGN(0x1000) : AT(ADDR(.tdata) - KERNEL_VMA) {
+		*(.tdata .tdata.*)
+	}
+
+	.got ALIGN(0x1000) : AT(ADDR(.got) - KERNEL_VMA) {
+		*(.got)
+		*(.got.plt)
+	}
+
+	.bss ALIGN(0x1000) : AT(ADDR(.bss) - KERNEL_VMA) {
+		KERNEL_BSS_START = .;
+		*(.COMMON)
 		*(.bss)
-		*(.bootstrap_stack)
 	}
 
-	/* The compiler may produce other sections, by default it will put them in
-	   a segment with the same name. Simply add stuff here as needed. */
-}
+	.tbss : AT(ADDR(.tbss) - KERNEL_VMA) {
+		*(.tbss .tbss.*)
+	}
 
+	KERNEL_END = (. + 0xFFF) & 0xFFFFFFFFFFFFF000;
+
+	/DISCARD/ : {
+		*(.comment)
+		*(.note .note.*)
+		*(.rela.*)
+	}
+}

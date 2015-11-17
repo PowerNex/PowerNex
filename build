@@ -5,15 +5,15 @@
 	"processors": {
 		"dc": {
 			"command": "dmd",
-			"arguments": "-m32 -debug -c -gc -Ikernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+			"arguments": "-m64 -fPIC -debug -c -gc -Ikernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
 		"cc": {
-			"command": "gcc",
-			"arguments": "-m32 -c -o $out $in"
+			"command": "cc/bin/x86_64-powernex-gcc",
+			"arguments": "-m64 -fPIC -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c -o $out $in"
 		},
 		"ld": {
-			"command": "gcc",
-			"arguments": "-m32 -g -nostdlib -T kernel/src/os.ld -o $out $in"
+			"command": "cc/bin/x86_64-powernex-gcc",
+			"arguments": "-m64 -fPIC -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -g -z max-page-size=0x1000 -nostdlib -T kernel/src/os.ld -o $out $in"
 		},
 		"cp": {
 			"command": "cp",
@@ -34,7 +34,7 @@
 			"processor": "dc",
 			"input": "kernel/src/*.d"
 		},
-		"kernel/obj/S/*.o": {
+		"kernel/obj/asm/*.o": {
 			"processor": "cc",
 			"input": "kernel/src/*.S"
 		},

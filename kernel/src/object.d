@@ -126,10 +126,11 @@ version(linux) {
 		return l;
 	}
 
-	extern(C) int _Dmain(string[]);
-	int callDmain(string[] args) {
+	void main() {}
+	extern(C) int kmain(uint magic, ulong info);
+	int callKmain(uint magic, ulong info) {
 		try {
-			return (_Dmain(args));
+			return kmain(magic, info);
 		} catch(Throwable t) {
 			write("\n**UNCAUGHT EXCEPTION**\n");
 			t.print();
@@ -155,8 +156,8 @@ version(linux) {
 		__gshared string[] environment;
 
 		version(bare_metal)
-		extern(C) void _Dmain_entry(int argc) {
-			exit(callDmain(null));
+		extern(C) void _Dkmain_entry(uint magic, ulong info) {
+			exit(callKmain(magic, info));
 		}
 		else
 		extern(C) void _Dmain_entry(size_t* argsAddress) {
@@ -197,27 +198,6 @@ version(linux) {
 			.environment = environment[0 .. envc];
 
 			exit(callDmain(args[0..argc]));
-		}
-
-		extern(C) void _start() {
-			asm {
-				naked;
-				//call _init;
-				mov [bootInfo], EBX;
-			}
-			version(bare_metal) {}
-			else {
-				// _Dmain_entry on linux wants a pointer to where it can find
-				// the arguments. They are on the stack, so we'll just put that
-				// pointer into the first arg (varies by bits calling convention)
-				version(D_InlineAsm_X86) asm { mov EAX, ESP; push EAX; }
-				version(D_InlineAsm_X86_64) asm { mov RDI, RSP; }
-			}
-			asm {
-				call _Dmain_entry;
-				//call _fini;
-			}
-			exit(1); // this should never be reached
 		}
 	}
 
