@@ -26,7 +26,7 @@ struct Log {
 		for (int i = 0; i < indent; i++)
 			COM1.Write(' ');
 
-		COM1.Write('[', cast(char)level, "] ", file/*, ": ", func*/, '@');
+		COM1.Write('[', cast(char)level, "] ", file /*, ": ", func*/, '@');
 
 		ubyte[int.sizeof * 8] buf;
 		auto start = itoa(line, buf.ptr, buf.length, 10);

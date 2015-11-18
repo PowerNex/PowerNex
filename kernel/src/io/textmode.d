@@ -33,6 +33,7 @@ struct Color {
 	@property Colors Foreground() {
 		return cast(Colors)(color & 0xF);
 	}
+
 	@property Colors Foreground(Colors c) {
 		color = (color & 0xF0) | (c & 0xF);
 		return cast(Colors)(color & 0xF);
@@ -41,6 +42,7 @@ struct Color {
 	@property Colors Background() {
 		return cast(Colors)((color >> 4) & 0xF);
 	}
+
 	@property Colors Background(Colors c) {
 		color = ((c & 0xF) << 4) | (color & 0xF);
 		return cast(Colors)((color >> 4) & 0xF);
@@ -54,14 +56,14 @@ struct Screen(int w, int h) {
 		Color color;
 	}
 
-	slot[w*h] * screen;
+	slot[w * h] * screen;
 	ubyte x, y;
 	Color color;
 
 	@disable this();
 
 	this(Colors fg, Colors bg, long videoMemory) {
-		this.screen = cast(slot[w*h] *)videoMemory;
+		this.screen = cast(slot[w * h] *)videoMemory;
 		this.x = 0;
 		this.y = 0;
 		this.color = Color(fg, bg);
@@ -79,16 +81,16 @@ struct Screen(int w, int h) {
 		if (ch == '\n') {
 			y++;
 			x = 0;
-		} else if (ch == '\r') {
+		} else if (ch == '\r')
 			x = 0;
-		} else if (ch == '\b') {
+		else if (ch == '\b') {
 			if (x)
 				x--;
-		} else if (ch == '\t') {
+		} else if (ch == '\t')
 			x = cast(ubyte)(x + 8) & ~7;
-		} else {
-			(*screen)[y*w + x].ch = ch;
-			(*screen)[y*w + x].color = color;
+		else {
+			(*screen)[y * w + x].ch = ch;
+			(*screen)[y * w + x].color = color;
 			x++;
 
 			if (x >= w) {
@@ -99,13 +101,12 @@ struct Screen(int w, int h) {
 
 		if (y >= h) {
 			for (int yy = 0; yy < h - 1; yy++)
-				for (int xx = 0; xx < w; x++) {
-					(*screen)[yy*w + xx] = (*screen)[yy*w + xx + w];
-				}
+				for (int xx = 0; xx < w; x++)
+					(*screen)[yy * w + xx] = (*screen)[yy * w + xx + w];
 
 			y--;
 			for (int x = 0; x < w; x++) {
-				auto slot = &(*screen)[y*w + x];
+				auto slot = &(*screen)[y * w + x];
 				slot.ch = ' ';
 				slot.color = color;
 			}
@@ -123,7 +124,7 @@ struct Screen(int w, int h) {
 			Write(*(str++));
 	}
 
-	void WriteNumber(S = int)(S value, uint base) if(isNumber!S) {
+	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
 		ubyte[S.sizeof * 8] buf;
 		auto start = itoa(value, buf.ptr, buf.length, base);
 		for (size_t i = start; i < buf.length; i++)
@@ -131,7 +132,7 @@ struct Screen(int w, int h) {
 	}
 
 	void Write(Args...)(Args args) {
-		foreach(arg; args) {
+		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
 				Write(arg);

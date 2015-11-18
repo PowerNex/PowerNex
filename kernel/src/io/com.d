@@ -19,13 +19,13 @@ struct COM {
 	void Init() {
 		if (isInitialized)
 			return;
-		Out(cast(ushort)(port + 1), 0x00);    // Disable all interrupts
-		Out(cast(ushort)(port + 3), 0x80);    // Enable DLAB (set baud rate divisor)
-		Out(cast(ushort)(port + 0), 0x03);    // Set divisor to 3 (lo byte) 38400 baud
-		Out(cast(ushort)(port + 1), 0x00);    //                  (hi byte)
-		Out(cast(ushort)(port + 3), 0x03);    // 8 bits, no parity, one stop bit
-		Out(cast(ushort)(port + 2), 0xC7);    // Enable FIFO, clear them, with 14-byte threshold
-		Out(cast(ushort)(port + 4), 0x0B);    // IRQs enabled, RTS/DSR set
+		Out(cast(ushort)(port + 1), 0x00); // Disable all interrupts
+		Out(cast(ushort)(port + 3), 0x80); // Enable DLAB (set baud rate divisor)
+		Out(cast(ushort)(port + 0), 0x03); // Set divisor to 3 (lo byte) 38400 baud
+		Out(cast(ushort)(port + 1), 0x00); //                  (hi byte)
+		Out(cast(ushort)(port + 3), 0x03); // 8 bits, no parity, one stop bit
+		Out(cast(ushort)(port + 2), 0xC7); // Enable FIFO, clear them, with 14-byte threshold
+		Out(cast(ushort)(port + 4), 0x0B); // IRQs enabled, RTS/DSR set
 
 		isInitialized = true;
 	}
@@ -49,12 +49,12 @@ struct COM {
 	}
 
 	void Write(T : ubyte)(T[] data) {
-		foreach(d; data)
+		foreach (d; data)
 			Write(d);
 	}
 
 	void Write(Args...)(Args args) {
-		foreach(arg; args)
+		foreach (arg; args)
 			Write(arg);
 	}
 }
