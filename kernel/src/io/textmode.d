@@ -60,8 +60,8 @@ struct Screen(int w, int h) {
 
 	@disable this();
 
-	this(Colors fg, Colors bg) {
-		this.screen = cast(slot[25*80] *)0xB8000;
+	this(Colors fg, Colors bg, long videoMemory) {
+		this.screen = cast(slot[w*h] *)videoMemory;
 		this.x = 0;
 		this.y = 0;
 		this.color = Color(fg, bg);
@@ -157,4 +157,4 @@ struct Screen(int w, int h) {
 	}
 }
 
-__gshared Screen!(80, 25) GetScreen = Screen!(80, 25)(Colors.Cyan, Colors.Black);
+__gshared Screen!(80, 25) GetScreen = Screen!(80, 25)(Colors.Cyan, Colors.Black, 0xB8000);
