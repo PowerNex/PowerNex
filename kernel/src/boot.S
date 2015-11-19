@@ -338,18 +338,18 @@ gdt:
 	.quad 0
 
 	gdtCode64:
-		.long 0x0000FFFF
-		.long 0x000F0000 + 0xA09A00
+		.int 0x0000FFFF
+		.int 0x000F0000 + 0xA09A00
 	gdtData64:
-		.long 0x0000FFFF
-		.long 0x000F0000 + 0xA09200
+		.int 0x0000FFFF
+		.int 0x000F0000 + 0xA09200
 
 	gdtCode32:
-		.long 0x0000FFFF
-		.long 0x000F0000 + 0xC09A00
+		.int 0x0000FFFF
+		.int 0x000F0000 + 0xC09A00
 	gdtData32:
-		.long 0x0000FFFF
-		.long 0x000F0000 + 0xC09200
+		.int 0x0000FFFF
+		.int 0x000F0000 + 0xC09200
 
 gdtPointer:
 	.word . - gdt - 1

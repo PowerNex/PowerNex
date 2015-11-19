@@ -3,15 +3,20 @@ module kmain;
 import io.log;
 import io.textmode;
 import cpu.gdt;
+import cpu.idt;
 
 alias scr = GetScreen;
+alias gdt = GDT;
+alias idt = IDT;
 
 immutable uint major = __VERSION__ / 1000;
 immutable uint minor = __VERSION__ % 1000;
 
 extern (C) int kmain(uint magic, ulong info) {
-	GDT.Init();
 	scr.Clear();
+	gdt.Init();
+	idt.Init();
+
 	scr.Writeln("Welcome to PowerNex!");
 	scr.Writeln("\tThe number one D kernel!");
 	scr.Write("Compiled using '", __VENDOR__, "', D version ", major, ".", minor, "\n");
@@ -23,6 +28,8 @@ extern (C) int kmain(uint magic, ulong info) {
 	scr.Writeln();
 
 	asm {
+		int 0x4;
+		int 0x5;
 	forever:
 		hlt;
 		jmp forever;
