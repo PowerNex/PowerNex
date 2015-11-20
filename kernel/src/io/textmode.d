@@ -101,12 +101,12 @@ struct Screen(int w, int h) {
 
 		if (y >= h) {
 			for (int yy = 0; yy < h - 1; yy++)
-				for (int xx = 0; xx < w; x++)
-					(*screen)[yy * w + xx] = (*screen)[yy * w + xx + w];
+				for (int xx = 0; xx < w; xx++)
+					(*screen)[yy * w + xx] = (*screen)[(yy + 1) * w + xx];
 
 			y--;
-			for (int x = 0; x < w; x++) {
-				auto slot = &(*screen)[y * w + x];
+			for (int xx = 0; xx < w; xx++) {
+				auto slot = &(*screen)[y * w + xx];
 				slot.ch = ' ';
 				slot.color = color;
 			}
