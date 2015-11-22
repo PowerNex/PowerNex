@@ -131,11 +131,26 @@ struct Screen(int w, int h) {
 			Write(buf[i]);
 	}
 
+	void WriteEnum(T)(T value) if (is(T == enum)) {
+		foreach (i, e; EnumMembers!T)
+			if (value == e) {
+				Write(__traits(allMembers, T)[i]);
+				return;
+			}
+
+		Write("cast(", T.stringof, ")", value);
+	}
+
 	void Write(Args...)(Args args) {
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
 				Write(arg);
+			else static if (is(T : V *, V)) {
+				Write("0x");
+				WriteNumber(arg, 16);
+			} else static if (is(T == enum))
+				WriteEnum(arg);
 			else static if (is(T : char))
 				Write(arg);
 			else static if (isNumber!T)
