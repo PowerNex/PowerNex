@@ -2,7 +2,14 @@ module data.string;
 
 import data.util;
 
-size_t itoa(S)(S v, ubyte* buf, size_t len, uint base = 10) if (isNumber!S) {
+size_t strlen(ubyte * str) {
+	size_t len = 0;
+	while (str++)
+		len++;
+	return len;
+}
+
+size_t itoa(S)(S v, ubyte * buf, ulong len, uint base = 10) if (isNumber!S) {
 	assert(1 < base && base <= 16);
 	Unqual!S value = v;
 	immutable ubyte[] BASE_CHARS = cast(immutable ubyte[])"0123456789ABCDEF";
