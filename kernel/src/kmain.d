@@ -2,6 +2,7 @@ module kmain;
 
 import io.log;
 import io.textmode;
+import cpu.gdt;
 
 alias scr = GetScreen;
 
@@ -9,6 +10,7 @@ immutable uint major = __VERSION__ / 1000;
 immutable uint minor = __VERSION__ % 1000;
 
 extern (C) int kmain(uint magic, ulong info) {
+	GDT.Init();
 	scr.Clear();
 	scr.Writeln("Welcome to PowerNex!");
 	scr.Writeln("\tThe number one D kernel!");

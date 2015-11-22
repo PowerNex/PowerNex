@@ -1,0 +1,24 @@
+.text
+.code64
+
+.global CPU_refresh_iretq
+CPU_refresh_iretq:
+	mov $0x10, %RAX
+	mov %AX, %DS
+	mov %AX, %ES
+	mov %AX, %FS
+	mov %AX, %GS
+	mov %AX, %SS
+
+	mov %RSP, %RDX
+	push %RAX
+	push %RDX
+	pushfq
+	push $0x08
+
+	mov $.r, %RAX
+	push %RAX
+	iretq
+
+	.r:
+		ret
