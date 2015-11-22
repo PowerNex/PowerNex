@@ -1,4 +1,7 @@
 module object;
+
+import io.log;
+
 // over 3/4 of this file was copy/pasted from the real druntime with little to no modification
 
 /*
@@ -69,51 +72,6 @@ version(with_libc) {
 }
 
 version(linux) {
-	// first we want to be able to write some stuff to see progress
-
-	version(bare_metal) {
-		import io.textmode;
-	} else {
-		version=compiler_dso; // FIXME: it doesn't actually work without libc!
-	}
-
-	void write_raw(ssize_t i, ssize_t fd = 1) {
-		char[16] buffer;
-		write_raw(intToString(i, buffer), fd);
-	}
-
-	void write_raw(in void[] a, ssize_t fd = 1) {
-		version(with_libc) {
-			fwrite(a.ptr, 1, a.length, stdout);
-		} else version(bare_metal) {
-			GetScreen.Write(cast(char[])a);
-		} else {
-			auto sptr = a.ptr;
-			auto slen = a.length;
-			version(D_InlineAsm_X86)
-			asm {
-				mov ECX, sptr;
-				mov EDX, slen;
-				mov EBX, fd;
-				mov EAX, 4; // sys_write
-				int 0x80;
-			}
-			else version(D_InlineAsm_X86_64)
-			asm {
-				mov RSI, sptr;
-				mov RDX, slen;
-				mov RDI, fd;
-				mov RAX, 1; // sys_write
-				syscall;
-			}
-		}
-	}
-
-	void write(T...)(T t) {
-		foreach(a; t)
-			write_raw(a);
-	}
-
 	nothrow pure size_t strlen(const(char)* c) {
 		if(c is null)
 			return 0;
@@ -132,7 +90,7 @@ version(linux) {
 		try {
 			return kmain(magic, info);
 		} catch(Throwable t) {
-			write("\n**UNCAUGHT EXCEPTION**\n");
+			log.Info("\n**UNCAUGHT EXCEPTION**\n");
 			t.print();
 			manual_free(t);
 			return (1);
@@ -189,7 +147,7 @@ version(linux) {
 				envp++;
 				envc++;
 				if(envc >= environment.length) {
-					write_raw("too much environment", 2);
+					log.Info("too much environment", 2);
 					exit(254);
 					assert(0); // not reached
 				}
@@ -203,11 +161,11 @@ version(linux) {
 
 	void exit(ssize_t code = 0) {
 		debug(allocations) {
-			write("\n", totalAllocations, " total allocations\n");
+			log.Info("\n", totalAllocations, " total allocations\n");
 			if(allocations)
-				write("warning, terminating with ", allocations, " pieces of still allocated memory\n");
+				log.Info("warning, terminating with ", allocations, " pieces of still allocated memory\n");
 			else
-				write("all freed!\n");
+				log.Info("all freed!\n");
 		}
 
 		version(bare_metal)
@@ -262,7 +220,7 @@ extern(C) {
 	Object _d_newclass(const ClassInfo ci) {
 		void* memory = manual_malloc(ci.init.length);
 		if(memory is null) {
-			write("\n\n_d_newclass malloc failure\n\n");
+			log.Info("\n\n_d_newclass malloc failure\n\n");
 			exit();
 		}
 
@@ -274,7 +232,7 @@ extern(C) {
 
 	// and these came when I started using foreach
 	void _d_unittestm(string file, uint line) {
-		write("_d_unittest_");
+		log.Info("_d_unittest_");
 		exit(1);
 	}
 	void _d_array_bounds(ModuleInfo* m, uint line) {
@@ -282,7 +240,7 @@ extern(C) {
 	}
 	void _d_arraybounds(string m, uint line) {
 		version(without_exceptions) {
-			write("_d_array_bounds");
+			log.Info("_d_array_bounds");
 			exit(1);
 		} else {
 			throw new Error("Range error", m, line);
@@ -303,7 +261,7 @@ extern(C) {
 
 	private void onAssert(string msg, string file, uint line) {
 		version(without_exceptions) {
-			write("\nAssertion failure\n");
+			log.Info("\nAssertion failure\n");
 			exit(1);
 		} else {
 			throw new AssertError(msg, file, line);
@@ -379,7 +337,7 @@ class Object {
 
 
     	int opCmp(Object o) { return 0; }
-    	size_t toHash() nothrow @trusted const { return cast(size_t) &this; }
+    	size_t toHash() nothrow @trusted const { return cast(size_t) cast(void*)this; }
 }
 class Throwable : Object { // required by the D compiler
 
@@ -411,7 +369,7 @@ class Throwable : Object { // required by the D compiler
 	}
 
 	void print() {
-		write(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
+		log.Info(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
 	}
 }
 class Error : Throwable { // required by the D compiler
@@ -876,7 +834,7 @@ debug(allocations) {
 	__gshared int totalAllocations = 0;
 }
 
-void* manual_malloc(size_t bytes) {
+void* manual_malloc(string func = __PRETTY_FUNCTION__)(size_t bytes) {
 	void* ret;
 	version(use_malloc)
 		ret = malloc(bytes);
@@ -887,7 +845,7 @@ void* manual_malloc(size_t bytes) {
 	}
 
 	debug(allocations) {
-		write("ALLOCATION: ", cast(size_t) ret, "\n");
+		log.Info("ALLOCATION func: ", func, ", size: ", bytes, ": ", ret, "\n");
 		allocations++;
 		totalAllocations++;
 	}
@@ -910,7 +868,7 @@ void* manual_realloc(void* memory, size_t newCapacity) {
 
 void manual_free(void* memory) {
 	debug(allocations) {
-		write("FREED: ", cast(size_t) memory, "\n");
+		log.Info("FREED: ", cast(size_t) memory, "\n");
 		allocations--;
 	}
 
@@ -934,7 +892,7 @@ void* _d_allocmemory(size_t bytes) {
 	auto ptr = manual_malloc(bytes);
 	debug(allocations) {
 		char[16] buffer;
-		write("warning: automatic memory allocation ", intToString(cast(size_t) ptr, buffer));
+		log.Debug("Warning: automatic memory allocation ", ptr);
 	}
 	return ptr;
 }
@@ -1188,7 +1146,7 @@ private
 
 void terminate()
 {
-	write("Uncaught exception or busted up stack\n");
+	log.Info("Uncaught exception or busted up stack\n");
 	exit();
 }
 
