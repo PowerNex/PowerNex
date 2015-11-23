@@ -4,6 +4,7 @@ import io.log;
 import io.textmode;
 import cpu.gdt;
 import cpu.idt;
+import multiboot;
 
 alias scr = GetScreen;
 alias gdt = GDT;
@@ -23,13 +24,9 @@ extern (C) int kmain(uint magic, ulong info) {
 
 	log.Info("Welcome to PowerNex's serial console!");
 
-	scr.Write("Bootmagic is: ");
-	scr.WriteNumber(magic, 16);
-	scr.Writeln();
+	Multiboot.ParseHeader(magic, info);
 
 	asm {
-		int 0x4;
-		int 0x5;
 	forever:
 		hlt;
 		jmp forever;
