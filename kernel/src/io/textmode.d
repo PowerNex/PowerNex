@@ -148,7 +148,7 @@ struct Screen(int w, int h) {
 				Write(arg);
 			else static if (is(T : V *, V)) {
 				Write("0x");
-				WriteNumber(arg, 16);
+				WriteNumber(cast(ulong)arg, 16);
 			} else static if (is(T == enum))
 				WriteEnum(arg);
 			else static if (is(T : char))
