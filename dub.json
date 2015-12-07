@@ -1,0 +1,7 @@
+{
+	"name": "powernex",
+	"copyright": "Copyright © 2015, wildn00b",
+	"targetOutput": "none",
+	"sourcePaths": ["kernel/src"],
+	"importPaths": ["kernel/src"]
+}
