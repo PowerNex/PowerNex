@@ -5,6 +5,7 @@
 .SET KERNEL_STACK_SIZE, 8
 .extern multiboot_magic
 .extern multiboot_ptr
+.extern KERNEL_STACK_START
 .global start64
 start64:
 	cli
@@ -21,7 +22,7 @@ start64:
 	xor %rax, %rax
 	mov %rax, %dr0
 
-	mov $0xFFFFFFFF80010000 + KERNEL_STACK_SIZE * 0x1000, %rsp
+	mov $KERNEL_STACK_START, %rsp
 
 	mov (multiboot_magic - KERNEL_VMA), %edi
 	mov (multiboot_ptr - KERNEL_VMA), %esi

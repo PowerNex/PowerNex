@@ -183,10 +183,10 @@ x64NotSupported_msg:
 PML4:
 	.int PDP + ATTR, 0 # Identity map for low 4MB
 	.space (319) * 8
-	.int PDP_STACK + ATTR, 0 # Kernel stack
+	.quad 0 #.int PDP_STACK + ATTR, 0 # Kernel stack
 	.space (187) * 8
 
-	.int PML4 + ATTR, 0 # Fractal mapping
+	.quad 0 #.int PML4 + ATTR, 0 # Fractal mapping
 	.quad 0
 	.quad 0
 	.int PDP_HIGH + ATTR, 0 # Map low 4MB to kernel base
@@ -194,10 +194,6 @@ PML4:
 PDP:
 	.int PD + ATTR, 0
 	.space 511 * 8
-
-PDP_STACK:
-	.int PD_STACK + ATTR, 0
-	.space 511*8
 
 PDP_HIGH:
 	.space 510*8
@@ -215,24 +211,6 @@ PD:
 	.int PT_8 + ATTR, 0
 	.int PT_9 + ATTR, 0
 	.space 503*8
-
-PD_STACK:
-	.int PT_STACK + ATTR, 0
-	.space 511*8
-
-
-.macro mapStack from, to
-	.if \to-\from
-		.int \from + STACK_ATTR, 0
-		mapStack "(\from+0x1000)", \to
-	.endif
-.endm
-
-
-PT_STACK:
-	.quad 0
-	mapStack (KERNEL_STACK), (KERNEL_STACK + ((KERNEL_STACK_SIZE - 1) * 0x1000))
-	.space (512 - KERNEL_STACK_SIZE)*8
 
 PT_1:
 	mapPage (0x1000 * (0   +    0)), (0x1000 * (64  +    0))
@@ -327,8 +305,10 @@ PT_9:
 
 .section .padata
 .global KERNEL_STACK
+.global KERNEL_STACK_START
 KERNEL_STACK:
 	.space 0x1000 * (KERNEL_STACK_SIZE - 1)
+KERNEL_STACK_START:
 
 
 # TODO: Define name the constants
