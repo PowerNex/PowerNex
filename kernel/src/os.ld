@@ -11,6 +11,7 @@ SECTIONS {
 		*(.multiboot)
 	}
 
+	/*. += 0x100000;*/
 	. += KERNEL_VMA;
 
 	.text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_VMA) {
