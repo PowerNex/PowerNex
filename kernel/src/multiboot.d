@@ -147,6 +147,7 @@ struct Multiboot {
 
 	__gshared MultibootTagModule*[256] Modules;
 	__gshared int ModulesCount;
+	__gshared ulong memorySize;
 
 	static void ParseHeader(uint magic, ulong info) {
 		if (magic != BOOTLOADER_MAGIC) {
@@ -195,6 +196,7 @@ struct Multiboot {
 			case MultibootTagType.BasicMemInfo:
 				auto tmp = cast(MultibootTagBasicMemInfo*)mbt;
 				scr.Writeln("Name: BasicMemInfo, Lower: ", tmp.Lower, ", Upper: ", tmp.Upper);
+				memorySize = tmp.Lower + tmp.Upper;
 				break;
 
 			case MultibootTagType.BootDev:
