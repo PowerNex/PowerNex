@@ -5,6 +5,7 @@ module linker;
 	*It will not set the address as a value of the variable.*
 */
 private extern(C) extern __gshared {
+	ubyte KERNEL_LMA;
 	ubyte KERNEL_VMA;
 	ubyte KERNEL_END;
 	ubyte KERNEL_SYMBOLS_START;
@@ -15,6 +16,7 @@ private extern(C) extern __gshared {
 
 static struct Linker {
 public:
+	@property static ulong KernelPhysStart()    { return cast(ulong)&KERNEL_LMA; }
 	@property static ulong KernelStart()        { return cast(ulong)&KERNEL_VMA; }
 	@property static ulong KernelEnd()          { return cast(ulong)&KERNEL_END; }
 	@property static ulong KernelSymbolsStart() { return cast(ulong)&KERNEL_SYMBOLS_START; }
