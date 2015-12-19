@@ -160,26 +160,26 @@ struct Multiboot {
 			while(true) {}
 		}
 
-		scr.Writeln("Size: ", cast(ulong*)info);
-		scr.Writeln("-----------------");
+		//scr.Writeln("Size: ", cast(ulong*)info);
+		//scr.Writeln("-----------------");
 		MultibootTag* mbt = cast(MultibootTag*)(info + Linker.KernelStart + 8);
 		scr.Writeln("mbt: ", mbt.Type, " == ", cast(uint)MultibootTagType.End);
 		for (; mbt.Type != MultibootTagType.End; mbt = cast(MultibootTag*)(cast(ulong)mbt + ((mbt.Size + 7UL) & ~7UL))) {
-			scr.Writeln("Type ", mbt.Type, ", Size: ", mbt.Size);
+			//scr.Writeln("Type ", mbt.Type, ", Size: ", mbt.Size);
 
 			switch (mbt.Type) {
 			case MultibootTagType.CmdLine:
 				auto tmp = cast(MultibootTagString*)mbt;
 				char* str = &tmp.String;
 
-				scr.Writeln("Name: CMDLine, Value: ", cast(string)str[0 .. tmp.Size - 9]);
+				//scr.Writeln("Name: CMDLine, Value: ", cast(string)str[0 .. tmp.Size - 9]);
 				break;
 
 			case MultibootTagType.BootLoaderName:
 				auto tmp = cast(MultibootTagString*)mbt;
 				char* str = &tmp.String;
 
-				scr.Writeln("Name: BootLoaderName, Value: ", cast(string)str[0 .. tmp.Size - 9]);
+				//scr.Writeln("Name: BootLoaderName, Value: ", cast(string)str[0 .. tmp.Size - 9]);
 				break;
 
 			case MultibootTagType.Module:
@@ -190,22 +190,24 @@ struct Multiboot {
 				char* str = &tmp.String;
 				Modules[ModulesCount++] = tmp;
 
-				scr.Writeln("Name: Module, Start: ", tmp.ModStart, ", End: ", tmp.ModEnd, ", CMD: ", cast(string)str[0 .. tmp.Size - 17]);
+				//scr.Writeln("Name: Module, Start: ", tmp.ModStart, ", End: ", tmp.ModEnd, ", CMD: ", cast(string)str[0 .. tmp.Size - 17]);
 				break;
 
 			case MultibootTagType.BasicMemInfo:
 				auto tmp = cast(MultibootTagBasicMemInfo*)mbt;
-				scr.Writeln("Name: BasicMemInfo, Lower: ", tmp.Lower, ", Upper: ", tmp.Upper);
+				import io.log;
+				log.Info("Memory is: ", (tmp.Lower + tmp.Upper)/1024, " MiB");
+				//scr.Writeln("Name: BasicMemInfo, Lower: ", tmp.Lower, ", Upper: ", tmp.Upper);
 				memorySize = tmp.Lower + tmp.Upper;
 				break;
 
 			case MultibootTagType.BootDev:
 				auto tmp = cast(MultibootTagBootDev*)mbt;
-				scr.Writeln("Name: BootDev, Device: ", tmp.BiosDev, ", Slice: ", tmp.Slice, ", Part: ", tmp.Part);
+				//scr.Writeln("Name: BootDev, Device: ", tmp.BiosDev, ", Slice: ", tmp.Slice, ", Part: ", tmp.Part);
 				break;
 
 			case MultibootTagType.MemoryMap:
-				scr.Writeln("MemoryMap ---->");
+				//scr.Writeln("MemoryMap ---->");
 
 				for (auto tmp = &(cast(MultibootTagMemoryMap*)mbt).Entry; cast(void*)tmp < (cast(void*)mbt + mbt.Size); tmp = cast(
 					MultibootMemoryMap*)(cast(ulong)tmp + (cast(MultibootTagMemoryMap*)mbt).EntrySize)) {
@@ -215,7 +217,7 @@ struct Multiboot {
 					//regInfo.Type = cast(RegionType)tmp.Type;
 
 					//PhysicalMemory.AddRegion(regInfo);
-					scr.Writeln("BaseAddr: ", tmp.Address, ", Length: ", tmp.Length, ", Type: ", tmp.Type);
+					//scr.Writeln("BaseAddr: ", cast(void*)tmp.Address, ", Length: ", cast(void*)tmp.Length, ", Type: ", tmp.Type);
 				}
 
 				break;
