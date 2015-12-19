@@ -14,17 +14,17 @@ private mixin template AddressBase() {
 	}
 
 	ref typeof(this) opBinary(string op)(void * other) {
-		mixin("addr = cast(void*)(cast(ulong)addr"~op~"cast(ulong)other;");
-		return *this;
+		mixin("addr = cast(void*)(cast(ulong)addr"~op~"cast(ulong)other);");
+		return this;
 	}
 
 	ref typeof(this) opBinary(string op)(ulong other) {
-		mixin("addr = cast(void*)(cast(ulong)addr"~op~"other;");
-		return *this;
+		mixin("addr = cast(void*)(cast(ulong)addr"~op~"other);");
+		return this;
 	}
 
 	ref typeof(this) opBinary(string op)(typeof(this) other) {
-		return opBinary!op(other.toPtr);
+		return opBinary!op(other.Ptr);
 	}
 
 	@property void* Ptr() {
