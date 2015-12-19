@@ -218,6 +218,7 @@ extern(C) {
 	// the compiler spits this out all the time
 
 	Object _d_newclass(const ClassInfo ci) {
+		log.Debug("Creating a new class of type: ", ci.name);
 		void* memory = manual_malloc(ci.init.length);
 		if(memory is null) {
 			log.Info("\n\n_d_newclass malloc failure\n\n");
@@ -1815,3 +1816,11 @@ hash_t hashOf( const (void)* buf, size_t len, hash_t seed = 0 )
 
 bool _xopEquals(in void*, in void*) { assert(0); }
 extern(C) void _d_run_main() {}
+
+extern(C) void _memset64(void * dest, ulong value, size_t size) {
+	ptrdiff_t i;
+	for (i = 0; i < (size & (~7)); i+=8)
+		*(cast(ulong*)dest) = value;
+	for(; i < size; i++)
+		(cast(ubyte*)dest)[i%8] = (cast(ubyte*)&value)[i%8];
+}
