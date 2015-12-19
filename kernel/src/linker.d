@@ -1,5 +1,7 @@
 module linker;
 
+import data.address;
+
 /*
 	You have to do it like this because the linker will put the variable at the address.
 	*It will not set the address as a value of the variable.*
@@ -16,11 +18,11 @@ private extern(C) extern __gshared {
 
 static struct Linker {
 public:
-	@property static ulong KernelPhysStart()    { return cast(ulong)&KERNEL_LMA; }
-	@property static ulong KernelStart()        { return cast(ulong)&KERNEL_VMA; }
-	@property static ulong KernelEnd()          { return cast(ulong)&KERNEL_END; }
-	@property static ulong KernelSymbolsStart() { return cast(ulong)&KERNEL_SYMBOLS_START; }
-	@property static ulong KernelSymbolsEnd()   { return cast(ulong)&KERNEL_SYMBOLS_END; }
-	@property static ulong KernelModulesStart() { return cast(ulong)&KERNEL_MODULES_START; }
-	@property static ulong KernelModulesEnd()   { return cast(ulong)&KERNEL_MODULES_END; }
+	@property static PhysAddress KernelPhysStart()    { return PhysAddress(&KERNEL_LMA); }
+	@property static PhysAddress KernelStart()        { return PhysAddress(&KERNEL_VMA); }
+	@property static PhysAddress KernelEnd()          { return PhysAddress(&KERNEL_END); }
+	@property static PhysAddress KernelSymbolsStart() { return PhysAddress(&KERNEL_SYMBOLS_START); }
+	@property static PhysAddress KernelSymbolsEnd()   { return PhysAddress(&KERNEL_SYMBOLS_END); }
+	@property static PhysAddress KernelModulesStart() { return PhysAddress(&KERNEL_MODULES_START); }
+	@property static PhysAddress KernelModulesEnd()   { return PhysAddress(&KERNEL_MODULES_END); }
 }
