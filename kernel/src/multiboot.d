@@ -163,7 +163,6 @@ struct Multiboot {
 		//scr.Writeln("Size: ", cast(ulong*)info);
 		//scr.Writeln("-----------------");
 		MultibootTag* mbt = cast(MultibootTag*)(info + Linker.KernelStart + 8);
-		scr.Writeln("mbt: ", mbt.Type, " == ", cast(uint)MultibootTagType.End);
 		for (; mbt.Type != MultibootTagType.End; mbt = cast(MultibootTag*)(cast(ulong)mbt + ((mbt.Size + 7UL) & ~7UL))) {
 			//scr.Writeln("Type ", mbt.Type, ", Size: ", mbt.Size);
 
