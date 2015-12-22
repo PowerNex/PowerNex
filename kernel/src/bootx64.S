@@ -17,7 +17,7 @@ start64:
 	mov %ax, %ss
 
 	mov $.himem, %rax
-	jmp %rax
+	jmp *%rax
 .himem:
 	xor %rax, %rax
 	mov %rax, %dr0
