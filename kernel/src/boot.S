@@ -209,7 +209,31 @@ PD:
 	.int PT_6 + ATTR, 0
 	.int PT_7 + ATTR, 0
 	.int PT_8 + ATTR, 0
-	.space (512 - 8)*8
+	.int PT_9 + ATTR, 0
+	.int PT_10 + ATTR, 0
+	.int PT_11 + ATTR, 0
+	.int PT_12 + ATTR, 0
+	.int PT_13 + ATTR, 0
+	.int PT_14 + ATTR, 0
+	.int PT_15 + ATTR, 0
+	.int PT_16 + ATTR, 0
+	.int PT_17 + ATTR, 0
+	.int PT_18 + ATTR, 0
+	.int PT_19 + ATTR, 0
+	.int PT_20 + ATTR, 0
+	.int PT_21 + ATTR, 0
+	.int PT_22 + ATTR, 0
+	.int PT_23 + ATTR, 0
+	.int PT_24 + ATTR, 0
+	.int PT_25 + ATTR, 0
+	.int PT_26 + ATTR, 0
+	.int PT_27 + ATTR, 0
+	.int PT_28 + ATTR, 0
+	.int PT_29 + ATTR, 0
+	.int PT_30 + ATTR, 0
+	.int PT_31 + ATTR, 0
+	.int PT_32 + ATTR, 0
+	.space (512 - 32) * 8
 
 .macro map2MB offset
 	mapPage (0x1000 * (0   + \offset)), (0x1000 * (64  + \offset))
