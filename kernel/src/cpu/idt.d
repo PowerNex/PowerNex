@@ -214,7 +214,7 @@ static struct IDT {
 		GetScreen.Writeln("INTERRUPT: ", cast(InterruptType)regs.IntNumber, " Errorcode: ", regs.ErrorCode);
 		import io.log;
 		with (regs) {
-			log.Debug("Interrupt!\r\n",
+			log.Fatal("Interrupt!\r\n",
 				"\tIntNumber: ", cast(void *) IntNumber, " ErrorCode: ", cast(void *) ErrorCode, "\r\n",
 				"\tRAX: ", cast(void *) RAX, " RBX: ", cast(void *) RBX, " RCX: ", cast(void *) RCX, " RDX: ", cast(void *) RDX, "\r\n",
 				"\tRSI: ", cast(void *) RSI, " RDI: ", cast(void *) RDI, " RBP: ", cast(void *) RBP, "\r\n",
