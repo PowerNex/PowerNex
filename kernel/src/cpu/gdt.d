@@ -70,7 +70,7 @@ enum GDTSystemType : ubyte {
 	TrapGate             = 0b1111
 }
 
-extern(C) void CPU_refresh_iretq();
+private extern(C) void CPU_refresh_iretq();
 
 static struct GDT {
 public:
