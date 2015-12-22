@@ -19,10 +19,10 @@ private extern(C) extern __gshared {
 static struct Linker {
 public:
 	@property static PhysAddress KernelPhysStart()    { return PhysAddress(&KERNEL_LMA); }
-	@property static PhysAddress KernelStart()        { return PhysAddress(&KERNEL_VMA); }
-	@property static PhysAddress KernelEnd()          { return PhysAddress(&KERNEL_END); }
-	@property static PhysAddress KernelSymbolsStart() { return PhysAddress(&KERNEL_SYMBOLS_START); }
-	@property static PhysAddress KernelSymbolsEnd()   { return PhysAddress(&KERNEL_SYMBOLS_END); }
-	@property static PhysAddress KernelModulesStart() { return PhysAddress(&KERNEL_MODULES_START); }
-	@property static PhysAddress KernelModulesEnd()   { return PhysAddress(&KERNEL_MODULES_END); }
+	@property static VirtAddress KernelStart()        { return VirtAddress(&KERNEL_VMA); }
+	@property static VirtAddress KernelEnd()          { return VirtAddress(&KERNEL_END); }
+	@property static VirtAddress KernelSymbolsStart() { return VirtAddress(&KERNEL_SYMBOLS_START); }
+	@property static VirtAddress KernelSymbolsEnd()   { return VirtAddress(&KERNEL_SYMBOLS_END); }
+	@property static VirtAddress KernelModulesStart() { return VirtAddress(&KERNEL_MODULES_START); }
+	@property static VirtAddress KernelModulesEnd()   { return VirtAddress(&KERNEL_MODULES_END); }
 }
