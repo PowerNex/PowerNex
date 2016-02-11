@@ -1824,3 +1824,24 @@ extern(C) void _memset64(void * dest, ulong value, size_t size) {
 	for(; i < size; i++)
 		(cast(ubyte*)dest)[i%8] = (cast(ubyte*)&value)[i%8];
 }
+
+extern(C) Throwable __dmd_begin_catch(_Unwind_Exception* exceptionObject) {
+	log.Error("STUB");
+	return null;
+}
+
+extern(C) void _d_throwdwarf(Throwable o) {
+	log.Error("STUB");
+}
+
+alias int _Unwind_Reason_Code;
+alias int _Unwind_Action;
+struct _Unwind_Exception {}
+struct _Unwind_Context {}
+alias ulong _Unwind_Exception_Class;
+extern (C) _Unwind_Reason_Code __dmd_personality_v0(int ver, _Unwind_Action actions,
+	_Unwind_Exception_Class exceptionClass, _Unwind_Exception* exceptionObject,
+	_Unwind_Context* context) {
+	log.Error("STUB");
+	return 0;
+ }
