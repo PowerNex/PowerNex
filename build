@@ -7,13 +7,13 @@
 			"command": "dmd",
 			"arguments": "-m64 -fPIC -debug -c -gc -Ikernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
-		"cc": {
-			"command": "cc/bin/x86_64-powernex-gcc",
-			"arguments": "-m64 -fPIC -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -c -o $out $in"
+		"ac": {
+			"command": "cc/bin/x86_64-powernex-as",
+			"arguments": "--64 -o $out $in"
 		},
 		"ld": {
-			"command": "cc/bin/x86_64-powernex-gcc",
-			"arguments": "-m64 -fPIC -ffreestanding -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 -g -z max-page-size=0x1000 -nostdlib -T kernel/src/os.ld -o $out $in"
+			"command": "cc/bin/x86_64-powernex-ld",
+			"arguments": "-o $out -z max-page-size=0x1000 $in -T kernel/src/os.ld"
 		},
 		"cp": {
 			"command": "cp",
@@ -35,7 +35,7 @@
 			"input": "kernel/src/*.d"
 		},
 		"kernel/obj/asm/*.o": {
-			"processor": "cc",
+			"processor": "ac",
 			"input": "kernel/src/*.S"
 		},
 		"powernex.krl": {
