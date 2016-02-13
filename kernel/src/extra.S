@@ -27,3 +27,8 @@ CPU_refresh_iretq:
 CPU_install_cr3:
 	mov %RDI, %CR3
 	ret
+
+.global CPU_ret_cr2
+CPU_ret_cr2:
+	mov %CR2, %RAX
+	ret

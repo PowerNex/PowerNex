@@ -9,6 +9,7 @@ import memory.paging;
 import memory.frameallocator;
 import linker;
 import data.address;
+import memory.heap;
 
 alias scr = GetScreen;
 alias gdt = GDT;
@@ -49,6 +50,16 @@ extern (C) int kmain(uint magic, ulong info) {
 	*test = 0xDEAD_BEEF;
 	kernelPaging.Unmap(VirtAddress(0xB_0000_0000));
 
+	log.Info("Testing Heap");
+	scr.Writeln("Testing Heap");
+	Heap* kernelHeap = GetKernelHeap;
+
+	int* addr16MiB = cast(int*)kernelHeap.Alloc(0x1_000_000); // 16MiB
+	log.Info("addr16MiB: ", addr16MiB);
+	*addr16MiB = 0xDEAD_C0DE;
+	kernelHeap.Free(addr16MiB);
+
+	scr.Writeln("\t\t\t\tWorks!");
 	asm {
 	forever:
 		hlt;
