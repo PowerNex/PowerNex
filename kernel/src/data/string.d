@@ -2,14 +2,14 @@ module data.string;
 
 import data.util;
 
-size_t strlen(ubyte * str) {
+size_t strlen(char* str) {
 	size_t len = 0;
 	while (str++)
 		len++;
 	return len;
 }
 
-size_t itoa(S)(S v, ubyte * buf, ulong len, uint base = 10) if (isNumber!S) {
+size_t itoa(S)(S v, ubyte* buf, ulong len, uint base = 10) if (isNumber!S) {
 	assert(1 < base && base <= 16);
 	Unqual!S value = v;
 	immutable ubyte[] BASE_CHARS = cast(immutable ubyte[])"0123456789ABCDEF";
@@ -24,10 +24,15 @@ size_t itoa(S)(S v, ubyte * buf, ulong len, uint base = 10) if (isNumber!S) {
 	do {
 		buf[--pos] = BASE_CHARS[value % base];
 		value /= base;
-	} while (value);
+	}
+	while (value);
 
 	if (sign)
 		buf[--pos] = '-';
 
 	return pos;
+}
+
+string fromStringz(char* str) {
+	return cast(string)str[0 .. str.strlen];
 }

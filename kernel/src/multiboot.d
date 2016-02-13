@@ -2,6 +2,8 @@ module multiboot;
 
 import linker;
 import io.textmode;
+import io.log;
+
 alias scr = GetScreen;
 
 enum MultibootTagType {
@@ -146,7 +148,9 @@ struct Multiboot {
 	}
 
 	__gshared MultibootTagModule*[256] Modules;
+	__gshared MultibootMemoryMap*[256] MemoryMap;
 	__gshared int ModulesCount;
+	__gshared int MemoryMapCount;
 	__gshared ulong memorySize;
 
 	static void ParseHeader(uint magic, ulong info) {
@@ -186,7 +190,7 @@ struct Multiboot {
 				char* str = &tmp.String;
 				Modules[ModulesCount++] = tmp;
 
-				//scr.Writeln("Name: Module, Start: ", tmp.ModStart, ", End: ", tmp.ModEnd, ", CMD: ", cast(string)str[0 .. tmp.Size - 17]);
+				log.Info("Name: Module, Start: ", tmp.ModStart, ", End: ", tmp.ModEnd, ", CMD: ", cast(string)str[0 .. tmp.Size - 17]);
 				break;
 
 			case MultibootTagType.BasicMemInfo:
@@ -206,14 +210,9 @@ struct Multiboot {
 			case MultibootTagType.MemoryMap:
 				//log.Info("MemoryMap ---->");
 				for (auto tmp = &(cast(MultibootTagMemoryMap*)mbt).Entry; cast(void*)tmp < (cast(void*)mbt + mbt.Size); tmp = cast(
-					MultibootMemoryMap*)(cast(ulong)tmp + (cast(MultibootTagMemoryMap*)mbt).EntrySize)) {
-					//RegionInfo regInfo;
-					//regInfo.Start = tmp.Address;
-					//regInfo.Length = tmp.Length;
-					//regInfo.Type = cast(RegionType)tmp.Type;
-
-					//PhysicalMemory.AddRegion(regInfo);
-					//scr.Writeln("BaseAddr: ", cast(void*)tmp.Address, ", Length: ", cast(void*)tmp.Length, ", Type: ", tmp.Type);
+						MultibootMemoryMap*)(cast(ulong)tmp + (cast(MultibootTagMemoryMap*)mbt).EntrySize)) {
+					MemoryMap[MemoryMapCount++] = tmp;
+					log.Info("BaseAddr: ", cast(void*)tmp.Address, ", Length: ", cast(void*)tmp.Length, ", Type: ", tmp.Type);
 				}
 				break;
 
@@ -289,6 +288,12 @@ struct Multiboot {
 			default:
 				scr.Writeln("Multiboot2 Error tag type");
 				break;
+			}
+
+			foreach (MultibootTagModule* mod; Modules[0 .. ModulesCount]) {
+				char* str = &mod.String;
+				if (str[0 .. mod.Size - 17] == "symbols")
+					log.SetSymbolMap(Linker.KernelStart + mod.ModStart, Linker.KernelStart + mod.ModEnd);
 			}
 		}
 	}

@@ -7,6 +7,7 @@
 .extern multiboot_ptr
 .extern KERNEL_STACK_START
 .global start64
+.type start64, %function
 start64:
 	cli
 	mov $0x10, %ax
@@ -18,6 +19,7 @@ start64:
 
 	mov $.himem, %rax
 	jmp *%rax
+
 .himem:
 	xor %rax, %rax
 	mov %rax, %dr0
@@ -33,4 +35,4 @@ start64:
 	hlt
 	jmp .hang
 
-.bss
+.size	start64, .-start64
