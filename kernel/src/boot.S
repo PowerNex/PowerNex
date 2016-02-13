@@ -166,9 +166,11 @@ x64NotSupported_msg:
 .align 0x1000
 .SET PRESENT,     0x1
 .SET WRITEABLE,   0x2
-.SET UNKNOWN_BIT, 0x100
+.SET MAP4M,       0x80
+.SET UNKNOWN_BIT, 0x0
 .SET PW, PRESENT + WRITEABLE
 .SET ATTR, (- KERNEL_VMA + PW)
+.SET ATTR_MAP, (PW + MAP4M)
 .SET STACK_ATTR, (- KERNEL_VMA + PW + UNKNOWN_BIT)
 
 .macro mapPage from, to
@@ -180,9 +182,12 @@ x64NotSupported_msg:
 
 # Kinda stole this from https://github.com/Bloodmanovski/Trinix/blob/master/KernelLand/Kernel/Architectures/x86_64/Boot/Boot.s
 
+ .global PML4
 PML4:
 	.int PDP + ATTR, 0 # Identity map for low 4MB
-	.space (319) * 8
+	.space (255) * 8
+	.int PDP_MAP + ATTR, 0
+	.space (63) * 8
 	.quad 0 #.int PDP_STACK + ATTR, 0 # Kernel stack
 	.space (187) * 8
 
@@ -194,6 +199,13 @@ PML4:
 PDP:
 	.int PD + ATTR, 0
 	.space 511 * 8
+
+PDP_MAP:
+	.int PD_MAP0 + ATTR, 0
+	.int PD_MAP1 + ATTR, 0
+	.int PD_MAP2 + ATTR, 0
+	.int PD_MAP3 + ATTR, 0
+	.space 508 * 8
 
 PDP_HIGH:
 	.space 510*8
@@ -234,6 +246,32 @@ PD:
 	.int PT_31 + ATTR, 0
 	.int PT_32 + ATTR, 0
 	.space (512 - 32) * 8
+
+.macro mapPDMap from, to
+	.int \from + ATTR_MAP, 0
+	.if \to-\from
+		mapPDMap "(\from+0x200000)", \to
+	.endif
+.endm
+.macro map4MB offset
+	mapPDMap (0x200000 * (0   + \offset)), (0x200000 * (64  + \offset))
+	mapPDMap (0x200000 * (65  + \offset)), (0x200000 * (128 + \offset))
+	mapPDMap (0x200000 * (129 + \offset)), (0x200000 * (192 + \offset))
+	mapPDMap (0x200000 * (193 + \offset)), (0x200000 * (256 + \offset))
+	mapPDMap (0x200000 * (257 + \offset)), (0x200000 * (320 + \offset))
+	mapPDMap (0x200000 * (321 + \offset)), (0x200000 * (384 + \offset))
+	mapPDMap (0x200000 * (385 + \offset)), (0x200000 * (448 + \offset))
+	mapPDMap (0x200000 * (449 + \offset)), (0x200000 * (511 + \offset))
+.endm
+
+PD_MAP0:
+	map4MB 512*0
+PD_MAP1:
+	map4MB 512*1
+PD_MAP2:
+	map4MB 512*2
+PD_MAP3:
+	map4MB 512*3
 
 .macro map2MB offset
 	mapPage (0x1000 * (0   + \offset)), (0x1000 * (64  + \offset))

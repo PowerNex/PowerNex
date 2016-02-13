@@ -60,6 +60,10 @@ struct VirtAddress {
 
 struct PhysAddress {
 	mixin AddressBase;
+
+	@property VirtAddress Virtual() const {
+		return VirtAddress(Int + 0xFFFF_8000_0000_0000);
+	}
 }
 
 static assert(VirtAddress.sizeof == size_t.sizeof);
