@@ -27,11 +27,29 @@ private mixin template AddressBase() {
 		return opBinary!op(other.Ptr);
 	}
 
+	int opCmp(typeof(this) other) const {
+		if (Int < other.Int)
+			return -1;
+		else if (Int > other.Int)
+			return 1;
+		else
+			return 0;
+	}
+
+	int opCmp(ulong other) const {
+		if (Int < other)
+			return -1;
+		else if (Int > other)
+			return 1;
+		else
+			return 0;
+	}
+
 	@property void* Ptr() {
 		return addr;
 	}
 
-	@property ulong Int() {
+	@property ulong Int() const {
 		return cast(ulong)addr;
 	}
 }
