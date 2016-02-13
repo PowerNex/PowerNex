@@ -18,7 +18,7 @@ ata1-slave: type=none
 ata2: enabled=0
 ata3: enabled=0
 pci: enabled=1, chipset=i440fx
-vga: extension=vbe, update_freq=60
+vga: extension=vbe, update_freq=5
 cpu: count=1:1:1, ips=50000000, quantum=16, model=bx_generic, reset_on_triple_fault=1, cpuid_limit_winnt=0, ignore_bad_msrs=1, mwait_is_nop=0
 cpuid: level=6, stepping=3, model=3, family=6, vendor_string="AuthenticAMD", brand_string="AMD Athlon(tm) processor"
 cpuid: mmx=1, apic=xapic, simd=sse2, sse4a=0, misaligned_sse=0, sep=1, movbe=0, adx=0
@@ -43,7 +43,7 @@ mouse: type=ps2, enabled=0, toggle=ctrl+mbutton
 speaker: enabled=1, mode=system
 parport1: enabled=1, file=none
 parport2: enabled=0
-com1: enabled=1, mode=null
+com1: enabled=1, mode=file, dev="com1.log"
 com2: enabled=0
 com3: enabled=0
 com4: enabled=0
