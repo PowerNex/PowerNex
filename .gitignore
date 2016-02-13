@@ -1,9 +1,13 @@
 .wild-cache
 build.dot
 powernex.krl
+powernex.map
 wild
 kernel/obj/
 powernex.iso
 bochsout.txt
 bx_enh_dbg.ini
 /cc
+com1.log
+utils/obj/
+utils/generateSymbols

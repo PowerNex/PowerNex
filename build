@@ -22,12 +22,24 @@
 		"iso": {
 			"command": "grub-mkrescue",
 			"arguments": "-d /usr/lib/grub/i386-pc -o $out $in"
+		},
+		"ndc": {
+			"command": "dmd",
+			"arguments": "-of$out -odutils/obj $in"
+		},
+		"generateSymbols" : {
+			"command": "utils/generateSymbols",
+			"arguments": "$in $out"
 		}
 	},
 	"phonies": {
 
 	},
 	"missing": {
+		"utils/generateSymbols": {
+			"processor": "ndc",
+			"input": "utils/generateSymbols.d"
+		}
 	},
 	"rules": {
 		"kernel/obj/*.o": {
@@ -46,6 +58,10 @@
 			"processor": "cp",
 			"input": "powernex.krl"
 		},
+		"disk/boot/powernex.map": {
+			"processor": "generateSymbols",
+			"input": "powernex.krl"
+		},
 		"powernex.iso": {
 			"processor": "iso",
 			"input": "disk"
@@ -54,6 +70,7 @@
 	"targets": [
 		"powernex.krl",
 		"disk/boot/powernex.krl",
+		"disk/boot/powernex.map",
 		"powernex.iso"
 	]
 }
