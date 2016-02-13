@@ -3,20 +3,37 @@ module memory.frameallocator;
 import data.address;
 import io.log;
 import linker;
+import multiboot;
 
 static struct FrameAllocator {
 public:
-	static void Init(ulong maxMemoryKiB) {
-		frameCount = maxMemoryKiB / 0x1000;
+	static void Init() {
+		frameCount = Multiboot.memorySize / 0x1000;
 
 		const ulong kernelUsedAmount = (Linker.KernelEnd - Linker.KernelStart).Int / 0x1000;
 		for (ulong i = 0; i < kernelUsedAmount / 64 + 1; i++)
 			bitmaps[i] = ulong.max;
 
+		auto maps = Multiboot.MemoryMap;
+		for (int i = 0; i < Multiboot.MemoryMapCount; i++) {
+			auto m = maps[i];
+			if (m.Type != MultibootMemoryType.Available)
+				for (int j = 0; j < m.Length / 0x1000; j++)
+					MarkFrame(m.Address / 0x1000 + j);
+		}
+
+		// Mark ACPI frames
+		for (int i = 0xE0000; i < 0x100000; i += 0x1000)
+			MarkFrame(i / 0x1000);
+
+		foreach (mod; Multiboot.Modules[0 .. Multiboot.ModulesCount])
+			for (int i = mod.ModStart; i < mod.ModEnd; i += 0x1000)
+				MarkFrame(i / 0x1000);
+
 		foreach (ref ulong frame; preallocated)
 			frame = ulong.max;
 
-		allocPreAlloc();
+		allocPreAlloc(); // Add some nodes to preallocated
 	}
 
 	static void MarkFrame(ulong idx) {
@@ -63,7 +80,7 @@ public:
 	}
 
 	static PhysAddress Alloc() {
-		return PhysAddress(GetFrame() * 0x1000);
+		return PhysAddress(GetFrame() << 12);
 	}
 
 	static void Free(PhysAddress memory) {
@@ -76,7 +93,7 @@ private:
 	__gshared ulong frameCount;
 	__gshared ulong[((maxmem / 8) / 0x1000) / 64 + 1] bitmaps;
 	__gshared ulong curBitmapIdx;
-	__gshared ulong[8] preallocated;
+	__gshared ulong[64] preallocated;
 
 	static void allocPreAlloc() {
 		foreach (ref ulong frame; preallocated) {

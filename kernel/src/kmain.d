@@ -21,36 +21,33 @@ extern (C) int kmain(uint magic, ulong info) {
 	scr.Clear();
 	gdt.Init();
 	idt.Init();
+	log.Init();
 	Multiboot.ParseHeader(magic, info);
-	FrameAllocator.Init(Multiboot.memorySize);
+	FrameAllocator.Init();
+
 	scr.Writeln("Welcome to PowerNex!");
 	scr.Writeln("\tThe number one D kernel!");
 	scr.Writeln("Compiled using '", __VENDOR__, "', D version ", major, ".", minor, "\n");
 
-	scr.Writeln("DefaultKernel: ", cast(void*)MapMode.DefaultKernel);
-	scr.Writeln("DefaultUser: ", cast(void*)MapMode.DefaultUser);
-
 	log.Info("Welcome to PowerNex's serial console!");
-
-	Paging kernelPaging = GetKernelPaging();
-
+	log.Info("Init paging");
+	Paging* kernelPaging = GetKernelPaging;
+	log.Info("Installing paging");
 	kernelPaging.Install();
 
 	scr.Writeln();
 	scr.Writeln();
 
 	scr.color.Foreground = Colors.Green;
-	scr.Writeln("\t\t\t\tWorks!");
-
+	log.Info("Testing mapping");
 	kernelPaging.Map(VirtAddress(0xA_0000_0000), PhysAddress(0x0), MapMode.DefaultUser);
 	kernelPaging.Unmap(VirtAddress(0xA_0000_0000));
-	scr.Writeln("\t\t\t\tWorks!");
 
+	log.Info("Testing MapFreeMemory");
 	kernelPaging.MapFreeMemory(VirtAddress(0xB_0000_0000), MapMode.DefaultUser);
 	int* test = cast(int*)0xB_0000_0000;
 	*test = 0xDEAD_BEEF;
 	kernelPaging.Unmap(VirtAddress(0xB_0000_0000));
-	scr.Writeln("\t\t\t\tWorks!");
 
 	asm {
 	forever:
