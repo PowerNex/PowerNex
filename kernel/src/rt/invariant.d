@@ -1,1 +1,2 @@
-void _d_invariant(Object o) {}
+void _d_invariant(Object o) {
+}

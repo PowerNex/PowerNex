@@ -17,10 +17,11 @@ template BitfieldImpl(const char[] typeStr, const char[] nameStr, int offset, Ar
 		const Size = Args[1];
 		const Mask = Bitmask!Size;
 
-		const char[] Getter = "@property " ~ typeStr ~ " " ~ Name ~ "() { return (" ~ nameStr ~ " >> " ~ Itoh!(offset) ~ ") & " ~ Itoh!(Mask) ~ "; } \n";
+		const char[] Getter = "@property " ~ typeStr ~ " " ~ Name ~ "() { return (" ~ nameStr ~ " >> " ~ Itoh!(
+				offset) ~ ") & " ~ Itoh!(Mask) ~ "; } \n";
 
 		const char[] Setter = "@property void " ~ Name ~ "(" ~ typeStr ~ " val) { " ~ nameStr ~ " = (" ~ nameStr ~ " & " ~ Itoh!(
-			~(Mask << offset)) ~ ") | ((val & " ~ Itoh!(Mask) ~ ") << " ~ Itoh!(offset) ~ "); } \n";
+				~(Mask << offset)) ~ ") | ((val & " ~ Itoh!(Mask) ~ ") << " ~ Itoh!(offset) ~ "); } \n";
 
 		const char[] Ret = Getter ~ Setter ~ BitfieldImpl!(typeStr, nameStr, offset + Size, Args[2 .. $]).Ret;
 	}

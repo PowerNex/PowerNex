@@ -13,13 +13,13 @@ private mixin template AddressBase() {
 		this.addr = cast(void*)addr;
 	}
 
-	ref typeof(this) opBinary(string op)(void * other) {
-		mixin("addr = cast(void*)(cast(ulong)addr"~op~"cast(ulong)other);");
+	ref typeof(this) opBinary(string op)(void* other) {
+		mixin("addr = cast(void*)(cast(ulong)addr" ~ op ~ "cast(ulong)other);");
 		return this;
 	}
 
 	ref typeof(this) opBinary(string op)(ulong other) {
-		mixin("addr = cast(void*)(cast(ulong)addr"~op~"other);");
+		mixin("addr = cast(void*)(cast(ulong)addr" ~ op ~ "other);");
 		return this;
 	}
 

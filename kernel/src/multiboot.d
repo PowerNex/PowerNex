@@ -34,7 +34,7 @@ enum MultibootFramebufferType {
 }
 
 enum MultibootMemoryType {
-	Avaliable = 1,
+	Available = 1,
 	Reserved,
 	ACPIReclaimable,
 	NVS,
@@ -124,8 +124,8 @@ align(1):
 
 	union {
 		struct {
-				ushort PaletteNumColors;
-				MultibootColor Palette;
+			ushort PaletteNumColors;
+			MultibootColor Palette;
 		}
 
 		struct {
@@ -140,7 +140,7 @@ align(1):
 }
 
 struct Multiboot {
-	private enum	{
+	private enum {
 		HEADER_MAGIC = 0xE85250D6,
 		BOOTLOADER_MAGIC = 0x36D76289
 	}
@@ -152,39 +152,36 @@ struct Multiboot {
 	static void ParseHeader(uint magic, ulong info) {
 		if (magic != BOOTLOADER_MAGIC) {
 			scr.Writeln("Error: Bad multiboot 2 magic: %d", magic);
-			while(true) {}
+			while (true) {
+			}
 		}
 
 		if (info & 7) {
 			scr.Writeln("Error: Unaligned MBI");
-			while(true) {}
+			while (true) {
+			}
 		}
 
-		//scr.Writeln("Size: ", cast(ulong*)info);
-		//scr.Writeln("-----------------");
+		//log.Info("Size: ", cast(ulong*)info);
 		MultibootTag* mbt = cast(MultibootTag*)(info + Linker.KernelStart + 8);
 		for (; mbt.Type != MultibootTagType.End; mbt = cast(MultibootTag*)(cast(ulong)mbt + ((mbt.Size + 7UL) & ~7UL))) {
-			//scr.Writeln("Type ", mbt.Type, ", Size: ", mbt.Size);
-
 			switch (mbt.Type) {
 			case MultibootTagType.CmdLine:
 				auto tmp = cast(MultibootTagString*)mbt;
 				char* str = &tmp.String;
 
-				//scr.Writeln("Name: CMDLine, Value: ", cast(string)str[0 .. tmp.Size - 9]);
+				//log.Info("Name: CMDLine, Value: ", cast(string)str[0 .. tmp.Size - 9]);
 				break;
 
 			case MultibootTagType.BootLoaderName:
 				auto tmp = cast(MultibootTagString*)mbt;
 				char* str = &tmp.String;
 
-				//scr.Writeln("Name: BootLoaderName, Value: ", cast(string)str[0 .. tmp.Size - 9]);
+				//log.Info("Name: BootLoaderName, Value: ", cast(string)str[0 .. tmp.Size - 9]);
 				break;
 
 			case MultibootTagType.Module:
 				auto tmp = cast(MultibootTagModule*)mbt;
-				//if (((tmp.ModEnd + 0xFFF) & ~0xFFFUL) > PhysicalMemory.MemoryStart)
-						//PhysicalMemory.MemoryStart = (tmp.ModEnd + 0xFFF) & ~0xFFFUL;
 
 				char* str = &tmp.String;
 				Modules[ModulesCount++] = tmp;
@@ -195,19 +192,19 @@ struct Multiboot {
 			case MultibootTagType.BasicMemInfo:
 				auto tmp = cast(MultibootTagBasicMemInfo*)mbt;
 				import io.log;
-				log.Info("Memory is: ", (tmp.Lower + tmp.Upper)/1024, " MiB");
-				//scr.Writeln("Name: BasicMemInfo, Lower: ", tmp.Lower, ", Upper: ", tmp.Upper);
+
+				//log.Info("Memory is: ", (tmp.Lower + tmp.Upper) / 1024, " MiB");
+				//log.Info("Name: BasicMemInfo, Lower: ", tmp.Lower, ", Upper: ", tmp.Upper);
 				memorySize = tmp.Lower + tmp.Upper;
 				break;
 
 			case MultibootTagType.BootDev:
 				auto tmp = cast(MultibootTagBootDev*)mbt;
-				//scr.Writeln("Name: BootDev, Device: ", tmp.BiosDev, ", Slice: ", tmp.Slice, ", Part: ", tmp.Part);
+				//log.Info("Name: BootDev, Device: ", tmp.BiosDev, ", Slice: ", tmp.Slice, ", Part: ", tmp.Part);
 				break;
 
 			case MultibootTagType.MemoryMap:
-				//scr.Writeln("MemoryMap ---->");
-
+				//log.Info("MemoryMap ---->");
 				for (auto tmp = &(cast(MultibootTagMemoryMap*)mbt).Entry; cast(void*)tmp < (cast(void*)mbt + mbt.Size); tmp = cast(
 					MultibootMemoryMap*)(cast(ulong)tmp + (cast(MultibootTagMemoryMap*)mbt).EntrySize)) {
 					//RegionInfo regInfo;
@@ -218,11 +215,10 @@ struct Multiboot {
 					//PhysicalMemory.AddRegion(regInfo);
 					//scr.Writeln("BaseAddr: ", cast(void*)tmp.Address, ", Length: ", cast(void*)tmp.Length, ", Type: ", tmp.Type);
 				}
-
 				break;
 
 			case MultibootTagType.VBE:
-					break;
+				break;
 
 			case MultibootTagType.FrameBuffer:
 				uint color;
@@ -235,7 +231,8 @@ struct Multiboot {
 					auto palette = &tmp.Palette;
 
 					for (int i = 0; i < tmp.PaletteNumColors; i++) {
-						distance = (0xFF - palette[i].Blue) * (0xFF - palette[i].Blue) + palette[i].Red * palette[i].Red + palette[i].Green * palette[i].Green;
+						distance = (0xFF - palette[i].Blue) * (0xFF - palette[i].Blue) + palette[i].Red * palette[i].Red
+							+ palette[i].Green * palette[i].Green;
 
 						if (distance < bestDistance) {
 							color = i;

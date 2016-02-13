@@ -6,28 +6,46 @@ import data.util;
 
 __gshared Log log;
 
+/*
+
+TODO: FIX THIS!!!
+
+	Combine this with textmode aswell.
+
+*/
+
 enum LogLevel {
 	VERBOSE = '&',
-	DEBUG   = '+',
-	INFO    = '*',
+	DEBUG = '+',
+	INFO = '*',
 	WARNING = '#',
-	ERROR   = '-',
-	FATAL   = '!'
+	ERROR = '-',
+	FATAL = '!'
 }
 
 struct Log {
 	int indent;
+	bool enabled;
 
 	void Init() {
 		COM1.Init();
 		indent = 0;
+		enabled = true;
+	}
+
+	@property ref bool Enabled() {
+		return enabled;
+	}
+
 	}
 
 	void opCall(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(LogLevel level, Arg args) {
+		if (!enabled)
+			return;
 		for (int i = 0; i < indent; i++)
 			COM1.Write(' ');
 
-		COM1.Write('[', cast(char)level, "] ", file /*, ": ", func*/, '@');
+		COM1.Write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
 
 		ubyte[int.sizeof * 8] buf;
 		auto start = itoa(line, buf.ptr, buf.length, 10);
@@ -41,12 +59,14 @@ struct Log {
 				COM1.Write(arg);
 			/*else static if (is(T == enum))
 				WriteEnum(arg);*/
-			else static if (is(T : V *, V)) {
+			else static if (is(T : V*, V)) {
 				COM1.Write("0x");
 				start = itoa(cast(ulong)arg, buf.ptr, buf.length, 16);
 				for (size_t i = start; i < buf.length; i++)
 					COM1.Write(buf[i]);
-			} else static if (is(T : char))
+			} else static if (is(T == bool))
+				COM1.Write((arg) ? "true" : "false");
+			else static if (is(T : char))
 				COM1.Write(arg);
 			else static if (isNumber!T) {
 				start = itoa(arg, buf.ptr, buf.length, 10);

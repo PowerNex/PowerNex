@@ -35,7 +35,8 @@ struct COM {
 	}
 
 	ubyte Read() {
-		while (!CanRead()) {}
+		while (!CanRead()) {
+		}
 		return In(port);
 	}
 
@@ -44,7 +45,8 @@ struct COM {
 	}
 
 	void Write(ubyte d) {
-		while (!CanSend()) {}
+		while (!CanSend()) {
+		}
 		Out(cast(ushort)port, d);
 	}
 

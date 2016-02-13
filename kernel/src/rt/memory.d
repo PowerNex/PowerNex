@@ -6,18 +6,17 @@
 	3) OwnedArrays are like heap arrays, but non-copyable
 */
 
-
 // non-refcounted, non-copyable
 struct OwnedArray(T) {
-	  @disable this();
-	  @disable this(this);
-	  this(size_t capacity) {
+	@disable this();
+	@disable this(this);
+	this(size_t capacity) {
 
-	  }
+	}
 
-	  ~this() {
+	~this() {
 
-	  }
+	}
 }
 
 // FIXME: finis this and decide if it is even a good idea
@@ -37,7 +36,7 @@ struct RefCountedSlice(T) {
 
 	~this() {
 		backing.refcount--;
-		if(backing.refcount == 0)
+		if (backing.refcount == 0)
 			manual_free(backing);
 	}
 
@@ -53,7 +52,10 @@ struct RefCountedSlice(T) {
 		return backing.at(idx + start, file, line);
 	}
 
-	T[] slice() { return backing.slice[start .. end]; }
+	T[] slice() {
+		return backing.slice[start .. end];
+	}
+
 	alias slice this;
 
 }
@@ -63,7 +65,10 @@ mixin template SimpleRefCounting(T, string freeCode) {
 	final class RefCount {
 		T payload;
 		int refcount;
-		this(T t) { payload = t; }
+		this(T t) {
+			payload = t;
+		}
+
 		~this() {
 			assert(refcount == 0);
 			mixin(freeCode);
@@ -71,7 +76,10 @@ mixin template SimpleRefCounting(T, string freeCode) {
 	}
 
 	private RefCount payload;
-	@property T getPayload() { return payload.payload; }
+	@property T getPayload() {
+		return payload.payload;
+	}
+
 	alias getPayload this;
 	@disable this();
 	this(T t) {
@@ -89,12 +97,12 @@ mixin template SimpleRefCounting(T, string freeCode) {
 
 	~this() {
 		payload.refcount--;
-		if(payload.refcount == 0)
+		if (payload.refcount == 0)
 			manual_free(payload);
 	}
 }
 
-struct HeapClosure(T) if(is(T == delegate)) {
+struct HeapClosure(T) if (is(T == delegate)) {
 	mixin SimpleRefCounting!(T, q{
 		char[16] buffer;
 		write("\nfreeing closure ", intToString(cast(size_t) payload.ptr, buffer),"\n");
@@ -106,10 +114,12 @@ HeapClosure!T makeHeapClosure(T)(T t) { // if(__traits(isNested, T)) {
 	return HeapClosure!T(t);
 }
 
-
 struct StackArray(T, int maxLength) {
 	T[maxLength] buffer;
-	T[] slice() { return buffer[0 .. this.length]; }
+	T[] slice() {
+		return buffer[0 .. this.length];
+	}
+
 	alias slice this;
 
 	int length;
@@ -132,23 +142,23 @@ final class HeapArrayBacking(T) {
 	}
 
 	void setCapacity(size_t capacity) {
-		backing = cast(T*) manual_realloc(backing, capacity * T.sizeof);
+		backing = cast(T*)manual_realloc(backing, capacity * T.sizeof);
 		this.capacity = capacity;
-		if(length > capacity)
+		if (length > capacity)
 			length = capacity;
 	}
 
 	void append(T rhs) {
-		if(length == capacity) {
+		if (length == capacity) {
 			throw new Exception("out of space");
 			// FIXME: realloc?
 		}
 		backing[this.length] = rhs;
-		this.length ++;
+		this.length++;
 	}
 
 	void append(in T[] rhs) {
-		if(length == capacity) {
+		if (length == capacity) {
 			throw new Exception("out of space");
 			// FIXME: realloc?
 		}
@@ -157,7 +167,7 @@ final class HeapArrayBacking(T) {
 	}
 
 	T at(size_t idx, string file = __FILE__, size_t line = __LINE__) {
-		if(idx >= length)
+		if (idx >= length)
 			throw new Exception("range error", file, line);
 		return backing[idx];
 	}
@@ -168,7 +178,7 @@ final class HeapArrayBacking(T) {
 
 	~this() {
 		assert(this.refcount == 0);
-		if(backing !is null) {
+		if (backing !is null) {
 			manual_free(backing);
 		}
 	}
@@ -195,7 +205,7 @@ struct HeapArray(T) {
 
 	~this() {
 		backing.refcount--;
-		if(backing.refcount == 0)
+		if (backing.refcount == 0)
 			manual_free(backing);
 	}
 
@@ -219,6 +229,9 @@ struct HeapArray(T) {
 		return backing.at(idx, file, line);
 	}
 
-	T[] slice() { return backing.slice; }
+	T[] slice() {
+		return backing.slice;
+	}
+
 	alias slice this;
 }

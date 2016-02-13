@@ -10,17 +10,17 @@ T In(T = ubyte)(ushort port) {
 
 	static if (isByte!T) {
 		asm {
-			in AL, DX;
+			 in AL, DX;
 			mov ret, AL;
 		}
 	} else static if (isShort!T) {
 		asm {
-			in AX, DX;
+			 in AX, DX;
 			mov ret, AX;
 		}
 	} else static if (isInt!T) {
 		asm {
-			in EAX, DX;
+			 in EAX, DX;
 			mov ret, EAX;
 		}
 	}
