@@ -31,6 +31,8 @@ public:
 	}
 
 	void* Alloc(ulong size) {
+		if (!size)
+			return null;
 		MemoryHeader* freeChunk = root;
 		size += MinimalChunkSize - (size % MinimalChunkSize); // Good alignment maybe?
 
@@ -49,9 +51,24 @@ public:
 	}
 
 	void Free(void* addr) {
+		if (!addr)
+			return;
 		MemoryHeader* hdr = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).Ptr;
 		hdr.isAllocated = false;
 		combine(hdr);
+	}
+
+	void* Realloc(void* addr, ulong size) {
+		void* newMem = Alloc(size);
+		if (addr) {
+			MemoryHeader* old = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).Ptr;
+			ubyte* src = cast(ubyte*)addr;
+			ubyte* dest = cast(ubyte*)newMem;
+			for (ulong i = 0; i < old.size; i++)
+				dest[i] = src[i];
+			Free(addr);
+		}
+		return newMem;
 	}
 
 	void PrintLayout() {

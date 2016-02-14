@@ -72,7 +72,7 @@ int callKmain(uint magic, ulong info) {
 	catch (Throwable t) {
 		log.Info("\n**UNCAUGHT EXCEPTION**\n");
 		t.print();
-		manual_free(t);
+		t.destroy;
 		return (1);
 	}
 }
@@ -84,14 +84,6 @@ extern (C) void _Dkmain_entry(uint magic, ulong info) {
 }
 
 void exit(ssize_t code = 0) {
-	debug (allocations) {
-		log.Info("\n", totalAllocations, " total allocations\n");
-		if (allocations)
-			log.Info("warning, terminating with ", allocations, " pieces of still allocated memory\n");
-		else
-			log.Info("all freed!\n");
-	}
-
 	asm {
 		cli;
 	stay_dead:
@@ -126,7 +118,7 @@ extern (C) {
 	// the compiler spits this out all the time
 	Object _d_newclass(const ClassInfo ci) {
 		log.Debug("Creating a new class of type: ", ci.name);
-		void* memory = manual_malloc(ci.init.length);
+		void* memory = GetKernelHeap.Alloc(ci.init.length);
 		if (memory is null) {
 			log.Info("\n\n_d_newclass malloc failure\n\n");
 			exit();
@@ -249,7 +241,7 @@ class Throwable : Object { // required by the D compiler
 
 	~this() {
 		if (next !is null)
-			manual_free(next);
+			next.destroy;
 	}
 
 	string message;
@@ -279,7 +271,7 @@ class Error : Throwable { // required by the D compiler
 
 	~this() {
 		if (bypassedException !is null)
-			manual_free(bypassedException);
+			bypassedException.destroy;
 	}
 }
 
@@ -704,9 +696,6 @@ extern (C) int _adEq2(byte[] a1, byte[] a2, TypeInfo ti) {
 	return 1;
 }
 
-__gshared ubyte[1024 * 1024] heap = void;
-__gshared int heapPosition = 0;
-
 // immutable allocs are on a special heap that are never freed
 // so you should use sparingly
 immutable(T)[] immutable_alloc(T)(T[] dataToCopy) {
@@ -717,62 +706,23 @@ immutable(T)[] immutable_alloc(T)(scope void delegate(T[]) initalizer) {
 	return null;
 }
 
-debug (allocations) {
-	__gshared int allocations = 0;
-	__gshared int totalAllocations = 0;
+import memory.heap;
+
+void destroy(void* memory) {
+	GetKernelHeap.Free(memory);
 }
 
-void* manual_malloc(string func = __PRETTY_FUNCTION__)(size_t bytes) {
-	//TODO: Change to use heap!
-	auto place = heap[heapPosition .. heapPosition + bytes];
-	heapPosition += bytes;
-	void* ret = place.ptr;
-
-	debug (allocations) {
-		log.Info("ALLOCATION func: ", func, ", size: ", bytes, ": ", ret, "\n");
-		allocations++;
-		totalAllocations++;
-	}
-
-	return ret;
-}
-
-void* manual_realloc(void* memory, size_t newCapacity) {
-	//TODO: Change to use heap!
-	if (newCapacity == 0) {
-		manual_free(memory);
-		return null;
-	}
-	if (memory is null)
-		return manual_malloc(newCapacity);
-	assert(0);
-}
-
-void manual_free(void* memory) {
-	//TODO: Change to use heap!
-	debug (allocations) {
-		log.Info("FREED: ", cast(size_t)memory, "\n");
-		allocations--;
-	}
-}
-
-void manual_free(Object object) {
+void destroy(Object object) {
 	auto dtor = cast(void function(Object o))object.classinfo.destructor;
 	if (dtor)
 		dtor(object);
-	manual_free(cast(void*)object);
+	GetKernelHeap.Free(cast(void*)object);
 }
 
 // this would be used for automatic heap closures, but there's no way to free it...
 ///*
 extern (C) void* _d_allocmemory(size_t bytes) {
-	//TODO: Change to use heap!
-	auto ptr = manual_malloc(bytes);
-	debug (allocations) {
-		char[16] buffer;
-		log.Debug("Warning: automatic memory allocation ", ptr);
-	}
-	return ptr;
+	return GetKernelHeap.Alloc(bytes);
 }
 //*/
 
