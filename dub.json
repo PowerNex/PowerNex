@@ -1,7 +1,7 @@
 {
-	"name": "powernex",
+	"name": "PowerNex",
 	"copyright": "Copyright © 2015, wildn00b",
 	"targetOutput": "none",
-	"sourcePaths": ["kernel/src"],
-	"importPaths": ["kernel/src"]
+	"sourcePaths": ["Kernel/src"],
+	"importPaths": ["Kernel/src"]
 }

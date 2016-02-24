@@ -5,7 +5,7 @@
 	"processors": {
 		"dc": {
 			"command": "dmd",
-			"arguments": "-m64 -fPIC -debug -c -gc -Ikernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
 		"ac": {
 			"command": "cc/bin/x86_64-powernex-as",
@@ -13,7 +13,7 @@
 		},
 		"ld": {
 			"command": "cc/bin/x86_64-powernex-ld",
-			"arguments": "-o $out -z max-page-size=0x1000 $in -T kernel/src/os.ld"
+			"arguments": "-o $out -z max-page-size=0x1000 $in -T Kernel/src/Kernel.ld"
 		},
 		"cp": {
 			"command": "cp",
@@ -25,14 +25,14 @@
 		},
 		"ndc": {
 			"command": "dmd",
-			"arguments": "-of$out -odutils/obj $in"
+			"arguments": "-of$out -odUtils/obj $in"
 		},
-		"generateSymbols" : {
-			"command": "utils/generateSymbols",
+		"GenerateSymbols" : {
+			"command": "Utils/GenerateSymbols",
 			"arguments": "$in $out"
 		},
-		"makeInitrd" : {
-			"command": "utils/makeInitrd",
+		"MakeInitrd" : {
+			"command": "Utils/MakeInitrd",
 			"arguments": "$in $out"
 		}
 	},
@@ -40,50 +40,50 @@
 
 	},
 	"missing": {
-		"utils/generateSymbols": {
+		"Utils/GenerateSymbols": {
 			"processor": "ndc",
-			"input": "utils/generateSymbols.d"
+			"input": "Utils/GenerateSymbols.d"
 		},
-		"utils/makeInitrd": {
+		"Utils/MakeInitrd": {
 			"processor": "ndc",
-			"input": "utils/makeInitrd.d"
+			"input": "Utils/MakeInitrd.d"
 		}
 	},
 	"rules": {
-		"kernel/obj/*.o": {
+		"Kernel/obj/*.o": {
 			"processor": "dc",
-			"input": "kernel/src/*.d"
+			"input": "Kernel/src/*.d"
 		},
-		"kernel/obj/asm/*.o": {
+		"Kernel/obj/asm/*.o": {
 			"processor": "ac",
-			"input": "kernel/src/*.S"
+			"input": "Kernel/src/*.S"
 		},
-		"powernex.krl": {
+		"PowerNex.krl": {
 			"processor": "ld",
-			"input": "kernel/obj/*.o"
+			"input": "Kernel/obj/*.o"
 		},
-		"disk/boot/powernex.krl": {
+		"Disk/boot/PowerNex.krl": {
 			"processor": "cp",
-			"input": "powernex.krl"
+			"input": "PowerNex.krl"
 		},
-		"disk/boot/powernex.map": {
-			"processor": "generateSymbols",
-			"input": "powernex.krl"
+		"Disk/boot/PowerNex.map": {
+			"processor": "GenerateSymbols",
+			"input": "PowerNex.krl"
 		},
-		"disk/boot/powernex.dsk": {
-			"processor": "makeInitrd",
+		"Disk/boot/PowerNex.dsk": {
+			"processor": "MakeInitrd",
 			"input": "Initrd"
 		},
-		"powernex.iso": {
+		"PowerNex.iso": {
 			"processor": "iso",
-			"input": "disk"
+			"input": "Disk"
 		}
 	},
 	"targets": [
-		"powernex.krl",
-		"disk/boot/powernex.krl",
-		"disk/boot/powernex.map",
-		"disk/boot/powernex.dsk",
-		"powernex.iso"
+		"PowerNex.krl",
+		"Disk/boot/PowerNex.krl",
+		"Disk/boot/PowerNex.map",
+		"Disk/boot/PowerNex.dsk",
+		"PowerNex.iso"
 	]
 }
