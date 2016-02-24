@@ -1,10 +1,19 @@
 module data.string;
 
 import data.util;
+import memory.heap;
 
 size_t strlen(char* str) {
 	size_t len = 0;
-	while (str++)
+	while (*(str++))
+		len++;
+	return len;
+}
+
+size_t strlen(char[] str) {
+	size_t len = 0;
+	char* s = str.ptr;
+	while (*(s++) && len < str.length)
 		len++;
 	return len;
 }
@@ -34,5 +43,21 @@ size_t itoa(S)(S v, ubyte* buf, ulong len, uint base = 10) if (isNumber!S) {
 }
 
 string fromStringz(char* str) {
-	return cast(string)str[0 .. str.strlen];
+	size_t len = str.strlen;
+	char[] a = str[0 .. str.strlen];
+
+	char* s = cast(char*)GetKernelHeap.Alloc(len);
+	memcpy(s, str, len);
+
+	return cast(string)s[0 .. len];
+}
+
+string fromStringz(char[] str) {
+	size_t len = str.strlen;
+	char[] a = str[0 .. str.strlen];
+
+	char* s = cast(char*)GetKernelHeap.Alloc(len);
+	memcpy(s, str.ptr, len);
+
+	return cast(string)s[0 .. len];
 }
