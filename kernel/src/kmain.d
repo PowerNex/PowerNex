@@ -51,4 +51,46 @@ void Init(uint magic, ulong info) {
 		log.SetSymbolMap(symbols[0], symbols[1]);
 	GetKernelPaging.Install();
 	GetKernelHeap;
+	LoadInitrd();
+}
+
+void LoadInitrd() {
+	import io.fs;
+	import io.fs.initrd;
+
+	scr.Writeln();
+	scr.color.Foreground = Colors.Green;
+	auto initrd = Multiboot.GetModule("initrd");
+	if (initrd[0] == initrd[1]) {
+		scr.Writeln("Initrd missing");
+		log.Error("Initrd missing");
+		return;
+	}
+
+	DirectoryNode root = new InitrdRootNode(initrd[0]);
+	scr.Writeln("Root: ", root.toString);
+
+	void printDir(DirectoryNode dir, int indent = 1) {
+		foreach (node; dir.NodeList) {
+			for (int i = 0; i < indent; i++)
+				scr.Write("  ");
+			scr.Writeln(node.ID, ": ", node.Name);
+			if (auto f = cast(FileNode)node) {
+				scr.color.Foreground = Colors.Yellow;
+				scr.color.Background = Colors.Blue;
+
+				ubyte[64] buf = void;
+				auto len = f.Read(buf, 0);
+				scr.Writeln(cast(string)buf[0 .. len]);
+
+				scr.color.Foreground = Colors.Green;
+				scr.color.Background = Colors.Black;
+			} else if (auto d = cast(DirectoryNode)node)
+				printDir(d, indent + 1);
+		}
+	}
+
+	printDir(root);
+
+	scr.Writeln();
 }
