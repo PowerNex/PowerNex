@@ -23,23 +23,23 @@ public:
 	abstract Node GetNode(ulong id);
 	abstract Node GetNode(string name);
 
-	@property ulong ID() {
+	@property ref ulong ID() {
 		return id;
 	}
 
-	@property string Name() {
+	@property ref string Name() {
 		return name;
 	}
 
-	@property NodePermissions Permission() {
+	@property ref NodePermissions Permission() {
 		return permission;
 	}
 
-	@property ulong Size() {
+	@property ref ulong Size() {
 		return size;
 	}
 
-	@property DirectoryNode Parent() {
+	@property ref DirectoryNode Parent() {
 		return parent;
 	}
 
@@ -56,8 +56,8 @@ protected:
 }
 
 abstract class MountPointNode : DirectoryNode {
-	this(ulong id, string name, NodePermissions permission, ulong size, DirectoryNode parent) {
-		super(id, name, permission, size, parent);
+	this(ulong id, string name, NodePermissions permission, DirectoryNode parent) {
+		super(id, name, permission, parent);
 	}
 
 protected:

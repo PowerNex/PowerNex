@@ -58,6 +58,8 @@ void LoadInitrd() {
 	import IO.FS;
 	import IO.FS.Initrd;
 
+	import IO.FS.System;
+
 	scr.Writeln();
 	scr.color.Foreground = Colors.Green;
 	auto initrd = Multiboot.GetModule("initrd");
@@ -91,6 +93,12 @@ void LoadInitrd() {
 	}
 
 	printDir(root);
+	root.destroy();
+
+	root = new SystemRootNode();
+	scr.Writeln("Root: ", root.toString);
+	printDir(root);
+	root.destroy();
 
 	scr.Writeln();
 }

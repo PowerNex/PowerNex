@@ -68,7 +68,7 @@ struct Log {
 
 		COM1.Write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
 
-		ubyte[int.sizeof * 8] buf;
+		char[int.sizeof * 8] buf;
 		auto start = itoa(line, buf.ptr, buf.length, 10);
 		for (size_t i = start; i < buf.length; i++)
 			COM1.Write(buf[i]);
@@ -148,7 +148,7 @@ struct Log {
 			COM1.Write("\t[");
 
 			{
-				ubyte[int.sizeof * 8] buf;
+				char[int.sizeof * 8] buf;
 				COM1.Write("0x");
 				size_t start = itoa(*rip, buf.ptr, buf.length, 16);
 				for (size_t i = start; i < buf.length; i++)
@@ -181,7 +181,7 @@ struct Log {
 
 			COM1.Write(f.name);
 			if (f.diff) {
-				ubyte[int.sizeof * 8] buf;
+				char[int.sizeof * 8] buf;
 				COM1.Write("+0x");
 				size_t start = itoa(f.diff, buf.ptr, buf.length, 16);
 				for (size_t i = start; i < buf.length; i++)

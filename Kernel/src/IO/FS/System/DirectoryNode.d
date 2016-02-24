@@ -1,10 +1,10 @@
-module IO.FS.Initrd.DirectoryNode;
+module IO.FS.System.DirectoryNode;
 
-import IO.FS.Initrd;
+import IO.FS.System;
 import IO.FS;
 
-final class InitrdDirectoryNode : DirectoryNode {
-	this(InitrdRootNode root, ulong id, string name, DirectoryNode parent) {
+final class SystemDirectoryNode : DirectoryNode {
+	this(SystemRootNode root, ulong id, string name, DirectoryNode parent) {
 		this.root = root;
 		super(id, name, NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), parent);
 	}
@@ -25,5 +25,5 @@ final class InitrdDirectoryNode : DirectoryNode {
 	}
 
 private:
-	InitrdRootNode root;
+	SystemRootNode root;
 }

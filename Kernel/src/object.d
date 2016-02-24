@@ -115,6 +115,25 @@ struct multiboot_memory_map {
 }
 
 extern (C) {
+	inout(TypeInfo) unqualify(inout(TypeInfo) cti) pure nothrow @nogc {
+		TypeInfo ti = cast()cti;
+		while (ti) {
+			// avoid dynamic type casts
+			auto tti = typeid(ti);
+			if (tti is typeid(TypeInfo_Const))
+				ti = (cast(TypeInfo_Const)cast(void*)ti).base;
+			else if (tti is typeid(TypeInfo_Invariant))
+				ti = (cast(TypeInfo_Invariant)cast(void*)ti).base;
+			else if (tti is typeid(TypeInfo_Shared))
+				ti = (cast(TypeInfo_Shared)cast(void*)ti).base;
+			else if (tti is typeid(TypeInfo_Inout))
+				ti = (cast(TypeInfo_Inout)cast(void*)ti).base;
+			else
+				break;
+		}
+		return ti;
+	}
+
 	// the compiler spits this out all the time
 	Object _d_newclass(const ClassInfo ci) {
 		log.Debug("Creating a new class of type: ", ci.name);
@@ -173,6 +192,30 @@ extern (C) {
 		*cast(size_t*)&px = newlength;
 		(cast(void**)(&px))[1] = newPtr;
 		return px;
+	}
+
+	extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs) {
+		size_t length;
+		auto size = unqualify(ti.next).tsize; // array element size
+		log.Warning("Size is: ", size, " ti: ", ti.toString, " ti.next: ", unqualify(ti.next).toString);
+
+		foreach (b; arrs)
+			length += b.length;
+
+		if (!length)
+			return null;
+
+		void* a = GetKernelHeap.Alloc(length * size);
+
+		size_t j = 0;
+		foreach (b; arrs) {
+			if (b.length) {
+				memcpy(a + j, b.ptr, b.length * size);
+				j += b.length * size;
+			}
+		}
+
+		return a[0 .. length];
 	}
 
 	// and these came when I started using foreach
@@ -1026,7 +1069,8 @@ private string makeTypeInfo(T...)() {
 		void doit(t)() {
 			if (__ctfe) {
 				code ~= "class TypeInfo_" ~ t.mangleof ~ " : TypeInfo {
-					override string toString() const { return \"" ~ t.stringof ~ "\"; }
+					override string toString() const { return \""
+					~ t.stringof ~ "\"; }
 
 					override @property size_t tsize() nothrow pure const { return " ~ t.stringof ~ ".sizeof; }
 				}";
@@ -1136,16 +1180,81 @@ class TypeInfo_Array : TypeInfo {
 }
 
 class TypeInfo_Const : TypeInfo {
-	void* whatever;
+	override string toString() const {
+		return cast(string)("const(" ~ base.toString() ~ ")");
+	}
+
+	//override bool opEquals(Object o) { return base.opEquals(o); }
+	override bool opEquals(Object o) {
+		if (this is o)
+			return true;
+
+		if (typeid(this) != typeid(o))
+			return false;
+
+		auto t = cast(TypeInfo_Const)o;
+		return base.opEquals(t.base);
+	}
+
+	override size_t getHash(in void* p) const {
+		return base.getHash(p);
+	}
+
+	override bool equals(in void* p1, in void* p2) const {
+		return base.equals(p1, p2);
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		return base.compare(p1, p2);
+	}
+
+	override @property size_t tsize() nothrow pure const {
+		return base.tsize;
+	}
+
+	override void swap(void* p1, void* p2) const {
+		return base.swap(p1, p2);
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return base.next;
+	}
+
+	override @property uint flags() nothrow pure const {
+		return base.flags;
+	}
+
+	override const(void)[] init() nothrow pure const {
+		return base.init();
+	}
+
+	override @property size_t talign() nothrow pure const {
+		return base.talign;
+	}
+
+	/*	version (X86_64) override int argTypes(out TypeInfo arg1, out TypeInfo arg2) {
+		return base.argTypes(arg1, arg2);
+	}
+*/
+	TypeInfo base;
 }
 
 class TypeInfo_Invariant : TypeInfo_Const {
+	override string toString() const {
+		return cast(string)("immutable(" ~ base.toString() ~ ")");
+	}
 }
 
 class TypeInfo_Shared : TypeInfo_Const {
+	override string toString() const {
+		return cast(string)("shared(" ~ base.toString() ~ ")");
+	}
 }
 
 class TypeInfo_Inout : TypeInfo_Const {
+	override string toString() const {
+		return cast(string)("inout(" ~ base.toString() ~ ")");
+	}
 }
 
 class TypeInfo_Struct : TypeInfo {

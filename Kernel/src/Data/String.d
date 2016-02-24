@@ -18,10 +18,15 @@ size_t strlen(char[] str) {
 	return len;
 }
 
-size_t itoa(S)(S v, ubyte* buf, ulong len, uint base = 10) if (isNumber!S) {
+string itoa(S)(S v, char[] buf, uint base = 10) if (isNumber!S) {
+	auto start = itoa(v, buf.ptr, buf.length, 10);
+	return cast(string)buf[start .. $];
+}
+
+size_t itoa(S)(S v, char* buf, ulong len, uint base = 10) if (isNumber!S) {
 	assert(1 < base && base <= 16);
 	Unqual!S value = v;
-	immutable ubyte[] BASE_CHARS = cast(immutable ubyte[])"0123456789ABCDEF";
+	immutable char[] BASE_CHARS = cast(immutable char[])"0123456789ABCDEF";
 	size_t pos = len;
 	bool sign = false;
 

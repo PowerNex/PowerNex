@@ -125,7 +125,7 @@ struct Screen(int w, int h) {
 	}
 
 	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
-		ubyte[S.sizeof * 8] buf;
+		char[S.sizeof * 8] buf;
 		auto start = itoa(value, buf.ptr, buf.length, base);
 		for (size_t i = start; i < buf.length; i++)
 			Write(buf[i]);

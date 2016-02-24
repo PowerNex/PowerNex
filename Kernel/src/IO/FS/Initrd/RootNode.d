@@ -10,7 +10,7 @@ import Data.String;
 class InitrdRootNode : DirectoryNode {
 public:
 	this(VirtAddress initrdAddr, DirectoryNode parent = null) {
-		super(0, "Initrd", NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), 0, parent);
+		super(0, "Initrd", NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), parent);
 		initrd = cast(Initrd*)initrdAddr.Ptr;
 		if (initrd.Magic != MAGIC)
 			return;
@@ -92,7 +92,7 @@ private:
 final class InitrdDirectoryNode : DirectoryNode {
 	this(InitrdRootNode root, ulong id, string name, DirectoryNode parent) {
 		this.root = root;
-		super(id, name, NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), 0, parent);
+		super(id, name, NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), parent);
 	}
 
 	override Node GetNode(ulong id) {

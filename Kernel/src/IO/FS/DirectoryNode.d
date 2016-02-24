@@ -24,9 +24,9 @@ struct DirRange {
 	}
 }
 
-abstract class DirectoryNode : Node {
-	this(ulong id, string name, NodePermissions permission, ulong size, DirectoryNode parent) {
-		super(id, name, permission, size, parent);
+class DirectoryNode : Node {
+	this(ulong id, string name, NodePermissions permission, DirectoryNode parent) {
+		super(id, name, permission, 0, parent);
 	}
 
 	override ulong Read(ubyte[] buffer, ulong offset) {
