@@ -124,11 +124,56 @@ extern (C) {
 			exit();
 		}
 
-		(cast(byte*)memory)[0 .. ci.init.length] = ci.init[];
+		(cast(ubyte*)memory)[0 .. ci.init.length] = cast(ubyte[])ci.init[];
 		return cast(Object)memory;
 	}
 
-	//void* _d_newarrayT
+	void[] _d_newarrayT(TypeInfo ti, size_t length) {
+		auto size = ti.next.tsize();
+
+		if (!length || !size)
+			return null;
+		else
+			return GetKernelHeap.Alloc(length * size)[0 .. length];
+	}
+
+	void* _d_arrayliteralTX(TypeInfo ti, size_t length) {
+		auto size = ti.next.tsize();
+
+		if (!length || !size)
+			return null;
+		else
+			return GetKernelHeap.Alloc(length * size);
+	}
+
+	void[] _d_arraycatT(TypeInfo ti, void[] x, void[] y) {
+		log.Fatal(ti.toString);
+		auto size = ti.next.tsize();
+
+		if (!(x.length + y.length) || !size)
+			return null;
+
+		ubyte* data = cast(ubyte*)GetKernelHeap.Alloc((x.length + y.length) * size);
+		memcpy(data, x.ptr, x.length * size);
+		memcpy(data + (x.length * size), y.ptr, y.length * size);
+		return (cast(void*)data)[0 .. x.length + y.length];
+	}
+
+	void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
+		auto size = ti.next.tsize();
+		log.Info("ti: ", ti.toString, "(", ti.next.toString, " = ", size, ") newlength: ", newlength, " p: ", p);
+		*p = GetKernelHeap.Realloc(p.ptr, newlength * size)[0 .. newlength];
+		return *p;
+	}
+
+	byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) {
+		auto size = ti.next.tsize();
+		auto newlength = px.length + n;
+		void* newPtr = GetKernelHeap.Realloc(px.ptr, newlength * size);
+		*cast(size_t*)&px = newlength;
+		(cast(void**)(&px))[1] = newPtr;
+		return px;
+	}
 
 	// and these came when I started using foreach
 	void _d_unittestm(string file, uint line) {
@@ -259,7 +304,7 @@ class Throwable : Object { // required by the D compiler
 	}
 
 	void print() {
-		log.Info(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
+		log.Fatal(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
 	}
 }
 
@@ -295,6 +340,10 @@ struct AssociativeArray(K, V) {
 }
 
 class TypeInfo {
+	override string toString() const pure @safe nothrow {
+		return typeid(this).name;
+	}
+
 	@property immutable(MoreTypeInfo*) rtInfo() nothrow pure const @safe {
 		return null;
 	}
@@ -389,9 +438,326 @@ class TypeInfo {
 
 }
 
+class TypeInfo_Ag : TypeInfo_Array {
+	override bool opEquals(Object o) {
+		return TypeInfo.opEquals(o);
+	}
+
+	override string toString() const {
+		return "byte[]";
+	}
+
+	override size_t getHash(in void* p) @trusted const {
+		return cast(size_t)p;
+	}
+
+	override bool equals(in void* p1, in void* p2) const {
+		byte[] s1 = *cast(byte[]*)p1;
+		byte[] s2 = *cast(byte[]*)p2;
+
+		return s1.length == s2.length && memcmp(cast(byte*)s1, cast(byte*)s2, s1.length) == 0;
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		byte[] s1 = *cast(byte[]*)p1;
+		byte[] s2 = *cast(byte[]*)p2;
+		size_t len = s1.length;
+
+		if (s2.length < len)
+			len = s2.length;
+		for (size_t u = 0; u < len; u++) {
+			int result = s1[u] - s2[u];
+			if (result)
+				return result;
+		}
+		if (s1.length < s2.length)
+			return -1;
+		else if (s1.length > s2.length)
+			return 1;
+		return 0;
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(byte);
+	}
+}
+
+// ubyte[]
+
+class TypeInfo_Ah : TypeInfo_Ag {
+	override string toString() const {
+		return "ubyte[]";
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		char[] s1 = *cast(char[]*)p1;
+		char[] s2 = *cast(char[]*)p2;
+
+		return dstrcmp(s1, s2);
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(ubyte);
+	}
+}
+
+// void[]
+
+class TypeInfo_Av : TypeInfo_Ah {
+	override string toString() const {
+		return "void[]";
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(void);
+	}
+}
+
+// bool[]
+
+class TypeInfo_Ab : TypeInfo_Ah {
+	override string toString() const {
+		return "bool[]";
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(bool);
+	}
+}
+
+// char[]
+
+class TypeInfo_Aa : TypeInfo_Ah {
+	override string toString() const {
+		return "char[]";
+	}
+
+	override size_t getHash(in void* p) @trusted const {
+		char[] s = *cast(char[]*)p;
+		size_t hash = 0;
+
+		version (all) {
+			foreach (char c; s)
+				hash = hash * 11 + c;
+		} else {
+			size_t len = s.length;
+			char* str = s;
+
+			while (1) {
+				switch (len) {
+				case 0:
+					return hash;
+
+				case 1:
+					hash *= 9;
+					hash += *cast(ubyte*)str;
+					return hash;
+
+				case 2:
+					hash *= 9;
+					hash += *cast(ushort*)str;
+					return hash;
+
+				case 3:
+					hash *= 9;
+					hash += (*cast(ushort*)str << 8) + (cast(ubyte*)str)[2];
+					return hash;
+
+				default:
+					hash *= 9;
+					hash += *cast(uint*)str;
+					str += 4;
+					len -= 4;
+					break;
+				}
+			}
+		}
+		return hash;
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(char);
+	}
+}
+
+// string
+
+class TypeInfo_Aya : TypeInfo_Aa {
+	override string toString() const {
+		return "immutable(char)[]";
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(immutable(char));
+	}
+}
+
+// const(char)[]
+
+class TypeInfo_Axa : TypeInfo_Aa {
+	override string toString() const {
+		return "const(char)[]";
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(const(char));
+	}
+}
+// long[]
+
+class TypeInfo_Al : TypeInfo_Array {
+	override bool opEquals(Object o) {
+		return TypeInfo.opEquals(o);
+	}
+
+	override string toString() const {
+		return "long[]";
+	}
+
+	override size_t getHash(in void* p) @trusted const {
+		return cast(size_t)p;
+	}
+
+	override bool equals(in void* p1, in void* p2) const {
+		long[] s1 = *cast(long[]*)p1;
+		long[] s2 = *cast(long[]*)p2;
+
+		return s1.length == s2.length && memcmp(cast(void*)s1, cast(void*)s2, s1.length * long.sizeof) == 0;
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		long[] s1 = *cast(long[]*)p1;
+		long[] s2 = *cast(long[]*)p2;
+		size_t len = s1.length;
+
+		if (s2.length < len)
+			len = s2.length;
+		for (size_t u = 0; u < len; u++) {
+			if (s1[u] < s2[u])
+				return -1;
+			else if (s1[u] > s2[u])
+				return 1;
+		}
+		if (s1.length < s2.length)
+			return -1;
+		else if (s1.length > s2.length)
+			return 1;
+		return 0;
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(long);
+	}
+}
+
+// ulong[]
+
+class TypeInfo_Am : TypeInfo_Al {
+	override string toString() const {
+		return "ulong[]";
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		ulong[] s1 = *cast(ulong[]*)p1;
+		ulong[] s2 = *cast(ulong[]*)p2;
+		size_t len = s1.length;
+
+		if (s2.length < len)
+			len = s2.length;
+		for (size_t u = 0; u < len; u++) {
+			if (s1[u] < s2[u])
+				return -1;
+			else if (s1[u] > s2[u])
+				return 1;
+		}
+		if (s1.length < s2.length)
+			return -1;
+		else if (s1.length > s2.length)
+			return 1;
+		return 0;
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return cast(inout)typeid(ulong);
+	}
+}
+
 class TypeInfo_StaticArray : TypeInfo {
+	override string toString() const {
+		return value.toString() ~ "[TODO]";
+	}
+
+	override bool opEquals(Object o) {
+		if (this is o)
+			return true;
+		auto c = cast(const TypeInfo_StaticArray)o;
+		return c && this.len == c.len && this.value == c.value;
+	}
+
+	override size_t getHash(in void* p) @trusted const {
+		return getArrayHash(value, p, len);
+	}
+
+	override bool equals(in void* p1, in void* p2) const {
+		size_t sz = value.tsize;
+
+		for (size_t u = 0; u < len; u++) {
+			if (!value.equals(p1 + u * sz, p2 + u * sz))
+				return false;
+		}
+		return true;
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		size_t sz = value.tsize;
+
+		for (size_t u = 0; u < len; u++) {
+			int result = value.compare(p1 + u * sz, p2 + u * sz);
+			if (result)
+				return result;
+		}
+		return 0;
+	}
+
+	override @property size_t tsize() nothrow pure const {
+		return len * value.tsize;
+	}
+
+	override const(void)[] init() nothrow pure const {
+		return value.init();
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return value;
+	}
+
+	override @property uint flags() nothrow pure const {
+		return value.flags;
+	}
+
+	override void destroy(void* p) const {
+		auto sz = value.tsize;
+		p += sz * len;
+		foreach (i; 0 .. len) {
+			p -= sz;
+			value.destroy(p);
+		}
+	}
+
+	override void postblit(void* p) const {
+		auto sz = value.tsize;
+		foreach (i; 0 .. len) {
+			value.postblit(p);
+			p += sz;
+		}
+	}
+
 	TypeInfo value;
 	size_t len;
+
+	override @property size_t talign() nothrow pure const {
+		return value.talign;
+	}
 }
 
 class TypeInfo_Function : TypeInfo {
@@ -460,7 +826,72 @@ class TypeInfo_Interface : TypeInfo {
 
 class TypeInfo_Class : TypeInfo {
 
-	byte[] init; /** class static initializer
+	override string toString() const {
+		return info.name;
+	}
+
+	override bool opEquals(Object o) {
+		if (this is o)
+			return true;
+		auto c = cast(const TypeInfo_Class)o;
+		return c && this.info.name == c.info.name;
+	}
+
+	override size_t getHash(in void* p) @trusted const {
+		auto o = *cast(Object*)p;
+		return o ? o.toHash() : 0;
+	}
+
+	override bool equals(in void* p1, in void* p2) const {
+		Object o1 = *cast(Object*)p1;
+		Object o2 = *cast(Object*)p2;
+
+		return (o1 is o2) || (o1 && o1.opEquals(o2));
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		Object o1 = *cast(Object*)p1;
+		Object o2 = *cast(Object*)p2;
+		int c = 0;
+
+		// Regard null references as always being "less than"
+		if (o1 !is o2) {
+			if (o1) {
+				if (!o2)
+					c = 1;
+				else
+					c = o1.opCmp(o2);
+			} else
+				c = -1;
+		}
+		return c;
+	}
+
+	override @property size_t tsize() nothrow pure const {
+		return Object.sizeof;
+	}
+
+	override const(void)[] init() nothrow pure const @safe {
+		return m_init;
+	}
+
+	override @property uint flags() nothrow pure const {
+		return 1;
+	}
+
+	override @property const(OffsetTypeInfo)[] offTi() nothrow pure const {
+		return m_offTi;
+	}
+
+	@property auto info() @safe nothrow pure const {
+		return this;
+	}
+
+	@property auto typeinfo() @safe nothrow pure const {
+		return this;
+	}
+
+	byte[] m_init; /** class static initializer
                                  * (init.length gives size in bytes of class)
                                  */
 	string name; /// class name
@@ -469,26 +900,124 @@ class TypeInfo_Class : TypeInfo {
 	TypeInfo_Class base; /// base class
 	void* destructor;
 	void function(Object) classInvariant;
-	uint m_flags;
-	//  1:                      // is IUnknown or is derived from IUnknown
-	//  2:                      // has no possible pointers into GC memory
-	//  4:                      // has offTi[] member
-	//  8:                      // has constructors
-	// 16:                      // has xgetMembers member
-	// 32:                      // has typeinfo member
-	// 64:                      // is not constructable
+	enum ClassFlags : uint {
+		isCOMclass = 0x1,
+		noPointers = 0x2,
+		hasOffTi = 0x4,
+		hasCtor = 0x8,
+		hasGetMembers = 0x10,
+		hasTypeInfo = 0x20,
+		isAbstract = 0x40,
+		isCPPclass = 0x80,
+		hasDtor = 0x100,
+	}
+
+	ClassFlags m_flags;
 	void* deallocator;
 	OffsetTypeInfo[] m_offTi;
 	void function(Object) defaultConstructor; // default Constructor
 
-	immutable(MoreTypeInfo*) m_RTInfo; // data for precise GC
-	override @property immutable(MoreTypeInfo*) rtInfo() nothrow pure @safe const {
+	immutable(MoreTypeInfo)* m_RTInfo; // data for precise GC
+	override @property immutable(MoreTypeInfo*) rtInfo() nothrow pure const @safe {
 		return m_RTInfo;
 	}
 
+	/**
+     * Search all modules for TypeInfo_Class corresponding to classname.
+     * Returns: null if not found
+     */
+	static const(TypeInfo_Class) find(in char[] classname) {
+		foreach (m; ModuleInfo) {
+			if (m) //writefln("module %s, %d", m.name, m.localClasses.length);
+				foreach (c; m.localClasses) {
+					if (c is null)
+						continue;
+					//writefln("\tclass %s", c.name);
+					if (c.name == classname)
+						return c;
+				}
+		}
+		return null;
+	}
+
+	/**
+     * Create instance of Object represented by 'this'.
+     */
+	Object create() const {
+		if (m_flags & 8 && !defaultConstructor)
+			return null;
+		if (m_flags & 64) // abstract
+			return null;
+		Object o = _d_newclass(this);
+		if (m_flags & 8 && defaultConstructor) {
+			defaultConstructor(o);
+		}
+		return o;
+	}
 }
 
-mixin(makeTypeInfo!(char, wchar, dchar, int, uint, short, ushort, byte, ubyte, long, ulong, float, double, real, void, bool, string)());
+class TypeInfo_Typedef : TypeInfo {
+	override string toString() const {
+		return name;
+	}
+
+	override bool opEquals(Object o) {
+		if (this is o)
+			return true;
+		auto c = cast(const TypeInfo_Typedef)o;
+		return c && this.name == c.name && this.base == c.base;
+	}
+
+	override size_t getHash(in void* p) const {
+		return base.getHash(p);
+	}
+
+	override bool equals(in void* p1, in void* p2) const {
+		return base.equals(p1, p2);
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		return base.compare(p1, p2);
+	}
+
+	override @property size_t tsize() nothrow pure const {
+		return base.tsize;
+	}
+
+	override void swap(void* p1, void* p2) const {
+		return base.swap(p1, p2);
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return base.next;
+	}
+
+	override @property uint flags() nothrow pure const {
+		return base.flags;
+	}
+
+	override const(void)[] init() const {
+		return m_init.length ? m_init : base.init();
+	}
+
+	override @property size_t talign() nothrow pure const {
+		return base.talign;
+	}
+
+	override @property immutable(MoreTypeInfo*) rtInfo() nothrow pure const @safe {
+		return base.rtInfo;
+	}
+
+	TypeInfo base;
+	string name;
+	void[] m_init;
+}
+
+class TypeInfo_Enum : TypeInfo_Typedef {
+
+}
+
+mixin(makeTypeInfo!(char, wchar, dchar, int, uint, short, ushort, byte, ubyte, long, ulong, float, double, real, void, bool)());
 
 private string makeTypeInfo(T...)() {
 	if (__ctfe) {
@@ -498,13 +1027,15 @@ private string makeTypeInfo(T...)() {
 			if (__ctfe) {
 				code ~= "class TypeInfo_" ~ t.mangleof ~ " : TypeInfo {
 					override string toString() const { return \"" ~ t.stringof ~ "\"; }
+
+					override @property size_t tsize() nothrow pure const { return " ~ t.stringof ~ ".sizeof; }
 				}";
 			}
 		}
 
 		foreach (t; T) {
 			doit!(t)();
-			doit!(t[])();
+			//doit!(t[])();
 		}
 		return code;
 	} else
@@ -518,8 +1049,90 @@ class TypeInfo_Pointer : TypeInfo {
 	void* stuff;
 }
 
+private size_t getArrayHash(in TypeInfo element, in void* ptr, in size_t count) @trusted nothrow {
+	if (!count)
+		return 0;
+
+	const size_t elementSize = element.tsize;
+	if (!elementSize)
+		return 0;
+
+	return cast(size_t)ptr;
+}
+
 class TypeInfo_Array : TypeInfo {
-	void* whatever;
+	override string toString() const {
+		return value.toString(); // ~ "[]";
+	}
+
+	override bool opEquals(Object o) {
+		if (this is o)
+			return true;
+		auto c = cast(const TypeInfo_Array)o;
+		return c && this.value == c.value;
+	}
+
+	override size_t getHash(in void* p) @trusted const {
+		void[] a = *cast(void[]*)p;
+		return getArrayHash(value, a.ptr, a.length);
+	}
+
+	override bool equals(in void* p1, in void* p2) const {
+		void[] a1 = *cast(void[]*)p1;
+		void[] a2 = *cast(void[]*)p2;
+		if (a1.length != a2.length)
+			return false;
+		size_t sz = value.tsize;
+		for (size_t i = 0; i < a1.length; i++) {
+			if (!value.equals(a1.ptr + i * sz, a2.ptr + i * sz))
+				return false;
+		}
+		return true;
+	}
+
+	override int compare(in void* p1, in void* p2) const {
+		void[] a1 = *cast(void[]*)p1;
+		void[] a2 = *cast(void[]*)p2;
+		size_t sz = value.tsize;
+		size_t len = a1.length;
+
+		if (a2.length < len)
+			len = a2.length;
+		for (size_t u = 0; u < len; u++) {
+			int result = value.compare(a1.ptr + u * sz, a2.ptr + u * sz);
+			if (result)
+				return result;
+		}
+		return cast(int)a1.length - cast(int)a2.length;
+	}
+
+	override @property size_t tsize() nothrow pure const {
+		return (void[]).sizeof;
+	}
+
+	override const(void)[] init() const @trusted {
+		return (cast(void*)null)[0 .. (void[]).sizeof];
+	}
+
+	override void swap(void* p1, void* p2) const {
+		void[] tmp = *cast(void[]*)p1;
+		*cast(void[]*)p1 = *cast(void[]*)p2;
+		*cast(void[]*)p2 = tmp;
+	}
+
+	TypeInfo value;
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return value;
+	}
+
+	override @property uint flags() nothrow pure const {
+		return 1;
+	}
+
+	override @property size_t talign() nothrow pure const {
+		return (void[]).alignof;
+	}
 }
 
 class TypeInfo_Const : TypeInfo {
@@ -532,15 +1145,119 @@ class TypeInfo_Invariant : TypeInfo_Const {
 class TypeInfo_Shared : TypeInfo_Const {
 }
 
-class TypeInfo_Enum : TypeInfo {
-	void*[5] stuff;
-}
-
 class TypeInfo_Inout : TypeInfo_Const {
 }
 
 class TypeInfo_Struct : TypeInfo {
-	void*[15] stuff;
+	override string toString() const {
+		return name;
+	}
+
+	override bool opEquals(Object o) {
+		if (this is o)
+			return true;
+		auto s = cast(const TypeInfo_Struct)o;
+		return s && this.name == s.name && this.init().length == s.init().length;
+	}
+
+	override size_t getHash(in void* p) @safe pure nothrow const {
+		return cast(size_t)p;
+	}
+
+	override bool equals(in void* p1, in void* p2) @trusted pure nothrow const {
+		import core.stdc.string : memcmp;
+
+		if (!p1 || !p2)
+			return false;
+		else if (xopEquals)
+			return (*xopEquals)(p1, p2);
+		else if (p1 == p2)
+			return true;
+		else // BUG: relies on the GC not moving objects
+			return memcmp(p1, p2, init().length) == 0;
+	}
+
+	override int compare(in void* p1, in void* p2) @trusted pure nothrow const {
+		import core.stdc.string : memcmp;
+
+		// Regard null references as always being "less than"
+		if (p1 != p2) {
+			if (p1) {
+				if (!p2)
+					return true;
+				else if (xopCmp)
+					return (*xopCmp)(p2, p1);
+				else // BUG: relies on the GC not moving objects
+					return memcmp(p1, p2, init().length);
+			} else
+				return -1;
+		}
+		return 0;
+	}
+
+	override @property size_t tsize() nothrow pure const {
+		return init().length;
+	}
+
+	override const(void)[] init() nothrow pure const @safe {
+		return m_init;
+	}
+
+	override @property uint flags() nothrow pure const {
+		return m_flags;
+	}
+
+	override @property size_t talign() nothrow pure const {
+		return m_align;
+	}
+
+	final override void destroy(void* p) const {
+		if (xdtor) {
+			if (m_flags & StructFlags.isDynamicType)
+				(*xdtorti)(p, this);
+			else
+				(*xdtor)(p);
+		}
+	}
+
+	override void postblit(void* p) const {
+		if (xpostblit)
+			(*xpostblit)(p);
+	}
+
+	string name;
+	void[] m_init; // initializer; m_init.ptr == null if 0 initialize
+
+	@safe pure nothrow {
+		uint function(in void*) xtoHash;
+		bool function(in void*, in void*) xopEquals;
+		int function(in void*, in void*) xopCmp;
+		string function(in void*) xtoString;
+
+		enum StructFlags : uint {
+			hasPointers = 0x1,
+			isDynamicType = 0x2, // built at runtime, needs type info in xdtor
+		}
+
+		StructFlags m_flags;
+	}
+	union {
+		void function(void*) xdtor;
+		void function(void*, const TypeInfo_Struct ti) xdtorti;
+	}
+
+	void function(void*) xpostblit;
+
+	uint m_align;
+
+	TypeInfo m_arg1;
+	TypeInfo m_arg2;
+
+	override @property immutable(MoreTypeInfo*) rtInfo() nothrow pure const @safe {
+		return null;
+	}
+
+	immutable(void*) m_RTInfo; // data for precise GC
 }
 
 alias TypeInfo_Class ClassInfo;
@@ -717,6 +1434,17 @@ void destroy(Object object) {
 	if (dtor)
 		dtor(object);
 	GetKernelHeap.Free(cast(void*)object);
+}
+
+void destroy(T)(T[] array) {
+	static if (is(typeof(T) == Object)) {
+		foreach (ref el; array) {
+			auto dtor = cast(void function(Object o))T.classinfo.destructor;
+			if (dtor)
+				dtor(el);
+		}
+	}
+	GetKernelHeap.Free(cast(void*)array.ptr);
 }
 
 // this would be used for automatic heap closures, but there's no way to free it...
@@ -1400,12 +2128,40 @@ bool _xopEquals(in void*, in void*) {
 extern (C) void _d_run_main() {
 }
 
-extern (C) void _memset64(void* dest, ulong value, size_t size) {
-	ptrdiff_t i;
-	for (i = 0; i < (size & (~7)); i += 8)
-		*(cast(ulong*)dest) = value;
-	for (; i < size; i++)
-		(cast(ubyte*)dest)[i % 8] = (cast(ubyte*)&value)[i % 8];
+extern (C) void* _memset64(void* p, ulong value, int count) {
+	ulong* ptr = cast(ulong*)p;
+
+	for (int i = 0; i < count; i += 8)
+		*ptr = value;
+	return p;
+}
+
+extern (C) void* memcpy(void* dest, const(void)* src, size_t size) {
+	for (size_t i = 0; i < size; ++i)
+		(cast(ubyte*)dest)[i] = (cast(const(ubyte)*)src)[i];
+	return dest;
+}
+
+extern (C) int memcmp(void* src1, void* src2, size_t size) {
+	ubyte* s1 = cast(ubyte*)src1;
+	ubyte* s2 = cast(ubyte*)src2;
+	while (size--) {
+		if (s1 < s2)
+			return 1;
+		else if (s2 < s1)
+			return -1;
+	}
+	return 0;
+}
+
+extern (C) int dstrcmp(char[] s1, char[] s2) {
+	int ret = 0;
+	auto len = s1.length;
+	if (s2.length < len)
+		len = s2.length;
+	if (0 != (ret = memcmp(s1.ptr, s2.ptr, len)))
+		return ret;
+	return s1.length > s2.length ? 1 : s1.length == s2.length ? 0 : -1;
 }
 
 extern (C) Throwable __dmd_begin_catch(_Unwind_Exception* exceptionObject) {
@@ -1414,7 +2170,7 @@ extern (C) Throwable __dmd_begin_catch(_Unwind_Exception* exceptionObject) {
 }
 
 extern (C) void _d_throwdwarf(Throwable o) {
-	log.Error("STUB");
+	o.print();
 }
 
 alias int _Unwind_Reason_Code;
