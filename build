@@ -30,6 +30,10 @@
 		"generateSymbols" : {
 			"command": "utils/generateSymbols",
 			"arguments": "$in $out"
+		},
+		"makeInitrd" : {
+			"command": "utils/makeInitrd",
+			"arguments": "$in $out"
 		}
 	},
 	"phonies": {
@@ -39,6 +43,10 @@
 		"utils/generateSymbols": {
 			"processor": "ndc",
 			"input": "utils/generateSymbols.d"
+		},
+		"utils/makeInitrd": {
+			"processor": "ndc",
+			"input": "utils/makeInitrd.d"
 		}
 	},
 	"rules": {
@@ -62,6 +70,10 @@
 			"processor": "generateSymbols",
 			"input": "powernex.krl"
 		},
+		"disk/boot/powernex.dsk": {
+			"processor": "makeInitrd",
+			"input": "Initrd"
+		},
 		"powernex.iso": {
 			"processor": "iso",
 			"input": "disk"
@@ -71,6 +83,7 @@
 		"powernex.krl",
 		"disk/boot/powernex.krl",
 		"disk/boot/powernex.map",
+		"disk/boot/powernex.dsk",
 		"powernex.iso"
 	]
 }

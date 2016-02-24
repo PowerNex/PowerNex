@@ -2,6 +2,7 @@
 build.dot
 powernex.krl
 powernex.map
+powernex.dsk
 wild
 kernel/obj/
 powernex.iso
@@ -11,3 +12,4 @@ bx_enh_dbg.ini
 com1.log
 utils/obj/
 utils/generateSymbols
+utils/makeInitrd
