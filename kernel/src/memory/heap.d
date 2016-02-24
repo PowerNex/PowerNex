@@ -64,7 +64,7 @@ public:
 			MemoryHeader* old = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).Ptr;
 			ubyte* src = cast(ubyte*)addr;
 			ubyte* dest = cast(ubyte*)newMem;
-			for (ulong i = 0; i < old.size; i++)
+			for (ulong i = 0; i < old.size && i < size; i++)
 				dest[i] = src[i];
 			Free(addr);
 		}
