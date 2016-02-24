@@ -3,6 +3,7 @@ module multiboot;
 import linker;
 import io.textmode;
 import io.log;
+import data.address;
 
 alias scr = GetScreen;
 
@@ -289,12 +290,15 @@ struct Multiboot {
 				scr.Writeln("Multiboot2 Error tag type");
 				break;
 			}
-
-			foreach (MultibootTagModule* mod; Modules[0 .. ModulesCount]) {
-				char* str = &mod.String;
-				if (str[0 .. mod.Size - 17] == "symbols")
-					log.SetSymbolMap(Linker.KernelStart + mod.ModStart, Linker.KernelStart + mod.ModEnd);
-			}
 		}
+	}
+
+	static VirtAddress[2] GetModule(string name) {
+		foreach (mod; Modules[0 .. ModulesCount]) {
+			char* str = &mod.String;
+			if (str[0 .. mod.Size - 17] == name)
+				return [PhysAddress(mod.ModStart).Virtual, PhysAddress(mod.ModEnd).Virtual];
+		}
+		return [VirtAddress(), VirtAddress()];
 	}
 }

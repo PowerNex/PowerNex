@@ -19,7 +19,7 @@ enum Colors : ubyte {
 	LightCyan = 11,
 	LightRed = 12,
 	LightMagenta = 13,
-	LightBrown = 14,
+	Yellow = 14,
 	White = 15
 }
 
