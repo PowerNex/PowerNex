@@ -45,8 +45,8 @@ private mixin template AddressBase() {
 			return 0;
 	}
 
-	@property void* Ptr() {
-		return addr;
+	@property T* Ptr(T = void)() {
+		return cast(T*)addr;
 	}
 
 	@property ulong Int() const {
