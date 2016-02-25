@@ -10,7 +10,7 @@ immutable uint minor = __VERSION__ % 1000;
 class VersionNode : FileNode {
 public:
 	this(DirectoryNode parent) {
-		super(id, name, NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), size, parent);
+		super(0, "NULL", NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), size, parent);
 		this.size = 0;
 	}
 

@@ -52,16 +52,32 @@ private:
 	}
 
 	void addAt(string path, Node node) {
-		//TODO: find folder
+		if (path[0] != '/' || path[$ - 1] == '/')
+			return;
+		ulong start = 1;
+		ulong end = 1;
+		DirectoryNode parent = this;
+		while (end < path.length) {
+			while (end < path.length && path[end] != '/')
+				end++;
+			if (end >= path.length)
+				break;
 
-		auto parent = this;
+			// End is on a '/'
 
+			if (start != end)
+				parent = getOrAdd(parent, path[start .. end]);
+			start = end + 1;
+			end++;
+		}
+
+		node.Name = path[start .. $];
 		node.Parent = parent;
 		add(node);
 		parent.AddChild(node.ID);
 	}
 
 	void initNodes() {
-		addAt("", new VersionNode(this));
+		addAt("/version", new VersionNode(this));
 	}
 }
