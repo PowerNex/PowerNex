@@ -108,7 +108,7 @@ struct Screen(int w, int h) {
 			for (int xx = 0; xx < w; xx++) {
 				auto slot = &(*screen)[y * w + xx];
 				slot.ch = ' ';
-				slot.color = color;
+				slot.color = Color(Colors.Cyan, Colors.Black); //XXX: Stupid hack to fix colors while scrolling
 			}
 		}
 		MoveCursor();
