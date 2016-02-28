@@ -9,9 +9,8 @@ immutable uint minor = __VERSION__ % 1000;
 
 class VersionNode : FileNode {
 public:
-	this(DirectoryNode parent) {
-		super(0, "NULL", NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), size, parent);
-		this.size = 0;
+	this() {
+		super(NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), 0);
 	}
 
 	override ulong Read(ubyte[] buffer, ulong offset) {
@@ -20,6 +19,8 @@ public:
 
 		string data = "Compiled using '" ~ __VENDOR__ ~ "' D version " ~ itoa(major, majorBuf) ~ "." ~ itoa(minor, minorBuf) ~ "\n";
 
+		if (offset > data.length)
+			return 0;
 		ulong size = buffer.length;
 		ulong end = size + offset;
 		if (end > data.length) {
@@ -27,7 +28,7 @@ public:
 			size = end - offset;
 		}
 
-		memcpy(&buffer[offset], data.ptr, size);
+		memcpy(buffer.ptr, &data[offset], size);
 
 		data.destroy;
 		return size;

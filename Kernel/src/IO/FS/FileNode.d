@@ -4,22 +4,21 @@ import IO.FS;
 import IO.Log;
 
 abstract class FileNode : Node {
-	this(ulong id, string name, NodePermissions permission, ulong size, DirectoryNode parent) {
-		super(id, name, permission, size, parent);
+public:
+	this(NodePermissions permission, ulong size) {
+		super(permission);
+		this.size = size;
 	}
 
-	override DirRange NodeList() {
-		log.Fatal("Can't use NodeList() on a FileNode");
-		assert(0);
+	abstract void Open();
+	abstract void Close();
+	abstract ulong Read(ubyte[] buffer, ulong offset);
+	abstract ulong Write(ubyte[] buffer, ulong offset);
+
+	@property ulong Size() {
+		return size;
 	}
 
-	override Node GetNode(ulong id) {
-		log.Fatal("Can't use GetNode(ulong) on a FileNode");
-		assert(0);
-	}
-
-	override Node GetNode(string name) {
-		log.Fatal("Can't use GetNode(string) on a FileNode");
-		assert(0);
-	}
+private:
+	ulong size;
 }

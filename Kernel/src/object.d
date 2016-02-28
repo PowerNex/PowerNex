@@ -180,7 +180,6 @@ extern (C) {
 
 	void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		log.Info("ti: ", ti.toString, "(", ti.next.toString, " = ", size, ") newlength: ", newlength, " p: ", p);
 		*p = GetKernelHeap.Realloc(p.ptr, newlength * size)[0 .. newlength];
 		return *p;
 	}
@@ -197,7 +196,6 @@ extern (C) {
 	extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs) {
 		size_t length;
 		auto size = unqualify(ti.next).tsize; // array element size
-		log.Warning("Size is: ", size, " ti: ", ti.toString, " ti.next: ", unqualify(ti.next).toString);
 
 		foreach (b; arrs)
 			length += b.length;

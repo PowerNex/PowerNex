@@ -69,14 +69,12 @@ void LoadInitrd() {
 		return;
 	}
 
-	DirectoryNode root = new InitrdRootNode(initrd[0]);
-	scr.Writeln("Root: ", root.toString);
-
-	void printDir(DirectoryNode dir, int indent = 1) {
-		foreach (node; dir.NodeList) {
+	FSRoot root;
+	void printDir(DirectoryNode dir, int indent = 0) {
+		foreach (idx, node; dir.Nodes) {
 			for (int i = 0; i < indent; i++)
 				scr.Write("  ");
-			scr.Writeln(node.ID, ": ", node.Name);
+			scr.Writeln(node.ID, "(", idx, "): ", node.Name);
 			if (auto f = cast(FileNode)node) {
 				scr.color.Foreground = Colors.Yellow;
 				scr.color.Background = Colors.Blue;
@@ -92,12 +90,14 @@ void LoadInitrd() {
 		}
 	}
 
-	printDir(root);
+	root = new InitrdFSRoot(initrd[0], null);
+	scr.Writeln("Root: ", root.toString);
+	printDir(root.Root);
 	root.destroy();
 
-	root = new SystemRootNode();
-	scr.Writeln("Root: ", root.toString);
-	printDir(root);
+	root = new SystemFSRoot(null);
+	scr.Writeln("Root: ", root.Root.toString);
+	printDir(root.Root);
 	root.destroy();
 
 	scr.Writeln();
