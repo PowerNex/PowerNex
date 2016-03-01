@@ -61,6 +61,7 @@ struct Log {
 	}
 
 	void opCall(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(LogLevel level, Arg args) {
+		char[ulong.sizeof * 8] buf;
 		if (!enabled)
 			return;
 		for (int i = 0; i < indent; i++)
@@ -68,11 +69,7 @@ struct Log {
 
 		COM1.Write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
 
-		char[int.sizeof * 8] buf;
-		auto start = itoa(line, buf.ptr, buf.length, 10);
-		for (size_t i = start; i < buf.length; i++)
-			COM1.Write(buf[i]);
-
+		COM1.Write(itoa(line, buf, 10));
 		COM1.Write("> ");
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
@@ -82,17 +79,13 @@ struct Log {
 				WriteEnum(arg);*/
 			else static if (is(T : V*, V)) {
 				COM1.Write("0x");
-				start = itoa(cast(ulong)arg, buf.ptr, buf.length, 16);
-				for (size_t i = start; i < buf.length; i++)
-					COM1.Write(buf[i]);
+				COM1.Write(itoa(cast(ulong)arg, buf, 16));
 			} else static if (is(T == bool))
 				COM1.Write((arg) ? "true" : "false");
 			else static if (is(T : char))
 				COM1.Write(arg);
 			else static if (isNumber!T) {
-				start = itoa(arg, buf.ptr, buf.length, 10);
-				for (size_t i = start; i < buf.length; i++)
-					COM1.Write(buf[i]);
+				COM1.Write(itoa(arg, buf, 10));
 			} else
 				COM1.Write("UNKNOWN TYPE '", T.stringof, "'");
 		}
@@ -148,11 +141,9 @@ struct Log {
 			COM1.Write("\t[");
 
 			{
-				char[int.sizeof * 8] buf;
+				char[ulong.sizeof * 8] buf;
 				COM1.Write("0x");
-				size_t start = itoa(*rip, buf.ptr, buf.length, 16);
-				for (size_t i = start; i < buf.length; i++)
-					COM1.Write(buf[i]);
+				COM1.Write(itoa(*rip, buf, 16));
 			}
 
 			COM1.Write("] ");
@@ -181,11 +172,9 @@ struct Log {
 
 			COM1.Write(f.name);
 			if (f.diff) {
-				char[int.sizeof * 8] buf;
+				char[ulong.sizeof * 8] buf;
 				COM1.Write("+0x");
-				size_t start = itoa(f.diff, buf.ptr, buf.length, 16);
-				for (size_t i = start; i < buf.length; i++)
-					COM1.Write(buf[i]);
+				COM1.Write(itoa(f.diff, buf, 16));
 			}
 
 			COM1.Write("\r\n");
