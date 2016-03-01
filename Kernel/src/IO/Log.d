@@ -43,6 +43,13 @@ struct Log {
 	bool enabled;
 	SymbolMap* symbols;
 
+	// XXX: Page fault if this is not wrapped like this!
+	static ulong Seconds() {
+		import CPU.PIT : PIT;
+
+		return PIT.Seconds();
+	}
+
 	void Init() {
 		COM1.Init();
 		indent = 0;
@@ -67,6 +74,7 @@ struct Log {
 		for (int i = 0; i < indent; i++)
 			COM1.Write(' ');
 
+		COM1.Write('[', itoa(Seconds(), buf, 10), ']');
 		COM1.Write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
 
 		COM1.Write(itoa(line, buf, 10));
