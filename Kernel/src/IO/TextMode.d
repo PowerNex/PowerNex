@@ -126,9 +126,7 @@ struct Screen(int w, int h) {
 
 	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
 		char[S.sizeof * 8] buf;
-		auto start = itoa(value, buf.ptr, buf.length, base);
-		for (size_t i = start; i < buf.length; i++)
-			Write(buf[i]);
+		Write(itoa(value, buf, base));
 	}
 
 	void WriteEnum(T)(T value) if (is(T == enum)) {
@@ -167,11 +165,17 @@ struct Screen(int w, int h) {
 	}
 
 	void MoveCursor() {
+		asm {
+			cli;
+		}
 		ushort pos = y * w + x;
 		Out!ubyte(0x3D4, 14);
 		Out!ubyte(0x3D5, pos >> 8);
 		Out!ubyte(0x3D4, 15);
 		Out!ubyte(0x3D5, cast(ubyte)pos);
+		asm {
+			sti;
+		}
 	}
 }
 
