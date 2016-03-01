@@ -23,12 +23,14 @@ T In(T = ubyte)(ushort port) {
 			 in EAX, DX;
 			mov ret, EAX;
 		}
-	}
+	} else
+		static assert(0);
 
 	return ret;
 }
 
-void Out(T = ubyte)(ushort port, uint data) {
+void Out(T = ubyte)(ushort port, T d) {
+	uint data = d;
 	asm {
 		mov EAX, data;
 		mov DX, port;
@@ -46,5 +48,6 @@ void Out(T = ubyte)(ushort port, uint data) {
 		asm {
 			out DX, EAX;
 		}
-	}
+	} else
+		static assert(0);
 }
