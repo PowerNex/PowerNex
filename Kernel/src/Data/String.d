@@ -19,7 +19,7 @@ size_t strlen(char[] str) {
 }
 
 string itoa(S)(S v, char[] buf, uint base = 10) if (isNumber!S) {
-	auto start = itoa(v, buf.ptr, buf.length, 10);
+	auto start = itoa(v, buf.ptr, buf.length, base);
 	return cast(string)buf[start .. $];
 }
 
