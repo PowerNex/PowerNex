@@ -1,11 +1,8 @@
 module CPU.IDT;
 
-version (X86_64) {
-} else
-	static assert(0, "IDT is current only for X86_64!");
-
 import Data.Register;
 import Data.BitField;
+import IO.Port;
 
 align(1) struct IDTBase {
 align(1):
@@ -76,18 +73,21 @@ enum InterruptStackType : ushort {
 	MCE
 }
 
-private extern (C) void* CPU_ret_cr2();
 static struct IDT {
+public:
+	alias InterruptCallback = void function(InterruptRegisters* regs);
 	__gshared IDTBase base;
 	__gshared IDTDescriptor[256] desc;
+	__gshared InterruptCallback[256] handlers;
 
 	static void Init() {
 		base.Limit = (IDTDescriptor.sizeof * desc.length) - 1;
 		base.Offset = cast(ulong)desc.ptr;
 
-		registerCPUInterrupts();
+		_memset64(handlers.ptr, 0, InterruptCallback.sizeof * 256);
 
-		Flush();
+		remapIRQ();
+		addAllJumps();
 	}
 
 	static void Flush() {
@@ -98,7 +98,12 @@ static struct IDT {
 		}
 	}
 
-	private static void add(uint id, SystemSegmentType gateType, ulong func, ushort dplFlags, ushort istFlags) {
+	static void Register(uint id, InterruptCallback cb) {
+		handlers[id] = cb;
+	}
+
+private:
+	static void add(uint id, SystemSegmentType gateType, ulong func, ushort dplFlags, ushort istFlags) {
 		with (desc[id]) {
 			TargetLow = func & 0xFFFF;
 			Segment = 0x08;
@@ -111,19 +116,44 @@ static struct IDT {
 		}
 	}
 
-	private static void registerCPUInterrupts() {
+	static void addAllJumps() {
 		mixin(addJumps!(0, 255));
 		add(3, SystemSegmentType.InterruptGate, cast(ulong)&isr3, 3, InterruptStackType.Debug);
 		add(8, SystemSegmentType.InterruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.RegisterStack);
+
+		Flush();
 	}
 
-	private static template generateJump(ulong id, bool hasError = false) {
+	static void remapIRQ() {
+		ushort MasterControl = 0x20;
+		ushort MasterData = 0x21;
+		ushort SlaveControl = 0xA0;
+		ushort SlaveData = 0xA1;
+
+		// Remap IRQ
+		Out!ubyte(MasterControl, 0x11); // Starts setup of PIC controllers
+		Out!ubyte(SlaveControl, 0x11);
+
+		Out!ubyte(MasterData, 0x20); // Master PIC interrupt id
+		Out!ubyte(SlaveData, 0x28); // Slave PIC interrupt id
+
+		Out!ubyte(MasterData, 0x04); // Tells master that it has a slave at IRQ2 (0000 0100)
+		Out!ubyte(SlaveData, 0x02); // Tells the slave that it's a slave (0000 0010)
+
+		Out!ubyte(MasterData, 0x01); // 8086/88 (MCS-80/85) mode
+		Out!ubyte(SlaveData, 0x01);
+
+		Out!ubyte(MasterData, 0x0); // Sets the masks to 0
+		Out!ubyte(SlaveData, 0x0);
+	}
+
+	static template generateJump(ulong id, bool hasError = false) {
 		const char[] generateJump = `
-			private static void isr` ~ id.stringof[0 .. $ - 2] ~ `() {
+			static void isr` ~ id.stringof[0 .. $ - 2] ~ `() {
 				asm {
 					naked;
-					` ~ (hasError ? ""
-				: "push 0UL;") ~ `
+					` ~ (hasError ? "" : "push 0UL;")
+			~ `
 					push ` ~ id.stringof ~ `;
 
 					jmp isrCommon;
@@ -132,20 +162,20 @@ static struct IDT {
 		`;
 	}
 
-	private static template generateJumps(ulong from, ulong to, bool hasError = false) {
+	static template generateJumps(ulong from, ulong to, bool hasError = false) {
 		static if (from <= to)
 			const char[] generateJumps = generateJump!(from, hasError) ~ generateJumps!(from + 1, to, hasError);
 		else
 			const char[] generateJumps = "";
 	}
 
-	private static template addJump(ulong id) {
+	static template addJump(ulong id) {
 		const char[] addJump = `
 			add(` ~ id.stringof[0 .. $ - 2] ~ `, SystemSegmentType.InterruptGate, cast(ulong)&isr`
 			~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.RegisterStack);`;
 	}
 
-	private static template addJumps(ulong from, ulong to) {
+	static template addJumps(ulong from, ulong to) {
 		static if (from <= to)
 			const char[] addJumps = addJump!from ~ addJumps!(from + 1, to);
 		else
@@ -158,9 +188,10 @@ static struct IDT {
 	mixin(generateJumps!(10, 14, true));
 	mixin(generateJumps!(15, 255));
 
-	private static void isrIgnore() {
+	static void isrIgnore() {
 		asm {
 			naked;
+			cli;
 			nop;
 			nop;
 			nop;
@@ -169,11 +200,10 @@ static struct IDT {
 		}
 	}
 
-	extern (C) private static void isrCommon() {
+	extern (C) static void isrCommon() {
 		asm {
 			naked;
 			cli;
-
 			push RAX;
 			push RBX;
 			push RCX;
@@ -214,47 +244,26 @@ static struct IDT {
 		}
 	}
 
-	extern (C) private static void isrHandler(InterruptRegisters* regs) {
+	extern (C) static void isrHandler(InterruptRegisters* regs) {
 		import IO.TextMode;
-
-		alias scr = GetScreen;
-		if (regs.IntNumber == InterruptType.PageFault) {
-			scr.Writeln("===> PAGE FAULT");
-			scr.Writeln("IRQ = ", regs.IntNumber, " | RIP = ", cast(void*)regs.RIP);
-			scr.Writeln("RAX = ", cast(void*)regs.RAX, " | RBX = ", cast(void*)regs.RBX);
-			scr.Writeln("RCX = ", cast(void*)regs.RCX, " | RDX = ", cast(void*)regs.RDX);
-			scr.Writeln("RDI = ", cast(void*)regs.RDI, " | RSI = ", cast(void*)regs.RSI);
-			scr.Writeln("RSP = ", cast(void*)regs.RSP, " | RBP = ", cast(void*)regs.RBP);
-			scr.Writeln(" R8 = ", cast(void*)regs.R8, "  |  R9 = ", cast(void*)regs.R9);
-			scr.Writeln("R10 = ", cast(void*)regs.R10, " | R11 = ", cast(void*)regs.R11);
-			scr.Writeln("R12 = ", cast(void*)regs.R12, " | R13 = ", cast(void*)regs.R13);
-			scr.Writeln("R14 = ", cast(void*)regs.R14, " | R15 = ", cast(void*)regs.R15);
-			scr.Writeln(" CS = ", cast(void*)regs.CS, "  |  SS = ", cast(void*)regs.SS);
-			scr.Writeln(" CR2 = ", CPU_ret_cr2());
-			scr.Writeln("Flags: ", cast(void*)regs.Flags);
-			scr.Writeln("Errorcode: ", cast(void*)regs.ErrorCode);
-		} else
-			scr.Writeln("INTERRUPT: ", cast(InterruptType)regs.IntNumber, " Errorcode: ", regs.ErrorCode);
 		import IO.Log;
 
-		with (regs) {
-			if (regs.IntNumber == InterruptType.PageFault) {
-				log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", regs.IntNumber, " | RIP = ", cast(void*)regs.RIP, "\n",
-						"RAX = ", cast(void*)regs.RAX, " | RBX = ", cast(void*)regs.RBX, "\n", "RCX = ",
-						cast(void*)regs.RCX, " | RDX = ", cast(void*)regs.RDX, "\n", "RDI = ", cast(void*)regs.RDI,
-						" | RSI = ", cast(void*)regs.RSI, "\n", "RSP = ", cast(void*)regs.RSP, " | RBP = ",
-						cast(void*)regs.RBP, "\n", " R8 = ", cast(void*)regs.R8, "  |  R9 = ", cast(void*)regs.R9,
-						"\n", "R10 = ", cast(void*)regs.R10, " | R11 = ", cast(void*)regs.R11, "\n", "R12 = ",
-						cast(void*)regs.R12, " | R13 = ", cast(void*)regs.R13, "\n", "R14 = ", cast(void*)regs.R14,
-						" | R15 = ", cast(void*)regs.R15, "\n", " CS = ", cast(void*)regs.CS, "  |  SS = ",
-						cast(void*)regs.SS, "\n", " CR2 = ", CPU_ret_cr2(), "\n", "Flags: ", cast(void*)regs.Flags,
-						"\n", "Errorcode: ", cast(void*)regs.ErrorCode);
-			} else
-				log.Fatal("Interrupt!\r\n", "\tIntNumber: ", cast(void*)IntNumber, " ErrorCode: ",
+		if (auto handler = handlers[regs.IntNumber])
+			handler(regs);
+		else
+			with (regs) {
+				GetScreen.Writeln("UNCAUGHT INTERRUPT: ", cast(InterruptType)regs.IntNumber, " Errorcode: ", regs.ErrorCode);
+				log.Fatal("Uncaught interrupt!\r\n", "\tIntNumber: ", cast(void*)IntNumber, " ErrorCode: ",
 						cast(void*)ErrorCode, "\r\n", "\tRAX: ", cast(void*)RAX, " RBX: ", cast(void*)RBX, " RCX: ",
 						cast(void*)RCX, " RDX: ", cast(void*)RDX, "\r\n", "\tRSI: ", cast(void*)RSI, " RDI: ",
 						cast(void*)RDI, " RBP: ", cast(void*)RBP, "\r\n", "\tRIP: ", cast(void*)RIP, " RSP: ",
-						cast(void*)RSP, " Flags: ", cast(void*)Flags, " SS: ", cast(void*)SS, " CS: ", cast(void*)CS,);
+						cast(void*)RSP, " Flags: ", cast(void*)Flags, " SS: ", cast(void*)SS, " CS: ", cast(void*)CS);
+			}
+
+		if (32 <= regs.IntNumber && regs.IntNumber <= 48) {
+			if (regs.IntNumber >= 40)
+				Out!ubyte(0xA0, 0x20);
+			Out!ubyte(0x20, 0x20);
 		}
 	}
 }
