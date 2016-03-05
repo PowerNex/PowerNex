@@ -3,6 +3,7 @@ module IO.Keyboard;
 import CPU.IDT;
 import Data.Register;
 import IO.Port;
+import IO.Log;
 
 enum Modifiers : ubyte {
 	None = 0,
@@ -42,6 +43,7 @@ public:
 		uint IRQ1 = 33;
 		IDT.Register(IRQ1, &onKey);
 		layout = en_US;
+		initalized = true;
 	}
 
 	static char Get() {
@@ -52,12 +54,24 @@ public:
 	}
 
 private:
+	enum DataPort = 0x60;
+	enum StatusPort = 0x64;
+
+	__gshared bool initalized;
 	__gshared KeyboardLayout layout;
 	__gshared char[256] buffer;
 	__gshared ubyte start, end;
 
+	static void wait() {
+		while (In!ubyte(StatusPort) & 2) {
+		}
+	}
+
 	static void onKey(InterruptRegisters* regs) {
-		ubyte scancode = In!ubyte(0x60);
+		wait();
+		ubyte scancode = In!ubyte(DataPort);
+		if (!initalized)
+			return;
 		if (scancode & Modifiers.ReleasedMask) {
 			for (int i = 0; i < 5; i++) {
 				if (layout.controlMap[i] == (scancode & ~Modifiers.ReleasedMask)) {
