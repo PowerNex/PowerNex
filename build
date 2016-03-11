@@ -15,10 +15,6 @@
 			"command": "cc/bin/x86_64-powernex-ld",
 			"arguments": "-o $out -z max-page-size=0x1000 $in -T Kernel/src/Kernel.ld"
 		},
-		"cp": {
-			"command": "cp",
-			"arguments": "-rf $in $out"
-		},
 		"iso": {
 			"command": "grub-mkrescue",
 			"arguments": "-d /usr/lib/grub/i386-pc -o $out $in"
@@ -50,7 +46,7 @@
 		}
 	},
 	"rules": {
-		"Kernel/obj/*.o": {
+		"Kernel/obj/DCode.o": {
 			"processor": "dc",
 			"input": "Kernel/src/*.d"
 		},
@@ -58,17 +54,13 @@
 			"processor": "ac",
 			"input": "Kernel/src/*.S"
 		},
-		"PowerNex.krl": {
+		"Disk/boot/PowerNex.krl": {
 			"processor": "ld",
 			"input": "Kernel/obj/*.o"
 		},
-		"Disk/boot/PowerNex.krl": {
-			"processor": "cp",
-			"input": "PowerNex.krl"
-		},
 		"Disk/boot/PowerNex.map": {
 			"processor": "GenerateSymbols",
-			"input": "PowerNex.krl"
+			"input": "Disk/boot/PowerNex.krl"
 		},
 		"Disk/boot/PowerNex.dsk": {
 			"processor": "MakeInitrd",
@@ -80,7 +72,6 @@
 		}
 	},
 	"targets": [
-		"PowerNex.krl",
 		"Disk/boot/PowerNex.krl",
 		"Disk/boot/PowerNex.map",
 		"Disk/boot/PowerNex.dsk",
