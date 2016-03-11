@@ -12,3 +12,4 @@ bx_enh_dbg.ini
 COM1.log
 Utils/GenerateSymbols
 Utils/MakeInitrd
+.vscode
