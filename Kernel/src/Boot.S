@@ -87,6 +87,34 @@ start:
 	bts $16, %eax
 	mov %eax, %cr0
 
+.remapIRQ:
+.SET MasterControl, 0x20
+.SET MasterData, 0x21
+.SET SlaveControl, 0xA0
+.SET SlaveData, 0xA1
+	mov $0x11, %al
+	out %al, $MasterControl # Starts setup of controllers
+	out %al, $SlaveControl
+
+	mov $0x20, %al
+	out %al, $MasterData # Master PIC interrupt id
+	mov $0x28, %al
+	out %al, $SlaveData # Slave PIC interrupt id
+
+	mov $0x04, %al
+	out %al, $MasterData # Tells master that it has a slave at IRQ2 (0000 0100)
+	mov $0x02, %al
+	out %al, $SlaveData # Tells the slave that it's a slave (0000 0010)
+
+	mov $0x01, %al
+	out %al, $MasterData # 8086/88 (MCS-80/85) mode
+	out %al, $SlaveData
+
+	mov $0x0, %al
+	out %al, $MasterData # Sets the masks to 0
+	out %al, $SlaveData
+
+.jumpToX64:
 	# Load x64 GDT
 	lgdt (gdtPointer - KERNEL_VMA)
 	# Jump into x64

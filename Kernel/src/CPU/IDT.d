@@ -86,7 +86,6 @@ public:
 
 		_memset64(handlers.ptr, 0, InterruptCallback.sizeof * 256);
 
-		remapIRQ();
 		addAllJumps();
 	}
 
@@ -122,29 +121,6 @@ private:
 		add(8, SystemSegmentType.InterruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.RegisterStack);
 
 		Flush();
-	}
-
-	static void remapIRQ() {
-		ushort MasterControl = 0x20;
-		ushort MasterData = 0x21;
-		ushort SlaveControl = 0xA0;
-		ushort SlaveData = 0xA1;
-
-		// Remap IRQ
-		Out!ubyte(MasterControl, 0x11); // Starts setup of PIC controllers
-		Out!ubyte(SlaveControl, 0x11);
-
-		Out!ubyte(MasterData, 0x20); // Master PIC interrupt id
-		Out!ubyte(SlaveData, 0x28); // Slave PIC interrupt id
-
-		Out!ubyte(MasterData, 0x04); // Tells master that it has a slave at IRQ2 (0000 0100)
-		Out!ubyte(SlaveData, 0x02); // Tells the slave that it's a slave (0000 0010)
-
-		Out!ubyte(MasterData, 0x01); // 8086/88 (MCS-80/85) mode
-		Out!ubyte(SlaveData, 0x01);
-
-		Out!ubyte(MasterData, 0x0); // Sets the masks to 0
-		Out!ubyte(SlaveData, 0x0);
 	}
 
 	static template generateJump(ulong id, bool hasError = false) {
