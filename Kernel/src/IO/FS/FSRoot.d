@@ -6,35 +6,7 @@ abstract class FSRoot {
 public:
 	this(DirectoryNode root) {
 		this.root = root;
-	}
-
-	Node Add(Node node) {
-		if (node.Root == this)
-			return node;
-		if (nodes.length == nodeCount)
-			nodes.length += 8;
-
-		nodes[nodeCount++] = node;
-		node.ID = idCounter++;
-		log.Info("FSRoot Add: ", node.ID);
-		return node;
-	}
-
-	void Remove(Node node) {
-		if (node.Root != this)
-			return;
-		log.Info("FSRoot Remove: ", node.ID);
-		ulong i = 0;
-		while (i < nodeCount && nodes[i] == node)
-			i++;
-		if (i >= nodeCount)
-			return;
-
-		nodes[i].destroy;
-		for (; i < nodeCount; i++)
-			nodes[i] = nodes[i + 1];
-		nodes[i - 1] = null;
-		nodeCount--;
+		root.Root = this;
 	}
 
 	Node[] Nodes() {
@@ -52,6 +24,35 @@ public:
 		return root;
 	}
 
+package:
+	Node Add(Node node) {
+		if (node.Root == this)
+			return node;
+		if (nodes.length == nodeCount)
+			nodes.length += 8;
+
+		nodes[nodeCount++] = node;
+		node.ID = idCounter++;
+		log.Info("FSRoot Add: ", node.ID, "(", cast(void*)node, ")");
+		return node;
+	}
+
+	Node Remove(Node node) {
+		if (node.Root != this)
+			return node;
+		log.Info("FSRoot Remove: ", node.ID, "(", cast(void*)node, ")");
+		ulong i = 0;
+		while (i < nodeCount && nodes[i] != node)
+			i++;
+		if (i >= nodeCount)
+			return node;
+
+		for (; i < nodeCount; i++)
+			nodes[i] = nodes[i + 1];
+		nodeCount--;
+		return node;
+	}
+
 protected:
 	DirectoryNode root;
 	Node[] nodes;
@@ -64,7 +65,8 @@ protected:
 
 		auto node = new DirectoryNode(NodePermissions.DefaultPermissions);
 		node.Name = dir;
-		cur.Add(Add(node));
+		node.Root = this;
+		node.Parent = cur;
 		return node;
 	}
 
@@ -89,6 +91,7 @@ protected:
 		}
 
 		node.Name = path[start .. $];
-		parent.Add(Add(node));
+		node.Root = this;
+		node.Parent = parent;
 	}
 }

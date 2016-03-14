@@ -2,30 +2,38 @@ module IO.FS.MountPointNode;
 
 import IO.FS;
 
-abstract class MountPointNode : DirectoryNode {
+class MountPointNode : DirectoryNode {
 public:
-	this(NodePermissions permission, FSRoot mount, DirectoryNode oldNode) {
-		super(permission);
-		this.mount = mount;
+	this(DirectoryNode oldNode, FSRoot mount) {
+		super(oldNode.Permission);
 		this.oldNode = oldNode;
+		this.mount = mount;
+		this.name = oldNode.Name;
 	}
 
 	override Node FindNode(string path) {
 		return mount.Root.FindNode(path);
 	}
 
-	override Node Add(Node node) {
-		node.Root = mount;
-		node.Parent = mount.Root;
-		return node;
+	@property override Node[] Nodes() {
+		return mount.Root.Nodes;
 	}
 
-	override void Remove(Node node) {
-		node.Root = root;
-		node.Parent = null;
+	@property DirectoryNode OldNode() {
+		return oldNode;
 	}
 
 protected:
-	FSRoot mount;
 	DirectoryNode oldNode;
+	FSRoot mount;
+
+	override Node add(Node node) {
+		node.Root = mount;
+		return mount.Root.Add(node);
+	}
+
+	override Node remove(Node node) {
+		node.Root = oldNode.Root;
+		return mount.Root.Remove(node);
+	}
 }

@@ -56,10 +56,26 @@ public:
 		return null;
 	}
 
+	@property Node[] Nodes() {
+		return nodes[0 .. nodeCount];
+	}
+
+package:
 	Node Add(Node node) {
+		return add(node);
+	}
+	Node Remove(Node node) {
+		return remove(node);
+	}
+
+protected:
+	Node[] nodes;
+	ulong nodeCount;
+
+	Node add(Node node) {
 		if (node.Parent == this)
 			return node;
-		log.Info("DirectoryNode ", ID, " Add: ", node.ID);
+		log.Info("DirectoryNode ", ID, " Add: ", node.ID, "(", cast(void*)node, ")");
 		if (nodes.length == nodeCount) {
 			nodes.length += 8;
 			for (ulong i = nodeCount; i < nodes.length; i++)
@@ -67,33 +83,22 @@ public:
 		}
 
 		nodes[nodeCount++] = node;
-		node.Parent = this;
 		return node;
 	}
 
-	void Remove(Node node) {
+	Node remove(Node node) {
 		if (node.Parent != this)
-			return;
-		log.Info("DirectoryNode ", ID, " Remove: ", node.ID);
+			return node;
+		log.Info("DirectoryNode ", ID, " Remove: ", node.ID, "(", cast(void*)node, ")");
 		ulong i = 0;
-		while (i < nodeCount && nodes[i] == node)
+		while (i < nodeCount && nodes[i] != node)
 			i++;
 		if (i >= nodeCount)
-			return;
-
-		nodes[i].Parent = root.Root;
+			return node;
 
 		for (; i < nodeCount; i++)
 			nodes[i] = nodes[i + 1];
-		nodes[i - 1] = null;
 		nodeCount--;
+		return node;
 	}
-
-	@property Node[] Nodes() {
-		return nodes[0 .. nodeCount];
-	}
-
-protected:
-	Node[] nodes;
-	ulong nodeCount;
 }

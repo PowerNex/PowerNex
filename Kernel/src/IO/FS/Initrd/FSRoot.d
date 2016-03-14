@@ -13,8 +13,6 @@ public:
 		auto root = new DirectoryNode(NodePermissions.DefaultPermissions);
 		root.Name = "Initrd";
 		root.ID = idCounter++;
-		if (parent)
-			parent.Add(root);
 		super(root);
 
 		initrd = cast(Initrd*)initrdAddr.Ptr;
@@ -72,7 +70,8 @@ private:
 			}
 
 			node.Name = entry.name.fromStringz();
-			parent.Add(Add(node));
+			node.Root = this;
+			node.Parent = parent;
 			lookup[idx] = node.ID;
 		}
 		lookup.destroy;
