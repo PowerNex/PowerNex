@@ -25,10 +25,10 @@ public:
 		if (this.root)
 			this.root.Remove(this);
 
+		if (root)
+			root.Add(this);
 		this.root = root;
-		if (this.root)
-			this.root.Add(this);
-		return this.root;
+		return root;
 	}
 
 	@property ref ulong ID() {
@@ -53,10 +53,10 @@ public:
 		if (this.parent)
 			this.parent.Remove(this);
 
+		if (parent)
+			parent.Add(this);
 		this.parent = parent;
-		if (this.parent)
-			this.parent.Add(this);
-		return this.parent;
+		return parent;
 	}
 
 	override string toString() const {
