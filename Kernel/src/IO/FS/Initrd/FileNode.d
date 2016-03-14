@@ -36,6 +36,10 @@ public:
 	override void Close() {
 	}
 
+	@property ubyte[] RawAccess() {
+		return data;
+	}
+
 private:
 	ubyte[] data;
 }
