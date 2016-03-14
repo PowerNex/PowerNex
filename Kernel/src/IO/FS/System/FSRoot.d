@@ -5,12 +5,10 @@ import IO.FS.System;
 
 class SystemFSRoot : FSRoot {
 public:
-	this(DirectoryNode parent) {
-		auto root = new DirectoryNode(NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL));
+	this() {
+		auto root = new DirectoryNode(NodePermissions.DefaultPermissions);
 		root.Name = "System";
 		root.ID = idCounter++;
-		if (parent)
-			parent.Add(root);
 		super(root);
 
 		addAt("/version", new VersionNode());

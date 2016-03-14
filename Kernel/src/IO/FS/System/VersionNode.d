@@ -10,7 +10,7 @@ immutable uint minor = __VERSION__ % 1000;
 class VersionNode : FileNode {
 public:
 	this() {
-		super(NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), 0);
+		super(NodePermissions.DefaultPermissions, 0);
 	}
 
 	override ulong Read(ubyte[] buffer, ulong offset) {

@@ -9,8 +9,8 @@ import Data.String;
 
 class InitrdFSRoot : FSRoot {
 public:
-	this(VirtAddress initrdAddr, DirectoryNode parent) {
-		auto root = new DirectoryNode(NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL));
+	this(VirtAddress initrdAddr) {
+		auto root = new DirectoryNode(NodePermissions.DefaultPermissions);
 		root.Name = "Initrd";
 		root.ID = idCounter++;
 		if (parent)
@@ -65,7 +65,7 @@ private:
 			if (entry.type == Type.File)
 				node = new InitrdFileNode(offset, entry.size);
 			else if (entry.type == Type.Folder)
-				node = new DirectoryNode(NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL));
+				node = new DirectoryNode(NodePermissions.DefaultPermissions);
 			else {
 				log.Error("Unknown file type! ", entry.type);
 				continue;

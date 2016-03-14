@@ -62,7 +62,7 @@ protected:
 		if (auto node = cur.FindNode(dir))
 			return cast(DirectoryNode)node;
 
-		auto node = new DirectoryNode(NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL));
+		auto node = new DirectoryNode(NodePermissions.DefaultPermissions);
 		node.Name = dir;
 		cur.Add(Add(node));
 		return node;

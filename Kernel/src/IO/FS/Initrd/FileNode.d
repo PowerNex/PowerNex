@@ -8,7 +8,7 @@ public:
 	this(ubyte* offset, ulong size) {
 		this.root = root;
 		this.data = offset[0 .. size];
-		super(NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL), size);
+		super(NodePermissions.DefaultPermissions, size);
 	}
 
 	override ulong Read(ubyte[] buffer, ulong offset) {

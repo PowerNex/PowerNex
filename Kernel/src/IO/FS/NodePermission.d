@@ -46,6 +46,10 @@ struct PermissionMask {
 }
 
 struct NodePermissions {
+	@property static NodePermissions DefaultPermissions() {
+		return NodePermissions(PermissionMask(Mask.RWX, Mask.RX, Mask.RX), 0UL, 0UL);
+	}
+
 	PermissionMask mask;
 	ulong user;
 	ulong group;
