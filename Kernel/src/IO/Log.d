@@ -60,8 +60,8 @@ struct Log {
 		return enabled;
 	}
 
-	void SetSymbolMap(VirtAddress start, VirtAddress end) {
-		SymbolMap* map = cast(SymbolMap*)start.Ptr;
+	void SetSymbolMap(VirtAddress address) {
+		SymbolMap* map = cast(SymbolMap*)address.Ptr;
 		if (map.Magic[0 .. 4] != "DSYM")
 			return;
 		symbols = map;

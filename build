@@ -58,7 +58,7 @@
 			"processor": "ld",
 			"input": "Kernel/obj/*.o"
 		},
-		"Disk/boot/PowerNex.map": {
+		"Initrd/Data/PowerNex.map": {
 			"processor": "GenerateSymbols",
 			"input": "Disk/boot/PowerNex.krl"
 		},
@@ -73,7 +73,7 @@
 	},
 	"targets": [
 		"Disk/boot/PowerNex.krl",
-		"Disk/boot/PowerNex.map",
+		"Initrd/Data/PowerNex.map",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]

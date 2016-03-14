@@ -3,6 +3,7 @@ module KMain;
 import IO.Log;
 import IO.TextMode;
 import IO.Keyboard;
+import IO.FS;
 import CPU.GDT;
 import CPU.IDT;
 import CPU.PIT;
@@ -17,6 +18,8 @@ alias scr = GetScreen;
 
 immutable uint major = __VERSION__ / 1000;
 immutable uint minor = __VERSION__ % 1000;
+
+__gshared FSRoot rootFS;
 
 extern (C) int kmain(uint magic, ulong info) {
 	PreInit();
@@ -83,12 +86,6 @@ void Init(uint magic, ulong info) {
 	scr.Writeln("FrameAllocator initializing...");
 	FrameAllocator.Init();
 
-	auto symbols = Multiboot.GetModule("symbols");
-	if (symbols[0] != symbols[1]) {
-		scr.Writeln("Found debug symbols for log!");
-		log.SetSymbolMap(symbols[0], symbols[1]);
-	}
-
 	scr.Writeln("Paging initializing...");
 	GetKernelPaging.Install();
 
@@ -102,7 +99,6 @@ void Init(uint magic, ulong info) {
 void LoadInitrd() {
 	import IO.FS;
 	import IO.FS.Initrd;
-
 	import IO.FS.System;
 
 	scr.Writeln();
@@ -114,7 +110,6 @@ void LoadInitrd() {
 		return;
 	}
 
-	FSRoot root;
 	void printDir(DirectoryNode dir, int indent = 0) {
 		foreach (idx, node; dir.Nodes) {
 			for (int i = 0; i < indent; i++)
@@ -135,15 +130,41 @@ void LoadInitrd() {
 		}
 	}
 
-	root = new InitrdFSRoot(initrd[0], null);
-	scr.Writeln("Root: ", root.toString);
-	printDir(root.Root);
-	root.destroy();
+	void mount(string path, FSRoot fs) {
+		Node mp = rootFS.Root.FindNode(path);
+		if (mp && !cast(DirectoryNode)mp) {
+			log.Error(path, " is not a DirectoryNode!");
+			return;
+		}
+		if (!mp) {
+			mp = new DirectoryNode(NodePermissions.DefaultPermissions);
+			mp.Name = path[1 .. $];
+			mp.Root = rootFS;
+			mp.Parent = rootFS.Root;
+		}
 
-	root = new SystemFSRoot(null);
-	scr.Writeln("Root: ", root.Root.toString);
-	printDir(root.Root);
-	root.destroy();
+		DirectoryNode mpDir = cast(DirectoryNode)mp;
+		mpDir.Parent.Mount(mpDir, fs);
+	}
 
+	rootFS = new InitrdFSRoot(initrd[0]);
+	scr.Writeln("Root: ", rootFS.toString);
+
+	Node file = rootFS.Root.FindNode("/Data/PowerNex.map");
+	if (!file) {
+		log.Warning("Could not find the symbol file!");
+		return;
+	}
+	InitrdFileNode symbols = cast(InitrdFileNode)file;
+	if (!symbols) {
+		log.Error("Symbol file is not of the type InitrdFileNode! It's a ", typeid(file).name);
+		return;
+	}
+	log.SetSymbolMap(VirtAddress(symbols.RawAccess.ptr));
+	log.Info("Successfully loaded symbols!");
+
+	mount("/System", new SystemFSRoot());
+
+	printDir(rootFS.Root);
 	scr.Writeln();
 }
