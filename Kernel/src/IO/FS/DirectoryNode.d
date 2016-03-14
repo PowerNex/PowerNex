@@ -56,6 +56,33 @@ public:
 		return null;
 	}
 
+	MountPointNode Mount(DirectoryNode node, FSRoot fs) {
+		if (node.Parent != this) {
+			log.Error("Tried to run Mount on ", node.Name, " but it doesn't belong to ", name, "! Redirecting");
+			node.Parent.Mount(node, fs);
+		}
+		MountPointNode mount = new MountPointNode(node, fs);
+		node.Parent = null;
+		node.Root = null;
+		mount.Root = root;
+		mount.Parent = this;
+		return mount;
+	}
+
+	DirectoryNode Unmount(MountPointNode node) {
+		if (node.Parent != this) {
+			log.Error("Tried to run Unmount on ", node.Name, " but it doesn't belong to ", name, "! Redirecting");
+			node.Parent.Unmount(node);
+		}
+		node.Parent = null;
+		node.Root = null;
+		DirectoryNode dir = node.OldNode;
+		dir.root = root;
+		dir.Parent = this;
+		node.destroy;
+		return dir;
+	}
+
 	@property Node[] Nodes() {
 		return nodes[0 .. nodeCount];
 	}

@@ -15,6 +15,14 @@ public:
 		return mount.Root.FindNode(path);
 	}
 
+	override MountPointNode Mount(DirectoryNode node, FSRoot fs) {
+		return mount.Root.Mount(node, fs);
+	}
+
+	override DirectoryNode Unmount(MountPointNode node) {
+		return mount.Root.Unmount(node);
+	}
+
 	@property override Node[] Nodes() {
 		return mount.Root.Nodes;
 	}
