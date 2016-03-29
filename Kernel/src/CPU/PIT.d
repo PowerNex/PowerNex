@@ -31,7 +31,7 @@ private:
 	__gshared bool enabled;
 	__gshared uint hz;
 	__gshared ulong counter;
-	static void onTick(InterruptRegisters* regs) {
+	static void onTick(Registers* regs) {
 		counter++;
 	}
 }

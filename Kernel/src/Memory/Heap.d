@@ -183,7 +183,7 @@ Heap* GetKernelHeap() {
 	return &kernelHeap;
 }
 
-private void onPageFault(InterruptRegisters* regs) {
+private void onPageFault(Registers* regs) {
 	import IO.TextMode;
 	import IO.Log;
 

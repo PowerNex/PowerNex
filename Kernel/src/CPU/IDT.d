@@ -75,7 +75,7 @@ enum InterruptStackType : ushort {
 
 static struct IDT {
 public:
-	alias InterruptCallback = void function(InterruptRegisters* regs);
+	alias InterruptCallback = void function(Registers* regs);
 	__gshared IDTBase base;
 	__gshared IDTDescriptor[256] desc;
 	__gshared InterruptCallback[256] handlers;
@@ -220,7 +220,7 @@ private:
 		}
 	}
 
-	extern (C) static void isrHandler(InterruptRegisters* regs) {
+	extern (C) static void isrHandler(Registers* regs) {
 		import IO.TextMode;
 		import IO.Log;
 
