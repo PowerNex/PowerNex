@@ -73,6 +73,8 @@ enum InterruptStackType : ushort {
 	MCE
 }
 
+alias IRQ = (x) => 32 + x;
+
 static struct IDT {
 public:
 	alias InterruptCallback = void function(Registers* regs);

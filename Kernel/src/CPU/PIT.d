@@ -8,8 +8,7 @@ import Data.Register;
 struct PIT {
 public:
 	static void Init(uint hz = 100) {
-		uint IRQ0 = 32;
-		IDT.Register(IRQ0, &onTick);
+		IDT.Register(IRQ(0), &onTick);
 		this.hz = hz;
 		uint divisor = 1193180 / hz;
 		Out!ubyte(0x43, 0x36);
