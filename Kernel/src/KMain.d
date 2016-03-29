@@ -8,6 +8,7 @@ import CPU.GDT;
 import CPU.IDT;
 import CPU.PIT;
 import Data.Multiboot;
+import HW.PS2.Keyboard;
 import Memory.Paging;
 import Memory.FrameAllocator;
 import Data.Linker;
@@ -32,7 +33,7 @@ extern (C) int kmain(uint magic, ulong info) {
 	scr.Writeln();
 	scr.Writeln("User input:");
 
-	char key;
+	dchar key;
 	VirtAddress timePosition = VirtAddress(0xFFFF_FFFF_800B_8000) + (80 * 1 - 1) * 2;
 	while (key != 27 /* Escape */ ) {
 		// Print out seconds since boot, in the top right corner
@@ -44,9 +45,9 @@ extern (C) int kmain(uint magic, ulong info) {
 		*((timePosition - (2 * 2)).Ptr!ubyte) = '0' + tmp % 10;
 
 		// Get User input and write it out
-		key = Keyboard.Get();
-		if (key)
-			scr.Write(key);
+		key = Keyboard.Pop();
+		if (key != '\0' && key < 0x100)
+			scr.Write(cast(char)key);
 	}
 	scr.Writeln();
 
@@ -67,7 +68,7 @@ void PreInit() {
 	scr.Writeln("PIT initializing...");
 	PIT.Init();
 	scr.Writeln("Keyboard initializing...");
-	Keyboard.Init();
+	PS2Keyboard.Init();
 }
 
 void Welcome() {
