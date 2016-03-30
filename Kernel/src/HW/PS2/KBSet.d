@@ -183,11 +183,29 @@ enum KeyCode : ubyte {
 	RightCtrl,
 	RightShift,
 	RightAlt,
-	RightGUI
+	RightGUI,
+
+	MaxValue = 0xFF
 }
 
 KeyCode FindKeycode(ushort id) {
 	return PS2LayoutEN_US[id];
+}
+
+dchar FindShiftedCharTranslate(KeyCode key) {
+	return ShiftedCharTranslationEN_US[key];
+}
+
+dchar FindShiftedEtcTranslate(KeyCode key) {
+	return ShiftedEtcTranslationEN_US[key];
+}
+
+dchar FindKeypadTranslate(KeyCode key) {
+	return KeypadTranslationEN_US[key];
+}
+
+dchar FindNormalTranslate(KeyCode key) {
+	return NormalTranslationEN_US[key];
 }
 
 enum E0Bit = 0x80;
@@ -310,5 +328,132 @@ private __gshared KeyCode[512] PS2LayoutEN_US = [
 	E0Bit | 0x1f: KeyCode.LeftGUI,
 	E0Bit | 0x27: KeyCode.RightGUI,
 	E0Bit | 0x2f: KeyCode.Menu,
+];
+
+private __gshared dchar[KeyCode.max] NormalTranslationEN_US = [
+	KeyCode.GraveTilde: '`',
+	KeyCode._1: '1',
+	KeyCode._2: '2',
+	KeyCode._3: '3',
+	KeyCode._4: '4',
+	KeyCode._5: '5',
+	KeyCode._6: '6',
+	KeyCode._7: '7',
+	KeyCode._8: '8',
+	KeyCode._9: '9',
+	KeyCode._0: '0',
+	KeyCode.Minus: '-',
+	KeyCode.Equals: '=',
+	KeyCode.Backspace: '\b',
+	KeyCode.Tab: '\t',
+	KeyCode.Q: 'q',
+	KeyCode.W: 'w',
+	KeyCode.E: 'e',
+	KeyCode.R: 'r',
+	KeyCode.T: 't',
+	KeyCode.Y: 'y',
+	KeyCode.U: 'u',
+	KeyCode.I: 'i',
+	KeyCode.O: 'o',
+	KeyCode.P: 'p',
+	KeyCode.SquareOpen: '[',
+	KeyCode.SquareClose: ']',
+	KeyCode.Backslash: '\\',
+	KeyCode.A: 'a',
+	KeyCode.S: 's',
+	KeyCode.D: 'd',
+	KeyCode.F: 'f',
+	KeyCode.G: 'g',
+	KeyCode.H: 'h',
+	KeyCode.J: 'j',
+	KeyCode.K: 'k',
+	KeyCode.L: 'l',
+	KeyCode.Semicolon: ';',
+	KeyCode.Quote: '\'',
+	KeyCode.Return: '\n',
+	KeyCode.Z: 'z',
+	KeyCode.X: 'x',
+	KeyCode.C: 'c',
+	KeyCode.V: 'v',
+	KeyCode.B: 'b',
+	KeyCode.N: 'n',
+	KeyCode.M: 'm',
+	KeyCode.Comma: ',',
+	KeyCode.Dot: '.',
+	KeyCode.Slash: '/',
+	KeyCode.Space: ' ',
+	KeyCode.KPSlash: '/',
+	KeyCode.KP5: '5',
+	KeyCode.KPStar: '*',
+	KeyCode.KPMinus: '-',
+	KeyCode.KPPlus: '+',
+	KeyCode.KPReturn: '\n'
+];
+
+private __gshared dchar[KeyCode.max] KeypadTranslationEN_US = [
+	KeyCode.KP7: '7',
+	KeyCode.KP4: '4',
+	KeyCode.KP1: '1',
+	KeyCode.KP8: '8',
+	KeyCode.KP5: '5',
+	KeyCode.KP2: '2',
+	KeyCode.KP0: '0',
+	KeyCode.KP9: '9',
+	KeyCode.KP6: '6',
+	KeyCode.KP3: '3',
+	KeyCode.KPPeriod: ',',
+];
+
+private __gshared dchar[KeyCode.max] ShiftedEtcTranslationEN_US = [
+	KeyCode.GraveTilde: '~',
+	KeyCode._1: '!',
+	KeyCode._2: '@',
+	KeyCode._3: '#',
+	KeyCode._4: '$',
+	KeyCode._5: '%',
+	KeyCode._6: '^',
+	KeyCode._7: '&',
+	KeyCode._8: '*',
+	KeyCode._9: '(',
+	KeyCode._0: ')',
+	KeyCode.Minus: '_',
+	KeyCode.Equals: '+',
+	KeyCode.SquareOpen: '{',
+	KeyCode.SquareClose: '}',
+	KeyCode.Backslash: '|',
+	KeyCode.Semicolon: ':',
+	KeyCode.Quote: '"',
+	KeyCode.Comma: '<',
+	KeyCode.Dot: '>',
+	KeyCode.Slash: '?',
+];
+
+private __gshared dchar[KeyCode.max] ShiftedCharTranslationEN_US = [
+	KeyCode.Q: 'Q',
+	KeyCode.W: 'W',
+	KeyCode.E: 'E',
+	KeyCode.R: 'R',
+	KeyCode.T: 'T',
+	KeyCode.Y: 'Y',
+	KeyCode.U: 'U',
+	KeyCode.I: 'I',
+	KeyCode.O: 'O',
+	KeyCode.P: 'P',
+	KeyCode.A: 'A',
+	KeyCode.S: 'S',
+	KeyCode.D: 'D',
+	KeyCode.F: 'F',
+	KeyCode.G: 'G',
+	KeyCode.H: 'H',
+	KeyCode.J: 'J',
+	KeyCode.K: 'K',
+	KeyCode.L: 'L',
+	KeyCode.Z: 'Z',
+	KeyCode.X: 'X',
+	KeyCode.C: 'C',
+	KeyCode.V: 'V',
+	KeyCode.B: 'B',
+	KeyCode.N: 'N',
+	KeyCode.M: 'M',
 ];
 // dfmt on

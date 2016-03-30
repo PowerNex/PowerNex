@@ -34,12 +34,14 @@ public:
 		while (result != 0xAA)
 			result = get(false);
 
+		setLED();
+
 		initialized = true;
 	}
 
 private:
 	struct keyboardStatus {
-		ubyte value;
+		private ubyte value;
 
 		//dfmt off
 		mixin(Bitfield!(value,
@@ -59,26 +61,36 @@ private:
 		private enum countPerInt = ulong.sizeof * 8;
 		private enum length = bitmaps.length * countPerInt;
 
-		void Set(ushort bit) {
-			if (bit >= length)
-				return;
+		void Set(KeyCode key) {
+			ubyte bit = cast(ubyte)key;
 
 			bitmaps[bit / countPerInt] |= 1 << (bit % countPerInt);
 		}
 
-		bool IsSet(ushort bit) {
-			if (bit >= length)
-				return false;
+		bool IsSet(KeyCode key) {
+			ubyte bit = cast(ubyte)key;
 
 			return !!(bitmaps[bit / countPerInt] & 1 << (bit % countPerInt));
 		}
 
-		void Clear(ushort bit) {
-			if (bit >= length)
-				return;
+		void Clear(KeyCode key) {
+			ubyte bit = cast(ubyte)key;
 
 			bitmaps[bit / countPerInt] &= ~(1 << (bit % countPerInt));
 		}
+
+		void Toggle(KeyCode key) {
+			if (IsSet(key))
+				Clear(key);
+			else
+				Set(key);
+		}
+	}
+
+	struct modifierState {
+		private ubyte data;
+
+		mixin(Bitfield!(data, "NumLock", 1, "CapsLock", 1, "ScrollLock", 1));
 	}
 
 	enum ushort DataPort = 0x60;
@@ -86,6 +98,7 @@ private:
 
 	__gshared bool initialized;
 	__gshared keyState state;
+	__gshared modifierState modifiers;
 
 	static KeyCode combineKeyData(ubyte ch) {
 		__gshared bool nextUnpress = false;
@@ -126,8 +139,16 @@ private:
 
 		state.Set(key);
 
-		if (key == KeyCode.CapsLock || key == KeyCode.NumLock || key == KeyCode.ScrollLock)
+		if (key == KeyCode.CapsLock) {
+			modifiers.CapsLock = !modifiers.CapsLock;
 			setLED();
+		} else if (key == KeyCode.NumLock) {
+			modifiers.NumLock = !modifiers.NumLock;
+			setLED();
+		} else if (key == KeyCode.ScrollLock) {
+			modifiers.ScrollLock = !modifiers.ScrollLock;
+			setLED();
+		}
 
 		return key;
 	}
@@ -166,7 +187,7 @@ private:
 		waitSend();
 		sendCmd(0xED);
 		get(false);
-		sendCmd(state.IsSet(KeyCode.CapsLock) << 2 | state.IsSet(KeyCode.NumLock) << 1 | state.IsSet(KeyCode.ScrollLock));
+		sendCmd(modifiers.CapsLock << 2 | modifiers.NumLock << 1 | modifiers.ScrollLock);
 		get(false);
 	}
 
@@ -177,13 +198,26 @@ private:
 
 		KeyCode key = combineKeyData(data);
 		if (key != KeyCode.None) {
-			import IO.TextMode;
+			dchar ch;
 
-			GetScreen.Write(key, " ");
+			bool shift = state.IsSet(KeyCode.LeftShift) || state.IsSet(KeyCode.RightShift);
+			bool caps = modifiers.CapsLock;
+			bool num = modifiers.NumLock;
 
-			// TODO: Translate the KeyCode to a (d)char
-			//Keyboard.Push(translatedKey);
+			if (ch == dchar.init && caps != shift)
+				ch = FindShiftedCharTranslate(key);
+
+			if (ch == dchar.init && shift)
+				ch = FindShiftedEtcTranslate(key);
+
+			if (ch == dchar.init && num)
+				ch = FindKeypadTranslate(key);
+
+			if (ch == dchar.init)
+				ch = FindNormalTranslate(key);
+
+			if (ch != dchar.init)
+				Keyboard.Push(ch);
 		}
-
 	}
 }
