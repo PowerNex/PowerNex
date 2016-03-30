@@ -104,7 +104,7 @@ public:
 	}
 
 private:
-	static void add(uint id, SystemSegmentType gateType, ulong func, ushort dplFlags, ushort istFlags) {
+	static void add(uint id, SystemSegmentType gateType, ulong func, ubyte dplFlags, ubyte istFlags) {
 		with (desc[id]) {
 			TargetLow = func & 0xFFFF;
 			Segment = 0x08;
