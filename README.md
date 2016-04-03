@@ -18,7 +18,7 @@ you just need to run `./build` to build.
 [Prebuild toolchain for Linux x64](http://wild.tk/PowerNex-BuildTools.tar.xz)
 
 One tip is to run `source env.sh`, this adds shortcuts for building and running.
-	`b` Compiles and runs in qemu, `n` Compiles and runs in Bochs.
+	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
 
 Thanks to
 ---------
