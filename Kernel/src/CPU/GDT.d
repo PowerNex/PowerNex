@@ -1,5 +1,6 @@
 module CPU.GDT;
 import Data.BitField;
+import CPU.TSS;
 
 align(1) struct GDTBase {
 align(1):
@@ -58,8 +59,13 @@ align(1):
 	GDTSystemDescriptor SystemLow;
 	GDTSystemExtension SystemHigh;
 
+	TSSDescriptor1 TSS1;
+	TSSDescriptor2 TSS2;
+
 	ulong Value;
 }
+
+static assert(GDTDescriptor.sizeof == ulong.sizeof);
 
 enum GDTSystemType : ubyte {
 	LocalDescriptorTable = 0b0010,
@@ -76,22 +82,24 @@ static struct GDT {
 public:
 	__gshared GDTBase base;
 	__gshared GDTDescriptor[256] descriptors;
+	__gshared TSS tss;
+	__gshared ushort tssID;
 
 	static void Init() {
-		base.Limit = descriptors.length * GDTDescriptor.sizeof - 1;
+		base.Limit = cast(ushort)(setupTable() * GDTDescriptor.sizeof - 1);
 		base.Base = cast(ulong)descriptors.ptr;
-
-		setupTable();
 
 		Flush();
 	}
 
 	static void Flush() {
 		void* baseAddr = cast(void*)(&base);
+		ushort id = cast(ushort)(tssID * GDTDescriptor.sizeof);
 		asm {
-			mov baseAddr, RAX;
+			mov RAX, baseAddr;
 			lgdt [RAX];
 			call CPU_refresh_iretq;
+			ltr id;
 		}
 	}
 
@@ -118,6 +126,11 @@ public:
 		}
 	}
 
+	static void SetTSS(uint index, ref TSS tss) {
+		descriptors[index].TSS1 = TSSDescriptor1(tss);
+		descriptors[index + 1].TSS2 = TSSDescriptor2(tss);
+	}
+
 	void SetSystem(uint index, uint limit, ulong base, GDTSystemType segType, ubyte DPL, bool present, bool avail, bool granularity) {
 		descriptors[index].SystemLow = GDTSystemDescriptor.init;
 		descriptors[index + 1].SystemHigh = GDTSystemExtension.init;
@@ -141,14 +154,21 @@ public:
 	}
 
 private:
-	static void setupTable() {
-		SetNull(0);
+	static uint setupTable() {
+		uint idx = 0;
+		SetNull(idx++);
 		// Kernel
-		SetCode(1, false, 0, true);
-		SetData(2, true, 0);
+		SetCode(idx++, false, 0, true);
+		tss = TSS(cast(ushort)idx);
+		SetData(idx++, true, 0);
 
 		// User
-		SetData(3, true, 3);
-		SetCode(4, true, 3, true);
+		SetData(idx++, true, 3);
+		SetCode(idx++, true, 3, true);
+
+		tssID = cast(ushort)idx;
+		SetTSS(idx++, tss); // Uses 2 entries
+		idx++;
+		return idx;
 	}
 }
