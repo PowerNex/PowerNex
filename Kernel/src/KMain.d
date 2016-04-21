@@ -1,5 +1,11 @@
 module KMain;
 
+version(PowerNex) {
+	// Good job, you are now able to compile PowerNex!
+} else {
+	static assert(0, "Please use the customized toolchain located here: http://wild.tk/PowerNex-Env.tar.xz");
+}
+
 import IO.Log;
 import IO.TextMode;
 import IO.Keyboard;

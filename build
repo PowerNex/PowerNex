@@ -4,7 +4,7 @@
 	},
 	"processors": {
 		"dc": {
-			"command": "dmd",
+			"command": "cc/bin/powernex-dmd",
 			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
 		"ac": {

@@ -1271,34 +1271,23 @@ class TypeInfo_Struct : TypeInfo {
 		return cast(size_t)p;
 	}
 
-	override bool equals(in void* p1, in void* p2) @trusted pure nothrow const {
-		import core.stdc.string : memcmp;
-
-		if (!p1 || !p2)
-			return false;
-		else if (xopEquals)
-			return (*xopEquals)(p1, p2);
-		else if (p1 == p2)
-			return true;
-		else // BUG: relies on the GC not moving objects
-			return memcmp(p1, p2, init().length) == 0;
+	override bool equals(in void* p1, in void* p2) const {
+		ubyte* s1 = cast(ubyte*)p1;
+		ubyte* s2 = cast(ubyte*)p2;
+		for (size_t i = 0; i < tsize(); i++)
+			if (s1[i] != s2[i])
+				return false;
+		return true;
 	}
 
 	override int compare(in void* p1, in void* p2) @trusted pure nothrow const {
-		import core.stdc.string : memcmp;
-
-		// Regard null references as always being "less than"
-		if (p1 != p2) {
-			if (p1) {
-				if (!p2)
-					return true;
-				else if (xopCmp)
-					return (*xopCmp)(p2, p1);
-				else // BUG: relies on the GC not moving objects
-					return memcmp(p1, p2, init().length);
-			} else
+		ubyte* s1 = cast(ubyte*)p1;
+		ubyte* s2 = cast(ubyte*)p2;
+		for (size_t i = 0; i < tsize(); i++)
+			if (s1[i] < s2[i])
 				return -1;
-		}
+			else if (s1[i] > s2[i])
+				return 1;
 		return 0;
 	}
 
