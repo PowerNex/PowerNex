@@ -12,7 +12,7 @@ align(1):
 	ulong res2;
 	ushort res3;
 	ushort ioPermBitMapOffset;
-	align(4096)	ubyte[1 << 16] ioBitmap;
+	align(4096) ubyte[1 << 16] ioBitmap;
 	ubyte stopper;
 
 	this(ushort ss0) {

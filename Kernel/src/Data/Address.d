@@ -52,7 +52,6 @@ private mixin template AddressBase() {
 		return cast(T*)addr;
 	}
 
-
 	@property ulong Int() const {
 		return addr;
 	}

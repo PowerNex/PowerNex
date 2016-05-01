@@ -91,6 +91,7 @@ package:
 	Node Add(Node node) {
 		return add(node);
 	}
+
 	Node Remove(Node node) {
 		return remove(node);
 	}

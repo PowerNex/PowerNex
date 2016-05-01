@@ -191,7 +191,8 @@ struct Multiboot {
 				char* str = &tmp.String;
 				Modules[ModulesCount++] = tmp;
 
-				log.Info("Name: Module, Start: ", cast(void*)tmp.ModStart, ", End: ", cast(void*)tmp.ModEnd, ", CMD: ", cast(string)str[0 .. tmp.Size - 17]);
+				log.Info("Name: Module, Start: ", cast(void*)tmp.ModStart, ", End: ", cast(void*)tmp.ModEnd,
+						", CMD: ", cast(string)str[0 .. tmp.Size - 17]);
 				break;
 
 			case MultibootTagType.BasicMemInfo:
