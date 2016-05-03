@@ -52,6 +52,13 @@ extern (C) int kmain(uint magic, ulong info) {
 		key = Keyboard.Pop();
 		if (key != '\0' && key < 0x100 && key != 27)
 			scr.Write(cast(char)key);
+		ulong * mem = cast(ulong*)GetKernelHeap.Alloc(1*1024*1024);
+		if (!mem) {
+			scr.color.Foreground = Colors.Magenta;
+			scr.color.Background = Colors.Yellow;
+			scr.Writeln("Out of memory ;)");
+			return -1;
+		}
 	}
 	scr.Writeln();
 
