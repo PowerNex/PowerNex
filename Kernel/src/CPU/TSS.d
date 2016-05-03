@@ -11,14 +11,9 @@ align(1):
 	VirtAddress[7] ist;
 	ulong res2;
 	ushort res3;
-	ushort ioPermBitMapOffset;
+	ushort ioPermBitMapOffset = ioBitmap.offsetof;
 	align(4096) ubyte[1 << 16] ioBitmap;
-	ubyte stopper;
-
-	this(ushort ss0) {
-		ioPermBitMapOffset = ioBitmap.offsetof;
-		stopper = 0xFF;
-	}
+	ubyte stopper = 0xFF;
 
 	@property ref VirtAddress RSP0() {
 		return rsp[0];

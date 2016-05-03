@@ -159,7 +159,6 @@ private:
 		SetNull(idx++);
 		// Kernel
 		SetCode(idx++, false, 0, true);
-		tss = TSS(cast(ushort)idx);
 		SetData(idx++, true, 0);
 
 		// User
