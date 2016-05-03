@@ -104,33 +104,11 @@ void LoadInitrd() {
 	import IO.FS.Initrd;
 	import IO.FS.System;
 
-	scr.Writeln();
-	scr.color.Foreground = Colors.Green;
 	auto initrd = Multiboot.GetModule("initrd");
 	if (initrd[0] == initrd[1]) {
 		scr.Writeln("Initrd missing");
 		log.Error("Initrd missing");
 		return;
-	}
-
-	void printDir(DirectoryNode dir, int indent = 0) {
-		foreach (idx, node; dir.Nodes) {
-			for (int i = 0; i < indent; i++)
-				scr.Write("  ");
-			scr.Writeln(node.ID, "(", idx, "): ", node.Name);
-			if (auto f = cast(FileNode)node) {
-				scr.color.Foreground = Colors.Yellow;
-				scr.color.Background = Colors.Blue;
-
-				ubyte[64] buf = void;
-				auto len = f.Read(buf, 0);
-				scr.Writeln(cast(string)buf[0 .. len]);
-
-				scr.color.Foreground = Colors.Green;
-				scr.color.Background = Colors.Black;
-			} else if (auto d = cast(DirectoryNode)node)
-				printDir(d, indent + 1);
-		}
 	}
 
 	void mount(string path, FSRoot fs) {
@@ -151,7 +129,6 @@ void LoadInitrd() {
 	}
 
 	rootFS = new InitrdFSRoot(initrd[0]);
-	scr.Writeln("Root: ", rootFS.toString);
 
 	Node file = rootFS.Root.FindNode("/Data/PowerNex.map");
 	if (!file) {
@@ -167,7 +144,4 @@ void LoadInitrd() {
 	log.Info("Successfully loaded symbols!");
 
 	mount("/System", new SystemFSRoot());
-
-	printDir(rootFS.Root);
-	scr.Writeln();
 }
