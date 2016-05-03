@@ -42,7 +42,8 @@ public:
 			freeChunk = freeChunk.next;
 
 		while (!freeChunk || freeChunk.size < size) { // We are currently at the end chunk
-			addNewPage(); // This will work just because there is combine in addNewPage, which will increase the current chunks size
+			if (!addNewPage()) // This will work just because there is combine in addNewPage, which will increase the current chunks size
+				return null;
 			freeChunk = end; // Don't expected that freeChunk is valid, addNewPage runs combine
 		}
 
@@ -92,10 +93,11 @@ private:
 	VirtAddress endAddr; /// The end address of all the allocated data
 
 	/// Map and add a new page to the list
-	void addNewPage() {
+	bool addNewPage() {
 		MemoryHeader* oldEnd = end;
 
-		paging.MapFreeMemory(endAddr, mode);
+		if (paging.MapFreeMemory(endAddr, mode).Int == 0)
+			return false;
 		end = cast(MemoryHeader*)endAddr.Ptr;
 		*end = MemoryHeader.init;
 		endAddr += 0x1000;
@@ -109,6 +111,7 @@ private:
 		end.isAllocated = false;
 
 		combine(end); // Combine with other nodes if possible
+		return true;
 	}
 
 	/// 'chunk' should not be expected to be valid after this

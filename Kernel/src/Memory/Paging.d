@@ -148,6 +148,8 @@ struct Paging {
 	}
 
 	void Map(VirtAddress virt, PhysAddress phys, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
+		if (phys.Int == 0)
+			return;
 		const ulong virtAddr = virt.Int;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
@@ -165,6 +167,8 @@ struct Paging {
 	}
 
 	void Unmap(VirtAddress virt) {
+		if (virt.Int == 0)
+			return;
 		const ulong virtAddr = virt.Int;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
@@ -194,6 +198,8 @@ struct Paging {
 	}
 
 	void UnmapAndFree(VirtAddress virt) {
+		if (virt.Int == 0)
+			return;
 		const ulong virtAddr = virt.Int;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
@@ -224,10 +230,13 @@ struct Paging {
 		page.Present = false;
 	}
 
-	void MapFreeMemory(VirtAddress virt, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
+	PhysAddress MapFreeMemory(VirtAddress virt, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
 		PhysAddress phys = FrameAllocator.Alloc();
+		if (!phys.Int)
+			return phys;
 		Map(virt, phys, pageMode, tablesMode);
 		_memset64(virt.Ptr, 0, 0x1000); //Defined in object.d
+		return phys;
 	}
 
 	void Install() {
