@@ -331,6 +331,7 @@ private __gshared KeyCode[512] PS2LayoutEN_US = [
 ];
 
 private __gshared dchar[KeyCode.max] NormalTranslationEN_US = [
+	KeyCode.Escape: 27,
 	KeyCode.GraveTilde: '`',
 	KeyCode._1: '1',
 	KeyCode._2: '2',

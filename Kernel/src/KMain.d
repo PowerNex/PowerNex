@@ -40,7 +40,9 @@ extern (C) int kmain(uint magic, ulong info) {
 	scr.Writeln("User input:");
 
 	dchar key;
-	while (key != 27 /* Escape */ ) {
+	import HW.PS2.KBSet : KeyCode;
+
+	while (key != 27 /* KeyCode.Escape */ ) {
 		const ulong usedMiB = FrameAllocator.UsedFrames / 256;
 		const ulong maxMiB = FrameAllocator.MaxFrames / 256;
 		const ulong memory = (usedMiB * 100) / maxMiB;
@@ -48,7 +50,7 @@ extern (C) int kmain(uint magic, ulong info) {
 
 		// Get User input and write it out
 		key = Keyboard.Pop();
-		if (key != '\0' && key < 0x100)
+		if (key != '\0' && key < 0x100 && key != 27)
 			scr.Write(cast(char)key);
 	}
 	scr.Writeln();
