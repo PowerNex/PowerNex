@@ -40,15 +40,11 @@ extern (C) int kmain(uint magic, ulong info) {
 	scr.Writeln("User input:");
 
 	dchar key;
-	VirtAddress timePosition = VirtAddress(0xFFFF_FFFF_800B_8000) + (80 * 1 - 1) * 2;
 	while (key != 27 /* Escape */ ) {
-		// Print out seconds since boot, in the top right corner
-		ulong tmp = PIT.Seconds;
-		*((timePosition - (0 * 2)).Ptr!ubyte) = '0' + tmp % 10;
-		tmp /= 10;
-		*((timePosition - (1 * 2)).Ptr!ubyte) = '0' + tmp % 10;
-		tmp /= 10;
-		*((timePosition - (2 * 2)).Ptr!ubyte) = '0' + tmp % 10;
+		const ulong usedMiB = FrameAllocator.UsedFrames / 256;
+		const ulong maxMiB = FrameAllocator.MaxFrames / 256;
+		const ulong memory = (usedMiB * 100) / maxMiB;
+		scr.WriteStatus("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)\t\t\tSeconds since boot: ", PIT.Seconds);
 
 		// Get User input and write it out
 		key = Keyboard.Pop();

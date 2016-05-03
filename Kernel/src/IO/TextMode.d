@@ -59,69 +59,41 @@ struct Screen(int w, int h) {
 	slot[w * h]* screen;
 	ubyte x, y;
 	Color color;
+	int blockCursor;
 
 	@disable this();
 
 	this(Colors fg, Colors bg, long videoMemory) {
 		this.screen = cast(slot[w * h]*)videoMemory;
 		this.x = 0;
-		this.y = 0;
+		this.y = 1;
 		this.color = Color(fg, bg);
 	}
 
 	void Clear() {
-		foreach (ref slot slot; *screen) {
+		foreach (ref slot slot; (*screen)[w .. $]) {
 			slot.ch = ' ';
 			slot.color = color;
 		}
-		x = y = 0;
+		x = 0;
+		y = 1;
 	}
 
 	void Write(char ch) {
-		if (ch == '\n') {
-			y++;
-			x = 0;
-		} else if (ch == '\r')
-			x = 0;
-		else if (ch == '\b') {
-			if (x)
-				x--;
-		} else if (ch == '\t')
-			x = cast(ubyte)(x + 8) & ~7;
-		else {
-			(*screen)[y * w + x].ch = ch;
-			(*screen)[y * w + x].color = color;
-			x++;
-
-			if (x >= w) {
-				y++;
-				x = 0;
-			}
-		}
-
-		if (y >= h) {
-			for (int yy = 0; yy < h - 1; yy++)
-				for (int xx = 0; xx < w; xx++)
-					(*screen)[yy * w + xx] = (*screen)[(yy + 1) * w + xx];
-
-			y--;
-			for (int xx = 0; xx < w; xx++) {
-				auto slot = &(*screen)[y * w + xx];
-				slot.ch = ' ';
-				slot.color = Color(Colors.Cyan, Colors.Black); //XXX: Stupid hack to fix colors while scrolling
-			}
-		}
+		write(ch);
 		MoveCursor();
 	}
 
 	void Write(in char[] str) {
 		foreach (char ch; str)
-			Write(ch);
+			write(ch);
+		MoveCursor();
 	}
 
 	void Write(char* str) {
 		while (*str)
-			Write(*(str++));
+			write(*(str++));
+		MoveCursor();
 	}
 
 	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
@@ -140,6 +112,7 @@ struct Screen(int w, int h) {
 	}
 
 	void Write(Args...)(Args args) {
+		blockCursor++;
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
@@ -155,19 +128,46 @@ struct Screen(int w, int h) {
 			else static if (is(T == bool))
 				Write((arg) ? "true" : "false");
 			else static if (is(T : char))
-				Write(arg);
+				write(arg);
 			else static if (isNumber!T)
 				WriteNumber(arg, 10);
 			else
 				Write("UNKNOWN TYPE '", T.stringof, "'");
 		}
+		blockCursor--;
+		MoveCursor();
 	}
 
-	void Writeln(Args...)(Args arg) {
-		Write(arg, '\n');
+	void Writeln(Args...)(Args args) {
+		blockCursor++;
+		Write(args, '\n');
+		blockCursor--;
+		MoveCursor();
+	}
+
+	void WriteStatus(Args...)(Args args) {
+		blockCursor++;
+		ubyte oldX = x;
+		ubyte oldY = y;
+		Color oldColor = color;
+
+		x = y = 0;
+		color = Color(Colors.White, Colors.Red);
+		Write(args);
+
+		while (x < w - 1)
+			write(' ');
+		write(' ');
+
+		x = oldX;
+		y = oldY;
+		color = oldColor;
+		blockCursor--;
 	}
 
 	void MoveCursor() {
+		if (blockCursor > 0)
+			return;
 		asm {
 			cli;
 		}
@@ -180,6 +180,50 @@ struct Screen(int w, int h) {
 			sti;
 		}
 	}
+
+private:
+	void write(char ch) {
+		if (ch == '\n') {
+			y++;
+			x = 0;
+		} else if (ch == '\r')
+			x = 0;
+		else if (ch == '\b') {
+			if (x)
+				x--;
+		} else if (ch == '\t') {
+			uint goal = (x + 8) & ~7;
+			for (; x < goal; x++)
+				(*screen)[y * w + x] = slot(' ', color);
+			if (x >= w) {
+				y++;
+				x %= w;
+			}
+		} else {
+			(*screen)[y * w + x] = slot(ch, color);
+			x++;
+
+			if (x >= w) {
+				y++;
+				x = 0;
+			}
+		}
+
+		if (y >= h) {
+			for (int yy = 1; yy < h - 1; yy++)
+				for (int xx = 0; xx < w; xx++)
+					(*screen)[yy * w + xx] = (*screen)[(yy + 1) * w + xx];
+
+			y--;
+			for (int xx = 0; xx < w; xx++) {
+				auto slot = &(*screen)[y * w + xx];
+				slot.ch = ' ';
+				slot.color = Color(Colors.Cyan, Colors.Black); //XXX: Stupid hack to fix colors while scrolling
+			}
+		}
+		MoveCursor();
+	}
+
 }
 
 __gshared Screen!(80, 25) GetScreen = Screen!(80, 25)(Colors.Cyan, Colors.Black, 0xFFFF_FFFF_800B_8000);

@@ -127,6 +127,8 @@ struct Log {
 	void Fatal(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
 		this.opCall!(file, func, line)(LogLevel.FATAL, args);
 		PrintStackTrace(true);
+		import IO.TextMode;
+		GetScreen.WriteStatus("\t\tFATAL ERROR, READ COM.LOG!");
 		asm {
 		forever:
 			hlt;
