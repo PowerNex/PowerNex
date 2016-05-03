@@ -2224,11 +2224,11 @@ bool _xopEquals(in void*, in void*) {
 extern (C) void _d_run_main() {
 }
 
-extern (C) void* _memset64(void* p, ulong value, int count) {
+extern (C) void* _memset64(void* p, ulong value, size_t count) {
 	ulong* ptr = cast(ulong*)p;
 
-	for (int i = 0; i < count; i += 8)
-		*ptr = value;
+	for (size_t i = 0; i < count; i++)
+		ptr[i] = value;
 	return p;
 }
 
