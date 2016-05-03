@@ -144,7 +144,10 @@ struct Screen(int w, int h) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
 				Write(arg);
-			else static if (is(T : V*, V)) {
+			else static if (is(T == BinaryInt)) {
+				Write("0b");
+				WriteNumber(cast(ulong)arg, 2);
+			} else static if (is(T : V*, V)) {
 				Write("0x");
 				WriteNumber(cast(ulong)arg, 16);
 			} else static if (is(T == enum))

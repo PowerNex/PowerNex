@@ -46,3 +46,7 @@ template EnumMembers(E) if (is(E == enum)) {
 
 	alias EnumMembers = EnumSpecificMembers!(__traits(allMembers, E));
 }
+
+struct BinaryInt {
+	ulong Int;
+}

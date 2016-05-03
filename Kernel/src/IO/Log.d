@@ -85,7 +85,10 @@ struct Log {
 				COM1.Write(arg);
 			/*else static if (is(T == enum))
 				WriteEnum(arg);*/
-			else static if (is(T : V*, V)) {
+			else static if (is(T == BinaryInt)) {
+				COM1.Write("0b");
+				COM1.Write(itoa(arg.Int, buf, 2));
+			} else static if (is(T : V*, V)) {
 				COM1.Write("0x");
 				COM1.Write(itoa(cast(ulong)arg, buf, 16));
 			} else static if (is(T == bool))
