@@ -12,7 +12,7 @@ max_line_length = 160
 trim_trailing_whitespace = false
 
 [*.d]
-// It's more like K&R than otbs, but K&R does not exist in dfmt
+# It's more like K&R than otbs, but K&R does not exist in dfmt
 dfmt_brace_style = otbs
 dfmt_soft_max_line_length = 120
 dfmt_align_switch_statements = true
