@@ -34,25 +34,25 @@ enum IDTFlags : ubyte {
 
 enum InterruptType : ubyte {
 	DivisionByZero = 0,
-	Debugger,
-	NMI,
-	Breakpoint,
-	Overflow,
-	Bounds,
-	InvalidOpcode,
-	CoprocessorNotAvailable,
-	DoubleFault,
-	CoprocessorSegmentOverrun, // (386 or earlier only)
-	InvalidTaskStateSegment,
-	SegmentNotPresent,
-	StackFault,
-	GeneralProtectionFault,
-	PageFault,
-	Reserved,
-	MathFault,
-	AlignmentCheck,
-	MachineCheck,
-	SIMDFloatingPointException
+	Debugger = 0x1,
+	NMI = 0x2,
+	Breakpoint = 0x3,
+	Overflow = 0x4,
+	Bounds = 0x5,
+	InvalidOpcode = 0x6,
+	CoprocessorNotAvailable = 0x7,
+	DoubleFault = 0x8,
+	CoprocessorSegmentOverrun = 0x9, // (386 or earlier only)
+	InvalidTaskStateSegment = 0xA,
+	SegmentNotPresent = 0xB,
+	StackFault = 0xC,
+	GeneralProtectionFault = 0xD,
+	PageFault = 0xE,
+	Reserved = 0xF,
+	MathFault = 0x10,
+	AlignmentCheck = 0x11,
+	MachineCheck = 0x12,
+	SIMDFloatingPointException = 0x13
 }
 
 enum SystemSegmentType : ubyte {
