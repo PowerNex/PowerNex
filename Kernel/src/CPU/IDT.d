@@ -86,7 +86,7 @@ public:
 		base.Limit = (IDTDescriptor.sizeof * desc.length) - 1;
 		base.Offset = cast(ulong)desc.ptr;
 
-		_memset64(handlers.ptr, 0, InterruptCallback.sizeof * 256);
+		_memset64(handlers.ptr, 0, 256);
 
 		addAllJumps();
 	}

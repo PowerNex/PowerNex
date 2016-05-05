@@ -123,7 +123,7 @@ struct Table(int Level) {
 				child.Data = cast(typeof(child.Data()))FrameAllocator.Alloc();
 				child.Mode = mode;
 				child.Present = true;
-				_memset64(PhysAddress(child.Data).Virtual.Ptr, 0, 0x1000); //Defined in object.d
+				_memset64(PhysAddress(child.Data).Virtual.Ptr, 0, 0x200); //Defined in object.d, 0x200 * 8 = 0x1000
 			} else if (child.PageSize)
 				log.Fatal("PageSize handling is not implemented!");
 
@@ -140,7 +140,7 @@ struct Paging {
 
 	void Init() {
 		root = cast(Table!4*)PhysAddress(FrameAllocator.Alloc()).Virtual.Ptr;
-		_memset64(root, 0, 0x1000); //Defined in object.d
+		_memset64(root, 0, 0x200); //Defined in object.d
 	}
 
 	void InitWithPML4(void* pml4) {
@@ -235,7 +235,7 @@ struct Paging {
 		if (!phys.Int)
 			return phys;
 		Map(virt, phys, pageMode, tablesMode);
-		_memset64(virt.Ptr, 0, 0x1000); //Defined in object.d
+		_memset64(virt.Ptr, 0, 0x200); //Defined in object.d
 		return phys;
 	}
 
