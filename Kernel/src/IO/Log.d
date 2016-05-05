@@ -39,9 +39,9 @@ struct Log {
 		SymbolDef Symbols;
 	}
 
-	int indent;
-	bool enabled;
-	SymbolMap* symbols;
+	private int indent;
+	private bool enabled;
+	private SymbolMap* symbols;
 
 	// XXX: Page fault if this is not wrapped like this!
 	static ulong Seconds() {
@@ -128,6 +128,7 @@ struct Log {
 		this.opCall!(file, func, line)(LogLevel.FATAL, args);
 		PrintStackTrace(true);
 		import IO.TextMode;
+
 		GetScreen.WriteStatus("\t\tFATAL ERROR, READ COM.LOG!");
 		asm {
 		forever:
