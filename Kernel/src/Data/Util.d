@@ -47,6 +47,24 @@ template EnumMembers(E) if (is(E == enum)) {
 	alias EnumMembers = EnumSpecificMembers!(__traits(allMembers, E));
 }
 
+T InplaceClass(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class)) {
+	static assert(!__traits(isAbstractClass, T), T.stringof ~ " is abstract and it can't be emplaced");
+
+	enum classSize = __traits(classInstanceSize, T);
+	//assert(chunk.length >= classSize, "emplace: Chunk size too small.");
+	//assert((cast(size_t)chunk.ptr) % classInstanceAlignment!T == 0, "emplace: Chunk is not aligned.");
+	auto result = cast(T)chunk.ptr;
+
+	chunk[0 .. classSize] = typeid(T).init[];
+
+	static if (is(typeof(result.__ctor(args))))
+		result.__ctor(args);
+	else
+		static assert(args.length == 0 && !is(typeof(&T.__ctor)),
+				"Don't know how to initialize an object of type " ~ T.stringof ~ " with arguments " ~ Args.stringof);
+	return result;
+}
+
 struct BinaryInt {
 	ulong Int;
 }
