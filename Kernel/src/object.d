@@ -136,10 +136,10 @@ extern (C) {
 
 	// the compiler spits this out all the time
 	Object _d_newclass(const ClassInfo ci) {
-		log.Debug("Creating a new class of type: ", ci.name);
+		//log.Debug("Creating a new class of type: ", ci.name);
 		void* memory = GetKernelHeap.Alloc(ci.init.length);
 		if (memory is null) {
-			log.Info("\n\n_d_newclass malloc failure\n\n");
+			log.Fatal("\n\n_d_newclass malloc failure\n\n");
 			exit();
 		}
 
