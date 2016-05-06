@@ -14,14 +14,9 @@ private struct MemoryHeader {
 	ulong size;
 }
 
-struct Heap {
+class Heap {
 public:
-	 ~this() {
-		for (VirtAddress start = startAddr; start < endAddr; start += 0x1000)
-			paging.UnmapAndFree(start);
-	}
-
-	void Init(Paging* paging, MapMode mode, VirtAddress startAddr) {
+	this(Paging paging, MapMode mode, VirtAddress startAddr) {
 		this.paging = paging;
 		this.mode = mode;
 		this.startAddr = this.endAddr = startAddr;
@@ -30,6 +25,11 @@ public:
 
 		addNewPage();
 		root = end; // 'end' will be the latest allocated page
+	}
+
+	~this() {
+		for (VirtAddress start = startAddr; start < endAddr; start += 0x1000)
+			paging.UnmapAndFree(start);
 	}
 
 	void* Alloc(ulong size) {
@@ -85,7 +85,7 @@ public:
 private:
 	enum MinimalChunkSize = 32; /// Without header
 
-	Paging* paging;
+	Paging paging;
 	MapMode mode;
 	MemoryHeader* root; /// Stores the first MemoryHeader
 	MemoryHeader* end; /// Stores the last MemoryHeader
@@ -174,16 +174,17 @@ private:
 }
 
 /// Get the kernel heap object
-Heap* GetKernelHeap() {
-	__gshared Heap kernelHeap;
-	__gshared bool initialized = false;
+Heap GetKernelHeap() {
+	import Data.Util : InplaceClass;
 
-	if (!initialized) {
-		kernelHeap.Init(GetKernelPaging, MapMode.DefaultKernel, Linker.KernelEnd);
+	__gshared ubyte[__traits(classInstanceSize, Heap)] data;
+	__gshared Heap kernelHeap;
+
+	if (!kernelHeap) {
+		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultKernel, Linker.KernelEnd);
 		IDT.Register(InterruptType.PageFault, &onPageFault);
-		initialized = true;
 	}
-	return &kernelHeap;
+	return kernelHeap;
 }
 
 private void onPageFault(Registers* regs) {

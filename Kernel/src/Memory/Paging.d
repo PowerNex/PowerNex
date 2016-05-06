@@ -135,15 +135,15 @@ static assert(Table!4.sizeof == (ulong[512]).sizeof);
 
 private extern (C) void CPU_install_cr3(PhysAddress addr);
 
-struct Paging {
+class Paging {
 	Table!4* root;
 
-	void Init() {
+	this() {
 		root = cast(Table!4*)PhysAddress(FrameAllocator.Alloc()).Virtual.Ptr;
 		_memset64(root, 0, 0x200); //Defined in object.d
 	}
 
-	void InitWithPML4(void* pml4) {
+	this(void* pml4) {
 		root = cast(Table!4*)pml4;
 	}
 
@@ -167,30 +167,9 @@ struct Paging {
 	}
 
 	void Unmap(VirtAddress virt) {
-		if (virt.Int == 0)
+		auto page = GetPage(virt);
+		if (!page)
 			return;
-		const ulong virtAddr = virt.Int;
-		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
-		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
-		const ushort pdIdx = (virtAddr >> 21) & 0x1FF;
-		const ushort ptIdx = (virtAddr >> 12) & 0x1FF;
-
-		auto pdpAddr = root.Get(pml4Idx).Data;
-		if (!pdpAddr)
-			return;
-		Table!3* pdp = cast(Table!3*)PhysAddress(pdpAddr).Virtual.Ptr;
-
-		auto pdAddr = root.Get(pdpIdx).Data;
-		if (!pdAddr)
-			return;
-		Table!2* pd = cast(Table!2*)PhysAddress(pdAddr).Virtual.Ptr;
-
-		auto ptAddr = root.Get(pdIdx).Data;
-		if (!ptAddr)
-			return;
-		Table!1* pt = cast(Table!1*)PhysAddress(ptAddr).Virtual.Ptr;
-
-		TablePtr!void* page = pt.Get(ptIdx);
 
 		page.Mode = MapMode.Empty;
 		page.Data = null;
@@ -198,32 +177,11 @@ struct Paging {
 	}
 
 	void UnmapAndFree(VirtAddress virt) {
-		if (virt.Int == 0)
+		auto page = GetPage(virt);
+		if (!page)
 			return;
-		const ulong virtAddr = virt.Int;
-		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
-		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
-		const ushort pdIdx = (virtAddr >> 21) & 0x1FF;
-		const ushort ptIdx = (virtAddr >> 12) & 0x1FF;
 
-		auto pdpAddr = root.Get(pml4Idx);
-		if (!pdpAddr.Present)
-			return;
-		Table!3* pdp = cast(Table!3*)PhysAddress(pdpAddr.Data).Virtual.Ptr;
-
-		auto pdAddr = root.Get(pdpIdx);
-		if (!pdAddr.Present)
-			return;
-		Table!2* pd = cast(Table!2*)PhysAddress(pdAddr.Data).Virtual.Ptr;
-
-		auto ptAddr = root.Get(pdIdx);
-		if (!ptAddr.Present)
-			return;
-		Table!1* pt = cast(Table!1*)PhysAddress(ptAddr.Data).Virtual.Ptr;
-
-		TablePtr!void* page = pt.Get(ptIdx);
-
-		FrameAllocator.Free(PhysAddress(page.data));
+		FrameAllocator.Free(PhysAddress(page.Data));
 
 		page.Mode = MapMode.Empty;
 		page.Data = null;
@@ -239,8 +197,38 @@ struct Paging {
 		return phys;
 	}
 
+	TablePtr!void* GetPage(VirtAddress virt) {
+		if (virt.Int == 0)
+			return null;
+		const ulong virtAddr = virt.Int;
+		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
+		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
+		const ushort pdIdx = (virtAddr >> 21) & 0x1FF;
+		const ushort ptIdx = (virtAddr >> 12) & 0x1FF;
+
+		auto pdpAddr = root.Get(pml4Idx);
+		if (!pdpAddr.Present)
+			return null;
+		Table!3* pdp = cast(Table!3*)PhysAddress(pdpAddr.Data).Virtual.Ptr;
+
+		auto pdAddr = pdp.Get(pdpIdx);
+		if (!pdAddr.Present)
+			return null;
+		Table!2* pd = cast(Table!2*)PhysAddress(pdAddr.Data).Virtual.Ptr;
+
+		auto ptAddr = pd.Get(pdIdx);
+		if (!ptAddr.Present)
+			return null;
+		Table!1* pt = cast(Table!1*)PhysAddress(ptAddr.Data).Virtual.Ptr;
+
+		return pt.Get(ptIdx);
+	}
+
 	void Install() {
-		PhysAddress rootAddr = PhysAddress(root) - Linker.KernelStart.Int;
+		auto page = GetPage(VirtAddress(root));
+		if (page == null)
+			log.Fatal("Paging address is not mapped!");
+		PhysAddress rootAddr = PhysAddress(page.Data);
 		CPU_install_cr3(rootAddr);
 	}
 }
@@ -249,13 +237,13 @@ private extern (C) extern __gshared {
 	ubyte PML4;
 }
 
-Paging* GetKernelPaging() {
-	__gshared Paging kernelPaging;
-	__gshared bool initialized = false;
+Paging GetKernelPaging() {
+	import Data.Util : InplaceClass;
 
-	if (!initialized) {
-		kernelPaging.InitWithPML4(&PML4);
-		initialized = true;
-	}
-	return &kernelPaging;
+	__gshared ubyte[__traits(classInstanceSize, Paging)] data;
+	__gshared Paging kernelPaging;
+
+	if (!kernelPaging)
+		kernelPaging = InplaceClass!Paging(data, &PML4);
+	return kernelPaging;
 }
