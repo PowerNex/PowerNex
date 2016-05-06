@@ -20,6 +20,8 @@ import Memory.FrameAllocator;
 import Data.Linker;
 import Data.Address;
 import Memory.Heap;
+import Task.Scheduler;
+import Task.Process;
 
 alias scr = GetScreen;
 
@@ -27,6 +29,18 @@ immutable uint major = __VERSION__ / 1000;
 immutable uint minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
+
+void a() {
+	while (true) {
+
+	}
+}
+
+void b() {
+	while (true) {
+
+	}
+}
 
 extern (C) int kmain(uint magic, ulong info) {
 	PreInit();
@@ -36,6 +50,12 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
+	KernelProcess aProc = new KernelProcess(&a);
+	scheduler.AddProcess(aProc);
+
+	KernelProcess bProc = new KernelProcess(&b);
+	scheduler.AddProcess(bProc);
+
 	scr.Writeln();
 	scr.Writeln("User input:");
 
@@ -43,22 +63,10 @@ extern (C) int kmain(uint magic, ulong info) {
 	import HW.PS2.KBSet : KeyCode;
 
 	while (key != 27 /* KeyCode.Escape */ ) {
-		const ulong usedMiB = FrameAllocator.UsedFrames / 256;
-		const ulong maxMiB = FrameAllocator.MaxFrames / 256;
-		const ulong memory = (usedMiB * 100) / maxMiB;
-		scr.WriteStatus("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)\t\t\tSeconds since boot: ", PIT.Seconds);
-
 		// Get User input and write it out
 		key = Keyboard.Pop();
 		if (key != '\0' && key < 0x100 && key != 27)
 			scr.Write(cast(char)key);
-		ulong * mem = cast(ulong*)GetKernelHeap.Alloc(1*1024*1024);
-		if (!mem) {
-			scr.color.Foreground = Colors.Magenta;
-			scr.color.Background = Colors.Yellow;
-			scr.Writeln("Out of memory ;)");
-			return -1;
-		}
 	}
 	scr.Writeln();
 
@@ -106,6 +114,8 @@ void Init(uint magic, ulong info) {
 
 	scr.Writeln("Initrd initializing...");
 	LoadInitrd();
+
+	scheduler = new Scheduler();
 }
 
 void LoadInitrd() {
