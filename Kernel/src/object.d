@@ -147,6 +147,24 @@ extern (C) {
 		return cast(Object)memory;
 	}
 
+	extern (C) void* _d_newitemU(in TypeInfo ti) {
+		return GetKernelHeap.Alloc(ti.tsize);
+	}
+
+	extern (C) void* _d_newitemT(in TypeInfo ti) {
+		auto p = _d_newitemU(ti);
+		memset(p, 0, ti.tsize);
+		return p;
+	}
+
+	extern (C) void* _d_newitemiT(in TypeInfo ti) {
+		auto p = _d_newitemU(ti);
+		auto init = ti.init;
+		assert(init.length <= ti.tsize);
+		memcpy(p, init.ptr, init.length);
+		return p;
+	}
+
 	void[] _d_newarrayT(TypeInfo ti, size_t length) {
 		auto size = ti.next.tsize();
 
@@ -2222,6 +2240,14 @@ bool _xopEquals(in void*, in void*) {
 }
 
 extern (C) void _d_run_main() {
+}
+
+extern (C) void* memset(void* p, uint value, size_t count) {
+	ubyte* ptr = cast(ubyte*)p;
+	for (size_t i = 0; i < count; i++)
+		ptr[i] = cast(ubyte)value;
+
+	return p;
 }
 
 extern (C) void* _memset64(void* p, ulong value, size_t count) {
