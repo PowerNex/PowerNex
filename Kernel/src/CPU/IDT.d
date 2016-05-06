@@ -226,6 +226,12 @@ private:
 		import IO.TextMode;
 		import IO.Log;
 
+		if (32 <= regs.IntNumber && regs.IntNumber <= 48) {
+			if (regs.IntNumber >= 40)
+				Out!ubyte(0xA0, 0x20);
+			Out!ubyte(0x20, 0x20);
+		}
+
 		if (auto handler = handlers[regs.IntNumber])
 			handler(regs);
 		else
@@ -237,11 +243,5 @@ private:
 						cast(void*)RDI, " RBP: ", cast(void*)RBP, "\r\n", "\tRIP: ", cast(void*)RIP, " RSP: ",
 						cast(void*)RSP, " Flags: ", cast(void*)Flags, " SS: ", cast(void*)SS, " CS: ", cast(void*)CS);
 			}
-
-		if (32 <= regs.IntNumber && regs.IntNumber <= 48) {
-			if (regs.IntNumber >= 40)
-				Out!ubyte(0xA0, 0x20);
-			Out!ubyte(0x20, 0x20);
-		}
 	}
 }
