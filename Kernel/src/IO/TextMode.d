@@ -56,11 +56,6 @@ struct Screen(int w, int h) {
 		Color color;
 	}
 
-	slot[w * h]* screen;
-	ubyte x, y;
-	Color color;
-	int blockCursor;
-
 	@disable this();
 
 	this(Colors fg, Colors bg, long videoMemory) {
@@ -181,7 +176,16 @@ struct Screen(int w, int h) {
 		}
 	}
 
+	@property ref Color CurrentColor() {
+		return color;
+	}
+
 private:
+	slot[w * h]* screen;
+	ubyte x, y;
+	Color color;
+	int blockCursor;
+
 	void write(char ch) {
 		if (ch == '\n') {
 			y++;

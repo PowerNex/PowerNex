@@ -75,8 +75,8 @@ extern (C) int kmain(uint magic, ulong info) {
 		scheduler.Schedule();
 	}
 
-	scr.color.Foreground = Colors.Magenta;
-	scr.color.Background = Colors.Yellow;
+	scr.CurrentColor.Foreground = Colors.Magenta;
+	scr.CurrentColor.Background = Colors.Yellow;
 	scr.Writeln("kmain functions has exited!");
 	return 0;
 }
