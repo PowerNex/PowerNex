@@ -193,38 +193,28 @@ private void onPageFault(Registers* regs) {
 
 	alias scr = GetScreen;
 	with (regs) {
-		if (IntNumber == InterruptType.PageFault) {
-			scr.Writeln("===> PAGE FAULT");
-			scr.Writeln("IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP);
-			scr.Writeln("RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX);
-			scr.Writeln("RCX = ", cast(void*)RCX, " | RDX = ", cast(void*)RDX);
-			scr.Writeln("RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI);
-			scr.Writeln("RSP = ", cast(void*)RSP, " | RBP = ", cast(void*)RBP);
-			scr.Writeln(" R8 = ", cast(void*)R8, "  |  R9 = ", cast(void*)R9);
-			scr.Writeln("R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11);
-			scr.Writeln("R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13);
-			scr.Writeln("R14 = ", cast(void*)R14, " | R15 = ", cast(void*)R15);
-			scr.Writeln(" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS);
-			scr.Writeln(" CR2 = ", cast(void*)CR2);
-			scr.Writeln("Flags: ", cast(void*)Flags);
-			scr.Writeln("Errorcode: ", cast(void*)ErrorCode);
-		} else
-			scr.Writeln("INTERRUPT: ", cast(InterruptType)IntNumber, " Errorcode: ", ErrorCode);
+		scr.Writeln("===> PAGE FAULT");
+		scr.Writeln("IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP);
+		scr.Writeln("RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX);
+		scr.Writeln("RCX = ", cast(void*)RCX, " | RDX = ", cast(void*)RDX);
+		scr.Writeln("RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI);
+		scr.Writeln("RSP = ", cast(void*)RSP, " | RBP = ", cast(void*)RBP);
+		scr.Writeln(" R8 = ", cast(void*)R8, "  |  R9 = ", cast(void*)R9);
+		scr.Writeln("R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11);
+		scr.Writeln("R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13);
+		scr.Writeln("R14 = ", cast(void*)R14, " | R15 = ", cast(void*)R15);
+		scr.Writeln(" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS);
+		scr.Writeln(" CR2 = ", cast(void*)CR2);
+		scr.Writeln("Flags: ", cast(void*)Flags);
+		scr.Writeln("Errorcode: ", cast(void*)ErrorCode);
 
-		if (IntNumber == InterruptType.PageFault) {
-			log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP, "\n", "RAX = ",
-					cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n", "RCX = ", cast(void*)RCX, " | RDX = ",
-					cast(void*)RDX, "\n", "RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI, "\n", "RSP = ",
-					cast(void*)RSP, " | RBP = ", cast(void*)RBP, "\n", " R8 = ", cast(void*)R8, "  |  R9 = ",
-					cast(void*)R9, "\n", "R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11, "\n", "R12 = ",
-					cast(void*)R12, " | R13 = ", cast(void*)R13, "\n", "R14 = ", cast(void*)R14, " | R15 = ",
-					cast(void*)R15, "\n", " CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n", " CR2 = ",
-					cast(void*)CR2, "\n", "Flags: ", cast(void*)Flags, "\n", "Errorcode: ", cast(void*)ErrorCode);
-		} else
-			log.Fatal("Interrupt!\r\n", "\tIntNumber: ", cast(void*)IntNumber, " ErrorCode: ", cast(void*)ErrorCode,
-					"\r\n", "\tRAX: ", cast(void*)RAX, " RBX: ", cast(void*)RBX, " RCX: ", cast(void*)RCX, " RDX: ",
-					cast(void*)RDX, "\r\n", "\tRSI: ", cast(void*)RSI, " RDI: ", cast(void*)RDI, " RBP: ",
-					cast(void*)RBP, "\r\n", "\tRIP: ", cast(void*)RIP, " RSP: ", cast(void*)RSP, " Flags: ",
-					cast(void*)Flags, " SS: ", cast(void*)SS, " CS: ", cast(void*)CS,);
+		log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP, "\n", "RAX = ",
+				cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n", "RCX = ", cast(void*)RCX, " | RDX = ",
+				cast(void*)RDX, "\n", "RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI, "\n", "RSP = ",
+				cast(void*)RSP, " | RBP = ", cast(void*)RBP, "\n", " R8 = ", cast(void*)R8, "  |  R9 = ",
+				cast(void*)R9, "\n", "R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11, "\n", "R12 = ",
+				cast(void*)R12, " | R13 = ", cast(void*)R13, "\n", "R14 = ", cast(void*)R14, " | R15 = ",
+				cast(void*)R15, "\n", " CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n", " CR2 = ",
+				cast(void*)CR2, "\n", "Flags: ", cast(void*)Flags, "\n", "Errorcode: ", cast(void*)ErrorCode);
 	}
 }
