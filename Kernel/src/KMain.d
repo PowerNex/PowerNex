@@ -21,7 +21,7 @@ import Data.Linker;
 import Data.Address;
 import Memory.Heap;
 import Task.Scheduler;
-import Task.Process;
+import Task.Thread;
 
 alias scr = GetScreen;
 
@@ -30,15 +30,30 @@ immutable uint minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
 
-void a() {
-	while (true) {
+void shell() {
+	dchar key;
+	import HW.PS2.KBSet : KeyCode;
 
+	scr.Writeln();
+	scr.Writeln("User input:");
+
+	while (true) {
+		// Get User input and write it out
+		key = Keyboard.Pop();
+		if (key != '\0' && key < 0x100 && key != 27)
+			scr.Write(cast(char)key);
 	}
 }
 
 void b() {
+	int counter;
 	while (true) {
-
+		counter++;
+		const VirtAddress pos = VirtAddress(0xFFFF_FFFF_800B_8000) + (80 * 2 - 1) * 2;
+		*((pos - (0 * 2)).Ptr!ubyte) = cast(ubyte)(counter % 255);
+		*((pos - (1 * 2)).Ptr!ubyte) = cast(ubyte)((counter * 3) % 255);
+		*((pos - (2 * 2)).Ptr!ubyte) = cast(ubyte)((counter * 5) % 255);
+		scheduler.Schedule();
 	}
 }
 
@@ -50,25 +65,15 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	KernelProcess aProc = new KernelProcess(&a);
-	scheduler.AddProcess(aProc);
+	KernelThread shellProc = new KernelThread(&shell);
+	scheduler.AddThread(shellProc);
 
-	KernelProcess bProc = new KernelProcess(&b);
-	scheduler.AddProcess(bProc);
+	KernelThread bProc = new KernelThread(&b);
+	scheduler.AddThread(bProc);
 
-	scr.Writeln();
-	scr.Writeln("User input:");
-
-	dchar key;
-	import HW.PS2.KBSet : KeyCode;
-
-	while (key != 27 /* KeyCode.Escape */ ) {
-		// Get User input and write it out
-		key = Keyboard.Pop();
-		if (key != '\0' && key < 0x100 && key != 27)
-			scr.Write(cast(char)key);
+	while (true) {
+		scheduler.Schedule();
 	}
-	scr.Writeln();
 
 	scr.color.Foreground = Colors.Magenta;
 	scr.color.Background = Colors.Yellow;

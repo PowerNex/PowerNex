@@ -1,4 +1,4 @@
-module Task.Process;
+module Task.Thread;
 
 import Memory.Paging;
 import Memory.Heap;
@@ -12,7 +12,7 @@ ulong GetPid() {
 	return counter;
 }
 
-class Process {
+class Thread {
 public:
 	ulong Pid;
 	bool FirstTime;
@@ -41,7 +41,7 @@ private:
 	bool shouldFreeStack;
 }
 
-class KernelProcess : Process {
+class KernelThread : Thread {
 public:
 	this(void function() func) {
 		super(GetPid, true, GetKernelPaging, null);

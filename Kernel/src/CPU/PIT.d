@@ -40,13 +40,13 @@ private:
 
 		const ulong usedMiB = FrameAllocator.UsedFrames / 256;
 		const ulong maxMiB = FrameAllocator.MaxFrames / 256;
-		const ulong pid = (scheduler) ? scheduler.CurrentProcess.Pid : 0;
+		const ulong pid = (scheduler) ? scheduler.CurrentThread.Pid : 0;
 		ulong memory;
 		if (maxMiB)
 			memory = (usedMiB * 100) / maxMiB;
 		scr.WriteStatus("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)\tPID: ", pid, "\tSeconds since boot: ", Seconds);
 
 		if (scheduler)
-			scheduler.SchedulerTick();
+			scheduler.Schedule();
 	}
 }

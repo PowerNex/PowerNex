@@ -2,8 +2,10 @@ module Task.Scheduler;
 
 import Data.Address;
 import Data.LinkedList;
-import Task.Process;
+import Task.Thread;
 import CPU.GDT;
+import CPU.PIT;
+import Task.Mutex.SpinLockMutex;
 
 __gshared Scheduler scheduler;
 
@@ -12,22 +14,21 @@ public:
 	this() {
 		import Memory.Paging;
 
-		processes = new LinkedList!Process();
+		threades = new LinkedList!Thread();
 
-		current = kernelProcess = new Process(0, false, GetKernelPaging);
-		counter = 1;
+		current = kernelThread = new Thread(0, false, GetKernelPaging);
+		mutex = new SpinLockMutex();
 	}
 
-	void SchedulerTick() {
-		if (--counter > 0)
-			return;
-		counter = 1;
+	void Schedule() {
+		mutex.Lock();
+		Thread prev = current;
+		threades.Add(current);
 
-		Process prev = current;
-		processes.Add(current);
-
-		Process next = processes.Remove(0); // Need to get the variable on the stack for the assembly code to work
+		Thread next = threades.Remove(0); // Need to get the variable on the stack for the assembly code to work
 		current = next;
+		if (!current)
+			current = next = prev;
 
 		if (next == prev)
 			return;
@@ -55,9 +56,9 @@ public:
 			mov RAX, next;
 			mov RBX, prev;
 
-			mov Process.KernelStack.offsetof[RBX], RSP;
-			mov RSP, Process.KernelStack.offsetof[RAX];
-			cmp Process.FirstTime.offsetof[RAX], 0;
+			mov Thread.KernelStack.offsetof[RBX], RSP;
+			mov RSP, Thread.KernelStack.offsetof[RAX];
+			cmp Thread.FirstTime.offsetof[RAX], 0;
 			jne skip;
 
 			pop R15;
@@ -81,29 +82,32 @@ public:
 		}
 
 		GDT.tss.RSP0 = VirtAddress(next.KernelStack + 0x1000 - 16);
-
 		if (next.FirstTime) {
 			next.FirstTime = false;
+			mutex.Unlock();
 			asm {
 				sti;
 				ret;
 			}
 		}
+		mutex.Unlock();
 	}
 
-	void AddProcess(Process process) {
-		processes.Add(process);
+	void AddThread(Thread Thread) {
+		mutex.Lock();
+		threades.Add(Thread);
+		mutex.Unlock();
 	}
 
-	@property Process CurrentProcess() {
+	@property Thread CurrentThread() {
 		return current;
 	}
 
 private:
 	bool initialized;
-	LinkedList!Process processes;
-	Process current;
-	ulong counter;
+	SpinLockMutex mutex;
+	LinkedList!Thread threades;
+	Thread current;
 
-	Process kernelProcess;
+	Thread kernelThread;
 }
