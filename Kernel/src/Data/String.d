@@ -18,6 +18,29 @@ size_t strlen(char[] str) {
 	return len;
 }
 
+long indexOf(char[] str, char ch) {
+	long idx = 0;
+	while (idx < str.length)
+		if (str[idx] == ch)
+			return idx;
+		else
+			idx++;
+	return -1;
+}
+
+char[] strip(char[] str) {
+	if (!str.length)
+		return str;
+	size_t start;
+	size_t end = str.length;
+	while (str[start] == ' ')
+		start++;
+	while (end > 0 && str[end - 1] == ' ')
+		end--;
+
+	return str[start .. end];
+}
+
 string itoa(S)(S v, char[] buf, uint base = 10) if (isNumber!S) {
 	auto start = itoa(v, buf.ptr, buf.length, base);
 	return cast(string)buf[start .. $];
