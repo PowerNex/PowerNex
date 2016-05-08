@@ -53,7 +53,6 @@ void b() {
 		*((pos - (0 * 2)).Ptr!ubyte) = cast(ubyte)(counter % 255);
 		*((pos - (1 * 2)).Ptr!ubyte) = cast(ubyte)((counter * 3) % 255);
 		*((pos - (2 * 2)).Ptr!ubyte) = cast(ubyte)((counter * 5) % 255);
-		scheduler.Schedule();
 	}
 }
 
@@ -72,7 +71,6 @@ extern (C) int kmain(uint magic, ulong info) {
 	scheduler.AddThread(bProc);
 
 	while (true) {
-		scheduler.Schedule();
 	}
 
 	scr.CurrentColor.Foreground = Colors.Magenta;
