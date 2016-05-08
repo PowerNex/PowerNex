@@ -20,12 +20,14 @@ public:
 		mutex = new SpinLockMutex();
 	}
 
+
+	/// This function is only allowed to be called in a interrupt AKA only from the PIT
 	void Schedule() {
 		mutex.Lock();
 		Thread prev = current;
-		threades.Add(current);
+		threades.MoveFrontToEnd();
 
-		Thread next = threades.Remove(0); // Need to get the variable on the stack for the assembly code to work
+		Thread next = threades.Get(0); // Need to get the variable on the stack for the assembly code to work
 		current = next;
 		if (!current)
 			current = next = prev;

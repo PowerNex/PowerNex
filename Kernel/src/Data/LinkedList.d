@@ -52,6 +52,15 @@ public:
 		return cur.data;
 	}
 
+	void MoveFrontToEnd() {
+		if (first != last) {
+			Node n = first;
+			first = first.next;
+			last.next = n;
+			last = n;
+		}
+	}
+
 	@property size_t Length() {
 		return len;
 	}
