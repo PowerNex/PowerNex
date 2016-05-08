@@ -2258,6 +2258,14 @@ extern (C) void* _memset64(void* p, ulong value, size_t count) {
 	return p;
 }
 
+void[]* _memset128ii(void[]* p, void[] value, size_t count) {
+	void[]* ptr = cast(void[]*)p;
+
+	for (size_t i = 0; i < count; i++)
+		ptr[i] = value;
+	return p;
+}
+
 extern (C) void* memcpy(void* dest, const(void)* src, size_t size) {
 	for (size_t i = 0; i < size; ++i)
 		(cast(ubyte*)dest)[i] = (cast(const(ubyte)*)src)[i];
