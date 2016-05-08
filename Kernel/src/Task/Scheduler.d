@@ -17,9 +17,7 @@ public:
 		threades = new LinkedList!Thread();
 
 		current = kernelThread = new Thread(0, false, GetKernelPaging);
-		mutex = new SpinLockMutex();
 	}
-
 
 	/// This function is only allowed to be called in a interrupt AKA only from the PIT
 	void Schedule() {
