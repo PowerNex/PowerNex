@@ -23,38 +23,14 @@ import Memory.Heap;
 import Task.Scheduler;
 import Task.Thread;
 
+import Bin.BasicShell;
+
 alias scr = GetScreen;
 
 immutable uint major = __VERSION__ / 1000;
 immutable uint minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
-
-void shell() {
-	dchar key;
-	import HW.PS2.KBSet : KeyCode;
-
-	scr.Writeln();
-	scr.Writeln("User input:");
-
-	while (true) {
-		// Get User input and write it out
-		key = Keyboard.Pop();
-		if (key != '\0' && key < 0x100 && key != 27)
-			scr.Write(cast(char)key);
-	}
-}
-
-void b() {
-	int counter;
-	while (true) {
-		counter++;
-		const VirtAddress pos = VirtAddress(0xFFFF_FFFF_800B_8000) + (80 * 2 - 1) * 2;
-		*((pos - (0 * 2)).Ptr!ubyte) = cast(ubyte)(counter % 255);
-		*((pos - (1 * 2)).Ptr!ubyte) = cast(ubyte)((counter * 3) % 255);
-		*((pos - (2 * 2)).Ptr!ubyte) = cast(ubyte)((counter * 5) % 255);
-	}
-}
 
 extern (C) int kmain(uint magic, ulong info) {
 	PreInit();
@@ -64,12 +40,7 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	KernelThread shellProc = new KernelThread(&shell);
-	scheduler.AddThread(shellProc);
-
-	KernelThread bProc = new KernelThread(&b);
-	scheduler.AddThread(bProc);
-
+	scheduler.AddThread(new BasicShellThread());
 	while (true) {
 	}
 
