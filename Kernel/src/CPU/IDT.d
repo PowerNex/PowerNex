@@ -94,7 +94,7 @@ public:
 	static void Flush() {
 		void* baseAddr = cast(void*)(&base);
 		asm {
-			mov baseAddr, RAX;
+			mov RAX, baseAddr;
 			lidt [RAX];
 		}
 	}
