@@ -22,6 +22,7 @@ import Data.Address;
 import Memory.Heap;
 import Task.Scheduler;
 import Task.Thread;
+import ACPI.RSDP;
 
 import Bin.BasicShell;
 
@@ -39,6 +40,8 @@ extern (C) int kmain(uint magic, ulong info) {
 	asm {
 		sti;
 	}
+
+	rsdp.Init();
 
 	scheduler.AddThread(new BasicShellThread());
 	while (true) {
