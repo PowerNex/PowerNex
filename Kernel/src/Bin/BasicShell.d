@@ -95,13 +95,13 @@ private:
 			break;
 
 		case "exit":
-			//dfmt off
-			asm {
-				mov RAX, 0x1000; // Because page zero is not mapped
-				lidt [RAX]; // and this will cause a Page fault before it changes the IDT
-				int 0x1; // And triple fault :D
+			import ACPI.RSDP;
+			import IO.Port;
+
+			rsdp.Shutdown();
+			scr.Writeln("Failed shutdown!");
+			while (true) {
 			}
-			//dfmt on
 			break;
 		default:
 			scr.Writeln("Unknown command: ", cmd.name);
