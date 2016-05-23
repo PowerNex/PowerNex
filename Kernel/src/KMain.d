@@ -23,6 +23,7 @@ import Memory.Heap;
 import Task.Scheduler;
 import Task.Thread;
 import ACPI.RSDP;
+import HW.PCI.PCI;
 
 import Bin.BasicShell;
 
@@ -89,6 +90,9 @@ void Init(uint magic, ulong info) {
 
 	scr.Writeln("ACPI initializing...");
 	rsdp.Init();
+
+	scr.Writeln("PCI initializing...");
+	GetPCI;
 
 	scr.Writeln("Initrd initializing...");
 	LoadInitrd();
