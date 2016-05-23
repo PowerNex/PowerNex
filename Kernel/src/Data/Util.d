@@ -68,3 +68,15 @@ T InplaceClass(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class))
 struct BinaryInt {
 	ulong Int;
 }
+
+void Swap(T)(ref T t1, ref T t2) {
+	T tmp = t1;
+	t1 = t2;
+	t2 = tmp;
+}
+
+T abs(T)(T i) {
+	if (i < 0)
+		return -i;
+	return i;
+}
