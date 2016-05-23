@@ -41,8 +41,6 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	rsdp.Init();
-
 	scheduler.AddThread(new BasicShellThread());
 	while (true) {
 	}
@@ -88,6 +86,9 @@ void Init(uint magic, ulong info) {
 
 	scr.Writeln("Heap initializing...");
 	GetKernelHeap;
+
+	scr.Writeln("ACPI initializing...");
+	rsdp.Init();
 
 	scr.Writeln("Initrd initializing...");
 	LoadInitrd();
