@@ -2,6 +2,7 @@ module HW.PCI.PCI;
 
 import Data.Address;
 import IO.Port;
+import IO.Log;
 import IO.TextMode : scr = GetScreen;
 
 private enum {
@@ -78,8 +79,13 @@ private:
 
 				*device = PCIDevice(this, bus, slot);
 
+				log.Info("Found device at ", cast(void*)bus, ":", cast(void*)slot);
+				log.Info("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID,
+						" type: ", device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
 				scr.Writeln("Found device at ", cast(void*)bus, ":", cast(void*)slot);
-				scr.Writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID);
+				scr.Writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID,
+						" type: ", device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
+				;
 				deviceCount++;
 			}
 	}
