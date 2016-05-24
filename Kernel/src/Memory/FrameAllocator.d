@@ -133,7 +133,7 @@ public:
 	}
 
 private:
-	enum ulong maxmem = 0x10000000000 - 1; //pow(2, 40)
+	enum ulong maxmem = 0x100_0000_0000 - 1; //pow(2, 40)
 
 	__gshared ulong maxFrames;
 	__gshared ulong usedFrames;
