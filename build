@@ -23,6 +23,14 @@
 			"command": "dmd",
 			"arguments": "-of$out -odUtils/obj $in"
 		},
+		"copy": {
+			"command": "cp",
+			"arguments": "-f $in $out"
+		},
+		"gzip-d": {
+			"command": "gzip",
+			"arguments": "-d -f $in"
+		},
 		"GenerateSymbols" : {
 			"command": "Utils/GenerateSymbols",
 			"arguments": "$in $out"
@@ -43,6 +51,10 @@
 		"Utils/MakeInitrd": {
 			"processor": "ndc",
 			"input": "Utils/MakeInitrd.d"
+		},
+		"Initrd/Data/Font/TTYFont.psf.gz": {
+			"processor": "copy",
+			"input": "/usr/share/kbd/consolefonts/lat9w-16.psfu.gz"
 		}
 	},
 	"rules": {
@@ -62,6 +74,10 @@
 			"processor": "GenerateSymbols",
 			"input": "Disk/boot/PowerNex.krl"
 		},
+		"Initrd/Data/Font/TTYFont.psf": {
+			"processor": "gzip-d",
+			"input": "Initrd/Data/Font/TTYFont.psf.gz"
+		},
 		"Disk/boot/PowerNex.dsk": {
 			"processor": "MakeInitrd",
 			"input": "Initrd"
@@ -74,6 +90,7 @@
 	"targets": [
 		"Disk/boot/PowerNex.krl",
 		"Initrd/Data/PowerNex.map",
+		"Initrd/Data/Font/TTYFont.psf",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]

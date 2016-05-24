@@ -23,6 +23,8 @@ import Memory.Heap;
 import Task.Scheduler;
 import Task.Thread;
 import ACPI.RSDP;
+import HW.BGA.BGA;
+import HW.BGA.PSF;
 import HW.PCI.PCI;
 
 import Bin.BasicShell;
@@ -96,6 +98,9 @@ void Init(uint magic, ulong info) {
 
 	scr.Writeln("Initrd initializing...");
 	LoadInitrd();
+
+	scr.Writeln("BGA initializing...");
+	GetBGA.Init(new PSF(cast(FileNode)rootFS.Root.FindNode("/Data/Font/TTYFont.psf")));
 
 	scheduler = new Scheduler();
 }
