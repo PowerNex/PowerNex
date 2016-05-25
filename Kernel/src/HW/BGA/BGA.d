@@ -98,7 +98,14 @@ enum : ushort
 {
 	BGA_VENDOR = 0x1234,
 	BGA_DEVICE = 0x1111,
+	VBOX_VENDOR = 0x80EE,
+	VBOX_DEVICE = 0xBEEF,
+	VBOX_OLDDEVICE = 0x7145,
 }
+enum {
+	VBOX_ADDR = 0xE000_0000,
+}
+
 //dfmt on
 import IO.TextMode : scr = GetScreen;
 
@@ -106,9 +113,16 @@ class BGA {
 public:
 	this() {
 		PCIDevice* bgaDevice = GetPCI.GetDevice(BGA_VENDOR, BGA_DEVICE);
+		if (bgaDevice) {
+			pixelData = PhysAddress(bgaDevice.bar0 & ~0b1111UL).Virtual.Ptr!Color;
+			return;
+		}
+		bgaDevice = GetPCI.GetDevice(VBOX_VENDOR, VBOX_DEVICE);
+		if (!bgaDevice)
+			bgaDevice = GetPCI.GetDevice(VBOX_VENDOR, VBOX_OLDDEVICE);
 		if (!bgaDevice)
 			log.Fatal("BGA device not found!");
-		pixelData = PhysAddress(bgaDevice.bar0 & ~0b1111UL).Virtual.Ptr!Color;
+		pixelData = PhysAddress(VBOX_ADDR).Virtual.Ptr!Color;
 	}
 
 	int Version() {
