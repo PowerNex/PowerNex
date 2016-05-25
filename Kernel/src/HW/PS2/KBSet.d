@@ -382,13 +382,7 @@ private __gshared dchar[KeyCode.max] NormalTranslationEN_US = [
 	KeyCode.Comma: ',',
 	KeyCode.Dot: '.',
 	KeyCode.Slash: '/',
-	KeyCode.Space: ' ',
-	KeyCode.KPSlash: '/',
-	KeyCode.KP5: '5',
-	KeyCode.KPStar: '*',
-	KeyCode.KPMinus: '-',
-	KeyCode.KPPlus: '+',
-	KeyCode.KPReturn: '\n'
+	KeyCode.Space: ' '
 ];
 
 private __gshared dchar[KeyCode.max] KeypadTranslationEN_US = [
