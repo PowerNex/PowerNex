@@ -86,8 +86,6 @@ public:
 		base.Limit = (IDTDescriptor.sizeof * desc.length) - 1;
 		base.Offset = cast(ulong)desc.ptr;
 
-		_memset64(handlers.ptr, 0, 256);
-
 		addAllJumps();
 	}
 
@@ -236,7 +234,7 @@ private:
 			handler(regs);
 		else
 			with (regs) {
-				GetScreen.Writeln("UNCAUGHT INTERRUPT: ", cast(InterruptType)regs.IntNumber, " Errorcode: ", regs.ErrorCode);
+				GetScreen.Writeln("UNCAUGHT INTERRUPT: ", cast(InterruptType)IntNumber, " Errorcode: ", ErrorCode);
 				log.Fatal("Uncaught interrupt!\r\n", "\tIntNumber: ", cast(void*)IntNumber, " ErrorCode: ",
 						cast(void*)ErrorCode, "\r\n", "\tRAX: ", cast(void*)RAX, " RBX: ", cast(void*)RBX, " RCX: ",
 						cast(void*)RCX, " RDX: ", cast(void*)RDX, "\r\n", "\tRSI: ", cast(void*)RSI, " RDI: ",
