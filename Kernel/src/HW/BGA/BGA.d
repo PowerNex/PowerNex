@@ -100,6 +100,7 @@ enum : ushort
 	BGA_DEVICE = 0x1111,
 }
 //dfmt on
+import IO.TextMode : scr = GetScreen;
 
 class BGA {
 public:
@@ -115,6 +116,7 @@ public:
 	}
 
 	void Init(PSF font) {
+		scr.Enabled = false;
 		this.font = font;
 		writeRegister(VBE_DISPI_INDEX_ID, VBE_DISPI_ID5);
 		setVideoMode(1280, 720, VBE_DISPI_BPP_32, true, true);
