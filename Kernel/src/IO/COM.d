@@ -1,6 +1,8 @@
 module IO.COM;
 
 import IO.Port;
+import CPU.IDT;
+import Data.Register;
 
 __gshared COM COM1 = COM(0x3F8);
 __gshared COM COM2 = COM(0x2F8);
@@ -26,6 +28,11 @@ struct COM {
 		Out(cast(ushort)(port + 3), 0x03); // 8 bits, no parity, one stop bit
 		Out(cast(ushort)(port + 2), 0xC7); // Enable FIFO, clear them, with 14-byte threshold
 		Out(cast(ushort)(port + 4), 0x0B); // IRQs enabled, RTS/DSR set
+
+		if (port == 0x3F8 || port == 0x3E8)
+			IDT.Register(IRQ(4), &IRQIgnore);
+		if (port == 0x2F8 || port == 0x2E8)
+			IDT.Register(IRQ(3), &IRQIgnore);
 
 		isInitialized = true;
 	}
@@ -58,5 +65,8 @@ struct COM {
 	void Write(Args...)(Args args) {
 		foreach (arg; args)
 			Write(arg);
+	}
+
+	static void IRQIgnore(Registers*) {
 	}
 }
