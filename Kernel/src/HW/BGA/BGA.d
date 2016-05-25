@@ -54,6 +54,10 @@ align(1):
 	ubyte r;
 	ubyte a;
 
+	this(ubyte r, ubyte g, ubyte b) {
+		this(r, g, b, 255);
+	}
+
 	this(ubyte r, ubyte g, ubyte b, ubyte a) {
 		this.r = r;
 		this.g = g;
@@ -66,35 +70,40 @@ align(1):
 	}
 }
 
+static assert(Color.sizeof == uint.sizeof);
+
 //dfmt off
 __gshared Color[16] palette = [
 	/* low brightness */
-	Color(  0,  0,  0,255),
-	Color(128,  0,  0,255),
-	Color( 32,128,  0,255),
-	Color(160, 64, 32,255),
-	Color(  0, 32, 88,255),
-	Color( 60,  0, 88,255),
-	Color( 16,160,208,255),
-	Color( 88, 88, 88,255),
+	Color(  0,  0,  0),
+	Color(128,  0,  0),
+	Color( 32,128,  0),
+	Color(160, 64, 32),
+	Color(  0, 32, 88),
+	Color( 60,  0, 88),
+	Color( 16,160,208),
+	Color( 88, 88, 88),
 	/* high brightness */
-	Color( 32, 32, 32,255),
-	Color(255, 64, 64,255),
-	Color( 72,255, 64,255),
-	Color(255,224, 60,255),
-	Color( 48,128,255,255),
-	Color(192, 48,255,255),
-	Color( 72,224,255,255),
-	Color(255,255,255,255),
+	Color( 32, 32, 32),
+	Color(255, 64, 64),
+	Color( 72,255, 64),
+	Color(255,224, 60),
+	Color( 48,128,255),
+	Color(192, 48,255),
+	Color( 72,224,255),
+	Color(255,255,255),
 ];
+
+enum : ushort
+{
+	BGA_VENDOR = 0x1234,
+	BGA_DEVICE = 0x1111,
+}
 //dfmt on
 
 class BGA {
 public:
 	this() {
-
-		enum ushort BGA_VENDOR = 0x1234;
-		enum ushort BGA_DEVICE = 0x1111;
 		PCIDevice* bgaDevice = GetPCI.GetDevice(BGA_VENDOR, BGA_DEVICE);
 		if (!bgaDevice)
 			log.Fatal("BGA device not found!");
