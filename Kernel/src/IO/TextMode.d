@@ -63,9 +63,12 @@ struct Screen(int w, int h) {
 		this.x = 0;
 		this.y = 1;
 		this.color = Color(fg, bg);
+		this.enabled = true;
 	}
 
 	void Clear() {
+		if (!enabled)
+			return;
 		foreach (ref slot slot; (*screen)[w .. $]) {
 			slot.ch = ' ';
 			slot.color = color;
@@ -75,28 +78,38 @@ struct Screen(int w, int h) {
 	}
 
 	void Write(char ch) {
+		if (!enabled)
+			return;
 		write(ch);
 		MoveCursor();
 	}
 
 	void Write(in char[] str) {
+		if (!enabled)
+			return;
 		foreach (char ch; str)
 			write(ch);
 		MoveCursor();
 	}
 
 	void Write(char* str) {
+		if (!enabled)
+			return;
 		while (*str)
 			write(*(str++));
 		MoveCursor();
 	}
 
 	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
+		if (!enabled)
+			return;
 		char[S.sizeof * 8] buf;
 		Write(itoa(value, buf, base));
 	}
 
 	void WriteEnum(T)(T value) if (is(T == enum)) {
+		if (!enabled)
+			return;
 		foreach (i, e; EnumMembers!T)
 			if (value == e) {
 				Write(__traits(allMembers, T)[i]);
@@ -107,6 +120,8 @@ struct Screen(int w, int h) {
 	}
 
 	void Write(Args...)(Args args) {
+		if (!enabled)
+			return;
 		blockCursor++;
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
@@ -134,6 +149,8 @@ struct Screen(int w, int h) {
 	}
 
 	void Writeln(Args...)(Args args) {
+		if (!enabled)
+			return;
 		blockCursor++;
 		Write(args, '\n');
 		blockCursor--;
@@ -141,6 +158,8 @@ struct Screen(int w, int h) {
 	}
 
 	void WriteStatus(Args...)(Args args) {
+		if (!enabled)
+			return;
 		blockCursor++;
 		ubyte oldX = x;
 		ubyte oldY = y;
@@ -161,27 +180,28 @@ struct Screen(int w, int h) {
 	}
 
 	void MoveCursor() {
+		if (!enabled)
+			return;
 		if (blockCursor > 0)
 			return;
-		asm {
-			cli;
-		}
 		ushort pos = y * w + x;
 		Out!ubyte(0x3D4, 14);
 		Out!ubyte(0x3D5, pos >> 8);
 		Out!ubyte(0x3D4, 15);
 		Out!ubyte(0x3D5, cast(ubyte)pos);
-		asm {
-			sti;
-		}
 	}
 
 	@property ref Color CurrentColor() {
 		return color;
 	}
 
+	@property ref bool Enabled() {
+		return enabled;
+	}
+
 private:
 	slot[w * h]* screen;
+	bool enabled;
 	ubyte x, y;
 	Color color;
 	int blockCursor;
