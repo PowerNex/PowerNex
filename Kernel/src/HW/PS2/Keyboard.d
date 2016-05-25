@@ -15,28 +15,24 @@ public:
 		ubyte result;
 
 		IDT.Register(IRQ(1), &onIRQ);
+		IDT.Register(IRQ(2), &ignore);
 
 		sendCtlCmd(0xAD /* Disable port 1 */ );
 		sendCtlCmd(0xA7 /* Disable port 2 */ );
 
 		while (getStatus.OutputFull)
 			get(false);
-
 		sendCtlCmd(0x20 /* Read configuration */ );
 		result = get();
-		result &= ~0b1000010; // Clear Translation bit and IRQ flags
+		result &= ~0b100_0010; // Clear Translation bit (aka enable scancode set 2) and IRQ flags
 		sendCtlCmd(0x60 /* Write configuration */ );
 		sendCmd(result);
-
 		sendCtlCmd(0xAE /* Enable port 1 */ );
-
 		sendCmd(0xFF /* Reset */ );
 		while (result != 0xAA)
-			result = get(false);
-
+			result = get();
 		setLED();
-
-		initialized = true;
+		enabled = true;
 	}
 
 private:
@@ -96,11 +92,18 @@ private:
 	enum ushort DataPort = 0x60;
 	enum ushort ControllerPort = 0x64; // Read -> Status Register / Write -> Command Register
 
-	__gshared bool initialized;
+	__gshared bool enabled;
 	__gshared keyState state;
 	__gshared modifierState modifiers;
 
 	static KeyCode combineKeyData(ubyte ch) {
+		enum VBoxHack { // XXX: Fixed VBox scancode set 2 problems
+			None,
+			NumLock,
+			CapsLock,
+		}
+
+		__gshared VBoxHack vboxHackState = VBoxHack.None;
 		__gshared bool nextUnpress = false;
 		__gshared bool nextExtended = false;
 		__gshared int nextSpecial = 0;
@@ -131,6 +134,7 @@ private:
 		if (nextUnpress) {
 			state.Clear(key);
 
+			vboxHackState = VBoxHack.None;
 			nextUnpress = false;
 			nextExtended = false;
 			nextSpecial = 0;
@@ -139,17 +143,19 @@ private:
 
 		state.Set(key);
 
-		if (key == KeyCode.CapsLock) {
+		if (key == KeyCode.CapsLock && vboxHackState != VBoxHack.CapsLock) {
 			modifiers.CapsLock = !modifiers.CapsLock;
 			setLED();
-		} else if (key == KeyCode.NumLock) {
+			vboxHackState = VBoxHack.CapsLock;
+		} else if (vboxHackState != VBoxHack.NumLock && key == KeyCode.NumLock) {
 			modifiers.NumLock = !modifiers.NumLock;
 			setLED();
+			vboxHackState = VBoxHack.NumLock;
 		} else if (key == KeyCode.ScrollLock) {
 			modifiers.ScrollLock = !modifiers.ScrollLock;
 			setLED();
-		}
-
+		} else
+			vboxHackState = VBoxHack.None;
 		return key;
 	}
 
@@ -184,17 +190,23 @@ private:
 	}
 
 	static void setLED() {
-		waitSend();
+		enabled = false;
 		sendCmd(0xED);
-		get(false);
+		while (get() != 0xFA) {
+		}
 		sendCmd(modifiers.CapsLock << 2 | modifiers.NumLock << 1 | modifiers.ScrollLock);
-		get(false);
+		while (get() != 0xFA) {
+		}
+		enabled = true;
 	}
 
 	static void onIRQ(Registers* regs) {
 		ubyte data = get();
-		if (!initialized)
+		log.Debug("data: ", cast(void*)data, " modifiers: ", cast(void*)modifiers.data);
+		if (!enabled)
 			return;
+		//if (data == 0x00 || data == 0xAA || data == 0xEE || data == 0xFA || data == 0xFC || data == 0xFD || data == 0xFE || data == 0xFF)
+		//acontinue;
 
 		KeyCode key = combineKeyData(data);
 		if (key != KeyCode.None) {
@@ -218,6 +230,12 @@ private:
 
 			if (ch != dchar.init)
 				Keyboard.Push(ch);
+
+			log.Debug("\tch: ", cast(char)ch, " int: ", cast(void*)ch);
 		}
+		log.Debug("\t modifiers: ", cast(void*)modifiers.data);
+	}
+
+	static void ignore(Registers*) {
 	}
 }
