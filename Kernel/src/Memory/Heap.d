@@ -188,10 +188,9 @@ Heap GetKernelHeap() {
 }
 
 private void onPageFault(Registers* regs) {
-	import IO.TextMode;
+	import Data.TextBuffer : scr = GetBootTTY;
 	import IO.Log;
 
-	alias scr = GetScreen;
 	with (regs) {
 		scr.Writeln("===> PAGE FAULT");
 		scr.Writeln("IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP);

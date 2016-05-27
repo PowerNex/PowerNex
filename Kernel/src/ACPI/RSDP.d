@@ -1,7 +1,7 @@
 module ACPI.RSDP;
 
 import Data.Address;
-import IO.TextMode : scr = GetScreen;
+import Data.TextBuffer : scr = GetBootTTY;
 import IO.Port;
 
 struct RSDPDescriptor {

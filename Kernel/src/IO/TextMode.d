@@ -3,6 +3,7 @@ module IO.TextMode;
 import IO.Port;
 import Data.Util;
 import Data.String;
+import Data.TextBuffer;
 
 enum Colors : ubyte {
 	Black = 0,
@@ -77,83 +78,11 @@ struct Screen(int w, int h) {
 		y = 1;
 	}
 
-	void Write(char ch) {
+	void Write(Slot[] slots) {
 		if (!enabled)
 			return;
-		write(ch);
-		MoveCursor();
-	}
-
-	void Write(in char[] str) {
-		if (!enabled)
-			return;
-		foreach (char ch; str)
-			write(ch);
-		MoveCursor();
-	}
-
-	void Write(char* str) {
-		if (!enabled)
-			return;
-		while (*str)
-			write(*(str++));
-		MoveCursor();
-	}
-
-	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
-		if (!enabled)
-			return;
-		char[S.sizeof * 8] buf;
-		Write(itoa(value, buf, base));
-	}
-
-	void WriteEnum(T)(T value) if (is(T == enum)) {
-		if (!enabled)
-			return;
-		foreach (i, e; EnumMembers!T)
-			if (value == e) {
-				Write(__traits(allMembers, T)[i]);
-				return;
-			}
-
-		Write("cast(", T.stringof, ")", value);
-	}
-
-	void Write(Args...)(Args args) {
-		if (!enabled)
-			return;
-		blockCursor++;
-		foreach (arg; args) {
-			alias T = Unqual!(typeof(arg));
-			static if (is(T : const char[]))
-				Write(arg);
-			else static if (is(T == BinaryInt)) {
-				Write("0b");
-				WriteNumber(cast(ulong)arg, 2);
-			} else static if (is(T : V*, V)) {
-				Write("0x");
-				WriteNumber(cast(ulong)arg, 16);
-			} else static if (is(T == enum))
-				WriteEnum(arg);
-			else static if (is(T == bool))
-				Write((arg) ? "true" : "false");
-			else static if (is(T : char))
-				write(arg);
-			else static if (isNumber!T)
-				WriteNumber(arg, 10);
-			else
-				Write("UNKNOWN TYPE '", T.stringof, "'");
-		}
-		blockCursor--;
-		MoveCursor();
-	}
-
-	void Writeln(Args...)(Args args) {
-		if (!enabled)
-			return;
-		blockCursor++;
-		Write(args, '\n');
-		blockCursor--;
+		foreach (slot; slots)
+			write(cast(char)slot.ch);
 		MoveCursor();
 	}
 
@@ -245,6 +174,86 @@ private:
 				slot.color = Color(Colors.Cyan, Colors.Black); //XXX: Stupid hack to fix colors while scrolling
 			}
 		}
+		MoveCursor();
+	}
+
+	void Write(char ch) {
+		if (!enabled)
+			return;
+		write(ch);
+		MoveCursor();
+	}
+
+	void Write(in char[] str) {
+		if (!enabled)
+			return;
+		foreach (char ch; str)
+			write(ch);
+		MoveCursor();
+	}
+
+	void Write(char* str) {
+		if (!enabled)
+			return;
+		while (*str)
+			write(*(str++));
+		MoveCursor();
+	}
+
+	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
+		if (!enabled)
+			return;
+		char[S.sizeof * 8] buf;
+		Write(itoa(value, buf, base));
+	}
+
+	void WriteEnum(T)(T value) if (is(T == enum)) {
+		if (!enabled)
+			return;
+		foreach (i, e; EnumMembers!T)
+			if (value == e) {
+				Write(__traits(allMembers, T)[i]);
+				return;
+			}
+
+		Write("cast(", T.stringof, ")", value);
+	}
+
+	void Write(Args...)(Args args) {
+		if (!enabled)
+			return;
+		blockCursor++;
+		foreach (arg; args) {
+			alias T = Unqual!(typeof(arg));
+			static if (is(T : const char[]))
+				Write(arg);
+			else static if (is(T == BinaryInt)) {
+				Write("0b");
+				WriteNumber(cast(ulong)arg, 2);
+			} else static if (is(T : V*, V)) {
+				Write("0x");
+				WriteNumber(cast(ulong)arg, 16);
+			} else static if (is(T == enum))
+				WriteEnum(arg);
+			else static if (is(T == bool))
+				Write((arg) ? "true" : "false");
+			else static if (is(T : char))
+				write(arg);
+			else static if (isNumber!T)
+				WriteNumber(arg, 10);
+			else
+				Write("UNKNOWN TYPE '", T.stringof, "'");
+		}
+		blockCursor--;
+		MoveCursor();
+	}
+
+	void Writeln(Args...)(Args args) {
+		if (!enabled)
+			return;
+		blockCursor++;
+		Write(args, '\n');
+		blockCursor--;
 		MoveCursor();
 	}
 

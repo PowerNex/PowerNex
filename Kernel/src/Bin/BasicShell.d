@@ -1,7 +1,7 @@
 module Bin.BasicShell;
 
 import Task.Thread;
-import IO.TextMode : scr = GetScreen;
+import Data.TextBuffer : scr = GetBootTTY;
 import IO.Keyboard;
 import Data.String;
 

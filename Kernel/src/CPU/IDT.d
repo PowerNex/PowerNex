@@ -221,7 +221,7 @@ private:
 	}
 
 	extern (C) static void isrHandler(Registers* regs) {
-		import IO.TextMode;
+		import Data.TextBuffer : scr = GetBootTTY;
 		import IO.Log;
 
 		if (32 <= regs.IntNumber && regs.IntNumber <= 48) {
@@ -234,7 +234,7 @@ private:
 			handler(regs);
 		else
 			with (regs) {
-				GetScreen.Writeln("UNCAUGHT INTERRUPT: ", cast(InterruptType)IntNumber, " Errorcode: ", ErrorCode);
+				scr.Writeln("UNCAUGHT INTERRUPT: ", cast(InterruptType)IntNumber, " Errorcode: ", ErrorCode);
 				log.Fatal("Uncaught interrupt!\r\n", "\tIntNumber: ", cast(void*)IntNumber, " ErrorCode: ",
 						cast(void*)ErrorCode, "\r\n", "\tRAX: ", cast(void*)RAX, " RBX: ", cast(void*)RBX, " RCX: ",
 						cast(void*)RCX, " RDX: ", cast(void*)RDX, "\r\n", "\tRSI: ", cast(void*)RSI, " RDI: ",

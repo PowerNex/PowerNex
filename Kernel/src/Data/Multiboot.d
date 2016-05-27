@@ -1,11 +1,9 @@
 module Data.Multiboot;
 
 import Data.Linker;
-import IO.TextMode;
+import Data.TextBuffer : scr = GetBootTTY;
 import IO.Log;
 import Data.Address;
-
-alias scr = GetScreen;
 
 enum MultibootTagType {
 	Align = 8,

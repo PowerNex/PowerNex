@@ -3,7 +3,7 @@ module HW.PCI.PCI;
 import Data.Address;
 import IO.Port;
 import IO.Log;
-import IO.TextMode : scr = GetScreen;
+import Data.TextBuffer : scr = GetBootTTY;
 
 private enum {
 	CONFIG_ADDRESS = 0xCF8,

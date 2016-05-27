@@ -49,8 +49,10 @@ public:
 		return valid;
 	}
 
-	ubyte[] GetChar(char ch) {
+	ubyte[] GetChar(size_t ch) {
 		size_t start = ch * hdr.height;
+		if (start >= data.length || start + hdr.height > data.length)
+			return [];
 		return data[start .. start + hdr.height];
 	}
 

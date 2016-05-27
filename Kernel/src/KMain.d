@@ -7,7 +7,6 @@ version (PowerNex) {
 }
 
 import IO.Log;
-import IO.TextMode;
 import IO.Keyboard;
 import IO.FS;
 import CPU.GDT;
@@ -26,10 +25,9 @@ import ACPI.RSDP;
 import HW.BGA.BGA;
 import HW.BGA.PSF;
 import HW.PCI.PCI;
+import Data.TextBuffer : scr = GetBootTTY;
 
 import Bin.BasicShell;
-
-alias scr = GetScreen;
 
 immutable uint major = __VERSION__ / 1000;
 immutable uint minor = __VERSION__ % 1000;
@@ -48,14 +46,28 @@ extern (C) int kmain(uint magic, ulong info) {
 	while (true) {
 	}
 
-	scr.CurrentColor.Foreground = Colors.Magenta;
-	scr.CurrentColor.Background = Colors.Yellow;
+	scr.Foreground = Color(255, 0, 255);
+	scr.Background = Color(255, 255, 0);
 	scr.Writeln("kmain functions has exited!");
 	return 0;
 }
 
+void BootTTYToTextmode(size_t start, size_t end) {
+	import IO.TextMode;
+
+	if (start == -1 && end == -1)
+		GetScreen.Clear();
+	else
+		GetScreen.Write(scr.Buffer[start .. end]);
+}
+
 void PreInit() {
-	scr.Clear();
+	import IO.TextMode;
+
+	scr;
+	scr.OnChangedCallback = &BootTTYToTextmode;
+	GetScreen.Clear();
+
 	scr.Writeln("Log initializing...");
 	log.Init();
 	scr.Writeln("GDT initializing...");
@@ -103,6 +115,7 @@ void Init(uint magic, ulong info) {
 	GetBGA.Init(new PSF(cast(FileNode)rootFS.Root.FindNode("/Data/Font/TTYFont.psf")));
 
 	scheduler = new Scheduler();
+	scr.Writeln("Scheduler initializing...");
 }
 
 void LoadInitrd() {

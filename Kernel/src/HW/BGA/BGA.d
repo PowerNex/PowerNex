@@ -107,7 +107,11 @@ enum {
 }
 
 //dfmt on
-import IO.TextMode : scr = GetScreen;
+import Data.TextBuffer;
+
+void BootTTYToBGACB(size_t start, size_t end) {
+	GetBGA.Write(GetBootTTY.Buffer[start .. end]);
+}
 
 class BGA {
 public:
@@ -130,23 +134,22 @@ public:
 	}
 
 	void Init(PSF font) {
-		scr.Enabled = false;
+		import IO.TextMode : GetScreen;
+
+		GetScreen.Enabled = false;
+		GetBootTTY.OnChangedCallback = &BootTTYToBGACB;
 		this.font = font;
 		writeRegister(VBE_DISPI_INDEX_ID, VBE_DISPI_ID5);
 		setVideoMode(1280, 720, VBE_DISPI_BPP_32, true, true);
 
-		foreach (y; 0 .. 2)
-			foreach (x; 0 .. 8)
-				putRect(cast(ushort)(width / 8 * x), cast(ushort)(height / 2 * y), cast(ushort)(width / 8),
-						cast(ushort)(height / 2), palette[y * 8 + x] / 4);
+		textMaxX = width / font.Width - 1;
+		textMaxY = height / font.Height;
+		Write(GetBootTTY.Buffer[0 .. GetBootTTY.Count]);
+	}
 
-		int scale = 4;
-
-		int cw = width / 2;
-		int ch = height / 2 - font.Height / 2;
-		int diffH = font.Height / 2 * scale;
-		PrintString("Hello World!", cw - (12 * font.Width * scale) / 2, ch - diffH, Color(255, 255, 0, 255), scale);
-		PrintString("From PowerNex!", cw - (14 * font.Width * scale) / 2, ch + diffH, Color(0, 0, 255, 255), scale);
+	void Write(Slot[] slots) {
+		foreach (Slot slot; slots)
+			write(slot.ch, slot.fg, slot.bg);
 	}
 
 private:
@@ -156,22 +159,60 @@ private:
 	Color* pixelData;
 	ushort activeBank;
 
-	void PrintString(string str, int x, int y, Color color, int scale = 1) {
+	int textX;
+	int textY;
+	int textMaxX;
+	int textMaxY;
+	/*
+	void PrintString(wstring str, int x, int y, Color color, int scale = 1) {
 		foreach (int idx, ch; str) {
 			PrintChar(ch, x + (idx * font.Width + 1) * scale, y + 1 * scale, color / 10, scale);
 			PrintChar(ch, x + idx * font.Width * scale, y, color, scale);
 		}
+	}*/
+
+	void write(wchar ch, Color fg, Color bg) {
+		if (ch == '\n') {
+			textY++;
+			textX = 0;
+		} else if (ch == '\r')
+			textX = 0;
+		else if (ch == '\b') {
+			if (textX)
+				textX--;
+		} else if (ch == '\t') {
+			uint goal = (textX + 8) & ~7;
+			for (; textX < goal; textX++)
+				renderChar(' ', textX, textY, fg, bg);
+			if (textX >= textMaxX) {
+				textY++;
+				textX %= textMaxX;
+			}
+		} else {
+			renderChar(ch, textX, textY, fg, bg);
+			textX++;
+
+			if (textX >= textMaxX) {
+				textY++;
+				textX = 0;
+			}
+		}
+
+		if (textY >= textMaxY) {
+			memmove(pixelData, &(pixelData[width * font.Height]), width * height - (width * font.Height));
+
+			textY--;
+			putRect(0, height - font.Height, width, font.Height, bg);
+		}
 	}
 
-	void PrintChar(char ch, int x, int y, Color color, int scale = 1) {
+	void renderChar(wchar ch, int x, int y, Color fg, Color bg) {
+		x *= font.Width;
+		y *= font.Height;
 		ubyte[] charData = font.GetChar(ch);
 		foreach (idxRow, ubyte row; charData)
-			foreach (column; 0 .. 8) {
-				if (!(row & (1 << (7 - column))))
-					continue;
-
-				putRect(x + column * scale, y + cast(int)idxRow * scale, scale, scale, color);
-			}
+			foreach (column; 0 .. 8)
+				putRect(x + column, y + cast(int)idxRow, 1, 1, (row & (1 << (7 - column))) ? fg : bg);
 	}
 
 	void setBank(ushort id) {

@@ -34,7 +34,7 @@ private:
 	static void onTick(Registers* regs) {
 		import Memory.FrameAllocator;
 		import Task.Scheduler;
-		import IO.TextMode : scr = GetScreen;
+		import Data.TextBuffer : scr = GetBootTTY;
 
 		counter++;
 
@@ -44,7 +44,10 @@ private:
 		ulong memory;
 		if (maxMiB)
 			memory = (usedMiB * 100) / maxMiB;
-		scr.WriteStatus("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)\tPID: ", pid, "\tSeconds since boot: ", Seconds);
+		import IO.TextMode : GetScreen;
+
+		GetScreen.WriteStatus("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)\tPID: ", cast(void*)pid,
+				"\tSeconds since boot: ", Seconds);
 
 		if (scheduler)
 			scheduler.Schedule();
