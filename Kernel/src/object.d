@@ -174,6 +174,39 @@ extern (C) {
 			return GetKernelHeap.Alloc(length * size)[0 .. length];
 	}
 
+	extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length) {
+		void[] result = _d_newarrayT(ti, length);
+		auto tinext = unqualify(ti.next);
+		auto size = tinext.tsize;
+
+		auto init = tinext.init;
+
+		switch (init.length) {
+		case ubyte.sizeof:
+			(cast(ubyte*)result.ptr)[0 .. size * length / ubyte.sizeof] = *cast(ubyte*)init.ptr;
+			return result;
+
+		case ushort.sizeof:
+			(cast(ushort*)result.ptr)[0 .. size * length / ushort.sizeof] = *cast(ushort*)init.ptr;
+			return result;
+
+		case uint.sizeof:
+			(cast(uint*)result.ptr)[0 .. size * length / uint.sizeof] = *cast(uint*)init.ptr;
+			return result;
+
+		case ulong.sizeof:
+			(cast(ulong*)result.ptr)[0 .. size * length / ulong.sizeof] = *cast(ulong*)init.ptr;
+			return result;
+
+		default: {
+				immutable sz = init.length;
+				for (size_t u = 0; u < size * length; u += sz)
+					memcpy(result.ptr + u, init.ptr, sz);
+				return result;
+			}
+		}
+	}
+
 	void* _d_arrayliteralTX(TypeInfo ti, size_t length) {
 		auto size = ti.next.tsize();
 
@@ -199,6 +232,13 @@ extern (C) {
 	void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
 		*p = GetKernelHeap.Realloc(p.ptr, newlength * size)[0 .. newlength];
+		return *p;
+	}
+
+	void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
+		auto size = ti.next.tsize();
+		*p = GetKernelHeap.Realloc(p.ptr, newlength * size)[0 .. newlength];
+
 		return *p;
 	}
 
@@ -2250,6 +2290,22 @@ extern (C) void* memset(void* p, uint value, size_t count) {
 	return p;
 }
 
+extern (C) void* _memset16(void* p, ushort value, size_t count) {
+	ushort* ptr = cast(ushort*)p;
+
+	for (size_t i = 0; i < count; i++)
+		ptr[i] = value;
+	return p;
+}
+
+extern (C) void* _memset32(void* p, uint value, size_t count) {
+	uint* ptr = cast(uint*)p;
+
+	for (size_t i = 0; i < count; i++)
+		ptr[i] = value;
+	return p;
+}
+
 extern (C) void* _memset64(void* p, ulong value, size_t count) {
 	ulong* ptr = cast(ulong*)p;
 
@@ -2269,6 +2325,23 @@ void[]* _memset128ii(void[]* p, void[] value, size_t count) {
 extern (C) void* memcpy(void* dest, const(void)* src, size_t size) {
 	for (size_t i = 0; i < size; ++i)
 		(cast(ubyte*)dest)[i] = (cast(const(ubyte)*)src)[i];
+	return dest;
+}
+
+extern (C) void* memmove(void* dest, const(void)* src, size_t size) {
+	ubyte* p1 = cast(ubyte*)dest;
+	const(ubyte)* p2 = cast(const(ubyte)*)src;
+
+	if (p2 < p1 && p1 < p2 + size) {
+		/* do a descending copy */
+		p2 += size;
+		p1 += size;
+		while (size-- != 0)
+			*--p1 = *--p2;
+	} else
+		while (size-- != 0)
+			*p1++ = *p2++;
+
 	return dest;
 }
 
