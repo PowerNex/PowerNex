@@ -397,6 +397,11 @@ private __gshared dchar[KeyCode.max] KeypadTranslationEN_US = [
 	KeyCode.KP6: '6',
 	KeyCode.KP3: '3',
 	KeyCode.KPPeriod: ',',
+	KeyCode.KPSlash: '/',
+	KeyCode.KPStar: '*',
+	KeyCode.KPMinus: '-',
+	KeyCode.KPPlus: '+',
+	KeyCode.KPReturn: '\n'
 ];
 
 private __gshared dchar[KeyCode.max] ShiftedEtcTranslationEN_US = [

@@ -201,7 +201,7 @@ private:
 	}
 
 	static void onIRQ(Registers* regs) {
-		ubyte data = get();
+		ubyte data = get(false);
 		log.Debug("data: ", cast(void*)data, " modifiers: ", cast(void*)modifiers.data);
 		if (!enabled)
 			return;
