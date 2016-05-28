@@ -35,9 +35,12 @@ public:
 	void* Alloc(ulong size) {
 		if (!size)
 			return null;
+
 		MemoryHeader* freeChunk = root;
 		size += MinimalChunkSize - (size % MinimalChunkSize); // Good alignment maybe?
 
+		log.Debug("Alloc:1");
+		PrintLayout();
 		while (freeChunk && (freeChunk.isAllocated || freeChunk.size < size))
 			freeChunk = freeChunk.next;
 
@@ -46,9 +49,13 @@ public:
 				return null;
 			freeChunk = end; // Don't expected that freeChunk is valid, addNewPage runs combine
 		}
+		log.Debug("Alloc:2");
+		PrintLayout();
 
 		split(freeChunk, size); // Make sure that we don't give away to much memory
 
+		log.Debug("Alloc:3");
+		PrintLayout();
 		freeChunk.isAllocated = true;
 		return (VirtAddress(freeChunk) + MemoryHeader.sizeof).Ptr;
 	}
@@ -111,6 +118,8 @@ private:
 		end.isAllocated = false;
 
 		combine(end); // Combine with other nodes if possible
+		log.Debug("addNewPage");
+		PrintLayout();
 		return true;
 	}
 

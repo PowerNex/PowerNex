@@ -6,6 +6,8 @@ import IO.Port;
 import IO.Log;
 import HW.BGA.PSF;
 import HW.PCI.PCI;
+import Data.TextBuffer;
+import Data.BMPImage;
 
 private enum : ushort {
 	VBE_DISPI_TOTAL_VIDEO_MEMORY_MB = 16,
@@ -107,7 +109,6 @@ enum {
 }
 
 //dfmt on
-import Data.TextBuffer;
 
 void BootTTYToBGACB(size_t start, size_t end) {
 	GetBGA.Write(GetBootTTY.Buffer[start .. end]);
@@ -150,6 +151,17 @@ public:
 	void Write(Slot[] slots) {
 		foreach (Slot slot; slots)
 			write(slot.ch, slot.fg, slot.bg);
+	}
+
+	void RenderBMP(BMPImage bmp) {
+		int neededLines = bmp.Height() / font.Height + 1;
+		for (int i = 0; i < neededLines; i++)
+			write('\n', Color(0, 0, 0), Color(0, 0, 0));
+
+		int y = (textY - neededLines) * font.Height;
+		for (int yy = 0; yy < bmp.Height; yy++)
+			for (int x = 0; x < bmp.Width; x++)
+				putPixel(x, yy + y, bmp.Data[yy * bmp.Width + x]);
 	}
 
 private:

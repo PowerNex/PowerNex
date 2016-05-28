@@ -202,7 +202,6 @@ private:
 
 	static void onIRQ(Registers* regs) {
 		ubyte data = get(false);
-		log.Debug("data: ", cast(void*)data, " modifiers: ", cast(void*)modifiers.data);
 		if (!enabled)
 			return;
 		//if (data == 0x00 || data == 0xAA || data == 0xEE || data == 0xFA || data == 0xFC || data == 0xFD || data == 0xFE || data == 0xFF)
@@ -230,10 +229,7 @@ private:
 
 			if (ch != dchar.init)
 				Keyboard.Push(ch);
-
-			log.Debug("\tch: ", cast(char)ch, " int: ", cast(void*)ch);
 		}
-		log.Debug("\t modifiers: ", cast(void*)modifiers.data);
 	}
 
 	static void ignore(Registers*) {

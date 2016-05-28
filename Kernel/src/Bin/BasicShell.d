@@ -4,10 +4,15 @@ import Task.Thread;
 import Data.TextBuffer : scr = GetBootTTY;
 import IO.Keyboard;
 import Data.String;
+import IO.Log;
+import Memory.Heap;
 
 class BasicShell {
 public:
 	void MainLoop() {
+		log.Info("MEM###################################");
+		GetKernelHeap.PrintLayout();
+		log.Info("MEM2###################################");
 		while (true) {
 			scr.Write("> ");
 			execute(parseLine(readLine));
@@ -82,7 +87,7 @@ private:
 	void execute(Command cmd) {
 		switch (cmd.name) {
 		case "help":
-			scr.Writeln("Commands: help, echo, clear, exit");
+			scr.Writeln("Commands: help, echo, clear, exit, dlogo");
 			break;
 
 		case "echo":
@@ -102,6 +107,21 @@ private:
 			scr.Writeln("Failed shutdown!");
 			while (true) {
 			}
+			break;
+
+		case "dlogo":
+
+			log.Info("MEM33333###################################");
+			GetKernelHeap.PrintLayout();
+			log.Info("MEM444444###################################");
+			import KMain;
+			import IO.FS.FileNode;
+			import Data.BMPImage;
+			import HW.BGA.BGA;
+
+			BMPImage bmp = new BMPImage(cast(FileNode)rootFS.Root.FindNode("/Data/DLogo.bmp"));
+			GetBGA.RenderBMP(bmp);
+			bmp.destroy;
 			break;
 		default:
 			scr.Writeln("Unknown command: ", cmd.name);
