@@ -6,12 +6,17 @@ import Data.Address;
 import IO.Log;
 import CPU.IDT;
 import Data.Register;
+import Task.Mutex.SpinLockMutex;
+import Data.BitField;
+
+enum ulong MAGIC = 0xDEAD_BEEF_DEAD_C0DE;
 
 private struct MemoryHeader {
+	ulong magic;
 	MemoryHeader* prev;
 	MemoryHeader* next;
-	ulong isAllocated; // could be bool, but for padding reasons it's a ulong
-	ulong size;
+	private ulong data;
+	mixin(Bitfield!(data, "isAllocated", 1, "size", 63));
 }
 
 class Heap {
@@ -33,58 +38,68 @@ public:
 	}
 
 	void* Alloc(ulong size) {
+		mutex.Lock;
 		if (!size)
 			return null;
 
 		MemoryHeader* freeChunk = root;
 		size += MinimalChunkSize - (size % MinimalChunkSize); // Good alignment maybe?
 
-		log.Debug("Alloc:1");
-		PrintLayout();
 		while (freeChunk && (freeChunk.isAllocated || freeChunk.size < size))
 			freeChunk = freeChunk.next;
 
 		while (!freeChunk || freeChunk.size < size) { // We are currently at the end chunk
-			if (!addNewPage()) // This will work just because there is combine in addNewPage, which will increase the current chunks size
+			if (!addNewPage()) { // This will work just because there is combine in addNewPage, which will increase the current chunks size
+				mutex.Unlock;
 				return null;
+			}
 			freeChunk = end; // Don't expected that freeChunk is valid, addNewPage runs combine
 		}
-		log.Debug("Alloc:2");
-		PrintLayout();
 
 		split(freeChunk, size); // Make sure that we don't give away to much memory
 
-		log.Debug("Alloc:3");
-		PrintLayout();
 		freeChunk.isAllocated = true;
+		mutex.Unlock;
 		return (VirtAddress(freeChunk) + MemoryHeader.sizeof).Ptr;
 	}
 
 	void Free(void* addr) {
+		mutex.Lock;
 		if (!addr)
 			return;
 		MemoryHeader* hdr = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).Ptr;
 		hdr.isAllocated = false;
+
 		combine(hdr);
+
+		mutex.Unlock;
 	}
 
 	void* Realloc(void* addr, ulong size) {
 		void* newMem = Alloc(size);
+		mutex.Lock;
 		if (addr) {
 			MemoryHeader* old = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).Ptr;
 			ubyte* src = cast(ubyte*)addr;
 			ubyte* dest = cast(ubyte*)newMem;
 			for (ulong i = 0; i < old.size && i < size; i++)
 				dest[i] = src[i];
+
+			mutex.Unlock;
 			Free(addr);
 		}
 		return newMem;
 	}
 
 	void PrintLayout() {
-		for (MemoryHeader* start = root; start; start = start.next)
-			log.Info("address: ", start, "\thasPrev: ", !!start.prev, "\thasNext: ", !!start.next,
-					"\tisAllocated: ", !!start.isAllocated, "\tsize: ", start.size);
+		for (MemoryHeader* start = root; start; start = start.next) {
+			log.Info("address: ", start, "\tmagic: ", cast(void*)start.magic, "\thasPrev: ", !!start.prev,
+					"\thasNext: ", !!start.next, "\tisAllocated: ", !!start.isAllocated, "\tsize: ", start.size,
+					"\tnext: ", start.next);
+
+			if (start.magic != MAGIC)
+				log.Fatal("====MAGIC IS WRONG====");
+		}
 
 		log.Info("\n\n");
 	}
@@ -92,6 +107,7 @@ public:
 private:
 	enum MinimalChunkSize = 32; /// Without header
 
+	SpinLockMutex mutex;
 	Paging paging;
 	MapMode mode;
 	MemoryHeader* root; /// Stores the first MemoryHeader
@@ -107,6 +123,7 @@ private:
 			return false;
 		end = cast(MemoryHeader*)endAddr.Ptr;
 		*end = MemoryHeader.init;
+		end.magic = MAGIC;
 		endAddr += 0x1000;
 
 		end.prev = oldEnd;
@@ -118,8 +135,6 @@ private:
 		end.isAllocated = false;
 
 		combine(end); // Combine with other nodes if possible
-		log.Debug("addNewPage");
-		PrintLayout();
 		return true;
 	}
 
@@ -135,12 +150,13 @@ private:
 		}
 
 		if (freeChunk != chunk) {
-			freeChunk.size += sizeGain;
+			freeChunk.size = freeChunk.size + sizeGain;
 			freeChunk.next = chunk.next;
 			if (freeChunk.next)
 				freeChunk.next.prev = freeChunk;
 
 			*chunk = MemoryHeader.init; // Set the old header to zero
+			chunk.magic = MAGIC;
 
 			chunk = freeChunk;
 		}
@@ -153,7 +169,7 @@ private:
 		}
 
 		if (freeChunk != chunk) {
-			chunk.size += sizeGain;
+			chunk.size = chunk.size + sizeGain;
 			chunk.next = freeChunk.next;
 			if (chunk.next)
 				chunk.next.prev = chunk;
@@ -169,6 +185,7 @@ private:
 	void split(MemoryHeader* chunk, ulong size) {
 		if (chunk.size >= size + ( /* The smallest chunk size */ MemoryHeader.sizeof + MinimalChunkSize)) {
 			MemoryHeader* newChunk = cast(MemoryHeader*)(VirtAddress(chunk) + MemoryHeader.sizeof + size).Ptr;
+			newChunk.magic = MAGIC;
 			newChunk.prev = chunk;
 			newChunk.next = chunk.next;
 			chunk.next = newChunk;
