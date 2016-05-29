@@ -7,29 +7,42 @@ import Data.String;
 import IO.Log;
 import Memory.Heap;
 
+import ACPI.RSDP;
+import KMain;
+import IO.FS.FileNode;
+import Data.BMPImage;
+import HW.BGA.BGA;
+
 class BasicShell {
 public:
+	this() {
+		dlogo = new BMPImage(cast(FileNode)rootFS.Root.FindNode("/Data/DLogo.bmp"));
+	}
+
+	~this() {
+		dlogo.destroy;
+	}
+
 	void MainLoop() {
-		log.Info("MEM###################################");
-		GetKernelHeap.PrintLayout();
-		log.Info("MEM2###################################");
 		while (true) {
 			scr.Write("> ");
-			execute(parseLine(readLine));
+			Command* command = parseLine(readLine);
+			if (command.args.length)
+				execute(command);
+			command.destroy;
+			GetKernelHeap.PrintLayout();
 		}
 	}
 
 private:
-	enum Status {
-		Valid,
-		MissingEndBracket
-	}
+	BMPImage dlogo;
 
 	struct Command {
-		Status status;
-		char[] name;
-		char[][64] args;
-		size_t argsCount;
+		char[][] args;
+
+		~this() {
+			args.destroy;
+		}
 	}
 
 	char[] readLine() {
@@ -57,41 +70,31 @@ private:
 		return line[0 .. idx];
 	}
 
-	Command parseLine(char[] line) {
-		char[] realLine = line;
-		const long openBracket = line.indexOf('(');
-		if (openBracket == -1)
-			return Command(Status.Valid, line, []);
+	Command* parseLine(char[] line) {
+		char[][] args;
 
-		Command cmd;
-		cmd.name = line[0 .. openBracket].strip;
-		line = line[openBracket + 1 .. $].strip;
-
-		long comma = line.indexOf(',');
-		while (comma != -1) {
-			cmd.args[cmd.argsCount++] = line[0 .. comma].strip;
-			line = line[comma + 1 .. $].strip;
-
-			comma = line.indexOf(',');
+		size_t start = 0;
+		size_t end = line.indexOf(' ', start);
+		while (end != -1) {
+			args[args.length++] = line[start .. end];
+			start = end + 1;
+			end = line.indexOf(' ', start);
 		}
-		//,)
-		const long endBracket = line.indexOf(')');
-		if (endBracket > 0) {
-			cmd.args[cmd.argsCount++] = line[0 .. endBracket].strip;
-		} else if (endBracket == -1)
-			return Command(Status.MissingEndBracket, realLine, []);
 
-		return cmd;
+		if (start < line.length)
+			args[args.length++] = line[start .. line.length];
+
+		return new Command(args);
 	}
 
-	void execute(Command cmd) {
-		switch (cmd.name) {
+	void execute(Command* cmd) {
+		switch (cmd.args[0]) {
 		case "help":
 			scr.Writeln("Commands: help, echo, clear, exit, dlogo");
 			break;
 
 		case "echo":
-			foreach (idx, arg; cmd.args[0 .. cmd.argsCount])
+			foreach (idx, arg; cmd.args[1 .. $])
 				scr.Write(arg, " ");
 			scr.Writeln();
 			break;
@@ -100,9 +103,6 @@ private:
 			break;
 
 		case "exit":
-			import ACPI.RSDP;
-			import IO.Port;
-
 			rsdp.Shutdown();
 			scr.Writeln("Failed shutdown!");
 			while (true) {
@@ -110,21 +110,10 @@ private:
 			break;
 
 		case "dlogo":
-
-			log.Info("MEM33333###################################");
-			GetKernelHeap.PrintLayout();
-			log.Info("MEM444444###################################");
-			import KMain;
-			import IO.FS.FileNode;
-			import Data.BMPImage;
-			import HW.BGA.BGA;
-
-			BMPImage bmp = new BMPImage(cast(FileNode)rootFS.Root.FindNode("/Data/DLogo.bmp"));
-			GetBGA.RenderBMP(bmp);
-			bmp.destroy;
+			GetBGA.RenderBMP(dlogo);
 			break;
 		default:
-			scr.Writeln("Unknown command: ", cmd.name);
+			scr.Writeln("Unknown command: ", cmd.args[0]);
 			break;
 		}
 	}
@@ -135,6 +124,10 @@ public:
 	this() {
 		shell = new BasicShell();
 		super(&run);
+	}
+
+	~this() {
+		shell.destroy;
 	}
 
 private:
