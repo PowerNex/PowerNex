@@ -18,8 +18,8 @@ size_t strlen(char[] str) {
 	return len;
 }
 
-long indexOf(char[] str, char ch) {
-	long idx = 0;
+long indexOf(char[] str, char ch, long start = 0) {
+	long idx = start;
 	while (idx < str.length)
 		if (str[idx] == ch)
 			return idx;
