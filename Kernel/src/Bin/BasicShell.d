@@ -12,6 +12,8 @@ import KMain;
 import IO.FS.FileNode;
 import Data.BMPImage;
 import HW.BGA.BGA;
+import Memory.FrameAllocator;
+import CPU.PIT;
 
 class BasicShell {
 public:
@@ -90,7 +92,7 @@ private:
 	void execute(Command* cmd) {
 		switch (cmd.args[0]) {
 		case "help":
-			scr.Writeln("Commands: help, echo, clear, exit, dlogo");
+			scr.Writeln("Commands: help, echo, clear, exit, dlogo, memory, sinceboot");
 			break;
 
 		case "echo":
@@ -112,8 +114,22 @@ private:
 		case "dlogo":
 			GetBGA.RenderBMP(dlogo);
 			break;
+
+		case "memory":
+			const ulong usedMiB = FrameAllocator.UsedFrames / 256;
+			const ulong maxMiB = FrameAllocator.MaxFrames / 256;
+			ulong memory;
+			if (maxMiB)
+				memory = (usedMiB * 100) / maxMiB;
+			scr.Writeln("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)");
+			break;
+
+		case "sinceboot":
+			scr.Writeln("Seconds since boot: ", PIT.Seconds);
+
+			break;
 		default:
-			scr.Writeln("Unknown command: ", cmd.args[0]);
+			scr.Writeln("Unknown command: ", cmd.args[0], ". Type 'help' for all the commands.");
 			break;
 		}
 	}
