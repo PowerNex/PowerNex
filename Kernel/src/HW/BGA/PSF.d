@@ -20,7 +20,7 @@ private enum {
 }
 
 private struct psf2_header {
-	ubyte magic[4];
+	ubyte[4] magic;
 	uint version_;
 	uint headersize; /* offset of bitmaps in file */
 	uint flags;

@@ -85,7 +85,7 @@ private:
 				scr.Writeln("Found device at ", cast(void*)bus, ":", cast(void*)slot);
 				scr.Writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID,
 						" type: ", device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
-				;
+
 				deviceCount++;
 			}
 	}
