@@ -18,7 +18,8 @@ public:
 		ulong end = size + offset;
 		if (end > data.length) {
 			end = data.length;
-			size = end - offset;
+			long tmp = end - offset;
+			size = (tmp < 0) ? 0 : tmp;
 		}
 
 		memcpy(buffer.ptr, &data[offset], size);
