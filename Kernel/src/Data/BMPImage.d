@@ -35,24 +35,36 @@ public:
 	this(FileNode file) {
 		file.Read((cast(ubyte*)&bitmap)[0 .. BitmapHeader.sizeof], 0);
 		data = new Color[bitmap.width * bitmap.height];
-
-		size_t offset = bitmap.fileheader.dataoffset;
+		size_t offset = bitmap.fileheader.dataoffset - 1;
 		int pad = (bitmap.width % 4);
+
+		import IO.FS.Initrd.FileNode : InitrdFileNode;
+
+		if (auto f = cast(InitrdFileNode)file) {
+			ubyte[] d = f.RawAccess;
+			for (int y = bitmap.height - 1; y >= 0; y--) {
+				for (int x = 0; x < bitmap.width; x++, offset += 4)
+					data[y * bitmap.width + x] = Color(d[offset + 0], d[offset + 1], d[offset + 2], d[offset + 3]);
+
+				if (pad)
+					offset = (offset + 4) & ~0b11;
+			}
+			return;
+		}
 
 		for (int y = bitmap.height - 1; y >= 0; y--) {
 			for (int x = 0; x < bitmap.width; x++) {
-				ubyte r, g, b;
-				offset++; //alpha
-				file.Read((&b)[0 .. 1], offset++);
-				file.Read((&g)[0 .. 1], offset++);
-				file.Read((&r)[0 .. 1], offset++);
-
-				data[y * bitmap.width + x] = Color(r, g, b);
+				ubyte[4] abgr;
+				file.Read(abgr, offset += 4);
+				data[y * bitmap.width + x] = Color(abgr[0], abgr[1], abgr[2], abgr[3]); //Color(r, g, b, a);
 			}
 			if (pad)
-				for (int i = 0; i < 4 - pad; i++)
-					offset++;
+				offset = (offset + 4) & ~0b11;
 		}
+	}
+
+	~this() {
+		data.destroy;
 	}
 
 	@property Color[] Data() {
