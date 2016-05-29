@@ -35,7 +35,7 @@ public:
 		this.buffer = buffer;
 		otherBuffer = true;
 
-		defaultFG = Color(255, 255, 255);
+		defaultFG = Color(0, 255, 255);
 		defaultBG = Color(0, 0, 0);
 	}
 
@@ -43,7 +43,7 @@ public:
 		buffer = new Slot[size];
 		otherBuffer = false;
 
-		defaultFG = Color(255, 255, 255);
+		defaultFG = Color(0, 255, 255);
 		defaultBG = Color(0, 0, 0);
 	}
 
