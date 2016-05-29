@@ -70,6 +70,10 @@ align(1):
 	Color opBinary(string op)(ubyte rhs) {
 		return Color(cast(ubyte)(r / rhs), cast(ubyte)(g / rhs), cast(ubyte)(b / rhs), a);
 	}
+
+	bool opEquals(const Color o) const {
+		return o.b == b && o.g == g && o.r == r && o.a == a;
+	}
 }
 
 static assert(Color.sizeof == uint.sizeof);
@@ -111,7 +115,10 @@ enum {
 //dfmt on
 
 void BootTTYToBGACB(size_t start, size_t end) {
-	GetBGA.Write(GetBootTTY.Buffer[start .. end]);
+	if (start == -1 && end == -1)
+		GetBGA.Clear();
+	else
+		GetBGA.Write(GetBootTTY.Buffer[start .. end]);
 }
 
 class BGA {
@@ -143,6 +150,7 @@ public:
 		writeRegister(VBE_DISPI_INDEX_ID, VBE_DISPI_ID5);
 		setVideoMode(1280, 720, VBE_DISPI_BPP_32, true, true);
 
+		textY += 2;
 		textMaxX = width / font.Width - 1;
 		textMaxY = height / font.Height;
 		Write(GetBootTTY.Buffer[0 .. GetBootTTY.Count]);
@@ -153,8 +161,14 @@ public:
 			write(slot.ch, slot.fg, slot.bg);
 	}
 
+	void Clear() {
+		putRect(0, 0, width, height, Color(0, 0, 0));
+		textX = textY = 0;
+	}
+
 	void RenderBMP(BMPImage bmp) {
-		int neededLines = bmp.Height() / font.Height + 1;
+		int neededLines = (bmp.Height() + (font.Height - 1)) / font.Height;
+
 		for (int i = 0; i < neededLines; i++)
 			write('\n', Color(0, 0, 0), Color(0, 0, 0));
 
@@ -211,7 +225,9 @@ private:
 		}
 
 		if (textY >= textMaxY) {
-			memmove(pixelData, &(pixelData[width * font.Height]), width * height - (width * font.Height));
+			size_t diff = width * font.Height;
+			for (size_t i = 0; i < width * height - diff; i++)
+				pixelData[i] = pixelData[i + diff];
 
 			textY--;
 			putRect(0, height - font.Height, width, font.Height, bg);
@@ -237,8 +253,8 @@ private:
 	}
 
 	void putPixel(int x, int y, Color color) {
-		uint location = y * width + x;
-		if (location >= width * height)
+		int location = y * width + x;
+		if (location < 0 && location >= width * height)
 			return;
 		pixelData[location] = color;
 	}
