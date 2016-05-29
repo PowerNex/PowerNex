@@ -20,13 +20,22 @@ you just need to run `./build` to build.
 One tip is to run `source env.sh`, this adds shortcuts for building and running.
 	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
 
+
+System requirements
+-------------------
+- A 64bit processor
+- At least 32 MiB of ram
+
+*Recommended & Supported Virtual Machines*
+- QEMU
+- VirtualBox
+
 Thanks to
 ---------
 * Adam D. Ruppe - For his [minimal.zip](http://arsdnet.net/dcode/minimal.zip),
 	which contains a bare bone minimal d runtime. Which this kernel is based on.
 * Bloodmanovski - For his D Kernel [Trinix](https://github.com/Bloodmanovski/Trinix)
 	His files for booting x64 really helped me alot.
-
 
 Authors
 -------
