@@ -257,6 +257,102 @@ private:
 		MoveCursor();
 	}
 
+	void Writef(Args...)(immutable string format, Args args)
+	{
+		//write("passed format: ", format);
+		//writeln("called with ", args.length, " arguments");
+		char[20] intbuffer;
+
+		int formatIndex = 0;
+
+		//due to CTFE limits, need to iterate through arg list in outer loop
+		foreach(i, arg; args)
+		{
+			alias T = Unqual!(typeof(arg));
+
+			//iterate through format string now
+			do
+			{
+				char c = format[formatIndex];
+
+				//Found format specifier
+				if(c == '%')
+				{
+					formatIndex++;
+					c = format[formatIndex];
+					switch(c)
+					{
+						case 'c':
+						{
+							static if(is(T : char))
+							{
+								write(arg);
+							}
+							break;
+						}
+						case 'd':
+						{
+							static if(isNumber!T)
+							{
+								WriteNumber(arg, 10);
+							}
+							break;
+						}
+						case 's':										//null-terminated string
+						{
+							static if(is(T : char*))			
+							{
+								Write(arg);
+							}
+							break;
+						}
+						case 'S':										//D string
+						{
+							static if(is(T : string))
+							{
+								Write(arg);
+							}
+							break;
+						}
+						case 'x':										//hex number or address
+						{
+							static if (is(T : V*, V)) 
+							{
+								Write("0x");
+								WriteNumber(cast(ulong)arg, 16);
+							}
+							break;
+						}
+						default:
+						{
+							break;
+						}
+					}
+					formatIndex++;
+				
+					//skip to the next argument (break to foreach)
+					break;
+				}
+				else
+				{
+					Write(c);
+					formatIndex++;
+				}
+			}while(formatIndex < format.length);
+		}
+	
+		//OK, no more arguments left, now just print the rest of the string
+		for(; formatIndex < format.length; formatIndex++)
+		{
+			Write(format[formatIndex]);
+		}
+	}
+
+	void Writefln(Args...)(immutable string format, Args args)
+	{
+		Writef(format, args);
+		write('\n');
+	}
 }
 
 __gshared Screen!(80, 25) GetScreen = Screen!(80, 25)(Colors.Cyan, Colors.Black, 0xFFFF_FFFF_800B_8000);
