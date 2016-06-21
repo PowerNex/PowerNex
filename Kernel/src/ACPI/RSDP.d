@@ -46,7 +46,7 @@ struct RSDT {
 	T* GetSDT(T)(char[4] sig) {
 		foreach (PhysAddress32 addr; PointerToOtherSDT) {
 			ACPISDTHeader* hdr = addr.Virtual.Ptr!ACPISDTHeader;
-			if (hdr.Signature == sig)
+			if (hdr && hdr.Signature == sig)
 				return cast(T*)hdr;
 		}
 
@@ -123,13 +123,15 @@ struct RSDP {
 			return scr.Writeln("RSDP: Can't find!");
 
 		RSDPDescriptor* rsdp = addr.Ptr!RSDPDescriptor;
-		if (!checksum(rsdp))
+		if (!rsdp || !checksum(rsdp))
 			return scr.Writeln("RSDPDescriptor: Invalid checksum");
 
 		rsdt = rsdp.RSDTAddress.Virtual.Ptr!RSDT;
+		if (!rsdt)
+			return scr.Writeln("RSDTDesciptor: invalid");
 
 		fadt = rsdt.GetSDT!FADT("FACP");
-		if (!checksum(fadt, fadt.h.Length))
+		if (!fadt || !checksum(fadt, fadt.h.Length))
 			return scr.Writeln("FADT: Invalid checksum");
 
 		scr.Writeln("ACPI Version: ", cast(int)fadt.h.Revision, ".", cast(int)fadt.MinorVersion);
@@ -143,12 +145,12 @@ struct RSDP {
 		}
 
 		ACPISDTHeader* dsdt = PhysAddress32(fadt.Dsdt).Virtual.Ptr!ACPISDTHeader;
-		if (dsdt.Signature != "DSDT" || !checksum(dsdt, dsdt.Length))
+		if (!dsdt || dsdt.Signature != "DSDT" || !checksum(dsdt, dsdt.Length))
 			return scr.Writeln("DSDT: Invalid checksum");
 
 		ACPISDTHeader* ssdt = rsdt.GetSDT!ACPISDTHeader("SSDT");
 
-		if (!checksum(ssdt, ssdt.Length))
+		if (!ssdt || !checksum(ssdt, ssdt.Length))
 			return scr.Writeln("SSDT: Invalid checksum");
 
 		ubyte* s5Addr = (VirtAddress(dsdt) + ACPISDTHeader.sizeof).Ptr!ubyte;
@@ -211,6 +213,14 @@ struct RSDP {
 			Out!ushort(cast(ushort)fadt.PM1bControlBlock, slpTypB | slpEn);
 	}
 
+	@property RSDT* RSDTInstance() {
+		return rsdt;
+	}
+
+	@property FADT* FADTInstance() {
+		return fadt;
+	}
+
 private:
 	RSDT* rsdt;
 	FADT* fadt;
@@ -231,6 +241,8 @@ private:
 	}
 
 	bool checksum(T)(T* obj, size_t size = T.sizeof) {
+		if (!obj)
+			return false;
 		ubyte* ptr = cast(ubyte*)obj;
 		ubyte check;
 		foreach (i; 0 .. size)
