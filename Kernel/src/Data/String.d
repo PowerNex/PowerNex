@@ -28,6 +28,16 @@ long indexOf(char[] str, char ch, long start = 0) {
 	return -1;
 }
 
+long indexOfLast(char[] str, char ch, long start = 0) {
+	long idx = start ? start : str.length - 1;
+	while (idx > -1)
+		if (str[idx] == ch)
+			return idx;
+		else
+			idx--;
+	return -1;
+}
+
 char[] strip(char[] str) {
 	if (!str.length)
 		return str;
@@ -68,6 +78,23 @@ size_t itoa(S)(S v, char* buf, ulong len, uint base = 10) if (isNumber!S) {
 		buf[--pos] = '-';
 
 	return pos;
+}
+
+long atoi(string str, uint base = 10) {
+	long result;
+	immutable char[] BASE_CHARS = cast(immutable char[])"0123456789ABCDEF";
+
+	foreach (ch; str) {
+		long value;
+		for (value = 0; value <= base; value++)
+			if (BASE_CHARS[value] == ch)
+				break;
+		if (value > base)
+			return result;
+
+		result = result * base + value;
+	}
+	return result;
 }
 
 string fromStringz(char* str) {
