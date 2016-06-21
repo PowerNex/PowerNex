@@ -169,8 +169,16 @@ public:
 	void RenderBMP(BMPImage bmp) {
 		int neededLines = (bmp.Height() + (font.Height - 1)) / font.Height;
 
-		for (int i = 0; i < neededLines; i++)
-			write('\n', Color(0, 0, 0), Color(0, 0, 0));
+		textY += neededLines;
+		if (textY >= textMaxY) {
+			int diffLines = textY - textMaxY + 1;
+			size_t diff = (width * font.Height) * diffLines;
+			for (size_t i = 0; i < width * height - diff; i++)
+				pixelData[i] = pixelData[i + diff];
+
+			textY -= diffLines;
+			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, Color(0, 0, 0));
+		}
 
 		int y = (textY - neededLines) * font.Height;
 		for (int yy = 0; yy < bmp.Height; yy++)
@@ -189,13 +197,6 @@ private:
 	int textY;
 	int textMaxX;
 	int textMaxY;
-	/*
-	void PrintString(wstring str, int x, int y, Color color, int scale = 1) {
-		foreach (int idx, ch; str) {
-			PrintChar(ch, x + (idx * font.Width + 1) * scale, y + 1 * scale, color / 10, scale);
-			PrintChar(ch, x + idx * font.Width * scale, y, color, scale);
-		}
-	}*/
 
 	void write(wchar ch, Color fg, Color bg) {
 		if (ch == '\n') {
@@ -225,12 +226,13 @@ private:
 		}
 
 		if (textY >= textMaxY) {
-			size_t diff = width * font.Height;
+			int diffLines = textY - textMaxY + 1;
+			size_t diff = (width * font.Height) * diffLines;
 			for (size_t i = 0; i < width * height - diff; i++)
 				pixelData[i] = pixelData[i + diff];
 
-			textY--;
-			putRect(0, height - font.Height, width, font.Height, bg);
+			textY -= diffLines;
+			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, bg);
 		}
 	}
 
@@ -260,8 +262,8 @@ private:
 	}
 
 	void putRect(int x, int y, int width, int height, Color color) {
-		for (int xx = x; xx < x + width; xx++)
-			for (int yy = y; yy < y + height; yy++)
+		for (int yy = y; yy < y + height; yy++)
+			for (int xx = x; xx < x + width; xx++)
 				putPixel(xx, yy, color);
 	}
 
