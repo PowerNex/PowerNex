@@ -9,16 +9,18 @@ import Memory.Heap;
 
 import ACPI.RSDP;
 import KMain;
-import IO.FS.FileNode;
+import IO.FS;
 import Data.BMPImage;
 import HW.BGA.BGA;
 import Memory.FrameAllocator;
 import CPU.PIT;
+import HW.CMOS.CMOS;
 
 class BasicShell {
 public:
 	this() {
 		dlogo = new BMPImage(cast(FileNode)rootFS.Root.FindNode("/Data/DLogo.bmp"));
+		cwd = rootFS.Root;
 	}
 
 	~this() {
@@ -26,18 +28,26 @@ public:
 	}
 
 	void MainLoop() {
+		void printName(DirectoryNode node) {
+			if (node.Parent) {
+				printName(node.Parent);
+				scr.Write("/", node.Name);
+			}
+		}
+
 		while (true) {
-			scr.Write("> ");
+			printName(cwd);
+			scr.Write("/ \u0017 ");
 			Command* command = parseLine(readLine);
 			if (command.args.length)
 				execute(command);
 			command.destroy;
-			GetKernelHeap.PrintLayout();
 		}
 	}
 
 private:
 	BMPImage dlogo;
+	DirectoryNode cwd;
 
 	struct Command {
 		char[][] args;
@@ -54,6 +64,8 @@ private:
 		while (idx < 1024) {
 			char ch = cast(char)Keyboard.Pop();
 			if (ch == '\0')
+				continue;
+			else if (ch == '\t')
 				continue;
 			else if (ch == '\b') {
 				if (idx) {
@@ -92,7 +104,7 @@ private:
 	void execute(Command* cmd) {
 		switch (cmd.args[0]) {
 		case "help":
-			scr.Writeln("Commands: help, echo, clear, exit, dlogo, memory, sinceboot");
+			scr.Writeln("Commands: help, echo, clear, exit, dlogo, memory, time, ls, cd, cat");
 			break;
 
 		case "echo":
@@ -124,9 +136,74 @@ private:
 			scr.Writeln("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)");
 			break;
 
-		case "sinceboot":
-			scr.Writeln("Seconds since boot: ", PIT.Seconds);
+		case "time":
+			ulong timestamp = GetCMOS.TimeStamp;
+			ulong sinceBoot = PIT.Seconds;
 
+			scr.Writeln("The machine booted at: ", timestamp);
+			scr.Writeln("Seconds since boot: ", sinceBoot);
+			scr.Writeln("Which means that the time should be: ", timestamp + sinceBoot);
+			break;
+
+		case "ls":
+			scr.Writeln("ID\tName\t\tType");
+			foreach (Node node; cwd.Nodes) {
+				char[] name = cast(char[])typeid(node).name;
+				scr.Writeln(node.ID, ":\t", node.Name, "\t\t", name[name.indexOfLast('.') + 1 .. $]);
+			}
+			break;
+
+		case "cd":
+			if (cmd.args.length == 1)
+				cwd = rootFS.Root; // Defaults to /
+			else if (cmd.args[1] == ".") {
+				//Nothing
+			} else if (cmd.args[1] == "..") {
+				if (cwd.Parent)
+					cwd = cwd.Parent;
+			} else {
+				Node node = cwd.FindNode(cast(string)cmd.args[1]);
+				if (!node) {
+					scr.Writeln("Can't find the node!");
+					break;
+				}
+				if (auto dir = cast(DirectoryNode)node)
+					cwd = dir;
+				else {
+					char[] name = cast(char[])typeid(node).name;
+					scr.Writeln("Can't cd into a ", name[name.indexOfLast('.') + 1 .. $]);
+				}
+			}
+			break;
+
+		case "cat":
+			if (cmd.args.length == 1)
+				scr.Writeln("cat: <FilePath>");
+			else {
+				foreach (file; cmd.args[1 .. $]) {
+					Node node = cwd.FindNode(cast(string)file);
+					if (!node) {
+						scr.Writeln("Can't find the file!");
+						break;
+					}
+					if (auto f = cast(FileNode)node) {
+						ubyte[] buf = new ubyte[0x1000];
+
+						ulong read;
+						ulong offset;
+						do {
+							read = f.Read(buf, offset);
+							offset += read;
+							scr.Write(cast(char[])buf[0 .. read]);
+						}
+						while (read == 0x1000);
+						scr.Writeln();
+					} else {
+						char[] name = cast(char[])typeid(node).name;
+						scr.Writeln("Can't cat a ", name[name.indexOfLast('.') + 1 .. $]);
+					}
+				}
+			}
 			break;
 		default:
 			scr.Writeln("Unknown command: ", cmd.args[0], ". Type 'help' for all the commands.");
