@@ -27,6 +27,10 @@ public:
 		return 0;
 	}
 
+	static void Clear() {
+		counter = 0;
+	}
+
 private:
 	__gshared bool enabled;
 	__gshared uint hz;
