@@ -11,9 +11,11 @@ public:
 
 	Node FindNode(string path) {
 		if (path.length < 2) {
-			if (path[0 .. 2] == "..")
+			if (path == "/")
+				return root.Root;
+			else if (path[0 .. 2] == "..")
 				return parent.FindNode(path[2 .. $]);
-			if (path[0 .. 2] == "./")
+			else if (path[0 .. 2] == "./")
 				path = path[2 .. $];
 		}
 
