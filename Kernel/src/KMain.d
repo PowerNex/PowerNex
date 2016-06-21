@@ -25,6 +25,7 @@ import ACPI.RSDP;
 import HW.BGA.BGA;
 import HW.BGA.PSF;
 import HW.PCI.PCI;
+import HW.CMOS.CMOS;
 import Data.TextBuffer : scr = GetBootTTY;
 
 import Bin.BasicShell;
@@ -76,14 +77,24 @@ void PreInit() {
 	scr.OnChangedCallback = &BootTTYToTextmode;
 	GetScreen.Clear();
 
+	scr.Writeln("ACPI initializing...");
+	rsdp.Init();
+
+	scr.Writeln("CMOS initializing...");
+	GetCMOS();
+
 	scr.Writeln("Log initializing...");
 	log.Init();
+
 	scr.Writeln("GDT initializing...");
 	GDT.Init();
+
 	scr.Writeln("IDT initializing...");
 	IDT.Init();
+
 	scr.Writeln("PIT initializing...");
 	PIT.Init();
+
 	scr.Writeln("Keyboard initializing...");
 	PS2Keyboard.Init();
 }
@@ -109,9 +120,6 @@ void Init(uint magic, ulong info) {
 
 	scr.Writeln("Heap initializing...");
 	GetKernelHeap;
-
-	scr.Writeln("ACPI initializing...");
-	rsdp.Init();
 
 	scr.Writeln("PCI initializing...");
 	GetPCI;
