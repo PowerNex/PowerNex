@@ -45,9 +45,9 @@ struct Log {
 
 	// XXX: Page fault if this is not wrapped like this!
 	static ulong Seconds() {
-		import CPU.PIT : PIT;
+		import HW.CMOS.CMOS : GetCMOS;
 
-		return PIT.Seconds();
+		return GetCMOS.TimeStamp();
 	}
 
 	void Init() {
