@@ -9,7 +9,7 @@ next generation of hardware.
 
 Building
 --------
-It required a crosscompiler, see link below for download.
+It requires a crosscompiler, see link below for download.
 It uses my build system called [Wild](https://github.com/Vild/Wild)
 It expects the wild binary to be located in the root directory of PowerNex, then
 you just need to run `./build` to build.
