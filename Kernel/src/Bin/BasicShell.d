@@ -19,12 +19,10 @@ import HW.CMOS.CMOS;
 class BasicShell {
 public:
 	this() {
-		dlogo = new BMPImage(cast(FileNode)rootFS.Root.FindNode("/Data/DLogo.bmp"));
 		cwd = rootFS.Root;
 	}
 
 	~this() {
-		dlogo.destroy;
 	}
 
 	void MainLoop() {
@@ -46,7 +44,6 @@ public:
 	}
 
 private:
-	BMPImage dlogo;
 	DirectoryNode cwd;
 
 	struct Command {
@@ -70,8 +67,8 @@ private:
 			else if (ch == '\b') {
 				if (idx) {
 					idx--;
-					line[ch] = ' ';
-					scr.Write("\b \b");
+					line[idx] = ' ';
+					scr.Write("\b \b"); // Back ' ' Back
 				}
 				continue;
 			} else if (ch == '\n')
@@ -104,7 +101,7 @@ private:
 	void execute(Command* cmd) {
 		switch (cmd.args[0]) {
 		case "help":
-			scr.Writeln("Commands: help, echo, clear, exit, dlogo, memory, time, ls, cd, cat");
+			scr.Writeln("Commands: help, echo, clear, exit, memory, time, ls, cd, cat");
 			break;
 
 		case "echo":
@@ -121,10 +118,6 @@ private:
 			scr.Writeln("Failed shutdown!");
 			while (true) {
 			}
-			break;
-
-		case "dlogo":
-			GetBGA.RenderBMP(dlogo);
 			break;
 
 		case "memory":
@@ -183,21 +176,27 @@ private:
 				foreach (file; cmd.args[1 .. $]) {
 					Node node = cwd.FindNode(cast(string)file);
 					if (!node) {
-						scr.Writeln("Can't find the file!");
-						break;
+						scr.Writeln("Can't find the file '", file, "'!");
+						continue;
 					}
 					if (auto f = cast(FileNode)node) {
-						ubyte[] buf = new ubyte[0x1000];
+						if (file[$ - 4 .. $] == ".bmp") {
+							BMPImage img = new BMPImage(f);
+							GetBGA.RenderBMP(img);
+							img.destroy();
+						} else {
+							ubyte[] buf = new ubyte[0x1000];
 
-						ulong read;
-						ulong offset;
-						do {
-							read = f.Read(buf, offset);
-							offset += read;
-							scr.Write(cast(char[])buf[0 .. read]);
+							ulong read;
+							ulong offset;
+							do {
+								read = f.Read(buf, offset);
+								offset += read;
+								scr.Write(cast(char[])buf[0 .. read]);
+							}
+							while (read == 0x1000);
+							scr.Writeln();
 						}
-						while (read == 0x1000);
-						scr.Writeln();
 					} else {
 						char[] name = cast(char[])typeid(node).name;
 						scr.Writeln("Can't cat a ", name[name.indexOfLast('.') + 1 .. $]);
