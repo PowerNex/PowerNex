@@ -209,25 +209,25 @@ private:
 
 		KeyCode key = combineKeyData(data);
 		if (key != KeyCode.None) {
-			dchar ch;
+			wchar ch;
 
 			bool shift = state.IsSet(KeyCode.LeftShift) || state.IsSet(KeyCode.RightShift);
 			bool caps = modifiers.CapsLock;
 			bool num = modifiers.NumLock;
 
-			if (ch == dchar.init && caps != shift)
+			if (ch == wchar.init && caps != shift)
 				ch = FindShiftedCharTranslate(key);
 
-			if (ch == dchar.init && shift)
+			if (ch == wchar.init && shift)
 				ch = FindShiftedEtcTranslate(key);
 
-			if (ch == dchar.init && num)
+			if (ch == wchar.init && num)
 				ch = FindKeypadTranslate(key);
 
-			if (ch == dchar.init)
+			if (ch == wchar.init)
 				ch = FindNormalTranslate(key);
 
-			if (ch != dchar.init)
+			if (ch != wchar.init)
 				Keyboard.Push(ch);
 		}
 	}
