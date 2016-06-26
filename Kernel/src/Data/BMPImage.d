@@ -1,7 +1,7 @@
 module Data.BMPImage;
 
 import IO.FS.FileNode;
-import HW.BGA.BGA;
+import Data.Color;
 
 private align(1) struct FileHeader {
 align(1):

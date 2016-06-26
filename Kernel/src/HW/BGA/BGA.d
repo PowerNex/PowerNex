@@ -2,6 +2,7 @@ module HW.BGA.BGA;
 
 import Data.Address;
 import Data.Util;
+import Data.Color;
 import IO.Port;
 import IO.Log;
 import HW.BGA.PSF;
@@ -48,35 +49,6 @@ private enum : ushort {
 	VBE_DISPI_LFB_ENABLED = 0x40,
 	VBE_DISPI_NOCLEARMEM = 0x80,
 }
-
-struct Color {
-align(1):
-	ubyte b;
-	ubyte g;
-	ubyte r;
-	ubyte a;
-
-	this(ubyte r, ubyte g, ubyte b) {
-		this(r, g, b, 255);
-	}
-
-	this(ubyte r, ubyte g, ubyte b, ubyte a) {
-		this.r = r;
-		this.g = g;
-		this.b = b;
-		this.a = a;
-	}
-
-	Color opBinary(string op)(ubyte rhs) {
-		return Color(cast(ubyte)(r / rhs), cast(ubyte)(g / rhs), cast(ubyte)(b / rhs), a);
-	}
-
-	bool opEquals(const Color o) const {
-		return o.b == b && o.g == g && o.r == r && o.a == a;
-	}
-}
-
-static assert(Color.sizeof == uint.sizeof);
 
 //dfmt off
 __gshared Color[16] palette = [
@@ -126,7 +98,7 @@ public:
 	this() {
 		PCIDevice* bgaDevice = GetPCI.GetDevice(BGA_VENDOR, BGA_DEVICE);
 		if (bgaDevice) {
-			pixelData = PhysAddress(bgaDevice.bar0 & ~0b1111UL).Virtual.Ptr!Color;
+			pixelData = PhysAddress(bgaDevice.bar0 & ~0b1111UL).Virtual.Ptr!Color[0 .. 1];
 			return;
 		}
 		bgaDevice = GetPCI.GetDevice(VBOX_VENDOR, VBOX_DEVICE);
@@ -134,7 +106,7 @@ public:
 			bgaDevice = GetPCI.GetDevice(VBOX_VENDOR, VBOX_OLDDEVICE);
 		if (!bgaDevice)
 			log.Fatal("BGA device not found!");
-		pixelData = PhysAddress(VBOX_ADDR).Virtual.Ptr!Color;
+		pixelData = PhysAddress(VBOX_ADDR).Virtual.Ptr!Color[0 .. 1];
 	}
 
 	int Version() {
@@ -149,6 +121,7 @@ public:
 		this.font = font;
 		writeRegister(VBE_DISPI_INDEX_ID, VBE_DISPI_ID5);
 		setVideoMode(1280, 720, VBE_DISPI_BPP_32, true, true);
+		pixelData = pixelData.ptr[0 .. width * height];
 
 		textY += 2;
 		textMaxX = width / font.Width - 1;
@@ -190,8 +163,7 @@ private:
 	PSF font;
 	ushort width;
 	ushort height;
-	Color* pixelData;
-	ushort activeBank;
+	Color[] pixelData;
 
 	int textX;
 	int textY;
@@ -245,20 +217,11 @@ private:
 				putRect(x + column, y + cast(int)idxRow, 1, 1, (row & (1 << (7 - column))) ? fg : bg);
 	}
 
-	void setBank(ushort id) {
-		if (activeBank != id) {
-			writeRegister(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_DISABLED);
-			writeRegister(VBE_DISPI_INDEX_BANK, id);
-			writeRegister(VBE_DISPI_INDEX_ENABLE, VBE_DISPI_ENABLED);
-			activeBank = id;
-		}
-	}
-
 	void putPixel(int x, int y, Color color) {
 		int location = y * width + x;
 		if (location < 0 && location >= width * height)
 			return;
-		pixelData[location] = color;
+		pixelData.ptr[location] = color;
 	}
 
 	void putRect(int x, int y, int width, int height, Color color) {

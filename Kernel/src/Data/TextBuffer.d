@@ -1,6 +1,6 @@
 module Data.TextBuffer;
 
-import HW.BGA.BGA;
+import Data.Color;
 import Data.String;
 import Data.Util;
 
