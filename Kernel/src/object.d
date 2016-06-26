@@ -484,6 +484,9 @@ class TypeInfo {
 	}
 	/// Run the destructor on the object and all its sub-objects
 	void destroy(void* p) const {
+		import Memory.Heap;
+
+		GetKernelHeap.Free(p);
 	}
 	/// Run the postblit on the object and all its sub-objects
 	void postblit(void* p) const {
@@ -1583,7 +1586,7 @@ void destroy(void* memory) {
 	GetKernelHeap.Free(memory);
 }
 
-void destroy(Object object) {
+void destroy(T : Object)(T object) {
 	auto dtor = cast(void function(Object o))object.classinfo.destructor;
 	if (dtor)
 		dtor(object);
@@ -1596,7 +1599,11 @@ void destroy(T)(T[] array) {
 			auto dtor = cast(void function(Object o))T.classinfo.destructor;
 			if (dtor)
 				dtor(el);
+			el.destroy;
 		}
+	} else static if (is(typeof(T) : void*)) {
+		foreach (el; array)
+			destroy(cast(void*)el);
 	}
 	GetKernelHeap.Free(cast(void*)array.ptr);
 }
@@ -2367,6 +2374,14 @@ extern (C) int dstrcmp(char[] s1, char[] s2) {
 	return s1.length > s2.length ? 1 : s1.length == s2.length ? 0 : -1;
 }
 
+inout(T)[] dup(T)(inout(T)[] a) {
+	import Memory.Heap : GetKernelHeap;
+
+	void[] arr = GetKernelHeap.Alloc(T.sizeof * a.length)[0 .. a.length];
+	memcpy(arr.ptr, a.ptr, T.sizeof * a.length);
+	return *cast(inout(T)[]*)&arr;
+}
+
 extern (C) Throwable __dmd_begin_catch(_Unwind_Exception* exceptionObject) {
 	log.Error("STUB");
 	return null;
@@ -2389,4 +2404,8 @@ extern (C) _Unwind_Reason_Code __dmd_personality_v0(int ver, _Unwind_Action acti
 		_Unwind_Exception_Class exceptionClass, _Unwind_Exception* exceptionObject, _Unwind_Context* context) {
 	log.Error("STUB");
 	return 0;
+}
+
+extern (C) void _Unwind_Resume(void*) {
+	log.Error("STUB");
 }
