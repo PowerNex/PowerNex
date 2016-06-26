@@ -12,6 +12,7 @@ import IO.FS;
 import CPU.GDT;
 import CPU.IDT;
 import CPU.PIT;
+import Data.Color;
 import Data.Multiboot;
 import HW.PS2.Keyboard;
 import Memory.Paging;
@@ -43,15 +44,8 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	import IO.FS.FileNode;
-	import Data.BMPImage;
-	import HW.BGA.BGA;
-
-	BMPImage bmp = new BMPImage(cast(FileNode)rootFS.Root.FindNode("/Data/DLogo.bmp"));
-	GetBGA.RenderBMP(bmp);
-	bmp.destroy;
-
 	scheduler.AddThread(new BasicShellThread());
+
 	while (true) {
 	}
 
