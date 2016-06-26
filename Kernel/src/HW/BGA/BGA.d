@@ -3,6 +3,7 @@ module HW.BGA.BGA;
 import Data.Address;
 import Data.Util;
 import Data.Color;
+import Data.Screen;
 import IO.Port;
 import IO.Log;
 import HW.BGA.PSF;
@@ -93,7 +94,7 @@ void BootTTYToBGACB(size_t start, size_t end) {
 		GetBGA.Write(GetBootTTY.Buffer[start .. end]);
 }
 
-class BGA {
+class BGA : Screen {
 public:
 	this() {
 		PCIDevice* bgaDevice = GetPCI.GetDevice(BGA_VENDOR, BGA_DEVICE);
@@ -157,6 +158,22 @@ public:
 		for (int yy = 0; yy < bmp.Height; yy++)
 			for (int x = 0; x < bmp.Width; x++)
 				putPixel(x, yy + y, bmp.Data[yy * bmp.Width + x]);
+	}
+
+	@property PSF Font() {
+		return font;
+	}
+
+	@property long Width() {
+		return width;
+	}
+
+	@property long Height() {
+		return height;
+	}
+
+	@property Color[] PixelData() {
+		return pixelData;
 	}
 
 private:

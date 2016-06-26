@@ -55,8 +55,17 @@ public:
 		}
 	}
 
+	this(BMPImage other) {
+		bitmap = other.bitmap;
+		data = other.Data.dup;
+	}
+
 	~this() {
 		data.destroy;
+	}
+
+	@property BitmapHeader Header() {
+		return bitmap;
 	}
 
 	@property Color[] Data() {

@@ -1,5 +1,6 @@
 module HW.BGA.PSF;
 
+import Data.Font;
 import IO.FS.FileNode;
 
 private enum {
@@ -30,7 +31,7 @@ private struct psf2_header {
 	/* charsize = height * ((width + 7) / 8) */
 }
 
-class PSF {
+class PSF : Font {
 public:
 	this(FileNode file) {
 		valid = read(file, hdr);
