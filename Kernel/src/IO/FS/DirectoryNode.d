@@ -10,52 +10,7 @@ public:
 	}
 
 	Node FindNode(string path) {
-		if (path.length < 2) {
-			if (path == "/")
-				return root.Root;
-			else if (path[0 .. 2] == "..")
-				return parent.FindNode(path[2 .. $]);
-			else if (path[0 .. 2] == "./")
-				path = path[2 .. $];
-		}
-
-		if (path.length == 0)
-			return this;
-
-		if (path[0 .. 1] == "/")
-			path = path[1 .. $];
-
-		ulong end = 0;
-
-		log.Info("FindNode: ", path);
-
-		while (end < path.length && path[end] != '/')
-			end++;
-
-		foreach (node; nodes[0 .. nodeCount]) {
-			log.Info("\t cur Name: ", node.Name);
-			if (node.Name == path[0 .. end]) {
-				auto n = node;
-				while (true) {
-					if (auto hardlink = cast(HardLinkNode)n)
-						n = hardlink.Target;
-					else if (auto softlink = cast(SoftLinkNode)n)
-						n = softlink.Target;
-					else
-						break;
-				}
-
-				if (end == path.length)
-					return n;
-
-				if (auto dir = cast(DirectoryNode)node)
-					return dir.FindNode(path[end + 1 .. $]);
-
-				return null;
-			}
-		}
-
-		return null;
+		return FindNode(path, true);
 	}
 
 	MountPointNode Mount(DirectoryNode node, FSRoot fs) {
@@ -96,6 +51,63 @@ package:
 
 	Node Remove(Node node) {
 		return remove(node);
+	}
+
+	Node FindNode(string path, bool firstTime) {
+		log.Info("CUR: ", Name, " FindNode: ", path, " firstTime: ", firstTime);
+		if (!path.length)
+			return this;
+
+		if (path[0] == '/') {
+			if (firstTime)
+				return root.Root.FindNode(path[1 .. $], false);
+
+			while (path.length && path[0] == '/')
+				path = path[1 .. $];
+			if (!path.length)
+				return this;
+		}
+
+		if (path[0 .. 2] == "..") {
+			DirectoryNode p = parent;
+			if (!p)
+				p = root.Root;
+			return p.FindNode(path[2 .. $], false);
+		} else if (path[0 .. 2] == "./")
+			path = path[2 .. $];
+
+		if (!path.length)
+			return this;
+
+		ulong end = 0;
+
+		while (end < path.length && path[end] != '/')
+			end++;
+
+		foreach (node; nodes[0 .. nodeCount]) {
+			log.Info("\t cur Name: ", node.Name);
+			if (node.Name == path[0 .. end]) {
+				auto n = node;
+				while (true) {
+					if (auto hardlink = cast(HardLinkNode)n)
+						n = hardlink.Target;
+					else if (auto softlink = cast(SoftLinkNode)n)
+						n = softlink.Target;
+					else
+						break;
+				}
+
+				if (end == path.length)
+					return n;
+
+				if (auto dir = cast(DirectoryNode)node)
+					return dir.FindNode(path[end + 1 .. $], false);
+
+				return null;
+			}
+		}
+
+		return null;
 	}
 
 protected:
