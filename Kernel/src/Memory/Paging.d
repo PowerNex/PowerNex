@@ -225,11 +225,14 @@ class Paging {
 	}
 
 	void Install() {
+		CPU_install_cr3(Root);
+	}
+
+	@property PhysAddress Root() {
 		auto page = GetPage(VirtAddress(root));
 		if (page == null)
 			log.Fatal("Paging address is not mapped!");
-		PhysAddress rootAddr = PhysAddress(page.Data);
-		CPU_install_cr3(rootAddr);
+		return PhysAddress(page.Data);
 	}
 }
 

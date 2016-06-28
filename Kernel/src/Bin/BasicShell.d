@@ -1,6 +1,5 @@
 module Bin.BasicShell;
 
-import Task.Thread;
 import Data.TextBuffer : scr = GetBootTTY;
 import IO.Keyboard;
 import Data.String;
@@ -211,19 +210,17 @@ private:
 	}
 }
 
-class BasicShellThread : KernelThread {
-public:
-	this() {
+__EOF__ class BasicShellThread : KernelThread {
+	public : this() {
 		shell = new BasicShell();
-		super(&run);
+		super( & run);
 	}
 
 	~this() {
 		shell.destroy;
 	}
 
-private:
-	__gshared BasicShell shell;
+	private : __gshared BasicShell shell;
 	static void run() {
 		shell.MainLoop();
 	}

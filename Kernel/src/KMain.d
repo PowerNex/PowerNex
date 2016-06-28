@@ -21,7 +21,6 @@ import Data.Linker;
 import Data.Address;
 import Memory.Heap;
 import Task.Scheduler;
-import Task.Thread;
 import ACPI.RSDP;
 import HW.BGA.BGA;
 import HW.BGA.PSF;
@@ -44,7 +43,11 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	scheduler.AddThread(new BasicShellThread());
+	//if (fork()) {
+	auto shell = new BasicShell();
+	shell.MainLoop();
+	shell.destroy();
+	//}
 
 	while (true) {
 	}
@@ -124,8 +127,8 @@ void Init(uint magic, ulong info) {
 	scr.Writeln("BGA initializing...");
 	GetBGA.Init(new PSF(cast(FileNode)rootFS.Root.FindNode("/Data/Font/TTYFont.psf")));
 
-	scheduler = new Scheduler();
 	scr.Writeln("Scheduler initializing...");
+	GetScheduler.Init();
 }
 
 void LoadInitrd() {

@@ -37,11 +37,13 @@ private:
 	__gshared ulong counter;
 	static void onTick(Registers* regs) {
 		import Memory.FrameAllocator;
-		import Task.Scheduler;
+		import Task.Scheduler : GetScheduler;
 		import Data.TextBuffer : scr = GetBootTTY;
 
 		counter++;
 
+		GetScheduler.SwitchProcess(true);
+		/*
 		const ulong usedMiB = FrameAllocator.UsedFrames / 256;
 		const ulong maxMiB = FrameAllocator.MaxFrames / 256;
 		const ulong pid = (scheduler) ? scheduler.CurrentThread.Pid : 0;
@@ -51,9 +53,6 @@ private:
 		import IO.TextMode : GetScreen;
 
 		GetScreen.WriteStatus("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)\tPID: ", cast(void*)pid,
-				"\tSeconds since boot: ", Seconds);
-
-		if (scheduler)
-			scheduler.Schedule();
+				"\tSeconds since boot: ", Seconds);*/
 	}
 }

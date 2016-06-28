@@ -1,8 +1,8 @@
 module Data.LinkedList;
 
-class LinkedList(T : Object) {
+class LinkedList(T) {
 public:
-	void Add(T t) {
+	void Add(T* t) {
 		Node n = new Node(t, null);
 		if (last)
 			last.next = n;
@@ -12,34 +12,34 @@ public:
 		len++;
 	}
 
-	T Remove(size_t idx) {
+	T* Remove(size_t idx) {
 		if (idx >= len)
 			return null;
+
 		Node prev;
 		Node cur = first;
-		while (idx && cur) {
-			idx--;
+		for (; idx; idx--) {
 			prev = cur;
 			cur = cur.next;
 		}
-
-		if (!cur)
-			return null;
 
 		if (prev) {
 			prev.next = cur.next;
 			if (!prev.next)
 				last = null;
-		} else
+		} else {
 			first = cur.next;
+			if (!first)
+				last = null;
+		}
 
-		T data = cur.data;
+		T* data = cur.data;
 		cur.destroy;
 		len--;
 		return data;
 	}
 
-	T Get(size_t idx) {
+	T* Get(size_t idx) {
 		if (idx >= len)
 			return null;
 
@@ -52,24 +52,15 @@ public:
 		return cur.data;
 	}
 
-	void MoveFrontToEnd() {
-		if (first != last) {
-			Node n = first;
-			first = first.next;
-			last.next = n;
-			last = n;
-		}
-	}
-
 	@property size_t Length() {
 		return len;
 	}
 
 private:
 	class Node {
-		T data;
+		T* data;
 		Node next;
-		this(T data, Node next = null) {
+		this(T* data, Node next = null) {
 			this.data = data;
 			this.next = next;
 		}
