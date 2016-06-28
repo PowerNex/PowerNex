@@ -119,6 +119,7 @@ private:
 		mixin(addJumps!(0, 255));
 		add(3, SystemSegmentType.InterruptGate, cast(ulong)&isr3, 3, InterruptStackType.Debug);
 		add(8, SystemSegmentType.InterruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.RegisterStack);
+		//add(128, SystemSegmentType.InterruptGate, cast(ulong)&isr128, 3, InterruptStackType.RegisterStack);
 
 		Flush();
 	}
@@ -224,6 +225,7 @@ private:
 		import Data.TextBuffer : scr = GetBootTTY;
 		import IO.Log;
 
+		regs.IntNumber &= 0xFF;
 		if (32 <= regs.IntNumber && regs.IntNumber <= 48) {
 			if (regs.IntNumber >= 40)
 				Out!ubyte(0xA0, 0x20);

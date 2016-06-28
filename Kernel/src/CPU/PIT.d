@@ -4,6 +4,7 @@ import CPU.IDT;
 import IO.Port;
 import IO.Log;
 import Data.Register;
+import Task.Process;
 import Task.Scheduler;
 
 struct PIT {
@@ -37,11 +38,14 @@ private:
 	__gshared ulong counter;
 	static void onTick(Registers* regs) {
 		import Memory.FrameAllocator;
-		import Task.Scheduler;
+		import Task.Scheduler : GetScheduler;
 		import Data.TextBuffer : scr = GetBootTTY;
 
 		counter++;
 
+		GetScheduler.WakeUp(WaitReason.Timer, &wakeUpTimedSleep);
+		GetScheduler.SwitchProcess(true);
+		/*
 		const ulong usedMiB = FrameAllocator.UsedFrames / 256;
 		const ulong maxMiB = FrameAllocator.MaxFrames / 256;
 		const ulong pid = (scheduler) ? scheduler.CurrentThread.Pid : 0;
@@ -51,9 +55,13 @@ private:
 		import IO.TextMode : GetScreen;
 
 		GetScreen.WriteStatus("Memory used: ", usedMiB, "MiB/", maxMiB, "MiB(", memory, "%)\tPID: ", cast(void*)pid,
-				"\tSeconds since boot: ", Seconds);
+				"\tSeconds since boot: ", Seconds);*/
+	}
 
-		if (scheduler)
-			scheduler.Schedule();
+	static bool wakeUpTimedSleep(Process* p) {
+		p.waitData--;
+		if(p.waitData == 0)
+			return true;
+		return false;
 	}
 }

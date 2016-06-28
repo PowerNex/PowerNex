@@ -1,11 +1,11 @@
 module Bin.BasicShell;
 
-import Task.Thread;
 import Data.TextBuffer : scr = GetBootTTY;
 import IO.Keyboard;
 import Data.String;
 import IO.Log;
 import Memory.Heap;
+import Task.Scheduler;
 
 import ACPI.RSDP;
 import KMain;
@@ -101,7 +101,7 @@ private:
 	void execute(Command* cmd) {
 		switch (cmd.args[0]) {
 		case "help":
-			scr.Writeln("Commands: help, echo, clear, exit, memory, time, ls, cd, cat");
+			scr.Writeln("Commands: help, echo, clear, exit, memory, time, sleep, ls, cd, cat");
 			break;
 
 		case "echo":
@@ -136,6 +136,17 @@ private:
 			scr.Writeln("The machine booted at: ", timestamp);
 			scr.Writeln("Seconds since boot: ", sinceBoot);
 			scr.Writeln("Which means that the time should be: ", timestamp + sinceBoot);
+			break;
+
+		case "sleep":
+			if (cmd.args.length == 1) {
+				scr.Writeln("sleep: <seconds>");
+				break;
+			}
+			ulong secs = atoi(cast(string)cmd.args[1]);
+			scr.Writeln("Sleeping for ", secs, " seconds");
+			GetScheduler.USleep(secs * 1000);
+			scr.Writeln("Done sleeping");
 			break;
 
 		case "ls":
@@ -204,6 +215,13 @@ private:
 				}
 			}
 			break;
+
+		case "ptree":
+			auto p = GetScheduler.AllProcesses;
+			scr.Writeln("PID\tName\tParent");
+			for (size_t i = 0; i < p.Length; i++)
+				scr.Writeln(p[i].pid, "\t", p[i].name, "\t", p[i].parent);
+			break;
 		default:
 			scr.Writeln("Unknown command: ", cmd.args[0], ". Type 'help' for all the commands.");
 			break;
@@ -211,19 +229,17 @@ private:
 	}
 }
 
-class BasicShellThread : KernelThread {
-public:
-	this() {
+__EOF__ class BasicShellThread : KernelThread {
+	public : this() {
 		shell = new BasicShell();
-		super(&run);
+		super( & run);
 	}
 
 	~this() {
 		shell.destroy;
 	}
 
-private:
-	__gshared BasicShell shell;
+	private : __gshared BasicShell shell;
 	static void run() {
 		shell.MainLoop();
 	}

@@ -21,6 +21,10 @@ enum MapMode : ulong { // TODO: Implement the rest.
 struct TablePtr(T) {
 	ulong data;
 
+	this(TablePtr!T other) {
+		data = other.data;
+	}
+
 	@property T* Data(T* address) {
 		Address = PhysAddress(cast(ulong)address >> 12).Int;
 		return Data();
@@ -136,15 +140,67 @@ static assert(Table!4.sizeof == (ulong[512]).sizeof);
 private extern (C) void CPU_install_cr3(PhysAddress addr);
 
 class Paging {
-	Table!4* root;
-
+public:
 	this() {
 		root = cast(Table!4*)PhysAddress(FrameAllocator.Alloc()).Virtual.Ptr;
 		_memset64(root, 0, 0x200); //Defined in object.d
+		refCounter++;
 	}
 
 	this(void* pml4) {
 		root = cast(Table!4*)pml4;
+		refCounter++;
+	}
+
+	this(Paging other) {
+		this();
+
+		foreach (ushort pml4Idx, pdp_ptr; root.children) {
+			if (!pdp_ptr.Present)
+				continue;
+			auto pdp = PhysAddress(root.GetOrCreate(pml4Idx, pdp_ptr.Mode)).Virtual.Ptr!(Table!3);
+			auto pdp_other = PhysAddress(pdp_ptr.Data).Virtual.Ptr!(Table!3);
+
+			foreach (ushort pdpIdx, pd_ptr; pdp_other.children) {
+				if (!pd_ptr.Present)
+					continue;
+				auto pd = PhysAddress(pdp.GetOrCreate(pdpIdx, pd_ptr.Mode)).Virtual.Ptr!(Table!2);
+				auto pd_other = PhysAddress(pd_ptr.Data).Virtual.Ptr!(Table!2);
+
+				foreach (ushort pdIdx, pt_ptr; pd_other.children) {
+					if (!pt_ptr.Present)
+						continue;
+
+					auto pt = PhysAddress(pd.GetOrCreate(pdIdx, pt_ptr.Mode)).Virtual.Ptr!(Table!1);
+					auto pt_other = PhysAddress(pd_ptr.Data).Virtual.Ptr!(Table!1);
+
+					foreach (ushort page_idx, page_other; pt_other.children)
+						*pt.Get(page_idx) = page_other;
+				}
+			}
+		}
+	}
+
+	~this() {
+		PhysAddress rootPhys = Root();
+		foreach (pdp_ptr; root.children) {
+			if (!pdp_ptr.Present)
+				continue;
+			auto pdp = PhysAddress(pdp_ptr.Data).Virtual.Ptr!(Table!3);
+			foreach (pd_ptr; pdp.children) {
+				if (!pd_ptr.Present)
+					continue;
+				auto pd = PhysAddress(pd_ptr.Data).Virtual.Ptr!(Table!2);
+				foreach (pt_ptr; pd.children) {
+					if (!pt_ptr.Present)
+						continue;
+					FrameAllocator.Free(PhysAddress(pt_ptr.Data));
+				}
+				FrameAllocator.Free(PhysAddress(pd_ptr.Data));
+			}
+			FrameAllocator.Free(PhysAddress(pdp_ptr.Data));
+		}
+		FrameAllocator.Free(rootPhys);
 	}
 
 	void Map(VirtAddress virt, PhysAddress phys, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
@@ -197,7 +253,7 @@ class Paging {
 		return phys;
 	}
 
-	TablePtr!void* GetPage(VirtAddress virt) {
+	TablePtr!(void)* GetPage(VirtAddress virt) {
 		if (virt.Int == 0)
 			return null;
 		const ulong virtAddr = virt.Int;
@@ -225,12 +281,23 @@ class Paging {
 	}
 
 	void Install() {
+		CPU_install_cr3(Root);
+	}
+
+	@property PhysAddress Root() {
 		auto page = GetPage(VirtAddress(root));
 		if (page == null)
 			log.Fatal("Paging address is not mapped!");
-		PhysAddress rootAddr = PhysAddress(page.Data);
-		CPU_install_cr3(rootAddr);
+		return PhysAddress(page.Data);
 	}
+
+	@property ref ulong RefCounter() {
+		return refCounter;
+	}
+
+private:
+	Table!4* root;
+	ulong refCounter;
 }
 
 private extern (C) extern __gshared {
