@@ -21,12 +21,12 @@ import Data.Linker;
 import Data.Address;
 import Memory.Heap;
 import Task.Scheduler;
-import Task.Thread;
 import ACPI.RSDP;
 import HW.BGA.BGA;
 import HW.BGA.PSF;
 import HW.PCI.PCI;
 import HW.CMOS.CMOS;
+import System.SyscallHandler;
 import Data.TextBuffer : scr = GetBootTTY;
 
 import Bin.BasicShell;
@@ -36,6 +36,29 @@ immutable uint minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
 
+private extern (C) {
+	extern __gshared ubyte KERNEL_STACK_START;
+}
+ulong userspace(void* userdata) {
+	import Task.Process : switchToUserMode;
+
+	import System.SyscallCaller;
+
+	SyscallCaller.Yield();
+	SyscallCaller.Yield();
+	SyscallCaller.Yield();
+
+	SyscallCaller.Exit(0xBED_BED_BAD_BAD);
+
+	//switchToUserMode(cast(ulong)&userspace, stack.Int);
+	/*asm {
+	loop:
+		mov RAX, 0xDEADC0DE;
+		jmp loop;
+	}*/
+	return 0x1234_5678_9ABC_DEF0;
+}
+
 extern (C) int kmain(uint magic, ulong info) {
 	PreInit();
 	Welcome();
@@ -43,11 +66,13 @@ extern (C) int kmain(uint magic, ulong info) {
 	asm {
 		sti;
 	}
+	GetScheduler.Clone(&userspace, VirtAddress(0), cast(void*)0xC0DE_C0DE_BEEF_BEEF, "Userspace");
 
-	scheduler.AddThread(new BasicShellThread());
-
-	while (true) {
-	}
+	//if (fork()) {
+	auto shell = new BasicShell();
+	shell.MainLoop();
+	shell.destroy();
+	//}
 
 	scr.Foreground = Color(255, 0, 255);
 	scr.Background = Color(255, 255, 0);
@@ -85,6 +110,9 @@ void PreInit() {
 
 	scr.Writeln("IDT initializing...");
 	IDT.Init();
+
+	scr.Writeln("Syscall Handler initializing...");
+	SyscallHandler.Init();
 
 	scr.Writeln("PIT initializing...");
 	PIT.Init();
@@ -124,8 +152,8 @@ void Init(uint magic, ulong info) {
 	scr.Writeln("BGA initializing...");
 	GetBGA.Init(new PSF(cast(FileNode)rootFS.Root.FindNode("/Data/Font/TTYFont.psf")));
 
-	scheduler = new Scheduler();
 	scr.Writeln("Scheduler initializing...");
+	GetScheduler.Init();
 }
 
 void LoadInitrd() {

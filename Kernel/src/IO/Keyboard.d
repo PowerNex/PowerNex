@@ -1,11 +1,18 @@
 module IO.Keyboard;
 
+import Task.Process;
+import Task.Scheduler;
+
 struct Keyboard {
 public:
 	static wchar Pop() {
 		wchar ch = Peek();
-		if (ch)
-			start++;
+		while(!ch) {
+			GetScheduler.WaitFor(WaitReason.Keyboard);
+			ch = Peek();
+		}
+
+		start++;
 		return ch;
 	}
 
@@ -18,6 +25,7 @@ public:
 
 	static void Push(wchar ch) {
 		buffer[end++] = ch;
+		GetScheduler.WakeUp(WaitReason.Keyboard);
 	}
 
 private:
