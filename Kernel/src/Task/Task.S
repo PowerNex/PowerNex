@@ -13,11 +13,15 @@ switchToUserMode: // RIP = %rdi, RSP = %rsi
 	mov %ax, %es
 	mov %ax, %fs
 	mov %ax, %gs
-	mov %ax, %ss
+	mov %rsi, %rsp
+
+	push $0x0
+	mov %rsp, %rax
+
 	push $USER_SS
 
 	// Stack pointer
-	push %rsi
+	push %rax
 
 	// FLAGS, Enabling interrupt
 	pushfq

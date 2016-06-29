@@ -51,18 +51,39 @@ public:
 
 		if (reschedule && current != idleProcess)
 			processes.Add(current);
-
 		doSwitching();
 	}
 
-	ulong Fork() {
+	PID Fork() {
 		// Clones everything
-		return ulong.max;
+		return PID.max;
 	}
 
-	ulong Clone() {
+	PID Clone() {
+		/+	Process* process = new Process();
+		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		memcpy(stack.ptr, current.image.stack)
+
+		with (process) {
+			pid = getFreePid;
+			name = current.name.dup;
+			uid = current.uid;
+			gid = current.gid;
+
+			/*threadState.rip = VirtAddress(0);
+			threadState.rbp = VirtAddress(0);
+			threadState.rsp = VirtAddress(0);*/
+			threadState.fpuEnabled = current.threadState.fpuEnabled;
+			threadState.paging = current.threadState.paging;
+
+			image.stack = VirtAddress(&KERNEL_STACK_START) + 1 /*???*/ ;
+
+			state = ProcessState.Running;
+			active = true;
+		}+/
+
 		// Clones everything but the paging, which is reused
-		return ulong.max;
+		return PID.max;
 	}
 
 	@property Process* CurrentProcess() {
@@ -70,6 +91,7 @@ public:
 	}
 
 private:
+	enum StackSize = 0x1000;
 	enum ulong SWITCH_MAGIC = 0xDEAD_C0DE;
 
 	ulong pidCounter;
@@ -100,7 +122,6 @@ private:
 	void initIdle() {
 		import Memory.Paging : GetKernelPaging;
 
-		enum StackSize = 0x1000;
 		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		idleProcess = new Process();
 		with (idleProcess) {
@@ -155,9 +176,9 @@ private:
 	void doSwitching() {
 		current = nextProcess();
 
+		ulong storeRIP = current.threadState.rip;
 		ulong storeRBP = current.threadState.rbp;
 		ulong storeRSP = current.threadState.rsp;
-		ulong storeRIP = current.threadState.rip;
 
 		current.threadState.paging.Install();
 		GDT.tss.RSP0 = current.image.stack;

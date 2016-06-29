@@ -35,6 +35,17 @@ immutable uint minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
 
+private extern (C) {
+	extern __gshared ubyte KERNEL_STACK_START;
+}
+void userspace() {
+	asm {
+	loop:
+		mov RAX, 0xDEADC0DE;
+		jmp loop;
+	}
+}
+
 extern (C) int kmain(uint magic, ulong info) {
 	PreInit();
 	Welcome();
@@ -42,12 +53,22 @@ extern (C) int kmain(uint magic, ulong info) {
 	asm {
 		sti;
 	}
+	/+
+		//if (fork()) {
+		auto shell = new BasicShell();
+		shell.MainLoop();
+		shell.destroy();
+		//}
+	+/
 
-	//if (fork()) {
-	auto shell = new BasicShell();
-	shell.MainLoop();
-	shell.destroy();
-	//}
+	import Task.Process : switchToUserMode;
+
+	enum StackSize = 0x1000;
+	VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+
+	scr.Writeln("Moving to userspace!");
+
+	switchToUserMode(cast(ulong)&userspace, stack.Int);
 
 	while (true) {
 	}

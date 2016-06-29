@@ -197,7 +197,7 @@ class Paging {
 		return phys;
 	}
 
-	TablePtr!void* GetPage(VirtAddress virt) {
+	TablePtr!(void)* GetPage(VirtAddress virt) {
 		if (virt.Int == 0)
 			return null;
 		const ulong virtAddr = virt.Int;
