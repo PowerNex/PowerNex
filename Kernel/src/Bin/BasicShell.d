@@ -203,6 +203,30 @@ private:
 				}
 			}
 			break;
+
+		case "task":
+			import Task.Scheduler;
+
+			if (cmd.args.length == 1)
+				goto task_help;
+
+			switch (cmd.args[1]) {
+			case "die":
+				scr.Writeln("Will now die, aka NEVER RETURN!");
+				GetScheduler.SwitchProcess(false);
+				break;
+			case "yield":
+				scr.Writeln("Will now yield, aka switch process!");
+				GetScheduler.SwitchProcess(true);
+				break;
+			default:
+				goto task_help;
+			}
+			break;
+
+		task_help:
+			scr.Writeln("task <die/yield>");
+			break;
 		default:
 			scr.Writeln("Unknown command: ", cmd.args[0], ". Type 'help' for all the commands.");
 			break;
