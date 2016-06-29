@@ -13,11 +13,15 @@ switchToUserMode: // RIP = %rdi, RSP = %rsi
 	mov %ax, %es
 	mov %ax, %fs
 	mov %ax, %gs
-	mov %ax, %ss
+	mov %rsi, %rsp
+
+	push $0x0
+	mov %rsp, %rax
+
 	push $USER_SS
 
 	// Stack pointer
-	push %rsi
+	push %rax
 
 	// FLAGS, Enabling interrupt
 	pushfq
@@ -62,3 +66,13 @@ fpuDisable:
 	movq %rcx, %cr4
 	ret
 .size fpuDisable, .-fpuDisable
+
+
+.global cloneHelper
+.type cloneHelper, %function
+cloneHelper:
+	pop %rax // Function
+	pop %rdi // Userdata
+	jmp %rax
+.size cloneHelper, .-cloneHelper
+

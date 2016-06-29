@@ -6,6 +6,8 @@ import Memory.Heap;
 
 extern (C) void switchToUserMode(ulong loc, ulong stack);
 
+alias PID = ulong;
+
 struct ThreadState {
 	VirtAddress rbp;
 	VirtAddress rsp;
@@ -29,7 +31,7 @@ enum ProcessState {
 }
 
 struct Process {
-	ulong pid;
+	PID pid;
 	string name;
 	string description;
 
@@ -38,6 +40,8 @@ struct Process {
 
 	ulong uid;
 	ulong gid;
+
+	PID parent;
 
 	ulong returnCode;
 	ProcessState state;

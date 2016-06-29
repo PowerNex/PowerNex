@@ -5,13 +5,24 @@ import Task.Process;
 import CPU.GDT;
 import CPU.PIT;
 import Task.Mutex.SpinLockMutex;
+import Data.TextBuffer : scr = GetBootTTY;
 
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
 	ulong getRIP();
 	void fpuEnable();
 	void fpuDisable();
+	void cloneHelper();
 }
+
+void autoExit() {
+	ulong returncode = void;
+	asm {
+		mov returncode, RAX;
+	}
+	GetScheduler.Exit(returncode);
+}
+
 class Scheduler {
 public:
 	void Init() {
@@ -25,6 +36,8 @@ public:
 	void SwitchProcess(bool reschedule = true) {
 		if (!current)
 			return;
+
+		//scr.Writeln("SWITCHING!!!!!!");
 		ulong storeRBP = void;
 		ulong storeRSP = void;
 		asm {
@@ -51,18 +64,64 @@ public:
 
 		if (reschedule && current != idleProcess)
 			processes.Add(current);
-
 		doSwitching();
 	}
 
-	ulong Fork() {
+	PID Fork() {
 		// Clones everything
-		return ulong.max;
+		return PID.max;
 	}
 
-	ulong Clone() {
-		// Clones everything but the paging, which is reused
-		return ulong.max;
+	alias CloneFunc = ulong function(void*);
+	PID Clone(CloneFunc func, VirtAddress stack, void* userdata, string processName) {
+		Process* process = new Process();
+		if (!stack.Int)
+			stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+
+		ulong stackEntries;
+		void set(int id, ulong value) {
+			*(stack - ulong.sizeof * (id + 1)).Ptr!ulong = value;
+			stackEntries++;
+		}
+
+		set(0, cast(ulong)&autoExit);
+		set(1, cast(ulong)userdata);
+		set(2, cast(ulong)func);
+
+		with (process) {
+			pid = getFreePid;
+			name = processName.dup;
+
+			uid = current.uid;
+			gid = current.gid;
+
+			parent = current.pid;
+
+			threadState.rip = VirtAddress(&cloneHelper);
+			threadState.rbp = VirtAddress(0);
+			threadState.rsp = stack - ulong.sizeof * stackEntries /* Two args */ ;
+			threadState.fpuEnabled = current.threadState.fpuEnabled;
+			threadState.paging = current.threadState.paging;
+
+			image.stack = stack;
+
+			state = ProcessState.Running;
+			active = false;
+		}
+
+		processes.Add(process);
+
+		return process.pid;
+	}
+
+	void Exit(ulong returncode) {
+		current.returnCode = returncode;
+		current.state = ProcessState.Exited;
+
+		scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
+		//SwitchProcess(false);
+		while (true) {
+		}
 	}
 
 	@property Process* CurrentProcess() {
@@ -70,6 +129,7 @@ public:
 	}
 
 private:
+	enum StackSize = 0x1000;
 	enum ulong SWITCH_MAGIC = 0xDEAD_C0DE;
 
 	ulong pidCounter;
@@ -100,7 +160,6 @@ private:
 	void initIdle() {
 		import Memory.Paging : GetKernelPaging;
 
-		enum StackSize = 0x1000;
 		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		idleProcess = new Process();
 		with (idleProcess) {
@@ -155,9 +214,9 @@ private:
 	void doSwitching() {
 		current = nextProcess();
 
+		ulong storeRIP = current.threadState.rip;
 		ulong storeRBP = current.threadState.rbp;
 		ulong storeRSP = current.threadState.rsp;
-		ulong storeRIP = current.threadState.rip;
 
 		current.threadState.paging.Install();
 		GDT.tss.RSP0 = current.image.stack;
@@ -171,6 +230,7 @@ private:
 			mov RBP, storeRBP[RAX];
 			mov RSP, storeRSP[RAX];
 			mov RAX, SWITCH_MAGIC;
+			sti;
 			jmp RBX;
 		}
 	}

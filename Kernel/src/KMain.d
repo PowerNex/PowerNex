@@ -26,6 +26,7 @@ import HW.BGA.BGA;
 import HW.BGA.PSF;
 import HW.PCI.PCI;
 import HW.CMOS.CMOS;
+import System.Syscall;
 import Data.TextBuffer : scr = GetBootTTY;
 
 import Bin.BasicShell;
@@ -35,6 +36,32 @@ immutable uint minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
 
+private extern (C) {
+	extern __gshared ubyte KERNEL_STACK_START;
+}
+ulong userspace(void* userdata) {
+	import Task.Process : switchToUserMode;
+
+	asm {
+		mov RAX, 0xDEADC0DE;
+		int 0x80;
+
+		mov RDI, 0xBADBED;
+		mov RAX, 0;
+		int 0x80;
+	}
+
+	scr.Writeln("Derp derp");
+
+	//switchToUserMode(cast(ulong)&userspace, stack.Int);
+	/*asm {
+	loop:
+		mov RAX, 0xDEADC0DE;
+		jmp loop;
+	}*/
+	return 0x1234_5678_9ABC_DEF0;
+}
+
 extern (C) int kmain(uint magic, ulong info) {
 	PreInit();
 	Welcome();
@@ -42,13 +69,15 @@ extern (C) int kmain(uint magic, ulong info) {
 	asm {
 		sti;
 	}
-
+	/+
 	//if (fork()) {
 	auto shell = new BasicShell();
 	shell.MainLoop();
 	shell.destroy();
 	//}
+	+/
 
+	GetScheduler.Clone(&userspace, VirtAddress(0), cast(void*)0xC0DE_C0DE_BEEF_BEEF, "Userspace");
 	while (true) {
 	}
 
@@ -88,6 +117,9 @@ void PreInit() {
 
 	scr.Writeln("IDT initializing...");
 	IDT.Init();
+
+	scr.Writeln("Syscall initializing...");
+	Syscall.Init();
 
 	scr.Writeln("PIT initializing...");
 	PIT.Init();
