@@ -59,31 +59,36 @@ public:
 		return PID.max;
 	}
 
-	PID Clone() {
-		/+	Process* process = new Process();
-		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
-		memcpy(stack.ptr, current.image.stack)
+	VirtAddress Join(PID p) {
+		// Joins a finished process
+		return VirtAddress(0);
+	}
 
+	PID Clone(VirtAddress function() func, VirtAddress stack = VirtAddress(0), string _name = current.name) {
+		if(stack == 0)
+			stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+
+		Process* process = new Process();
 		with (process) {
 			pid = getFreePid;
-			name = current.name.dup;
+			name = _name.dup;
 			uid = current.uid;
 			gid = current.gid;
 
-			/*threadState.rip = VirtAddress(0);
+			threadState.rip = VirtAddress(func);
 			threadState.rbp = VirtAddress(0);
-			threadState.rsp = VirtAddress(0);*/
+			threadState.rsp = stack;
 			threadState.fpuEnabled = current.threadState.fpuEnabled;
 			threadState.paging = current.threadState.paging;
 
-			image.stack = VirtAddress(&KERNEL_STACK_START) + 1 /*???*/ ;
+			image.stack = stack;
 
-			state = ProcessState.Running;
-			active = true;
-		}+/
+			state = ProcessState.Waiting;
+			active = false;
+		}
 
-		// Clones everything but the paging, which is reused
-		return PID.max;
+		processes.Add(process);
+		return process.pid;
 	}
 
 	@property Process* CurrentProcess() {
@@ -145,7 +150,7 @@ private:
 	void initKernel() {
 		import Memory.Paging : GetKernelPaging;
 
-		initProcess = new Process();
+		current = initProcess = new Process();
 		with (initProcess) {
 			pid = 1;
 			name = "Init";
@@ -192,6 +197,7 @@ private:
 			mov RBP, storeRBP[RAX];
 			mov RSP, storeRSP[RAX];
 			mov RAX, SWITCH_MAGIC;
+			sti;
 			jmp RBX;
 		}
 	}

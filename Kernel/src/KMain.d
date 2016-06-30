@@ -53,22 +53,17 @@ extern (C) int kmain(uint magic, ulong info) {
 	asm {
 		sti;
 	}
-	/+
-		//if (fork()) {
-		auto shell = new BasicShell();
-		shell.MainLoop();
-		shell.destroy();
-		//}
-	+/
 
-	import Task.Process : switchToUserMode;
+	GetScheduler.Clone(&RunBasicShell, VirtAddress(0), "BasicShell");
+
+	/*import Task.Process : switchToUserMode;
 
 	enum StackSize = 0x1000;
 	VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 
 	scr.Writeln("Moving to userspace!");
 
-	switchToUserMode(cast(ulong)&userspace, stack.Int);
+	switchToUserMode(cast(ulong)&userspace, stack.Int);*/
 
 	while (true) {
 	}

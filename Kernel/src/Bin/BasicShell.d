@@ -3,6 +3,7 @@ module Bin.BasicShell;
 import Data.TextBuffer : scr = GetBootTTY;
 import IO.Keyboard;
 import Data.String;
+import Data.Address;
 import IO.Log;
 import Memory.Heap;
 
@@ -14,6 +15,14 @@ import HW.BGA.BGA;
 import Memory.FrameAllocator;
 import CPU.PIT;
 import HW.CMOS.CMOS;
+
+VirtAddress RunBasicShell()
+{
+	auto shell = new BasicShell();
+	shell.MainLoop();
+	shell.destroy();
+	return VirtAddress(0);
+}
 
 class BasicShell {
 public:
