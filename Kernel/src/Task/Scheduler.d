@@ -200,6 +200,7 @@ private:
 			mov RBP, storeRBP[RAX];
 			mov RSP, storeRSP[RAX];
 			mov RAX, SWITCH_MAGIC;
+			sti;
 			jmp RBX;
 		}
 	}
