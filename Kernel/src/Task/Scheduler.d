@@ -179,10 +179,7 @@ private:
 	}
 
 	void doSwitching() {
-		import IO.Log : log;
-		log.Info("Switching from : ", current.name);
 		current = nextProcess();
-		log.Info("Switching to   : ", current.name);
 
 		ulong storeRIP = current.threadState.rip;
 		ulong storeRBP = current.threadState.rbp;
