@@ -30,6 +30,12 @@ enum ProcessState {
 	Exited
 }
 
+enum WaitReason {
+	Keyboard,
+	Timer
+	//more e.g. harddrive, networking, mutex...
+}
+
 struct Process {
 	PID pid;
 	string name;
@@ -45,6 +51,9 @@ struct Process {
 
 	ulong returnCode;
 	ProcessState state;
+
+	WaitReason wait;
+	ulong waitData;
 
 	// MUTEX LOCKS
 }

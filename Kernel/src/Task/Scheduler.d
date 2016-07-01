@@ -27,6 +27,7 @@ class Scheduler {
 public:
 	void Init() {
 		processes = new LinkedList!Process();
+		waitingProcesses = new LinkedList!Process();
 		initIdle(); // PID 0
 		initKernel(); // PID 1
 		pidCounter = 2;
@@ -64,6 +65,30 @@ public:
 		if (reschedule && current != idleProcess)
 			processes.Add(current);
 		doSwitching();
+	}
+
+	void WaitFor(WaitReason reason, ulong data = 0) {
+		current.state = ProcessState.Waiting;
+		current.wait = reason;
+		current.waitData = data;
+		waitingProcesses.Add(current);
+		SwitchProcess(false);
+	}
+
+	void WakeUp(WaitReason reason, bool function(Process* p) check = &wakeUpDefault) {
+		bool wokeUp = false;
+
+		for(int i = 0; i < waitingProcesses.Length; i++) {
+			Process* p = waitingProcesses.Get(i);
+			if(p.wait == reason && check(p)) {
+				wokeUp = true;
+				waitingProcesses.Remove(i);
+				processes.Add(p);
+			}
+		}
+
+		if(wokeUp && current == idleProcess)
+			SwitchProcess();
 	}
 
 	PID Fork() {
@@ -133,6 +158,7 @@ private:
 	ulong pidCounter;
 	bool initialized;
 	LinkedList!Process processes;
+	LinkedList!Process waitingProcesses;
 	Process* current;
 
 	Process* idleProcess;
@@ -144,6 +170,10 @@ private:
 		if (pidCounter == ulong.max)
 			log.Fatal("Out of pids!");
 		return pidCounter++;
+	}
+
+	static bool wakeUpDefault(Process* p) {
+		return true;
 	}
 
 	static void idle() {
