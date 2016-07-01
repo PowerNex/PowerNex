@@ -45,7 +45,6 @@ struct Process {
 
 	ulong returnCode;
 	ProcessState state;
-	bool active;
 
 	// MUTEX LOCKS
 }

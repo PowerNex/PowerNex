@@ -48,7 +48,6 @@ public:
 		if (storeRIP == SWITCH_MAGIC) // Swap is done
 			return;
 
-		current.active = false;
 		with (current.threadState) {
 			rbp = storeRBP;
 			rsp = storeRSP;
@@ -106,7 +105,6 @@ public:
 			image.stack = stack;
 
 			state = ProcessState.Running;
-			active = false;
 		}
 
 		processes.Add(process);
@@ -200,7 +198,6 @@ private:
 			image.stack = VirtAddress(&KERNEL_STACK_START) + 1 /*???*/ ;
 
 			state = ProcessState.Running;
-			active = true;
 		}
 	}
 
@@ -220,8 +217,6 @@ private:
 
 		current.threadState.paging.Install();
 		GDT.tss.RSP0 = current.image.stack;
-
-		current.active = true;
 
 		asm {
 			mov RAX, RBP; // RBP will be overritten below
