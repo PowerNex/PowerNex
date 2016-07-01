@@ -92,6 +92,10 @@ public:
 			SwitchProcess();
 	}
 
+	void USleep(ulong usecs) {
+		WaitFor(WaitReason.Timer, usecs);
+	}
+
 	PID Fork() {
 		// Clones everything
 		return PID.max;

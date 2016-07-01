@@ -5,6 +5,7 @@ import IO.Keyboard;
 import Data.String;
 import IO.Log;
 import Memory.Heap;
+import Task.Scheduler;
 
 import ACPI.RSDP;
 import KMain;
@@ -100,7 +101,7 @@ private:
 	void execute(Command* cmd) {
 		switch (cmd.args[0]) {
 		case "help":
-			scr.Writeln("Commands: help, echo, clear, exit, memory, time, ls, cd, cat");
+			scr.Writeln("Commands: help, echo, clear, exit, memory, time, sleep, ls, cd, cat");
 			break;
 
 		case "echo":
@@ -135,6 +136,13 @@ private:
 			scr.Writeln("The machine booted at: ", timestamp);
 			scr.Writeln("Seconds since boot: ", sinceBoot);
 			scr.Writeln("Which means that the time should be: ", timestamp + sinceBoot);
+			break;
+
+		case "sleep":
+			ulong secs = 3; //TODO parse this from an argument
+			scr.Writeln("Sleeping for ", secs, " seconds");
+			GetScheduler.USleep(secs * 1000);
+			scr.Writeln("Done sleeping");
 			break;
 
 		case "ls":
