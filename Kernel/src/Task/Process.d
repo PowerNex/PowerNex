@@ -26,6 +26,7 @@ struct ImageInformation {
 
 enum ProcessState {
 	Running,
+	Ready,
 	Waiting,
 	Exited
 }

@@ -62,6 +62,7 @@ public:
 			}
 		}
 
+		current.state = ProcessState.Ready;
 		if (reschedule && current != idleProcess)
 			processes.Add(current);
 		doSwitching();
@@ -129,7 +130,7 @@ public:
 
 			image.stack = stack;
 
-			state = ProcessState.Running;
+			state = ProcessState.Ready;
 		}
 
 		processes.Add(process);
@@ -204,7 +205,7 @@ private:
 
 			image.stack = stack;
 
-			state = ProcessState.Running;
+			state = ProcessState.Ready;
 		}
 	}
 
