@@ -26,8 +26,15 @@ struct ImageInformation {
 
 enum ProcessState {
 	Running,
+	Ready,
 	Waiting,
 	Exited
+}
+
+enum WaitReason {
+	Keyboard,
+	Timer
+	//more e.g. harddrive, networking, mutex...
 }
 
 struct Process {
@@ -45,7 +52,9 @@ struct Process {
 
 	ulong returnCode;
 	ProcessState state;
-	bool active;
+
+	WaitReason wait;
+	ulong waitData;
 
 	// MUTEX LOCKS
 }

@@ -27,6 +27,7 @@ class Scheduler {
 public:
 	void Init() {
 		processes = new LinkedList!Process();
+		waitingProcesses = new LinkedList!Process();
 		initIdle(); // PID 0
 		initKernel(); // PID 1
 		pidCounter = 2;
@@ -48,7 +49,6 @@ public:
 		if (storeRIP == SWITCH_MAGIC) // Swap is done
 			return;
 
-		current.active = false;
 		with (current.threadState) {
 			rbp = storeRBP;
 			rsp = storeRSP;
@@ -62,9 +62,38 @@ public:
 			}
 		}
 
+		current.state = ProcessState.Ready;
 		if (reschedule && current != idleProcess)
 			processes.Add(current);
 		doSwitching();
+	}
+
+	void WaitFor(WaitReason reason, ulong data = 0) {
+		current.state = ProcessState.Waiting;
+		current.wait = reason;
+		current.waitData = data;
+		waitingProcesses.Add(current);
+		SwitchProcess(false);
+	}
+
+	void WakeUp(WaitReason reason, bool function(Process* p) check = &wakeUpDefault) {
+		bool wokeUp = false;
+
+		for(int i = 0; i < waitingProcesses.Length; i++) {
+			Process* p = waitingProcesses.Get(i);
+			if(p.wait == reason && check(p)) {
+				wokeUp = true;
+				waitingProcesses.Remove(i);
+				processes.Add(p);
+			}
+		}
+
+		if(wokeUp && current == idleProcess)
+			SwitchProcess();
+	}
+
+	void USleep(ulong usecs) {
+		WaitFor(WaitReason.Timer, usecs);
 	}
 
 	PID Fork() {
@@ -105,8 +134,7 @@ public:
 
 			image.stack = stack;
 
-			state = ProcessState.Running;
-			active = false;
+			state = ProcessState.Ready;
 		}
 
 		processes.Add(process);
@@ -135,6 +163,7 @@ private:
 	ulong pidCounter;
 	bool initialized;
 	LinkedList!Process processes;
+	LinkedList!Process waitingProcesses;
 	Process* current;
 
 	Process* idleProcess;
@@ -146,6 +175,10 @@ private:
 		if (pidCounter == ulong.max)
 			log.Fatal("Out of pids!");
 		return pidCounter++;
+	}
+
+	static bool wakeUpDefault(Process* p) {
+		return true;
 	}
 
 	static void idle() {
@@ -176,7 +209,7 @@ private:
 
 			image.stack = stack;
 
-			state = ProcessState.Running;
+			state = ProcessState.Ready;
 		}
 	}
 
@@ -200,7 +233,6 @@ private:
 			image.stack = VirtAddress(&KERNEL_STACK_START) + 1 /*???*/ ;
 
 			state = ProcessState.Running;
-			active = true;
 		}
 	}
 
@@ -220,8 +252,6 @@ private:
 
 		current.threadState.paging.Install();
 		GDT.tss.RSP0 = current.image.stack;
-
-		current.active = true;
 
 		asm {
 			mov RAX, RBP; // RBP will be overritten below
