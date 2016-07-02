@@ -76,12 +76,13 @@ public:
 		SwitchProcess(false);
 	}
 
-	void WakeUp(WaitReason reason, bool function(Process* p) check = &wakeUpDefault) {
+	alias WakeUpFunc = bool function(Process*, void*);
+	void WakeUp(WaitReason reason, WakeUpFunc check = &wakeUpDefault, void* data = cast(void*)0) {
 		bool wokeUp = false;
 
 		for (int i = 0; i < waitingProcesses.Length; i++) {
 			Process* p = waitingProcesses.Get(i);
-			if (p.wait == reason && check(p)) {
+			if (p.wait == reason && check(p, data)) {
 				wokeUp = true;
 				waitingProcesses.Remove(i);
 				readyProcesses.Add(p);
@@ -195,7 +196,7 @@ private:
 		return pidCounter++;
 	}
 
-	static bool wakeUpDefault(Process* p) {
+	static bool wakeUpDefault(Process* p, void* data) {
 		return true;
 	}
 
