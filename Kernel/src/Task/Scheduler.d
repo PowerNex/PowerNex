@@ -62,9 +62,11 @@ public:
 			}
 		}
 
-		current.state = ProcessState.Ready;
-		if (reschedule && current != idleProcess)
+		if (reschedule && current != idleProcess) {
+			current.state = ProcessState.Ready;
 			readyProcesses.Add(current);
+		}
+
 		doSwitching();
 	}
 
@@ -126,7 +128,7 @@ public:
 			uid = current.uid;
 			gid = current.gid;
 
-			parent = current.pid;
+			parent = current;
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = VirtAddress(0);
@@ -140,29 +142,53 @@ public:
 			state = ProcessState.Ready;
 		}
 
+		with(current) {
+			if(!children)
+				children = new LinkedList!Process;
+			children.Add(process);
+		}
+
 		allProcesses.Add(process);
 		readyProcesses.Add(process);
 
 		return process.pid;
 	}
 
+	ulong Join(PID pid = 0) {
+		while(true) {
+			for(int i = 0; i < current.children.Length; i++) {
+				Process* child = current.children.Get(i);
+
+				if(child.state == ProcessState.Exited && (pid == 0 || child.pid == pid)) {
+					ulong code = child.returnCode;
+					current.children.Remove(child);
+					allProcesses.Remove(child);
+
+					with(child) {
+						name.destroy;
+						description.destroy;
+						//TODO free stack
+
+						if(children)
+							children.destroy;
+					}
+					child.destroy;
+
+					return code;
+				}
+			}
+
+			WaitFor(WaitReason.Join, pid);
+		}
+	}
+
 	void Exit(ulong returncode) {
 		current.returnCode = returncode;
 		current.state = ProcessState.Exited;
 
-		scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
-		/*allProcesses.Remove(current);
-		with (current) {
-			name.destroy;
-			description.destroy;
-			image.stack.destroy;
+		//scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
 
-			//TODO: free paging
-		}
-		current.destroy;
-		//TODO: Save returnCode;
-
-		doSwitching();*/
+		WakeUp(WaitReason.Join, &wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
 	}
 
@@ -198,6 +224,13 @@ private:
 
 	static bool wakeUpDefault(Process* p, void* data) {
 		return true;
+	}
+
+	static bool wakeUpJoin(Process* p, void* _child) {
+		Process* child = cast(Process*)_child; //is this a way around this? i hate strong typed languages -,-
+		if(p == child.parent && (p.waitData == 0 || p.waitData == child.pid))
+			return true;
+		return false;
 	}
 
 	static void idle() {
