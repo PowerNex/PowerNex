@@ -38,14 +38,29 @@ __gshared FSRoot rootFS;
 
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
+	ulong GetCS();
 }
 
+import Task.Process : switchToUserMode;
+
 ulong userspace() {
+	/*import Task.Scheduler;
+	import Data.TextBuffer : scr = GetBootTTY;*/
+
+	testFunc!(2)(null);
+	return 0x1234;
+}
+
+ulong testFunc(int spawn)(void*) {
 	import System.SyscallCaller : SyscallCaller;
 
-	SyscallCaller.Exit(0xDEAD_C0DE);
+	scr.Writeln("Thread: ", GetScheduler.CurrentProcess.name, " isKernel: ", GetCS != 0x1B);
 
-	return 0x1234_5678_9ABC_DEF0;
+	static if (spawn) {
+		string name = __FUNCTION__;
+		SyscallCaller.Clone(&testFunc!(spawn - 1), VirtAddress(0), null, &name); //switchToUserMode(cast(ulong) & userspace!(spawn - 1), stack.Int);
+	}
+	return 0;
 }
 
 extern (C) int kmain(uint magic, ulong info) {
@@ -56,10 +71,7 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	import Task.Process : switchToUserMode;
-
 	VirtAddress stack = VirtAddress(new ubyte[0x1000].ptr) + 0x1000;
-	log.Info("stack: ", stack.Ptr);
 	switchToUserMode(cast(ulong)&userspace, stack.Int);
 
 	/*//if (fork()) {

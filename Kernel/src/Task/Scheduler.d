@@ -186,7 +186,7 @@ public:
 		current.returnCode = returncode;
 		current.state = ProcessState.Exited;
 
-		scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
+		//scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);

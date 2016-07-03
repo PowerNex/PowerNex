@@ -69,16 +69,13 @@ fpuDisable:
 	ret
 .size fpuDisable, .-fpuDisable
 
-
 .global cloneHelper
 .type cloneHelper, %function
 cloneHelper:
 	pop %rax // Function
 	pop %rdi // Userdata
-	jmp %rax
+	jmp *%rax
 .size cloneHelper, .-cloneHelper
-
-
 
 .global exitHelper
 .type exitHelper, %function
@@ -88,3 +85,9 @@ exitHelper:
 	int $0x80
 .size exitHelper, .-exitHelper
 
+.global GetCS
+.type GetCS, %function
+GetCS:
+	mov %cs, %rax
+	ret
+.size GetCS, .-GetCS

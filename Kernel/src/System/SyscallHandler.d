@@ -4,6 +4,7 @@ import CPU.IDT;
 import Data.Register;
 import System.Syscall;
 import Data.Parameters;
+import Data.Address;
 
 struct SyscallHandler {
 public:
@@ -17,7 +18,6 @@ private:
 		import Task.Scheduler : GetScheduler;
 
 		GetScheduler.CurrentProcess.syscallRegisters = *regs;
-		scr.Writeln("SYSCALL: ", cast(void*)regs.RAX);
 
 		with (regs)
 	outer : switch (RAX) {

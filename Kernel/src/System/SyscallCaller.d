@@ -2,6 +2,7 @@ module System.SyscallCaller;
 
 import System.Syscall;
 import Data.Parameters;
+import Data.Address;
 
 struct SyscallCaller {
 public:

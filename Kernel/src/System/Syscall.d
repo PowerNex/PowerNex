@@ -1,12 +1,13 @@
 module System.Syscall;
 
+import Data.Address;
+
 enum SyscallCategory {
 	File,
 	Memory,
 	Task,
 	HW
 }
-
 
 struct SyscallEntry {
 	ulong id;
@@ -23,10 +24,9 @@ ulong Exit(ulong errorcode) {
 	return 0;
 }
 
-@SyscallEntry(1, "Yield", "Yield the current process")
-ulong Yield() {
+@SyscallEntry(1, "Clone", "Start a new process")
+ulong Clone(ulong function(void*) func, VirtAddress stack, void* userdata, string* name) {
 	import Task.Scheduler : GetScheduler;
 
-	GetScheduler.SwitchProcess();
-	return 0;
+	return GetScheduler.Clone(func, stack, userdata, *name);
 }
