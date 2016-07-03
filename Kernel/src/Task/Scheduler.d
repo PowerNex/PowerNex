@@ -188,7 +188,7 @@ public:
 
 		//scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
 
-		WakeUp(WaitReason.Join, &wakeUpJoin, cast(void*)current);
+		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
 	}
 
@@ -226,8 +226,7 @@ private:
 		return true;
 	}
 
-	static bool wakeUpJoin(Process* p, void* _child) {
-		Process* child = cast(Process*)_child; //is this a way around this? i hate strong typed languages -,-
+	static bool wakeUpJoin(Process* p, Process* child) {
 		if(p == child.parent && (p.waitData == 0 || p.waitData == child.pid))
 			return true;
 		return false;
