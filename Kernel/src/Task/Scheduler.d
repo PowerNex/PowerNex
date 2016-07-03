@@ -62,9 +62,11 @@ public:
 			}
 		}
 
-		current.state = ProcessState.Ready;
-		if (reschedule && current != idleProcess)
+		if (reschedule && current != idleProcess) {
+			current.state = ProcessState.Ready;
 			readyProcesses.Add(current);
+		}
+
 		doSwitching();
 	}
 
@@ -76,12 +78,13 @@ public:
 		SwitchProcess(false);
 	}
 
-	void WakeUp(WaitReason reason, bool function(Process* p) check = &wakeUpDefault) {
+	alias WakeUpFunc = bool function(Process*, void*);
+	void WakeUp(WaitReason reason, WakeUpFunc check = &wakeUpDefault, void* data = cast(void*)0) {
 		bool wokeUp = false;
 
 		for (int i = 0; i < waitingProcesses.Length; i++) {
 			Process* p = waitingProcesses.Get(i);
-			if (p.wait == reason && check(p)) {
+			if (p.wait == reason && check(p, data)) {
 				wokeUp = true;
 				waitingProcesses.Remove(i);
 				readyProcesses.Add(p);
@@ -125,7 +128,7 @@ public:
 			uid = current.uid;
 			gid = current.gid;
 
-			parent = current.pid;
+			parent = current;
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = VirtAddress(0);
@@ -139,29 +142,53 @@ public:
 			state = ProcessState.Ready;
 		}
 
+		with(current) {
+			if(!children)
+				children = new LinkedList!Process;
+			children.Add(process);
+		}
+
 		allProcesses.Add(process);
 		readyProcesses.Add(process);
 
 		return process.pid;
 	}
 
+	ulong Join(PID pid = 0) {
+		while(true) {
+			for(int i = 0; i < current.children.Length; i++) {
+				Process* child = current.children.Get(i);
+
+				if(child.state == ProcessState.Exited && (pid == 0 || child.pid == pid)) {
+					ulong code = child.returnCode;
+					current.children.Remove(child);
+					allProcesses.Remove(child);
+
+					with(child) {
+						name.destroy;
+						description.destroy;
+						//TODO free stack
+
+						if(children)
+							children.destroy;
+					}
+					child.destroy;
+
+					return code;
+				}
+			}
+
+			WaitFor(WaitReason.Join, pid);
+		}
+	}
+
 	void Exit(ulong returncode) {
 		current.returnCode = returncode;
 		current.state = ProcessState.Exited;
 
-		scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
-		/*allProcesses.Remove(current);
-		with (current) {
-			name.destroy;
-			description.destroy;
-			image.stack.destroy;
+		//scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
 
-			//TODO: free paging
-		}
-		current.destroy;
-		//TODO: Save returnCode;
-
-		doSwitching();*/
+		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
 	}
 
@@ -195,8 +222,14 @@ private:
 		return pidCounter++;
 	}
 
-	static bool wakeUpDefault(Process* p) {
+	static bool wakeUpDefault(Process* p, void* data) {
 		return true;
+	}
+
+	static bool wakeUpJoin(Process* p, Process* child) {
+		if(p == child.parent && (p.waitData == 0 || p.waitData == child.pid))
+			return true;
+		return false;
 	}
 
 	static void idle() {

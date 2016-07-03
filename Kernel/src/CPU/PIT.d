@@ -58,7 +58,7 @@ private:
 				"\tSeconds since boot: ", Seconds);*/
 	}
 
-	static bool wakeUpTimedSleep(Process* p) {
+	static bool wakeUpTimedSleep(Process* p, void* data) {
 		p.waitData--;
 		if(p.waitData == 0)
 			return true;

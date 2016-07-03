@@ -1,6 +1,7 @@
 module Task.Process;
 
 import Data.Address;
+import Data.LinkedList;
 import Memory.Paging;
 import Memory.Heap;
 
@@ -33,7 +34,8 @@ enum ProcessState {
 
 enum WaitReason {
 	Keyboard,
-	Timer
+	Timer,
+	Join
 	//more e.g. harddrive, networking, mutex...
 }
 
@@ -48,7 +50,8 @@ struct Process {
 	ulong uid;
 	ulong gid;
 
-	PID parent;
+	Process* parent;
+	LinkedList!Process children;
 
 	ulong returnCode;
 	ProcessState state;
