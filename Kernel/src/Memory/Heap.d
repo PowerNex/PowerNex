@@ -207,7 +207,7 @@ Heap GetKernelHeap() {
 	__gshared Heap kernelHeap;
 
 	if (!kernelHeap) {
-		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultKernel, Linker.KernelEnd);
+		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultUser, Linker.KernelEnd);
 		IDT.Register(InterruptType.PageFault, &onPageFault);
 	}
 	return kernelHeap;

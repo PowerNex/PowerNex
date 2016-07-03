@@ -150,8 +150,10 @@ struct Log {
 			rbp = cast(ulong*)*rbp;
 		}
 
-		while (rbp) {
+		while (rbp && *rip) {
 			rip = rbp + 1;
+			if (!*rip)
+				break;
 			COM1.Write("\t[");
 
 			{

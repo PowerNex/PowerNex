@@ -15,9 +15,12 @@ switchToUserMode: // RIP = %rdi, RSP = %rsi
 	mov %ax, %gs
 	mov %rsi, %rsp
 
-	push $0x0
+	push $exitHelper
+	mov %rsp, %rbp
+
 	mov %rsp, %rax
 
+	// Data segmentation SS
 	push $USER_SS
 
 	// Stack pointer
@@ -31,7 +34,6 @@ switchToUserMode: // RIP = %rdi, RSP = %rsi
 
 	// Code segmentation register
 	push $USER_CS
-
 
 	// Instruction pointer
 	push %rdi
@@ -75,4 +77,14 @@ cloneHelper:
 	pop %rdi // Userdata
 	jmp %rax
 .size cloneHelper, .-cloneHelper
+
+
+
+.global exitHelper
+.type exitHelper, %function
+exitHelper:
+	mov %rax, %rdi
+	mov $0, %rax
+	int $0x80
+.size exitHelper, .-exitHelper
 

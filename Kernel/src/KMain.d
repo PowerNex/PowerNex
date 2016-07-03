@@ -39,23 +39,12 @@ __gshared FSRoot rootFS;
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
 }
-ulong userspace(void* userdata) {
-	import Task.Process : switchToUserMode;
 
-	import System.SyscallCaller;
+ulong userspace() {
+	import System.SyscallCaller : SyscallCaller;
 
-	SyscallCaller.Yield();
-	SyscallCaller.Yield();
-	SyscallCaller.Yield();
+	SyscallCaller.Exit(0xDEAD_C0DE);
 
-	SyscallCaller.Exit(0xBED_BED_BAD_BAD);
-
-	//switchToUserMode(cast(ulong)&userspace, stack.Int);
-	/*asm {
-	loop:
-		mov RAX, 0xDEADC0DE;
-		jmp loop;
-	}*/
 	return 0x1234_5678_9ABC_DEF0;
 }
 
@@ -66,13 +55,18 @@ extern (C) int kmain(uint magic, ulong info) {
 	asm {
 		sti;
 	}
-	GetScheduler.Clone(&userspace, VirtAddress(0), cast(void*)0xC0DE_C0DE_BEEF_BEEF, "Userspace");
 
-	//if (fork()) {
+	import Task.Process : switchToUserMode;
+
+	VirtAddress stack = VirtAddress(new ubyte[0x1000].ptr) + 0x1000;
+	log.Info("stack: ", stack.Ptr);
+	switchToUserMode(cast(ulong)&userspace, stack.Int);
+
+	/*//if (fork()) {
 	auto shell = new BasicShell();
 	shell.MainLoop();
 	shell.destroy();
-	//}
+	//}*/
 
 	scr.Foreground = Color(255, 0, 255);
 	scr.Background = Color(255, 255, 0);

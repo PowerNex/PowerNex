@@ -100,9 +100,9 @@ public:
 	}
 
 	PID Fork() {
-		/*Process* process = new Process();
-		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;*/
-		return PID.max;
+		Process* process = new Process();
+		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		return process.pid;;
 	}
 
 	alias CloneFunc = ulong function(void*);
@@ -186,7 +186,7 @@ public:
 		current.returnCode = returncode;
 		current.state = ProcessState.Exited;
 
-		//scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
+		scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);

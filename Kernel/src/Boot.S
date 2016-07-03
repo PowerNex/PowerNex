@@ -194,15 +194,15 @@ x64NotSupported_msg:
 .align 0x1000
 .SET PRESENT,     0x1
 .SET WRITEABLE,   0x2
+.SET USER,   			0x4
 .SET MAP4M,       0x80
-.SET UNKNOWN_BIT, 0x0
-.SET PW, PRESENT + WRITEABLE
-.SET ATTR, (- KERNEL_VMA + PW)
-.SET ATTR_MAP, (PW + MAP4M)
-.SET STACK_ATTR, (- KERNEL_VMA + PW + UNKNOWN_BIT)
+.SET MAP_MODE, PRESENT + WRITEABLE + USER
+.SET ATTR, (- KERNEL_VMA + MAP_MODE)
+.SET ATTR_MAP, (MAP_MODE + MAP4M)
+.SET STACK_ATTR, (- KERNEL_VMA + MAP_MODE)
 
 .macro mapPage from, to
-	.int \from + PW + UNKNOWN_BIT, 0
+	.int \from + MAP_MODE, 0
 	.if \to-\from
 		mapPage "(\from+0x1000)", \to
 	.endif

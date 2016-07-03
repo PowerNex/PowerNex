@@ -4,6 +4,7 @@ import Data.Address;
 import Data.LinkedList;
 import Memory.Paging;
 import Memory.Heap;
+import Data.Register;
 
 extern (C) void switchToUserMode(ulong loc, ulong stack);
 
@@ -60,4 +61,6 @@ struct Process {
 	ulong waitData;
 
 	// MUTEX LOCKS
+
+	Registers syscallRegisters;
 }

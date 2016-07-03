@@ -119,7 +119,7 @@ private:
 		mixin(addJumps!(0, 255));
 		add(3, SystemSegmentType.InterruptGate, cast(ulong)&isr3, 3, InterruptStackType.Debug);
 		add(8, SystemSegmentType.InterruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.RegisterStack);
-		//add(128, SystemSegmentType.InterruptGate, cast(ulong)&isr128, 3, InterruptStackType.RegisterStack);
+		add(0x80, SystemSegmentType.InterruptGate, cast(ulong)&isr128, 3, InterruptStackType.RegisterStack);
 
 		Flush();
 	}

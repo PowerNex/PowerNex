@@ -14,6 +14,10 @@ public:
 private:
 	static void onSyscall(Registers* regs) {
 		import Data.TextBuffer : scr = GetBootTTY;
+		import Task.Scheduler : GetScheduler;
+
+		GetScheduler.CurrentProcess.syscallRegisters = *regs;
+		scr.Writeln("SYSCALL: ", cast(void*)regs.RAX);
 
 		with (regs)
 	outer : switch (RAX) {
@@ -31,6 +35,7 @@ private:
 			regs.RAX = ulong.max;
 			break;
 		}
+		*regs = GetScheduler.CurrentProcess.syscallRegisters;
 	}
 
 	static string generateFunctionCall(alias func)() {
