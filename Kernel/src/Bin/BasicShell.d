@@ -219,11 +219,9 @@ private:
 		case "ptree":
 			auto p = GetScheduler.AllProcesses;
 			scr.Writeln("PID\t\tStatus\t\tName\t\tParent");
-			for (size_t i = 0; i < p.Length; i++) {
-				with(p[i]) {
-					scr.Writeln(pid, "\t\t", state, "\t\t", name, "\t\t", parent ? parent.name : "?");
-				}
-			}
+			for (size_t i = 0; i < p.Length; i++)
+				with (p[i])
+					scr.Writeln(pid, "\t\t", state, "\t\t", name, "\t\t"[(name.length / 8) .. $], parent ? parent.name : "?");
 			break;
 		default:
 			scr.Writeln("Unknown command: ", cmd.args[0], ". Type 'help' for all the commands.");
