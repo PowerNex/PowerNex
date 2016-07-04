@@ -36,8 +36,7 @@ enum ProcessState {
 enum WaitReason {
 	Keyboard,
 	Timer,
-	Join
-	//more e.g. harddrive, networking, mutex...
+	Join //more e.g. harddrive, networking, mutex...
 }
 
 struct Process {
@@ -45,22 +44,22 @@ struct Process {
 	string name;
 	string description;
 
-	ThreadState threadState;
-	ImageInformation image;
-
 	ulong uid;
 	ulong gid;
+
+	ThreadState threadState;
+	ImageInformation image;
+	bool kernelProcess;
+	Registers syscallRegisters;
 
 	Process* parent;
 	LinkedList!Process children;
 
-	ulong returnCode;
 	ProcessState state;
+	ulong returnCode;
 
+	// MUTEX LOCKS
 	WaitReason wait;
 	ulong waitData;
 
-	// MUTEX LOCKS
-
-	Registers syscallRegisters;
 }

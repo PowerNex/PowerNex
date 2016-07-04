@@ -30,3 +30,11 @@ ulong Clone(ulong function(void*) func, VirtAddress stack, void* userdata, strin
 
 	return GetScheduler.Clone(func, stack, userdata, *name);
 }
+
+@SyscallEntry(2, "Log Out")
+ulong Log(immutable(char)* str, ulong length, immutable(char)* str2, ulong length2) {
+	import IO.Log;
+
+	log.Info(str[0 .. length], str2[0 .. length2]);
+	return 0;
+}

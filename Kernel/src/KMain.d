@@ -54,8 +54,15 @@ ulong userspace() {
 ulong testFunc(int spawn)(void*) {
 	import System.SyscallCaller : SyscallCaller;
 
-	scr.Writeln("Thread: ", GetScheduler.CurrentProcess.name, " isKernel: ", GetCS != 0x1B);
+	//log.Info("Thread: ");//, GetScheduler.CurrentProcess.name, " isKernel: ", GetCS != 0x1B);
+	{
+		string name = GetScheduler.CurrentProcess.name;
+		SyscallCaller.Log("Thread: ".ptr, 10, name.ptr, name.length);
+		scr.Writeln("Thread: ", GetScheduler.CurrentProcess.name);
+		SyscallCaller.Log("\tisKernel: ".ptr, 11, (GetCS != 0x1B ? "true " : "false").ptr, 5);
+		scr.Writeln("\tisKernel: ", GetCS != 0x1B);
 
+	}
 	static if (spawn) {
 		string name = __FUNCTION__;
 		SyscallCaller.Clone(&testFunc!(spawn - 1), VirtAddress(0), null, &name); //switchToUserMode(cast(ulong) & userspace!(spawn - 1), stack.Int);

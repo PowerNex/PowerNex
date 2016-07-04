@@ -102,7 +102,7 @@ public:
 	PID Fork() {
 		Process* process = new Process();
 		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
-		return process.pid;;
+		return process.pid;
 	}
 
 	alias CloneFunc = ulong function(void*);
@@ -112,14 +112,32 @@ public:
 			stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 
 		ulong stackEntries;
-		void set(int id, ulong value) {
-			*(stack - ulong.sizeof * (id + 1)).Ptr!ulong = value;
-			stackEntries++;
+		void set(T = ulong)(T value) {
+			*(stack - ulong.sizeof * stackEntries - T.sizeof).Ptr!T = value;
+			stackEntries += T.sizeof / ulong.sizeof;
 		}
 
-		set(0, cast(ulong)&autoExit);
-		set(1, cast(ulong)userdata);
-		set(2, cast(ulong)func);
+		set(cast(ulong)&autoExit);
+
+		import IO.Log;
+
+		scr.Writeln("Cloning: ", current.name, " func: ", cast(void*)func, " stack: ", stack.Ptr, " userdata: ", userdata);
+		log.Debug("Cloning: ", current.name, " func: ", cast(void*)func, " stack: ", stack.Ptr, " userdata: ", userdata);
+
+		//process.syscallRegisters = current.syscallRegisters;
+		with (process.syscallRegisters) {
+			RBP = stack;
+			RDI = VirtAddress(userdata);
+			RAX = 0xDEAD_C0DE;
+
+			RIP = VirtAddress(func);
+			CS = current.syscallRegisters.CS;
+			Flags = current.syscallRegisters.Flags;
+			RSP = stack - ulong.sizeof * stackEntries;
+			SS = current.syscallRegisters.SS;
+		}
+
+		set(process.syscallRegisters);
 
 		with (process) {
 			pid = getFreePid;
@@ -131,19 +149,20 @@ public:
 			parent = current;
 
 			threadState.rip = VirtAddress(&cloneHelper);
-			threadState.rbp = VirtAddress(0);
-			threadState.rsp = stack - ulong.sizeof * stackEntries /* Two args */ ;
+			threadState.rbp = threadState.rsp = stack - ulong.sizeof * stackEntries /* Two args */ ;
 			threadState.fpuEnabled = current.threadState.fpuEnabled;
 			threadState.paging = current.threadState.paging;
 			threadState.paging.RefCounter++;
 
 			image.stack = stack;
 
+			kernelProcess = current.kernelProcess;
+
 			state = ProcessState.Ready;
 		}
 
-		with(current) {
-			if(!children)
+		with (current) {
+			if (!children)
 				children = new LinkedList!Process;
 			children.Add(process);
 		}
@@ -155,21 +174,21 @@ public:
 	}
 
 	ulong Join(PID pid = 0) {
-		while(true) {
-			for(int i = 0; i < current.children.Length; i++) {
+		while (true) {
+			for (int i = 0; i < current.children.Length; i++) {
 				Process* child = current.children.Get(i);
 
-				if(child.state == ProcessState.Exited && (pid == 0 || child.pid == pid)) {
+				if (child.state == ProcessState.Exited && (pid == 0 || child.pid == pid)) {
 					ulong code = child.returnCode;
 					current.children.Remove(child);
 					allProcesses.Remove(child);
 
-					with(child) {
+					with (child) {
 						name.destroy;
 						description.destroy;
 						//TODO free stack
 
-						if(children)
+						if (children)
 							children.destroy;
 					}
 					child.destroy;
@@ -227,7 +246,7 @@ private:
 	}
 
 	static bool wakeUpJoin(Process* p, Process* child) {
-		if(p == child.parent && (p.waitData == 0 || p.waitData == child.pid))
+		if (p == child.parent && (p.waitData == 0 || p.waitData == child.pid))
 			return true;
 		return false;
 	}
@@ -261,6 +280,8 @@ private:
 
 			image.stack = stack;
 
+			kernelProcess = true;
+
 			state = ProcessState.Ready;
 		}
 		allProcesses.Add(idleProcess);
@@ -285,6 +306,8 @@ private:
 			//threadState.paging.RefCounter++; Not needed. "Is" already +1 for this
 
 			image.stack = VirtAddress(&KERNEL_STACK_START) + 1 /*???*/ ;
+
+			kernelProcess = false;
 
 			state = ProcessState.Running;
 		}
