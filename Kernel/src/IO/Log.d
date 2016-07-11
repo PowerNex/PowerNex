@@ -79,13 +79,21 @@ struct Log {
 
 		COM1.Write(itoa(line, buf, 10));
 		COM1.Write("> ");
-		foreach (arg; args) {
+		mainloop: foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
 				COM1.Write(arg);
-			/*else static if (is(T == enum))
-				WriteEnum(arg);*/
-			else static if (is(T == BinaryInt)) {
+			else static if (is(T == enum)) {
+				foreach (i, e; EnumMembers!T)
+					if (arg == e) {
+						COM1.Write(__traits(allMembers, T)[i]);
+						continue mainloop;
+					}
+				COM1.Write("cast(");
+				COM1.Write(T.stringof);
+				COM1.Write(")");
+				COM1.Write(itoa(cast(ulong)arg, buf, 10));
+			} else static if (is(T == BinaryInt)) {
 				COM1.Write("0b");
 				COM1.Write(itoa(arg.Int, buf, 2));
 			} else static if (is(T : V*, V)) {
@@ -95,9 +103,11 @@ struct Log {
 				COM1.Write((arg) ? "true" : "false");
 			else static if (is(T : char))
 				COM1.Write(arg);
-			else static if (isNumber!T) {
+			else static if (isNumber!T)
 				COM1.Write(itoa(arg, buf, 10));
-			} else
+			else static if (isFloating!T)
+				COM1.Write(dtoa(cast(double)arg, buf, 10));
+			else
 				COM1.Write("UNKNOWN TYPE '", T.stringof, "'");
 		}
 
@@ -139,27 +149,29 @@ struct Log {
 
 	void PrintStackTrace(bool skipFirst = false) {
 		COM1.Write("\r\nSTACKTRACE:\r\n");
-		ulong* rbp;
-		ulong* rip;
+		VirtAddress rbp;
+		VirtAddress rip;
 		asm {
 			mov rbp, RBP;
 		}
 
 		if (skipFirst) {
-			rip = rbp + 1;
-			rbp = cast(ulong*)*rbp;
+			rip = rbp + ulong.sizeof;
+			rbp = VirtAddress(*rbp.Ptr!ulong);
 		}
 
-		while (rbp && *rip) {
-			rip = rbp + 1;
-			if (!*rip)
+		while (rbp && //
+				rbp > 0xFFFF_FFFF_8000_0000 && rbp < 0xFFFF_FFFF_F000_0000 // XXX: Hax fix
+				 && *rip.Ptr!ulong) {
+			rip = rbp + ulong.sizeof;
+			if (!*rip.Ptr!ulong)
 				break;
 			COM1.Write("\t[");
 
 			{
 				char[ulong.sizeof * 8] buf;
 				COM1.Write("0x");
-				COM1.Write(itoa(*rip, buf, 16));
+				COM1.Write(itoa(*rip.Ptr!ulong, buf, 16));
 			}
 
 			COM1.Write("] ");
@@ -184,7 +196,7 @@ struct Log {
 				return func("Symbol not in map!", 0);
 			}
 
-			func f = getFuncName(*rip);
+			func f = getFuncName(*rip.Ptr!ulong);
 
 			COM1.Write(f.name);
 			if (f.diff) {
@@ -194,7 +206,7 @@ struct Log {
 			}
 
 			COM1.Write("\r\n");
-			rbp = cast(ulong*)*rbp;
+			rbp = VirtAddress(*rbp.Ptr!ulong);
 		}
 	}
 

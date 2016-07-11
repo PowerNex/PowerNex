@@ -75,9 +75,12 @@ public:
 				write(arg, fg, bg, flags);
 			else static if (isNumber!T)
 				writeNumber(arg, 10, fg, bg, flags);
+			else static if (isFloating!T)
+				writeFloating(cast(double)arg, 10, fg, bg, flags);
 			else
 				write(arg.toString, fg, bg, flags);
 		}
+
 		if (onChanged)
 			onChanged(startPos, count);
 	}
@@ -184,6 +187,11 @@ private:
 	void writeNumber(S = long)(S value, uint base, Color fg, Color bg, SlotFlags flags) if (isNumber!S) {
 		char[S.sizeof * 8] buf;
 		write(itoa(value, buf, base), fg, bg, flags);
+	}
+
+	void writeFloating(double value, uint base, Color fg, Color bg, SlotFlags flags) {
+		char[double.sizeof * 8] buf;
+		write(dtoa(value, buf, base), fg, bg, flags);
 	}
 
 	void writeEnum(T)(T value, Color fg, Color bg, SlotFlags flags) if (is(T == enum)) {

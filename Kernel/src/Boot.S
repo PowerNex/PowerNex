@@ -67,15 +67,15 @@ start:
 
 	# Enable PAE
 	mov %cr4, %eax
-	bts $5, %eax
+	bts $5, %eax # physical address extension
 	mov %eax, %cr4
 
 	# Set long mode bit in EFER MSR
 	mov $0xC0000080, %ecx # Refers to EFER MSR
 	rdmsr
 	bts $11, %eax
-	bts $8, %eax
 	bts $0, %eax
+	bts $8, %eax
 	wrmsr
 
 	mov $(PML4 - KERNEL_VMA), %eax
@@ -83,9 +83,16 @@ start:
 
 	# Enable paging and write protected
 	mov %cr0, %eax
-	bts $31, %eax
-	bts $16, %eax
+	bts $1, %eax # monitor co-processor
+	btr $2, %eax # clear coprocessor emulation
+	bts $16, %eax # write protect
+	bts $31, %eax # paging
 	mov %eax, %cr0
+
+	mov %cr4, %eax
+	bts $9, %eax # fxsave and fxrstor instructions
+	bts $10, %eax # unmasked simd floating point exceptions
+	mov %eax, %cr4
 
 .remapIRQ:
 .SET MasterControl, 0x20
