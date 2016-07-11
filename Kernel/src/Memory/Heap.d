@@ -218,6 +218,9 @@ private void onPageFault(Registers* regs) {
 	import IO.Log;
 
 	with (regs) {
+		import Data.Color;
+
+		scr.Foreground = Color(255, 0, 0);
 		scr.Writeln("===> PAGE FAULT");
 		scr.Writeln("IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP);
 		scr.Writeln("RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX);
@@ -231,7 +234,9 @@ private void onPageFault(Registers* regs) {
 		scr.Writeln(" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS);
 		scr.Writeln(" CR2 = ", cast(void*)CR2);
 		scr.Writeln("Flags: ", cast(void*)Flags);
-		scr.Writeln("Errorcode: ", cast(void*)ErrorCode);
+		scr.Writeln("Errorcode: ", cast(void*)ErrorCode, " (", ErrorCode & 0x1 ? " Present" : " NotPresent",
+				ErrorCode & 0x2 ? " Write" : " Read", ErrorCode & 0x4 ? " UserMode" : " KernelMode", ErrorCode & 0x8
+				? " ReservedWrite" : "", ErrorCode & 0x2 ? " InstructionFetch" : "", " )");
 
 		log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP, "\n", "RAX = ",
 				cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n", "RCX = ", cast(void*)RCX, " | RDX = ",
@@ -240,6 +245,8 @@ private void onPageFault(Registers* regs) {
 				cast(void*)R9, "\n", "R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11, "\n", "R12 = ",
 				cast(void*)R12, " | R13 = ", cast(void*)R13, "\n", "R14 = ", cast(void*)R14, " | R15 = ",
 				cast(void*)R15, "\n", " CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n", " CR2 = ",
-				cast(void*)CR2, "\n", "Flags: ", cast(void*)Flags, "\n", "Errorcode: ", cast(void*)ErrorCode);
+				cast(void*)CR2, "\n", "Flags: ", cast(void*)Flags, "\n", "Errorcode: ", cast(void*)ErrorCode, " (",
+				ErrorCode & 0x1 ? " Present" : " NotPresent", ErrorCode & 0x2 ? " Write" : " Read", ErrorCode & 0x4
+				? " UserMode" : " KernelMode", ErrorCode & 0x8 ? " ReservedWrite" : "", ErrorCode & 0x2 ? " InstructionFetch" : "", " )");
 	}
 }
