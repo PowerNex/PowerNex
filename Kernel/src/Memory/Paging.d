@@ -142,7 +142,8 @@ private extern (C) void CPU_install_cr3(PhysAddress addr);
 class Paging {
 public:
 	this() {
-		root = cast(Table!4*)PhysAddress(FrameAllocator.Alloc()).Virtual.Ptr;
+		rootPhys = PhysAddress(FrameAllocator.Alloc());
+		root = rootPhys.Virtual.Ptr!(Table!4);
 		_memset64(root, 0, 0x200); //Defined in object.d
 		refCounter++;
 	}
@@ -150,6 +151,7 @@ public:
 	this(void* pml4) {
 		root = cast(Table!4*)pml4;
 		refCounter++;
+		rootPhys = PhysAddress(GetPage(VirtAddress(root)).Data);
 	}
 
 	this(Paging other) {
@@ -172,7 +174,7 @@ public:
 						continue;
 
 					auto pt = PhysAddress(pd.GetOrCreate(pdIdx, pt_ptr.Mode)).Virtual.Ptr!(Table!1);
-					auto pt_other = PhysAddress(pd_ptr.Data).Virtual.Ptr!(Table!1);
+					auto pt_other = PhysAddress(pt_ptr.Data).Virtual.Ptr!(Table!1);
 
 					foreach (ushort page_idx, page_other; pt_other.children)
 						*pt.Get(page_idx) = page_other;
@@ -285,10 +287,8 @@ public:
 	}
 
 	@property PhysAddress Root() {
-		auto page = GetPage(VirtAddress(root));
-		if (page == null)
-			log.Fatal("Paging address is not mapped!");
-		return PhysAddress(page.Data);
+		log.Warning("rootPhys: ", rootPhys.Ptr);
+		return rootPhys;
 	}
 
 	@property ref ulong RefCounter() {
@@ -297,6 +297,7 @@ public:
 
 private:
 	Table!4* root;
+	PhysAddress rootPhys;
 	ulong refCounter;
 }
 

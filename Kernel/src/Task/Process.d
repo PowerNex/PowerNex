@@ -22,7 +22,8 @@ struct ThreadState {
 }
 
 struct ImageInformation {
-	VirtAddress stack;
+	VirtAddress userStack;
+	VirtAddress kernelStack;
 	//TODO: fill in
 }
 

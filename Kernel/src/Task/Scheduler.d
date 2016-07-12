@@ -16,11 +16,12 @@ private extern (C) {
 }
 
 void autoExit() {
-	ulong returncode = void;
 	asm {
-		mov returncode, RAX;
+		naked;
+		mov RDI, RAX;
+		mov RAX, 0;
+		int 0x80;
 	}
-	GetScheduler.Exit(returncode);
 }
 
 class Scheduler {
@@ -100,44 +101,122 @@ public:
 	}
 
 	PID Fork() {
+		import IO.Log : log;
+		import Memory.Paging : Paging;
+
 		Process* process = new Process();
-		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		VirtAddress userStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		process.image.userStack = userStack;
+		process.image.kernelStack = kernelStack;
+
+		void set(T = ulong)(ref VirtAddress stack, T value) {
+			auto size = T.sizeof;
+			*(stack - size).Ptr!T = value;
+			stack -= size;
+		}
+
+		process.syscallRegisters = current.syscallRegisters;
+
+		memcpy((userStack - StackSize).Ptr, (current.image.userStack - StackSize).Ptr, StackSize);
+
+		ulong oldStack = (current.image.userStack - StackSize).Int;
+		long stackDiff = (userStack - current.image.userStack).Int;
+		log.Debug("UserStack: ", userStack.Ptr, " oldStack: ", current.image.userStack.Ptr, " diff: ", cast(void*)stackDiff);
+
+		void fixStack(ref ulong val) {
+			if (oldStack <= val && val <= oldStack + StackSize) {
+				log.Debug("Changing: ", cast(void*)val, " to: ", cast(void*)(val + stackDiff));
+				val += stackDiff;
+			}
+		}
+
+		with (process.syscallRegisters) {
+			fixStack(R15);
+			fixStack(R14);
+			fixStack(R13);
+			fixStack(R12);
+			fixStack(R11);
+			fixStack(R10);
+			fixStack(R9);
+			fixStack(R8);
+			fixStack(RBP);
+			fixStack(RDI);
+			fixStack(RSI);
+			fixStack(RDX);
+			fixStack(RCX);
+			fixStack(RBX);
+			RAX = 0;
+			fixStack(RSP);
+		}
+
+		set(kernelStack, process.syscallRegisters);
+
+		with (process) {
+			pid = getFreePid;
+			name = current.name.dup;
+
+			uid = current.uid;
+			gid = current.gid;
+
+			parent = current.parent;
+
+			threadState.rip = VirtAddress(&cloneHelper);
+			threadState.rbp = kernelStack;
+			threadState.rsp = kernelStack;
+			threadState.fpuEnabled = current.threadState.fpuEnabled;
+			threadState.paging = new Paging(current.threadState.paging);
+
+			kernelProcess = current.kernelProcess;
+
+			state = ProcessState.Running;
+		}
+
+		if (process.parent)
+			with (process.parent) {
+				if (!children)
+					children = new LinkedList!Process;
+				children.Add(process);
+			}
+
+		allProcesses.Add(process);
+		readyProcesses.Add(process);
+
 		return process.pid;
 	}
 
 	alias CloneFunc = ulong function(void*);
-	PID Clone(CloneFunc func, VirtAddress stack, void* userdata, string processName) {
+	PID Clone(CloneFunc func, VirtAddress userStack, void* userdata, string processName) {
 		Process* process = new Process();
-		if (!stack.Int)
-			stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		if (!userStack.Int)
+			userStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		process.image.userStack = userStack;
+		process.image.kernelStack = kernelStack;
 
-		ulong stackEntries;
-		void set(T = ulong)(T value) {
-			*(stack - ulong.sizeof * stackEntries - T.sizeof).Ptr!T = value;
-			stackEntries += T.sizeof / ulong.sizeof;
+		void set(T = ulong)(ref VirtAddress stack, T value) {
+			auto size = T.sizeof;
+			*(stack - size).Ptr!T = value;
+			stack -= size;
 		}
 
-		set(cast(ulong)&autoExit);
-
-		import IO.Log;
-
-		scr.Writeln("Cloning: ", current.name, " func: ", cast(void*)func, " stack: ", stack.Ptr, " userdata: ", userdata);
-		log.Debug("Cloning: ", current.name, " func: ", cast(void*)func, " stack: ", stack.Ptr, " userdata: ", userdata);
-
-		//process.syscallRegisters = current.syscallRegisters;
 		with (process.syscallRegisters) {
-			RBP = stack;
+			RBP = userStack;
 			RDI = VirtAddress(userdata);
 			RAX = 0xDEAD_C0DE;
+		}
 
+		set(userStack, cast(ulong)&autoExit);
+
+		with (process.syscallRegisters) {
 			RIP = VirtAddress(func);
 			CS = current.syscallRegisters.CS;
 			Flags = current.syscallRegisters.Flags;
-			RSP = stack - ulong.sizeof * stackEntries;
+			RSP = userStack;
 			SS = current.syscallRegisters.SS;
 		}
 
-		set(process.syscallRegisters);
+		set(kernelStack, process.syscallRegisters);
 
 		with (process) {
 			pid = getFreePid;
@@ -149,23 +228,25 @@ public:
 			parent = current;
 
 			threadState.rip = VirtAddress(&cloneHelper);
-			threadState.rbp = threadState.rsp = stack - ulong.sizeof * stackEntries /* Two args */ ;
+			threadState.rbp = kernelStack;
+			threadState.rsp = kernelStack;
 			threadState.fpuEnabled = current.threadState.fpuEnabled;
 			threadState.paging = current.threadState.paging;
 			threadState.paging.RefCounter++;
 
-			image.stack = stack;
+			// image.stack is set above
 
 			kernelProcess = current.kernelProcess;
 
-			state = ProcessState.Ready;
+			state = ProcessState.Running;
 		}
 
-		with (current) {
-			if (!children)
-				children = new LinkedList!Process;
-			children.Add(process);
-		}
+		if (process.parent)
+			with (process.parent) {
+				if (!children)
+					children = new LinkedList!Process;
+				children.Add(process);
+			}
 
 		allProcesses.Add(process);
 		readyProcesses.Add(process);
@@ -205,10 +286,11 @@ public:
 		current.returnCode = returncode;
 		current.state = ProcessState.Exited;
 
-		//scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
+		scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
+		assert(0);
 	}
 
 	@property Process* CurrentProcess() {
@@ -221,7 +303,7 @@ public:
 
 private:
 	enum StackSize = 0x1000;
-	enum ulong SWITCH_MAGIC = 0xDEAD_C0DE;
+	enum ulong SWITCH_MAGIC = 0x1111_DEAD_C0DE_1111;
 
 	ulong pidCounter;
 	bool initialized;
@@ -263,7 +345,8 @@ private:
 	void initIdle() {
 		import Memory.Paging : GetKernelPaging;
 
-		VirtAddress stack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		VirtAddress userStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		idleProcess = new Process();
 		with (idleProcess) {
 			pid = 0;
@@ -272,13 +355,14 @@ private:
 			uid = 0;
 			gid = 0;
 			threadState.rip = VirtAddress(&idle);
-			threadState.rbp = stack;
-			threadState.rsp = stack;
+			threadState.rbp = userStack;
+			threadState.rsp = userStack;
 			threadState.fpuEnabled = false;
 			threadState.paging = GetKernelPaging();
 			threadState.paging.RefCounter++;
 
-			image.stack = stack;
+			image.userStack = userStack;
+			image.kernelStack = kernelStack;
 
 			kernelProcess = true;
 
@@ -291,6 +375,8 @@ private:
 		import Memory.Paging : GetKernelPaging;
 
 		initProcess = new Process();
+
+		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		with (initProcess) {
 			pid = 1;
 			name = "Init";
@@ -305,7 +391,8 @@ private:
 			threadState.paging = GetKernelPaging();
 			//threadState.paging.RefCounter++; Not needed. "Is" already +1 for this
 
-			image.stack = VirtAddress(&KERNEL_STACK_START) + 1 /*???*/ ;
+			image.userStack = VirtAddress(&KERNEL_STACK_START);
+			image.kernelStack = kernelStack;
 
 			kernelProcess = false;
 
@@ -329,7 +416,7 @@ private:
 		ulong storeRSP = current.threadState.rsp;
 
 		current.threadState.paging.Install();
-		GDT.tss.RSP0 = current.image.stack;
+		GDT.tss.RSP0 = current.image.kernelStack;
 
 		asm {
 			mov RAX, RBP; // RBP will be overritten below
@@ -338,7 +425,6 @@ private:
 			mov RBP, storeRBP[RAX];
 			mov RSP, storeRSP[RAX];
 			mov RAX, SWITCH_MAGIC;
-			sti;
 			jmp RBX;
 		}
 	}

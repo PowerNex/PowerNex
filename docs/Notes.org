@@ -1,0 +1,24 @@
+* IREQ - Pop order
+%RIP, %CS, %FLAGS, %RSP, %SS
+
+* Function calling & returning
+#+BEGIN_SRC asm
+Caller:
+; Pre
+mov $0xDEAD, %rdi
+mov $0xBEEF, %rsi
+; Calling
+call Func
+; Result is in %rax
+
+Func:
+; Pre
+push %rbp
+mov %rsp, %rbp
+; Code
+...
+; Post
+mov %rbp, %rsp
+pop %rbp
+ret
+#+END_SRC

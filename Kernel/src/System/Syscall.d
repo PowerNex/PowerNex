@@ -31,10 +31,24 @@ ulong Clone(ulong function(void*) func, VirtAddress stack, void* userdata, strin
 	return GetScheduler.Clone(func, stack, userdata, *name);
 }
 
-@SyscallEntry(2, "Log Out")
-ulong Log(immutable(char)* str, ulong length, immutable(char)* str2, ulong length2) {
-	import IO.Log;
+@SyscallEntry(2, "Fork", "Start a new process")
+ulong Fork() {
+	import Task.Scheduler : GetScheduler;
+	import IO.Log : log;
 
-	log.Info(str[0 .. length], str2[0 .. length2]);
+	log.Debug("Calling fork!");
+	auto pid = GetScheduler.Fork();
+	log.Debug("Called fork!: ", pid);
+	return pid;
+}
+
+@SyscallEntry(3, "Log Out")
+ulong Log(string* str, string* str2) {
+	import IO.Log : log;
+
+	if (!str2)
+		log.Info(*str);
+	else
+		log.Info(*str, *str2);
 	return 0;
 }

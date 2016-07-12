@@ -49,7 +49,7 @@ public:
 		if (prev) {
 			prev.next = cur.next;
 			if (!prev.next)
-				last = null;
+				last = prev;
 		} else {
 			first = cur.next;
 			if (!first)

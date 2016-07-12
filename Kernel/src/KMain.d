@@ -44,30 +44,37 @@ private extern (C) {
 import Task.Process : switchToUserMode;
 
 ulong userspace() {
-	/*import Task.Scheduler;
-	import Data.TextBuffer : scr = GetBootTTY;*/
-
-	testFunc!(2)(null);
-	return 0x1234;
-}
-
-ulong testFunc(int spawn)(void*) {
 	import System.SyscallCaller : SyscallCaller;
 
-	//log.Info("Thread: ");//, GetScheduler.CurrentProcess.name, " isKernel: ", GetCS != 0x1B);
-	{
-		string name = GetScheduler.CurrentProcess.name;
-		SyscallCaller.Log("Thread: ".ptr, 10, name.ptr, name.length);
-		scr.Writeln("Thread: ", GetScheduler.CurrentProcess.name);
-		SyscallCaller.Log("\tisKernel: ".ptr, 11, (GetCS != 0x1B ? "true " : "false").ptr, 5);
-		scr.Writeln("\tisKernel: ", GetCS != 0x1B);
+	ulong pid;
+	// = SyscallCaller.Fork();
+	asm {
+		mov RAX, 2;
+		int 0x80;
+		mov pid, RAX;
+	}
 
-	}
-	static if (spawn) {
-		string name = __FUNCTION__;
-		SyscallCaller.Clone(&testFunc!(spawn - 1), VirtAddress(0), null, &name); //switchToUserMode(cast(ulong) & userspace!(spawn - 1), stack.Int);
-	}
-	return 0;
+	string[] nums = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+	string str = "pid is: ";
+	SyscallCaller.Log(&str, &nums[pid]);
+
+	return 0xC0DE_0000 + pid;
+}
+
+ulong testFunc(void*) {
+	import System.SyscallCaller : SyscallCaller;
+
+	string name = GetScheduler.CurrentProcess.name;
+	string s1 = "Thread: ";
+	string s2 = name;
+
+	SyscallCaller.Log(&s1, &s2);
+
+	s1 = "\tisKernel: ";
+	s2 = (GetCS != 0x1B ? "true" : "false");
+	SyscallCaller.Log(&s1, &s2);
+
+	return 0x123_DEAD;
 }
 
 extern (C) int kmain(uint magic, ulong info) {
@@ -80,12 +87,6 @@ extern (C) int kmain(uint magic, ulong info) {
 
 	VirtAddress stack = VirtAddress(new ubyte[0x1000].ptr) + 0x1000;
 	switchToUserMode(cast(ulong)&userspace, stack.Int);
-
-	/*//if (fork()) {
-	auto shell = new BasicShell();
-	shell.MainLoop();
-	shell.destroy();
-	//}*/
 
 	scr.Foreground = Color(255, 0, 255);
 	scr.Background = Color(255, 255, 0);
