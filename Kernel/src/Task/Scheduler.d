@@ -132,20 +132,20 @@ public:
 		}
 
 		with (process.syscallRegisters) {
-			fixStack(R15);
-			fixStack(R14);
-			fixStack(R13);
-			fixStack(R12);
-			fixStack(R11);
-			fixStack(R10);
-			fixStack(R9);
-			fixStack(R8);
-			fixStack(RBP);
-			fixStack(RDI);
-			fixStack(RSI);
-			fixStack(RDX);
-			fixStack(RCX);
-			fixStack(RBX);
+			R15 = 0;//fixStack(R15);
+			R14 = 0;//fixStack(R14);
+			R13 = 0;//fixStack(R13);
+			R12 = 0;//fixStack(R12);
+			R11 = 0;//fixStack(R11);
+			R10 = 0;//fixStack(R10);
+			R9 = 0;//fixStack(R9);
+			R8 = 0;//fixStack(R8);
+			RBP = 0; //fixStack(RBP);
+			RDI = 0;//fixStack(RDI);
+			RSI = 0;//fixStack(RSI);
+			RDX = 0;//fixStack(RDX);
+			RCX = 0;//fixStack(RCX);
+			RBX = 0;//fixStack(RBX);
 			RAX = 0;
 			fixStack(RSP);
 		}
@@ -169,7 +169,7 @@ public:
 
 			kernelProcess = current.kernelProcess;
 
-			state = ProcessState.Running;
+			state = ProcessState.Ready;
 		}
 
 		if (process.parent)
@@ -181,6 +181,8 @@ public:
 
 		allProcesses.Add(process);
 		readyProcesses.Add(process);
+
+		log.Warning("New fork'd pid: ", process.pid);
 
 		return process.pid;
 	}
@@ -238,7 +240,7 @@ public:
 
 			kernelProcess = current.kernelProcess;
 
-			state = ProcessState.Running;
+			state = ProcessState.Ready;
 		}
 
 		if (process.parent)
@@ -283,10 +285,12 @@ public:
 	}
 
 	void Exit(ulong returncode) {
+		import IO.Log : log;
+
 		current.returnCode = returncode;
 		current.state = ProcessState.Exited;
 
-		scr.Writeln(current.name, " is now dead! Returncode: ", cast(void*)returncode);
+		log.Info(current.pid, "(", current.name, ") is now dead! Returncode: ", cast(void*)returncode);
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
@@ -334,9 +338,21 @@ private:
 	}
 
 	static void idle() {
+		import HW.BGA.BGA : GetBGA;
+		import Data.Color;
+
+		auto w = GetBGA.Width;
+		//auto h = GetBGA.Height;
+		Color color = Color(0x88, 0x53, 0x12);
 		asm {
 		start:
 			sti;
+		}
+		color.r += 10;
+		color.g += 10;
+		color.b += 10;
+		GetBGA.putRect(w - 10, 0, 10, 10, color);
+		asm {
 			hlt;
 			jmp start;
 		}
@@ -410,6 +426,7 @@ private:
 
 	void doSwitching() {
 		current = nextProcess();
+		current.state = ProcessState.Running;
 
 		ulong storeRIP = current.threadState.rip;
 		ulong storeRBP = current.threadState.rbp;

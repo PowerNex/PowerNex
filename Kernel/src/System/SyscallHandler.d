@@ -18,24 +18,25 @@ private:
 		import Task.Scheduler : GetScheduler;
 
 		GetScheduler.CurrentProcess.syscallRegisters = *regs;
-
+		ulong result;
 		with (regs)
 	outer : switch (RAX) {
 			foreach (func; __traits(derivedMembers, System.Syscall)) {
 				foreach (attr; __traits(getAttributes, mixin(func))) {
 					static if (is(typeof(attr) == SyscallEntry)) {
 		case attr.id:
-						RAX = mixin(generateFunctionCall!func);
+						result = mixin(generateFunctionCall!func);
 						break outer;
 					}
 				}
 			}
 		default:
 			scr.Writeln("UNKNOWN SYSCALL: ", cast(void*)RAX);
-			regs.RAX = ulong.max;
+			result = ulong.max;
 			break;
 		}
 		*regs = GetScheduler.CurrentProcess.syscallRegisters;
+		regs.RAX = result;
 	}
 
 	static string generateFunctionCall(alias func)() {

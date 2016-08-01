@@ -862,6 +862,52 @@ class TypeInfo_StaticArray : TypeInfo {
 	}
 }
 
+class TypeInfo_AssociativeArray : TypeInfo {
+	override string toString() const {
+		return value.toString() ~ "[" ~ key.toString() ~ "]";
+	}
+
+	override bool opEquals(Object o) {
+		if (this is o)
+			return true;
+		auto c = cast(const TypeInfo_AssociativeArray)o;
+		return c && this.key == c.key && this.value == c.value;
+	}
+
+	override bool equals(in void* p1, in void* p2) @trusted const {
+		return false;//!!_aaEqual(this, *cast(const void**)p1, *cast(const void**)p2);
+	}
+
+	override hash_t getHash(in void* p) nothrow @trusted const {
+		return cast(hash_t)p; //_aaGetHash(cast(void*)p, this);
+	}
+
+	// BUG: need to add the rest of the functions
+
+	override @property size_t tsize() nothrow pure const {
+		return (char[int]).sizeof;
+	}
+
+	override const(void)[] init() const @trusted {
+		return (cast(void*)null)[0 .. (char[int]).sizeof];
+	}
+
+	override @property const(TypeInfo) next() nothrow pure const {
+		return value;
+	}
+
+	override @property uint flags() nothrow pure const {
+		return 1;
+	}
+
+	TypeInfo value;
+	TypeInfo key;
+
+	override @property size_t talign() nothrow pure const {
+		return (char[int]).alignof;
+	}
+}
+
 class TypeInfo_Function : TypeInfo {
 	TypeInfo next;
 	string deco;

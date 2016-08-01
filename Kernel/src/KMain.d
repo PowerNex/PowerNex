@@ -46,17 +46,35 @@ import Task.Process : switchToUserMode;
 ulong userspace() {
 	import System.SyscallCaller : SyscallCaller;
 
-	ulong pid;
-	// = SyscallCaller.Fork();
-	asm {
+	//
+	/*if (!pid)
+		pid = SyscallCaller.Fork();*/
+	/*asm {
 		mov RAX, 2;
 		int 0x80;
 		mov pid, RAX;
-	}
+	}*/
 
-	string[] nums = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-	string str = "pid is: ";
-	SyscallCaller.Log(&str, &nums[pid]);
+	/*__gshared string[] nums = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
+	__gshared string str = "pid is: ";*/
+	/*if (!pid)
+		testFunc(null);*/
+
+	ulong pid = SyscallCaller.Fork();
+
+	import HW.BGA.BGA : GetBGA;
+	import Data.Color;
+
+	auto w = GetBGA.Width;
+	Color color = Color(0x88, 0x53, 0x12);
+	long x = w - (pid == 0 ? 100 : 50);
+	while (true) {
+		color.r += 10;
+		color.g += 10;
+		color.b += 10;
+		GetBGA.putRect(x, 50, 25, 25, color);
+
+	}
 
 	return 0xC0DE_0000 + pid;
 }
@@ -64,9 +82,9 @@ ulong userspace() {
 ulong testFunc(void*) {
 	import System.SyscallCaller : SyscallCaller;
 
-	string name = GetScheduler.CurrentProcess.name;
+	string[] nums = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
 	string s1 = "Thread: ";
-	string s2 = name;
+	string s2 = nums[GetScheduler.CurrentProcess.pid];
 
 	SyscallCaller.Log(&s1, &s2);
 
@@ -85,8 +103,11 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	VirtAddress stack = VirtAddress(new ubyte[0x1000].ptr) + 0x1000;
-	switchToUserMode(cast(ulong)&userspace, stack.Int);
+	//VirtAddress stack = VirtAddress(new ubyte[0x1000].ptr) + 0x1000;
+	//switchToUserMode(cast(ulong)&userspace, stack.Int);
+
+	BasicShell bs = new BasicShell();
+	bs.MainLoop();
 
 	scr.Foreground = Color(255, 0, 255);
 	scr.Background = Color(255, 255, 0);

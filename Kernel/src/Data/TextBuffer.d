@@ -36,7 +36,7 @@ public:
 		otherBuffer = true;
 
 		defaultFG = Color(0, 255, 255);
-		defaultBG = Color(0, 0, 0);
+		defaultBG = Color(0, 0x22, 0x22);
 	}
 
 	this(size_t size) {
@@ -44,7 +44,7 @@ public:
 		otherBuffer = false;
 
 		defaultFG = Color(0, 255, 255);
-		defaultBG = Color(0, 0, 0);
+		defaultBG = Color(0, 0x22, 0x22);
 	}
 
 	~this() {
