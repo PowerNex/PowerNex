@@ -14,7 +14,7 @@ It uses my build system called [Wild](https://github.com/Vild/Wild)
 It expects the wild binary to be located in the root directory of PowerNex, then
 you just need to run `./build` to build.
 
-[Prebuild toolchain (wild and compilers) for (Arch)Linux x64](http://wild.tk/PowerNex-Env.tar.xz)
+[Prebuild toolchain (wild and compilers) for (Arch)Linux x64](https://mega.nz/#!cx913RZZ!i3lHemFSPRT5kgdbGjS9YgXLKx0bV84Jg50cOYOdxUg)
 
 One tip is to run `source env.sh`, this adds shortcuts for building and running.
 	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
