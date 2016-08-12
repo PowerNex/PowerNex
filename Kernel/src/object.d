@@ -48,8 +48,9 @@ with an empty main:
 
 		without_custom_runtime_reflection: runtime reflection will be bare minimum, don't use typeinfo except as like an opaque pointer. You also won't need the special linker script if you go without libc with this option.
 */
+import Data.String;
 
-nothrow pure size_t strlen(const(char)* c) {
+/*size_t strlen(const(char)* c) {
 	if (c is null)
 		return 0;
 
@@ -59,7 +60,7 @@ nothrow pure size_t strlen(const(char)* c) {
 		l++;
 	}
 	return l;
-}
+}*/
 
 void main() {
 }

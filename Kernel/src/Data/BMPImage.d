@@ -101,7 +101,7 @@ private:
 
 		log.Debug("rid: ", cast(int)rid, " gid: ", cast(int)gid, " bid: ", cast(int)bid, " aid: ", cast(int)aid);
 
-		if (auto f = cast(InitrdFileNode)file) {
+		/*if (auto f = cast(InitrdFileNode)file) {
 			ubyte[] d = f.RawAccess;
 			for (int y = bitmap.height - 1; y >= 0; y--) {
 				for (int x = 0; x < bitmap.width; x++, offset += bytesPerPixel) {
@@ -122,7 +122,7 @@ private:
 				if (pad)
 					offset = (offset + 4) & ~0b11;
 			}
-		} else {
+		} else */{
 			ubyte[bytesPerPixel] buf = void;
 			for (int y = bitmap.height - 1; y >= 0; y--) {
 				for (int x = 0; x < bitmap.width; x++) {

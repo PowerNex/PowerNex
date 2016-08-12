@@ -215,6 +215,39 @@ private:
 				}
 			}
 			break;
+		case "pcat":
+			if (cmd.args.length == 1)
+				scr.Writeln("cat: <FilePath>");
+			else {
+				foreach (file; cmd.args[1 .. $]) {
+					Node node = cwd.FindNode(cast(string)file);
+					if (!node) {
+						scr.Writeln("Can't find the file '", file, "'!");
+						continue;
+					}
+					if (auto f = cast(FileNode)node) {
+						import Data.ELF;
+
+						ELF elf = new ELF(f);
+						if (elf.Valid) {
+							scr.Writeln("Sections: ");
+							foreach (section; elf.SectionHeaders)
+								scr.Writeln("\t", elf.GetSectionName(section.nameIdx), ": ", section.type);
+							scr.Writeln("Symbols: ");
+							foreach (symbol; elf.Symbols)
+								scr.Writeln("\t ", elf.GetSymbolName(symbol.name), ": Type: ", symbol.info.Type, " Binding: ", symbol.info.Binding, " Other: ", symbol.other,
+								"\n\t\t Value: ", symbol.value.Ptr, " Size: ", symbol.size);
+						} else
+							scr.Writeln("Invalid ELF64 file");
+						elf.destroy();
+
+					} else {
+						char[] name = cast(char[])typeid(node).name;
+						scr.Writeln("Can't cat a ", name[name.indexOfLast('.') + 1 .. $]);
+					}
+				}
+			}
+			break;
 
 		case "ptree":
 			auto p = GetScheduler.AllProcesses;

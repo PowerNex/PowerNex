@@ -38,6 +38,15 @@
 		"MakeInitrd" : {
 			"command": "Utils/MakeInitrd",
 			"arguments": "$in $out"
+		},
+
+		"user-ac": {
+			"command": "cc/bin/x86_64-powernex-as",
+			"arguments": "--64 -o $out $in"
+		},
+		"user-ld": {
+			"command": "cc/bin/x86_64-powernex-ld",
+			"arguments": "-o $out $in"
 		}
 	},
 	"phonies": {
@@ -58,6 +67,15 @@
 		}
 	},
 	"rules": {
+		"Userspace/Tiny/*.o": {
+			"processor": "user-ac",
+			"input": "Userspace/Tiny/*.S"
+		},
+		"Initrd/Binary/Tiny": {
+			"processor": "user-ld",
+			"input": "Userspace/Tiny/*.o"
+		},
+
 		"Kernel/obj/DCode.o": {
 			"processor": "dc",
 			"input": "Kernel/src/*.d"
@@ -91,6 +109,7 @@
 		"Disk/boot/PowerNex.krl",
 		"Initrd/Data/PowerNex.map",
 		"Initrd/Data/Font/TTYFont.psf",
+		"Initrd/Binary/Tiny",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]

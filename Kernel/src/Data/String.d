@@ -3,7 +3,9 @@ module Data.String;
 import Data.Util;
 import Memory.Heap;
 
-size_t strlen(char* str) {
+nothrow pure size_t strlen(const(char)* str) {
+	if (!str)
+		return 0;
 	size_t len = 0;
 	while (*(str++))
 		len++;
