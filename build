@@ -67,13 +67,13 @@
 		}
 	},
 	"rules": {
-		"Userspace/Tiny/*.o": {
+		"Userspace/Init/*.o": {
 			"processor": "user-ac",
-			"input": "Userspace/Tiny/*.S"
+			"input": "Userspace/Init/*.S"
 		},
-		"Initrd/Binary/Tiny": {
+		"Initrd/Binary/Init": {
 			"processor": "user-ld",
-			"input": "Userspace/Tiny/*.o"
+			"input": "Userspace/Init/*.o"
 		},
 
 		"Kernel/obj/DCode.o": {
@@ -109,7 +109,7 @@
 		"Disk/boot/PowerNex.krl",
 		"Initrd/Data/PowerNex.map",
 		"Initrd/Data/Font/TTYFont.psf",
-		"Initrd/Binary/Tiny",
+		"Initrd/Binary/Init",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]

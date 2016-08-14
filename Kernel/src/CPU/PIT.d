@@ -60,7 +60,7 @@ private:
 
 	static bool wakeUpTimedSleep(Process* p, void* data) {
 		p.waitData--;
-		if(p.waitData == 0)
+		if (p.waitData == 0)
 			return true;
 		return false;
 	}

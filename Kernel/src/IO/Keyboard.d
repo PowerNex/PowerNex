@@ -7,7 +7,7 @@ struct Keyboard {
 public:
 	static wchar Pop() {
 		wchar ch = Peek();
-		while(!ch) {
+		while (!ch) {
 			GetScheduler.WaitFor(WaitReason.Keyboard);
 			ch = Peek();
 		}

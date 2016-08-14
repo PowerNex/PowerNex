@@ -6,6 +6,8 @@ import CPU.GDT;
 import CPU.PIT;
 import Task.Mutex.SpinLockMutex;
 import Data.TextBuffer : scr = GetBootTTY;
+import Memory.Heap;
+import Memory.Paging;
 
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
@@ -132,20 +134,20 @@ public:
 		}
 
 		with (process.syscallRegisters) {
-			R15 = 0;//fixStack(R15);
-			R14 = 0;//fixStack(R14);
-			R13 = 0;//fixStack(R13);
-			R12 = 0;//fixStack(R12);
-			R11 = 0;//fixStack(R11);
-			R10 = 0;//fixStack(R10);
-			R9 = 0;//fixStack(R9);
-			R8 = 0;//fixStack(R8);
+			R15 = 0; //fixStack(R15);
+			R14 = 0; //fixStack(R14);
+			R13 = 0; //fixStack(R13);
+			R12 = 0; //fixStack(R12);
+			R11 = 0; //fixStack(R11);
+			R10 = 0; //fixStack(R10);
+			R9 = 0; //fixStack(R9);
+			R8 = 0; //fixStack(R8);
 			RBP = 0; //fixStack(RBP);
-			RDI = 0;//fixStack(RDI);
-			RSI = 0;//fixStack(RSI);
-			RDX = 0;//fixStack(RDX);
-			RCX = 0;//fixStack(RCX);
-			RBX = 0;//fixStack(RBX);
+			RDI = 0; //fixStack(RDI);
+			RSI = 0; //fixStack(RSI);
+			RDX = 0; //fixStack(RDX);
+			RCX = 0; //fixStack(RCX);
+			RBX = 0; //fixStack(RBX);
 			RAX = 0;
 			fixStack(RSP);
 		}
@@ -170,6 +172,8 @@ public:
 			kernelProcess = current.kernelProcess;
 
 			state = ProcessState.Ready;
+
+			heap = new Heap(current.heap);
 		}
 
 		if (process.parent)
@@ -241,6 +245,9 @@ public:
 			kernelProcess = current.kernelProcess;
 
 			state = ProcessState.Ready;
+
+			heap = current.heap;
+			current.heap.RefCounter++;
 		}
 
 		if (process.parent)
@@ -383,6 +390,8 @@ private:
 			kernelProcess = true;
 
 			state = ProcessState.Ready;
+
+			heap = null; // Idle can't allocate any userspace data!
 		}
 		allProcesses.Add(idleProcess);
 	}
@@ -413,6 +422,8 @@ private:
 			kernelProcess = false;
 
 			state = ProcessState.Running;
+
+			heap = null; // This will be initialized when the init process is loaded
 		}
 		allProcesses.Add(initProcess);
 	}

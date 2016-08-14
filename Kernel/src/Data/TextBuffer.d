@@ -53,6 +53,7 @@ public:
 	}
 
 	void Write(Args...)(Args args) {
+		import Data.Address;
 		size_t startPos = count;
 		Color fg = defaultFG;
 		Color bg = defaultBG;
@@ -67,6 +68,9 @@ public:
 			} else static if (is(T : V*, V)) {
 				write("0x", fg, bg, flags);
 				writeNumber(cast(ulong)arg, 16, fg, bg, flags);
+			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
+				write("0x", fg, bg, flags);
+				writeNumber(cast(ulong)arg.Int, 16, fg, bg, flags);
 			} else static if (is(T == enum))
 				writeEnum(arg, fg, bg, flags);
 			else static if (is(T == bool))

@@ -21,15 +21,26 @@ private struct MemoryHeader {
 
 class Heap {
 public:
-	this(Paging paging, MapMode mode, VirtAddress startAddr) {
+	this(Paging paging, MapMode mode, VirtAddress startAddr, VirtAddress maxAddr) {
 		this.paging = paging;
 		this.mode = mode;
 		this.startAddr = this.endAddr = startAddr;
+		this.maxAddr = maxAddr;
 		this.root = null;
 		this.end = null;
 
 		addNewPage();
 		root = end; // 'end' will be the latest allocated page
+	}
+
+	this(Heap other) {
+		this.paging = other.paging;
+		this.mode = other.mode;
+		this.startAddr = other.startAddr;
+		this.endAddr = other.endAddr;
+		this.maxAddr = other.maxAddr;
+		this.root = other.root;
+		this.end = other.end;
 	}
 
 	~this() {
@@ -104,6 +115,10 @@ public:
 		log.Info("\n\n");
 	}
 
+	@property ref ulong RefCounter() {
+		return refCounter;
+	}
+
 private:
 	enum MinimalChunkSize = 32; /// Without header
 
@@ -114,11 +129,15 @@ private:
 	MemoryHeader* end; /// Stores the last MemoryHeader
 	VirtAddress startAddr; /// The start address of all the allocated data
 	VirtAddress endAddr; /// The end address of all the allocated data
+	VirtAddress maxAddr; /// The max address that can be allocated
+	ulong refCounter;
 
 	/// Map and add a new page to the list
 	bool addNewPage() {
 		MemoryHeader* oldEnd = end;
 
+		if (endAddr >= maxAddr - 0x1000 /* Do I need this? */ )
+			return false;
 		if (paging.MapFreeMemory(endAddr, mode).Int == 0)
 			return false;
 		end = cast(MemoryHeader*)endAddr.Ptr;
@@ -207,7 +226,7 @@ Heap GetKernelHeap() {
 	__gshared Heap kernelHeap;
 
 	if (!kernelHeap) {
-		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultUser, Linker.KernelEnd);
+		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultUser, Linker.KernelEnd, VirtAddress(ulong.max));
 		IDT.Register(InterruptType.PageFault, &onPageFault);
 	}
 	return kernelHeap;

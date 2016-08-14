@@ -63,4 +63,5 @@ struct Process {
 	WaitReason wait;
 	ulong waitData;
 
+	Heap heap;
 }

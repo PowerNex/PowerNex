@@ -217,7 +217,7 @@ private:
 			break;
 		case "pcat":
 			if (cmd.args.length == 1)
-				scr.Writeln("cat: <FilePath>");
+				scr.Writeln("pcat: <FilePath>");
 			else {
 				foreach (file; cmd.args[1 .. $]) {
 					Node node = cwd.FindNode(cast(string)file);
@@ -235,8 +235,9 @@ private:
 								scr.Writeln("\t", elf.GetSectionName(section.nameIdx), ": ", section.type);
 							scr.Writeln("Symbols: ");
 							foreach (symbol; elf.Symbols)
-								scr.Writeln("\t ", elf.GetSymbolName(symbol.name), ": Type: ", symbol.info.Type, " Binding: ", symbol.info.Binding, " Other: ", symbol.other,
-								"\n\t\t Value: ", symbol.value.Ptr, " Size: ", symbol.size);
+								scr.Writeln("\t ", elf.GetSymbolName(symbol.name), ": Type: ", symbol.info.Type,
+										" Binding: ", symbol.info.Binding, " Other: ", symbol.other, "\n\t\t Value: ",
+										symbol.value.Ptr, " Size: ", symbol.size);
 						} else
 							scr.Writeln("Invalid ELF64 file");
 						elf.destroy();

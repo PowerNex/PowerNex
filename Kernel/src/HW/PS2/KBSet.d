@@ -188,24 +188,30 @@ enum KeyCode : ubyte {
 	MaxValue = 0xFF
 }
 
+private alias PS2Layout = PS2LayoutEN_US;
+private alias ShiftedCharTranslation = ShiftedCharTranslationEN_US;
+private alias ShiftedEtcTranslation = ShiftedEtcTranslationEN_US;
+private alias KeypadTranslation = KeypadTranslationEN_US;
+private alias NormalTranslation = NormalTranslationEN_US;
+
 KeyCode FindKeycode(ushort id) {
-	return PS2LayoutEN_US[id];
+	return PS2Layout[id];
 }
 
 wchar FindShiftedCharTranslate(KeyCode key) {
-	return ShiftedCharTranslationEN_US[key];
+	return ShiftedCharTranslation[key];
 }
 
 wchar FindShiftedEtcTranslate(KeyCode key) {
-	return ShiftedEtcTranslationEN_US[key];
+	return ShiftedEtcTranslation[key];
 }
 
 wchar FindKeypadTranslate(KeyCode key) {
-	return KeypadTranslationEN_US[key];
+	return KeypadTranslation[key];
 }
 
 wchar FindNormalTranslate(KeyCode key) {
-	return NormalTranslationEN_US[key];
+	return NormalTranslation[key];
 }
 
 enum E0Bit = 0x80;

@@ -28,6 +28,7 @@ import HW.PCI.PCI;
 import HW.CMOS.CMOS;
 import System.SyscallHandler;
 import Data.TextBuffer : scr = GetBootTTY;
+import Data.ELF;
 
 import Bin.BasicShell;
 
@@ -43,58 +44,6 @@ private extern (C) {
 
 import Task.Process : switchToUserMode;
 
-ulong userspace() {
-	import System.SyscallCaller : SyscallCaller;
-
-	//
-	/*if (!pid)
-		pid = SyscallCaller.Fork();*/
-	/*asm {
-		mov RAX, 2;
-		int 0x80;
-		mov pid, RAX;
-	}*/
-
-	/*__gshared string[] nums = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-	__gshared string str = "pid is: ";*/
-	/*if (!pid)
-		testFunc(null);*/
-
-	ulong pid = SyscallCaller.Fork();
-
-	import HW.BGA.BGA : GetBGA;
-	import Data.Color;
-
-	auto w = GetBGA.Width;
-	Color color = Color(0x88, 0x53, 0x12);
-	long x = w - (pid == 0 ? 100 : 50);
-	while (true) {
-		color.r += 10;
-		color.g += 10;
-		color.b += 10;
-		GetBGA.putRect(x, 50, 25, 25, color);
-
-	}
-
-	return 0xC0DE_0000 + pid;
-}
-
-ulong testFunc(void*) {
-	import System.SyscallCaller : SyscallCaller;
-
-	string[] nums = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"];
-	string s1 = "Thread: ";
-	string s2 = nums[GetScheduler.CurrentProcess.pid];
-
-	SyscallCaller.Log(&s1, &s2);
-
-	s1 = "\tisKernel: ";
-	s2 = (GetCS != 0x1B ? "true" : "false");
-	SyscallCaller.Log(&s1, &s2);
-
-	return 0x123_DEAD;
-}
-
 extern (C) int kmain(uint magic, ulong info) {
 	PreInit();
 	Welcome();
@@ -103,15 +52,37 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	//VirtAddress stack = VirtAddress(new ubyte[0x1000].ptr) + 0x1000;
-	//switchToUserMode(cast(ulong)&userspace, stack.Int);
+	ELF init = new ELF(cast(FileNode)rootFS.Root.FindNode("/Binary/Init"));
+	if (init.Valid) {
+		scr.Writeln("/Binary/Init is valid! Loading...");
+		init.Map();
+		init.Run();
+		/*scr.Writeln("ELF Headers: ");
+		scr.Writeln("\tType: ", init.Header.type, "\tEntry: ", init.Header.entry);
+		scr.Writeln("Program Headers: ");
+		foreach (idx, program; init.ProgramHeaders)
+			scr.Writeln("\t", idx, "\ttype: ", program.type, "\tflags: ", program.flags, "\toffset: ",
+					cast(void*)program.offset, "\tfileSize: ", cast(void*)program.fileSize, "\tmemorySize: ",
+					cast(void*)program.memorySize, "\talign: ", cast(void*)program.align_, "\n\t\tvirtAddress: ",
+					program.virtAddress, "\tphysAddress: ", program.physAddress);
+		scr.Writeln("Sections: ");
+		foreach (section; init.SectionHeaders)
+			scr.Writeln("\t", init.GetSectionName(section.nameIdx), ": ", section.type, "\tflags:", section.flags,  "\taddress: ", section.address,
+					"\toffset: ", section.offset);
+		scr.Writeln("Symbols: ");
+		foreach (symbol; init.Symbols)
+			scr.Writeln("\t ", init.GetSymbolName(symbol.name), ": Type: ", symbol.info.Type, " Binding: ",
+					symbol.info.Binding, " Other: ", symbol.other, "\n\t\t Value: ", symbol.value.Ptr, " Size: ", symbol.size);*/
 
-	BasicShell bs = new BasicShell();
-	bs.MainLoop();
+	} else {
+		scr.Writeln("Invalid ELF64 file");
+		log.Fatal("Invalid ELF64 file!");
+	}
 
 	scr.Foreground = Color(255, 0, 255);
 	scr.Background = Color(255, 255, 0);
 	scr.Writeln("kmain functions has exited!");
+	log.Fatal("kmain functions has exited!");
 	return 0;
 }
 

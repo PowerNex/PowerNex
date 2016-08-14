@@ -1,0 +1,14 @@
+* PowerNex Userspace
+** User space   - 0x0000_0000_0010_0000 - 0xFFFF_FFFF_7FFF_FFFF
+** Kernel space - 0xFFFF_FFFF_8000_0000 - 0xFFFF_FFFF_FFFF_FFFF
+
+
+TODO: Clean up paging before exec? aka remove all userspace pages
+TODO: Add invlpg?
+
+
+
+* Fork() = Copy everything!
+** Clone the whole paging.
+* Clone() = Start a new thread in the same memory space
+** Uses the same paging.

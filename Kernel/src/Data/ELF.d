@@ -214,7 +214,7 @@ struct ELF64Symbol {
 		}
 
 		@property InfoBinding Binding() {
-			return cast(InfoBinding)(data & 0xF0 >> 4);
+			return cast(InfoBinding)((data & 0xF0 >> 4) & 0x2);
 		}
 
 		@property InfoBinding Binding(InfoBinding binding) {
@@ -332,6 +332,23 @@ public:
 
 		valid = true;
 	}
+
+	void Map() {
+		import Memory.Paging;
+		import Task.Scheduler;
+		Scheduler scheduler = GetScheduler;
+		Paging paging = scheduler.CurrentProcess.threadState.paging;
+
+		foreach (idx, ELF64ProgramHeader* program; programHeaders) {
+			scr.Writeln("Mapping #", idx);
+		}
+	}
+
+	void Run() {
+
+	}
+
+
 
 	char[] GetSectionName(uint idx) {
 		char[255] buf;

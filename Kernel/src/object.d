@@ -876,7 +876,7 @@ class TypeInfo_AssociativeArray : TypeInfo {
 	}
 
 	override bool equals(in void* p1, in void* p2) @trusted const {
-		return false;//!!_aaEqual(this, *cast(const void**)p1, *cast(const void**)p2);
+		return false; //!!_aaEqual(this, *cast(const void**)p1, *cast(const void**)p2);
 	}
 
 	override hash_t getHash(in void* p) nothrow @trusted const {
