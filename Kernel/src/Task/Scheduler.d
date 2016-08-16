@@ -1,5 +1,6 @@
 module Task.Scheduler;
 import Data.Address;
+import Data.Color;
 import Data.LinkedList;
 import Task.Process;
 import CPU.GDT;
@@ -298,6 +299,13 @@ public:
 		current.state = ProcessState.Exited;
 
 		log.Info(current.pid, "(", current.name, ") is now dead! Returncode: ", cast(void*)returncode);
+
+		if(current == initProcess) {
+			scr.Foreground = Color(255, 0, 255);
+			scr.Background = Color(255, 255, 0);
+			scr.Writeln("Init process exited. No more work to do.");
+			log.Fatal("Init process exited. No more work to do.");
+		}
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
