@@ -140,6 +140,9 @@ private:
 			return false;
 		if (paging.MapFreeMemory(endAddr, mode).Int == 0)
 			return false;
+
+		_memset64(endAddr.Ptr, 0, 0x1000 / ulong.sizeof); //Defined in object.d
+
 		end = cast(MemoryHeader*)endAddr.Ptr;
 		*end = MemoryHeader.init;
 		end.magic = MAGIC;

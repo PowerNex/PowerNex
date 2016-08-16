@@ -10,8 +10,8 @@ enum MapMode : ulong { // TODO: Implement the rest.
 	Present = 1 << 0,
 	Writable = 1 << 1,
 	User = 1 << 2,
-	PageSize = 1 << 8,
-	NotExecutable = 1UL << 63,
+	Map4M = 1 << 8,
+	NoExecute = 1UL << 63,
 
 	Empty = 0,
 	DefaultKernel = Present | Writable,
@@ -38,8 +38,8 @@ struct TablePtr(T) {
 		ReadWrite = !!(mode & MapMode.Writable);
 		User = !!(mode & MapMode.User);
 		static if (!is(T == void))
-			PageSize = !!(mode & MapMode.PageSize);
-		NotExecutable = !!(mode & MapMode.NotExecutable);
+			Map4M = !!(mode & MapMode.Map4M);
+		NoExecute = !!(mode & MapMode.NoExecute);
 
 		return Mode();
 	}
@@ -55,10 +55,10 @@ struct TablePtr(T) {
 		if (User)
 			mode |= MapMode.User;
 		static if (!is(T == void))
-			if (PageSize)
-				mode |= MapMode.PageSize;
-		if (NotExecutable)
-			mode |= MapMode.NotExecutable;
+			if (Map4M)
+				mode |= MapMode.Map4M;
+		if (NoExecute)
+			mode |= MapMode.NoExecute;
 
 		return mode;
 	}
@@ -78,7 +78,7 @@ struct TablePtr(T) {
 		"Avl", 3,
 		"Address", 40,
 		"Available", 11,
-		"NotExecutable", 1
+		"NoExecute", 1
 		));
 	} else {
 		mixin(Bitfield!(data,
@@ -89,12 +89,12 @@ struct TablePtr(T) {
 		"CacheDisable", 1,
 		"Accessed", 1,
 		"Reserved", 1,
-		"PageSize", 1,
+		"Map4M", 1,
 		"Ignored", 1,
 		"Avl", 3,
 		"Address", 40,
 		"Available", 11,
-		"NotExecutable", 1
+		"NoExecute", 1
 		));
 	}
 	//dfmt on
@@ -114,8 +114,8 @@ struct Table(int Level) {
 		assert(idx < children.length);
 		ChildType* child = &children[idx];
 		static if (Level != 1)
-			if (child.Present && child.PageSize)
-				log.Fatal("PageSize handling is not implemented!");
+			if (child.Present && child.Map4M)
+				log.Fatal("Map4M handling is not implemented! Level: ", Level, " Index: ", idx);
 
 		return child;
 	}
@@ -125,13 +125,14 @@ struct Table(int Level) {
 			assert(idx < children.length);
 			ChildType* child = &children[idx];
 
-			if (child && !child.Present) {
+			if (!child.Present) {
+				if (mode == MapMode.Map4M)
+					log.Fatal("Map4M creation is not implemented! Level: ", Level, " Index: ", idx);
 				child.Data = PhysAddress(FrameAllocator.Alloc());
 				child.Mode = mode;
 				child.Present = true;
 				_memset64(child.Data.Virtual.Ptr, 0, 0x200); //Defined in object.d, 0x200 * 8 = 0x1000
-			} else if (child.PageSize)
-				log.Fatal("PageSize handling is not implemented!");
+			}
 
 			return child;
 		}
@@ -143,7 +144,7 @@ private extern (C) void CPU_install_cr3(PhysAddress addr);
 
 class Paging {
 public:
-	this() {
+	private this() {
 		rootPhys = PhysAddress(FrameAllocator.Alloc());
 		root = rootPhys.Virtual.Ptr!(Table!4);
 		_memset64(root, 0, 0x200); //Defined in object.d
@@ -161,7 +162,10 @@ public:
 
 		Table!4* otherPML4 = other.root;
 		Table!4* myPML4 = root;
-		for (ushort pml4Idx = 0; pml4Idx < 512 - 1; pml4Idx++) {
+		for (ushort pml4Idx = 0; pml4Idx < 512 - 1 /* Kernel PDP */ ; pml4Idx++) {
+			if (pml4Idx == 256) // See end of function for why
+				continue;
+
 			TablePtr!(Table!3) otherPDPEntry_ptr = otherPML4.children[pml4Idx];
 			if (!otherPDPEntry_ptr.Present)
 				continue;
@@ -185,11 +189,21 @@ public:
 					Table!1* otherPTEntry = otherPTEntry_ptr.Data.Virtual.Ptr!(Table!1);
 					Table!1* myPTEntry = myPDEntry.GetOrCreate(pdIdx, otherPTEntry_ptr.Mode).Data.Virtual.Ptr!(Table!1);
 
-					for (ushort ptIdx = 0; ptIdx < 512; ptIdx++)
-						myPTEntry.children[ptIdx].data = otherPTEntry.children[ptIdx].data;
+					for (ushort ptIdx = 0; ptIdx < 512; ptIdx++) {
+						PhysAddress phys = FrameAllocator.Alloc();
+						assert(phys.Int);
+						with (myPTEntry.children[ptIdx]) {
+							Data = phys;
+							Mode = otherPTEntry.children[ptIdx].Mode;
+							Present = true;
+						}
+
+						memcpy(phys.Virtual.Ptr, otherPTEntry.children[ptIdx].Data.Virtual.Ptr, 0x1000); // TODO: Implement Copy-on-write, so we can skip this step!
+					}
 				}
 			}
 		}
+		myPML4.children[256] = otherPML4.children[256]; // 512GiB Lower mapping
 		myPML4.children[511] = otherPML4.children[511]; // Map Kernel
 	}
 
@@ -227,7 +241,7 @@ public:
 		if (!page)
 			return;
 
-		FrameAllocator.Free(PhysAddress(page.Data));
+		FrameAllocator.Free(page.Data);
 
 		page.Mode = MapMode.Empty;
 		page.Data = PhysAddress();
@@ -237,9 +251,8 @@ public:
 	PhysAddress MapFreeMemory(VirtAddress virt, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
 		PhysAddress phys = FrameAllocator.Alloc();
 		if (!phys.Int)
-			return phys;
+			return phys; // aka Null
 		Map(virt, phys, pageMode, tablesMode);
-		_memset64(virt.Ptr, 0, 0x200); //Defined in object.d
 		return phys;
 	}
 
@@ -272,6 +285,46 @@ public:
 
 	void Install() {
 		CPU_install_cr3(Root);
+	}
+
+	void RemoveUserspace(bool freePages) {
+		Table!4* myPML4 = root;
+		for (ushort pml4Idx = 0; pml4Idx < 512 - 1 /* Kernel PDP */ ; pml4Idx++) {
+			if (pml4Idx == 256) // 512GiB Lower mapping
+				continue;
+
+			auto pdp_ptr = myPML4.Get(pml4Idx);
+			if (!pdp_ptr.Present)
+				continue;
+			Table!3* myPDPEntry = pdp_ptr.Data.Virtual.Ptr!(Table!3);
+
+			for (ushort pdpIdx = 0; pdpIdx < 512; pdpIdx++) {
+				auto pd_ptr = myPDPEntry.Get(pdpIdx);
+				if (!pd_ptr.Present)
+					continue;
+				Table!2* myPDEntry = pd_ptr.Data.Virtual.Ptr!(Table!2);
+
+				for (ushort pdIdx = 0; pdIdx < 512; pdIdx++) {
+					auto pt_ptr = myPDEntry.Get(pdIdx);
+					if (!pt_ptr.Present)
+						continue;
+					Table!1* myPTEntry = pt_ptr.Data.Virtual.Ptr!(Table!1);
+
+					if (freePages)
+						for (ushort ptIdx = 0; ptIdx < 512; ptIdx++)
+							with (myPTEntry.Get(ptIdx))
+								if (Present)
+									FrameAllocator.Free(Data);
+
+					FrameAllocator.Free(pt_ptr.Data);
+				}
+				FrameAllocator.Free(pd_ptr.Data);
+			}
+			FrameAllocator.Free(pdp_ptr.Data);
+			pdp_ptr.Mode = MapMode.Empty;
+			pdp_ptr.Data = PhysAddress();
+			pdp_ptr.Present = false;
+		}
 	}
 
 	@property PhysAddress Root() {

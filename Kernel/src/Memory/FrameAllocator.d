@@ -8,11 +8,12 @@ import Data.Multiboot;
 static struct FrameAllocator {
 public:
 	static void Init() {
+		neverFreeBelow = PhysAddress((Linker.KernelEnd - Linker.KernelStart + Linker.KernelPhysStart.Int).Int);
 		maxFrames = Multiboot.MemorySize / 4;
 		foreach (ref ulong frame; preallocated)
 			frame = ulong.max;
 
-		const ulong kernelUsedAmount = (Linker.KernelEnd - Linker.KernelStart + Linker.KernelPhysStart.Int).Int / 0x1000;
+		const ulong kernelUsedAmount = neverFreeBelow.Int / 0x1000;
 		for (ulong i = 0; i < (kernelUsedAmount / 64) + 1; i++) {
 			bitmaps[i] = ulong.max;
 			usedFrames += 64;
@@ -121,7 +122,8 @@ public:
 	}
 
 	static void Free(PhysAddress memory) {
-		FreeFrame(memory.Int / 0x1000);
+		if (memory > neverFreeBelow)
+			FreeFrame(memory.Int / 0x1000);
 	}
 
 	@property static ulong MaxFrames() {
@@ -135,6 +137,7 @@ public:
 private:
 	enum ulong maxmem = 0x100_0000_0000 - 1; //pow(2, 40)
 
+	__gshared PhysAddress neverFreeBelow;
 	__gshared ulong maxFrames;
 	__gshared ulong usedFrames;
 	__gshared ulong[((maxmem / 8) / 0x1000) / 64 + 1] bitmaps;

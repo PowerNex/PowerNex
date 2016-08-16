@@ -55,25 +55,12 @@ extern (C) int kmain(uint magic, ulong info) {
 	ELF init = new ELF(cast(FileNode)rootFS.Root.FindNode("/Binary/Init"));
 	if (init.Valid) {
 		scr.Writeln("/Binary/Init is valid! Loading...");
-		init.Map();
-		init.Run();
-		/*scr.Writeln("ELF Headers: ");
-		scr.Writeln("\tType: ", init.Header.type, "\tEntry: ", init.Header.entry);
-		scr.Writeln("Program Headers: ");
-		foreach (idx, program; init.ProgramHeaders)
-			scr.Writeln("\t", idx, "\ttype: ", program.type, "\tflags: ", program.flags, "\toffset: ",
-					cast(void*)program.offset, "\tfileSize: ", cast(void*)program.fileSize, "\tmemorySize: ",
-					cast(void*)program.memorySize, "\talign: ", cast(void*)program.align_, "\n\t\tvirtAddress: ",
-					program.virtAddress, "\tphysAddress: ", program.physAddress);
-		scr.Writeln("Sections: ");
-		foreach (section; init.SectionHeaders)
-			scr.Writeln("\t", init.GetSectionName(section.nameIdx), ": ", section.type, "\tflags:", section.flags,  "\taddress: ", section.address,
-					"\toffset: ", section.offset);
-		scr.Writeln("Symbols: ");
-		foreach (symbol; init.Symbols)
-			scr.Writeln("\t ", init.GetSymbolName(symbol.name), ": Type: ", symbol.info.Type, " Binding: ",
-					symbol.info.Binding, " Other: ", symbol.other, "\n\t\t Value: ", symbol.value.Ptr, " Size: ", symbol.size);*/
 
+		scr.Writeln();
+		auto tmp = scr.Foreground;
+		scr.Foreground = scr.Background;
+		scr.Background = tmp;
+		init.MapAndRun();
 	} else {
 		scr.Writeln("Invalid ELF64 file");
 		log.Fatal("Invalid ELF64 file!");

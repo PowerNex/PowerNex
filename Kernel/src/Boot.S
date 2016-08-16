@@ -222,9 +222,7 @@ PML4:
 	.int PDP + ATTR, 0 # Identity map for low 4MB
 	.space (255) * 8
 	.int PDP_MAP + ATTR, 0
-	.space (63) * 8
-	.quad 0 #.int PDP_STACK + ATTR, 0 # Kernel stack
-	.space (187) * 8
+	.space (251) * 8
 
 	.quad 0 #.int PML4 + ATTR, 0 # Fractal mapping
 	.quad 0

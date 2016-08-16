@@ -6,6 +6,7 @@ import Data.String;
 import IO.FS.FileNode;
 import IO.Log;
 import Data.TextBuffer : scr = GetBootTTY;
+import Task.Process;
 
 struct ELF64Header {
 	struct Identification {
@@ -85,7 +86,8 @@ struct ELF64Header {
 
 	@property bool Valid() {
 		immutable char[4] ELF64Magic = [0x7F, 'E', 'L', 'F'];
-		return identification.magic == ELF64Magic;
+		return identification.magic == ELF64Magic && programHeaderEntrySize == ELF64ProgramHeader.sizeof
+			&& ELF64SectionHeader.sizeof == sectionHeaderEntrySize;
 	}
 }
 
@@ -102,7 +104,6 @@ struct ELF64ProgramHeader {
 
 		GNUEHFrameHeader = 0x6474E550,
 		GNUStack = 0x6474E551,
-
 	}
 
 	Type type;
@@ -111,12 +112,7 @@ struct ELF64ProgramHeader {
 		None,
 		X = 1 << 0,
 		W = 1 << 1,
-		R = 1 << 2,
-
-		WX = W | X,
-		RX = R | X,
-		RW = R | W,
-		RWX = R | W | X
+		R = 1 << 2
 	}
 
 	Flags flags;
@@ -295,79 +291,118 @@ struct ELF64Dynamic {
 class ELF {
 public:
 	this(FileNode file) {
-		import IO.FS.Initrd.FileNode;
-
 		this.file = file;
 
-		if (file.Size < ELF64Header.sizeof)
+		if (file.Size <= ELF64Header.sizeof)
 			return;
 
 		file.Read((cast(ubyte*)&header)[0 .. ELF64Header.sizeof], 0);
-		if (!header.Valid)
-			return;
+		valid = header.Valid;
 
-		programHeaders.length = header.programHeaderCount;
-		for (ulong idx = 0; idx < programHeaders.length; idx++)
-			file.Read((cast(ubyte*)&programHeaders[idx])[0 .. ELF64ProgramHeader.sizeof],
-					header.programHeaderOffset + header.programHeaderEntrySize * idx);
-
-		ulong symtabIdx = ulong.max;
-
-		sectionHeaders.length = header.sectionHeaderCount;
-		for (ulong idx = 0; idx < sectionHeaders.length; idx++) {
-			file.Read((cast(ubyte*)&sectionHeaders[idx])[0 .. ELF64SectionHeader.sizeof],
-					header.sectionHeaderOffset + header.sectionHeaderEntrySize * idx);
-			if (sectionHeaders[idx].type == ELF64SectionHeader.Type.SymbolTable)
+		foreach (idx; 0 .. header.sectionHeaderCount) {
+			ELF64SectionHeader sectionHdr = GetSectionHeader(idx);
+			if (sectionHdr.type == ELF64SectionHeader.Type.SymbolTable)
 				symtabIdx = idx;
-			if (sectionHeaders[idx].type == ELF64SectionHeader.Type.StringTable)
+			else if (sectionHdr.type == ELF64SectionHeader.Type.StringTable)
 				strtabIdx = idx;
 		}
-
-		if (symtabIdx != ulong.max) {
-			ELF64SectionHeader symtab = sectionHeaders[symtabIdx];
-			symbols.length = symtab.size / ELF64Symbol.sizeof;
-			for (ulong idx = 0; idx < symbols.length; idx++)
-				file.Read((cast(ubyte*)&symbols[idx])[0 .. ELF64Symbol.sizeof], symtab.offset + idx * ELF64Symbol.sizeof);
-		}
-
-		valid = true;
 	}
 
-	void Map() {
+	void MapAndRun() {
 		import Memory.Paging;
 		import Task.Scheduler;
+
 		Scheduler scheduler = GetScheduler;
-		Paging paging = scheduler.CurrentProcess.threadState.paging;
+		Process * process = scheduler.CurrentProcess;
+		Paging paging = process.threadState.paging;
+		//paging.RemoveUserspace(true); //XXX:
 
-		foreach (idx, ELF64ProgramHeader* program; programHeaders) {
-			scr.Writeln("Mapping #", idx);
+		foreach (idx; 0 .. header.programHeaderCount) {
+			ELF64ProgramHeader program = GetProgramHeader(idx);
+			if (program.type != ELF64ProgramHeader.Type.Load)
+				continue;
+
+			MapMode mode = MapMode.User;
+			if (!(program.flags & ELF64ProgramHeader.Flags.X))
+				mode |= MapMode.NoExecute;
+			if (program.flags & ELF64ProgramHeader.Flags.W)
+				mode |= MapMode.Writable;
+			// Page will always be readable
+
+			VirtAddress start = program.virtAddress & ~0xFFF;
+			VirtAddress end = program.virtAddress + program.memorySize;
+			VirtAddress cur = start;
+			while (cur < end) {
+				paging.MapFreeMemory(cur, MapMode.DefaultKernel); // This zeros the memory
+				cur += 0x1000;
+			}
+
+			log.Debug("Start: ", start, " End: ", end, " cur: ", cur);
+
+			memset(start.Ptr, 0, (program.virtAddress - start).Int);
+			cur = (program.virtAddress + program.fileSize);
+			memset(cur.Ptr, 0, (end - cur).Int);
+			file.Read(program.virtAddress.Ptr!ubyte[0 .. program.fileSize], program.offset.Int);
+
+			auto page = paging.GetPage(start);
+			page.Mode = mode;
 		}
+
+		// Setup stack, setup heap
+
+		asm {
+			cli;
+		}
+
+		process.heap = null; // TODO: FIX
+		enum StackSize = 0x1000;
+		VirtAddress userStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		process.image.userStack = userStack;
+		switchToUserMode(header.entry.Int, userStack.Int);
 	}
 
-	void Run() {
-
+	ELF64ProgramHeader GetProgramHeader(size_t idx) {
+		assert(idx < header.programHeaderCount);
+		ELF64ProgramHeader programHdr;
+		file.Read(&programHdr, header.programHeaderOffset + header.programHeaderEntrySize * idx);
+		return programHdr;
 	}
 
+	ELF64SectionHeader GetSectionHeader(size_t idx) {
+		assert(idx < header.sectionHeaderCount);
+		ELF64SectionHeader sectionHdr;
+		file.Read(&sectionHdr, header.sectionHeaderOffset + header.sectionHeaderEntrySize * idx);
+		return sectionHdr;
+	}
 
+	ELF64Symbol GetSymbol(size_t idx) {
+		assert(symtabIdx != ulong.max);
+		ELF64SectionHeader symtab = GetSectionHeader(symtabIdx);
+		ELF64Symbol symbol;
+		file.Read(&symbol, symtab.offset + ELF64Symbol.sizeof * idx);
+		return symbol;
+	}
 
-	char[] GetSectionName(uint idx) {
-		char[255] buf;
+	/// Note that the output will only be valid until GetSectionName is called again
+	char[] GetSectionName(uint nameIdx) {
+		__gshared char[255] buf;
 		if (!header.sectionHeaderStringTableIndex)
 			return cast(char[])"UNKNOWN";
 
-		file.Read(cast(ubyte[])buf, sectionHeaders[header.sectionHeaderStringTableIndex].offset + idx);
+		file.Read(buf, GetSectionHeader(header.sectionHeaderStringTableIndex).offset + nameIdx);
 
-		return buf[0 .. strlen(buf)].dup;
+		return buf[0 .. strlen(buf)];
 	}
 
+	/// Note that the output will only be valid until GetSymbolName is called again
 	char[] GetSymbolName(uint idx) {
-		char[255] buf;
+		__gshared char[255] buf;
 		if (!strtabIdx)
 			return cast(char[])"UNKNOWN";
 
-		file.Read(cast(ubyte[])buf, sectionHeaders[strtabIdx].offset + idx);
+		file.Read(buf, GetSectionHeader(strtabIdx).offset + idx);
 
-		return buf[0 .. strlen(buf)].dup;
+		return buf[0 .. strlen(buf)];
 	}
 
 	@property bool Valid() {
@@ -378,24 +413,10 @@ public:
 		return header;
 	}
 
-	@property ELF64ProgramHeader[] ProgramHeaders() {
-		return programHeaders;
-	}
-
-	@property ELF64SectionHeader[] SectionHeaders() {
-		return sectionHeaders;
-	}
-
-	@property ELF64Symbol[] Symbols() {
-		return symbols;
-	}
-
 private:
 	FileNode file;
 	bool valid;
 	ELF64Header header;
-	ELF64ProgramHeader[] programHeaders;
-	ELF64SectionHeader[] sectionHeaders;
-	ulong strtabIdx;
-	ELF64Symbol[] symbols;
+	ulong strtabIdx = ulong.max;
+	ulong symtabIdx = ulong.max;
 }

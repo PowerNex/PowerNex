@@ -99,6 +99,9 @@ struct Log {
 			} else static if (is(T : V*, V)) {
 				COM1.Write("0x");
 				COM1.Write(itoa(cast(ulong)arg, buf, 16));
+			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
+				COM1.Write("0x");
+				COM1.Write(itoa(cast(ulong)arg.Int, buf, 16));
 			} else static if (is(T == bool))
 				COM1.Write((arg) ? "true" : "false");
 			else static if (is(T : char))

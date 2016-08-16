@@ -12,10 +12,18 @@ _start:
 .global main
 .type main, %function
 main:
-	mov HelloWorld, %rdi
+	lea HelloWorld, %rdi
 	call printcstr
 
-	movq $42, (ExitValue)
+	lea TryFork, %rdi
+	call printcstr
+
+	call fork
+
+	lea ForkSuccess, %rdi
+	call printcstr
+
+	movq $0x42, (ExitValue)
 	movq (ExitValue), %rax
 	ret
 .size main, .-main
@@ -37,8 +45,18 @@ printcstr: // Arg: rdi= string ptr
 	ret
 .size printcstr, .-printcstr
 
+.global fork
+.type fork, %function
+fork:
+	mov $2, %rax
+	int $0x80
+	ret
+.size fork, .-fork
+
 .section .rodata, "aS"
-HelloWorld: .ascii "Hello World\0"
+HelloWorld: .ascii "Hello World from Userspace!\0"
+TryFork: .ascii "Trying to fork!\0"
+ForkSuccess: .ascii "FORK WORKED!\0"
 
 .data
 ExitValue: .quad 0
