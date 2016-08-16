@@ -15,13 +15,16 @@ main:
 	lea HelloWorld, %rdi
 	call printcstr
 
-	lea TryFork, %rdi
-	call printcstr
+	//lea TryFork, %rdi
+	//call printcstr
 
-	call fork
+	//currently not working (problem with Heap?)
+	//see Data/ELF.d:357
+	//see Task/Scheduler.d:177
+	//call fork
 
-	lea ForkSuccess, %rdi
-	call printcstr
+	//lea ForkSuccess, %rdi
+	//call printcstr
 
 	movq $0x42, (ExitValue)
 	movq (ExitValue), %rax
