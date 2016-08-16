@@ -247,8 +247,7 @@ public:
 						description.destroy;
 						//TODO free stack
 
-						if (children)
-							children.destroy;
+						//children was destroy'ed when calling Exit
 					}
 					child.destroy;
 
@@ -274,6 +273,23 @@ public:
 			scr.Writeln("Init process exited. No more work to do.");
 			log.Fatal("Init process exited. No more work to do.");
 		}
+
+		for(int i = 0; i < current.children.Length; i++) {
+			Process* child = current.children[i];
+
+			if(child.state == ProcessState.Exited) {
+				child.name.destroy;
+				child.description.destroy;
+				//TODO free stack
+
+				child.destroy;
+			}
+			else {
+				//TODO send SIGHUP etc.
+				initProcess.children.Add(child);
+			}
+		}
+		current.children.destroy;
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
