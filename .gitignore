@@ -5,6 +5,7 @@ PowerNex.map
 PowerNex.dsk
 wild
 obj/
+Initrd/Binary
 PowerNex.iso
 bochsout.txt
 bx_enh_dbg.ini
