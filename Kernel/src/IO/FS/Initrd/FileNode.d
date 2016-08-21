@@ -12,7 +12,7 @@ public:
 	}
 
 	override ulong Read(ubyte[] buffer, ulong offset) {
-		if (offset > data.length)
+		if (offset >= data.length)
 			return 0;
 		ulong size = buffer.length;
 		ulong end = size + offset;
