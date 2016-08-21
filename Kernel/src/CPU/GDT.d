@@ -162,12 +162,12 @@ private:
 		SetData(idx++, true, 0);
 
 		// User
-		SetData(idx++, true, 3);
 		SetCode(idx++, true, 3, true);
+		SetData(idx++, true, 3);
 
 		tssID = cast(ushort)idx;
-		SetTSS(idx++, tss); // Uses 2 entries
-		idx++;
+		SetTSS(idx, tss); // Uses 2 entries
+		idx += 2;
 		return idx;
 	}
 }
