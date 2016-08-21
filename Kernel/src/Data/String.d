@@ -3,16 +3,18 @@ module Data.String;
 import Data.Util;
 import Memory.Heap;
 
-size_t strlen(char* str) {
+nothrow pure size_t strlen(const(char)* str) {
+	if (!str)
+		return 0;
 	size_t len = 0;
 	while (*(str++))
 		len++;
 	return len;
 }
 
-size_t strlen(char[] str) {
+size_t strlen(const(char)[] str) {
 	size_t len = 0;
-	char* s = str.ptr;
+	const(char)* s = str.ptr;
 	while (*(s++) && len < str.length)
 		len++;
 	return len;
@@ -97,22 +99,22 @@ long atoi(string str, uint base = 10) {
 	return result;
 }
 
-string fromStringz(char* str) {
+string fromStringz(const(char)* str) {
 	size_t len = str.strlen;
-	char[] a = str[0 .. str.strlen];
+	const(char)[] a = str[0 .. str.strlen];
 
-	char* s = cast(char*)GetKernelHeap.Alloc(len);
-	memcpy(s, str, len);
+	const(char)* s = cast(const(char)*)GetKernelHeap.Alloc(len);
+	memcpy(cast(void*)s, str, len);
 
 	return cast(string)s[0 .. len];
 }
 
-string fromStringz(char[] str) {
+string fromStringz(const(char)[] str) {
 	size_t len = str.strlen;
-	char[] a = str[0 .. str.strlen];
+	const(char)[] a = str[0 .. str.strlen];
 
-	char* s = cast(char*)GetKernelHeap.Alloc(len);
-	memcpy(s, str.ptr, len);
+	const(char)* s = cast(const(char)*)GetKernelHeap.Alloc(len);
+	memcpy(cast(void*)s, str.ptr, len);
 
 	return cast(string)s[0 .. len];
 }
