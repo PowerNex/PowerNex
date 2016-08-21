@@ -21,12 +21,12 @@ import Data.Linker;
 import Data.Address;
 import Memory.Heap;
 import Task.Scheduler;
-import Task.Thread;
 import ACPI.RSDP;
 import HW.BGA.BGA;
 import HW.BGA.PSF;
 import HW.PCI.PCI;
 import HW.CMOS.CMOS;
+import System.SyscallHandler;
 import Data.TextBuffer : scr = GetBootTTY;
 
 import Bin.BasicShell;
@@ -52,6 +52,7 @@ extern (C) int kmain(uint magic, ulong info) {
 	scr.Foreground = Color(255, 0, 255);
 	scr.Background = Color(255, 255, 0);
 	scr.Writeln("kmain functions has exited!");
+	log.Fatal("kmain functions has exited!");
 	return 0;
 }
 
@@ -86,6 +87,9 @@ void PreInit() {
 	scr.Writeln("IDT initializing...");
 	IDT.Init();
 
+	scr.Writeln("Syscall Handler initializing...");
+	SyscallHandler.Init();
+
 	scr.Writeln("PIT initializing...");
 	PIT.Init();
 
@@ -110,6 +114,7 @@ void Init(uint magic, ulong info) {
 	FrameAllocator.Init();
 
 	scr.Writeln("Paging initializing...");
+	GetKernelPaging.RemoveUserspace(false); // Removes all mapping that are not needed for the kernel
 	GetKernelPaging.Install();
 
 	scr.Writeln("Heap initializing...");
@@ -124,8 +129,8 @@ void Init(uint magic, ulong info) {
 	scr.Writeln("BGA initializing...");
 	GetBGA.Init(new PSF(cast(FileNode)rootFS.Root.FindNode("/Data/Font/TTYFont.psf")));
 
-	scheduler = new Scheduler();
 	scr.Writeln("Scheduler initializing...");
+	GetScheduler.Init();
 }
 
 void LoadInitrd() {

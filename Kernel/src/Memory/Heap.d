@@ -21,15 +21,27 @@ private struct MemoryHeader {
 
 class Heap {
 public:
-	this(Paging paging, MapMode mode, VirtAddress startAddr) {
+	this(Paging paging, MapMode mode, VirtAddress startAddr, VirtAddress maxAddr) {
 		this.paging = paging;
 		this.mode = mode;
 		this.startAddr = this.endAddr = startAddr;
+		this.maxAddr = maxAddr;
 		this.root = null;
 		this.end = null;
 
 		addNewPage();
 		root = end; // 'end' will be the latest allocated page
+	}
+
+	this(Heap other) {
+		assert(other);
+		this.paging = other.paging;
+		this.mode = other.mode;
+		this.startAddr = other.startAddr;
+		this.endAddr = other.endAddr;
+		this.maxAddr = other.maxAddr;
+		this.root = other.root;
+		this.end = other.end;
 	}
 
 	~this() {
@@ -104,6 +116,10 @@ public:
 		log.Info("\n\n");
 	}
 
+	@property ref ulong RefCounter() {
+		return refCounter;
+	}
+
 private:
 	enum MinimalChunkSize = 32; /// Without header
 
@@ -114,13 +130,20 @@ private:
 	MemoryHeader* end; /// Stores the last MemoryHeader
 	VirtAddress startAddr; /// The start address of all the allocated data
 	VirtAddress endAddr; /// The end address of all the allocated data
+	VirtAddress maxAddr; /// The max address that can be allocated
+	ulong refCounter;
 
 	/// Map and add a new page to the list
 	bool addNewPage() {
 		MemoryHeader* oldEnd = end;
 
+		if (endAddr >= maxAddr - 0x1000 /* Do I need this? */ )
+			return false;
 		if (paging.MapFreeMemory(endAddr, mode).Int == 0)
 			return false;
+
+		_memset64(endAddr.Ptr, 0, 0x1000 / ulong.sizeof); //Defined in object.d
+
 		end = cast(MemoryHeader*)endAddr.Ptr;
 		*end = MemoryHeader.init;
 		end.magic = MAGIC;
@@ -207,7 +230,7 @@ Heap GetKernelHeap() {
 	__gshared Heap kernelHeap;
 
 	if (!kernelHeap) {
-		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultKernel, Linker.KernelEnd);
+		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultUser, Linker.KernelEnd, VirtAddress(ulong.max));
 		IDT.Register(InterruptType.PageFault, &onPageFault);
 	}
 	return kernelHeap;
@@ -218,6 +241,38 @@ private void onPageFault(Registers* regs) {
 	import IO.Log;
 
 	with (regs) {
+		import Data.Color;
+		import Task.Scheduler : GetScheduler;
+
+		auto addr = CR2;
+
+		TablePtr!(Table!3)* tablePdp;
+		TablePtr!(Table!2)* tablePd;
+		TablePtr!(Table!1)* tablePt;
+		TablePtr!(void)* tablePage;
+		Paging paging = GetScheduler().CurrentProcess.threadState.paging;
+		if (paging) {
+			auto root = paging.RootTable();
+			tablePdp = root.Get(cast(ushort)(addr.Int >> 39) & 0x1FF);
+			tablePd = tablePdp.Data.Virtual.Ptr!(Table!3).Get(cast(ushort)(addr.Int >> 30) & 0x1FF);
+			tablePt = tablePd.Data.Virtual.Ptr!(Table!2).Get(cast(ushort)(addr.Int >> 21) & 0x1FF);
+			tablePage = tablePt.Data.Virtual.Ptr!(Table!1).Get(cast(ushort)(addr.Int >> 12) & 0x1FF);
+		}
+
+		MapMode modePdp;
+		MapMode modePd;
+		MapMode modePt;
+		MapMode modePage;
+		if (tablePdp)
+			modePdp = tablePdp.Mode;
+		if (tablePd)
+			modePd = tablePd.Mode;
+		if (tablePt)
+			modePt = tablePt.Mode;
+		if (tablePage)
+			modePage = tablePage.Mode;
+
+		scr.Foreground = Color(255, 0, 0);
 		scr.Writeln("===> PAGE FAULT");
 		scr.Writeln("IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP);
 		scr.Writeln("RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX);
@@ -229,9 +284,19 @@ private void onPageFault(Registers* regs) {
 		scr.Writeln("R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13);
 		scr.Writeln("R14 = ", cast(void*)R14, " | R15 = ", cast(void*)R15);
 		scr.Writeln(" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS);
-		scr.Writeln(" CR2 = ", cast(void*)CR2);
+		scr.Writeln(" addr = ", cast(void*)addr);
 		scr.Writeln("Flags: ", cast(void*)Flags);
-		scr.Writeln("Errorcode: ", cast(void*)ErrorCode);
+		scr.Writeln("Errorcode: ", cast(void*)ErrorCode, " (", (ErrorCode & (1 << 0) ? " Present" : " NotPresent"),
+				(ErrorCode & (1 << 1) ? " Write" : " Read"), (ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"),
+				(ErrorCode & (1 << 3) ? " ReservedWrite" : ""), (ErrorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
+		scr.Writeln("PDP Mode: R", (modePdp & MapMode.Writable) ? "W" : "", (modePdp & MapMode.NoExecute) ? "" : "X",
+				(modePdp & MapMode.User) ? "-User" : "");
+		scr.Writeln("PD Mode: R", (modePd & MapMode.Writable) ? "W" : "", (modePd & MapMode.NoExecute) ? "" : "X",
+				(modePd & MapMode.User) ? "-User" : "");
+		scr.Writeln("PT Mode: R", (modePt & MapMode.Writable) ? "W" : "", (modePt & MapMode.NoExecute) ? "" : "X",
+				(modePt & MapMode.User) ? "-User" : "");
+		scr.Writeln("Page Mode: R", (modePage & MapMode.Writable) ? "W" : "", (modePage & MapMode.NoExecute) ? "" : "X",
+				(modePage & MapMode.User) ? "-User" : "");
 
 		log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP, "\n", "RAX = ",
 				cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n", "RCX = ", cast(void*)RCX, " | RDX = ",
@@ -239,7 +304,16 @@ private void onPageFault(Registers* regs) {
 				cast(void*)RSP, " | RBP = ", cast(void*)RBP, "\n", " R8 = ", cast(void*)R8, "  |  R9 = ",
 				cast(void*)R9, "\n", "R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11, "\n", "R12 = ",
 				cast(void*)R12, " | R13 = ", cast(void*)R13, "\n", "R14 = ", cast(void*)R14, " | R15 = ",
-				cast(void*)R15, "\n", " CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n", " CR2 = ",
-				cast(void*)CR2, "\n", "Flags: ", cast(void*)Flags, "\n", "Errorcode: ", cast(void*)ErrorCode);
+				cast(void*)R15, "\n", " CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n", " addr = ",
+				cast(void*)addr, "\n", "Flags: ", cast(void*)Flags, "\n", "Errorcode: ", cast(void*)ErrorCode, " (",
+				(ErrorCode & (1 << 0) ? " Present" : " NotPresent"), (ErrorCode & (1 << 1) ? " Write" : " Read"),
+				(ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"), (ErrorCode & (1 << 3) ? " ReservedWrite" : ""),
+				(ErrorCode & (1 << 4) ? " InstructionFetch" : ""), " )", "\n", "PDP Mode: R",
+				(modePdp & MapMode.Writable) ? "W" : "", (modePdp & MapMode.NoExecute) ? "" : "X", (modePdp & MapMode.User)
+				? "-User" : "", "\n", "PD Mode: R", (modePd & MapMode.Writable) ? "W" : "", (modePd & MapMode.NoExecute)
+				? "" : "X", (modePd & MapMode.User) ? "-User" : "", "\n", "PT Mode: R", (modePt & MapMode.Writable) ? "W"
+				: "", (modePt & MapMode.NoExecute) ? "" : "X", (modePt & MapMode.User) ? "-User" : "", "\n",
+				"Page Mode: R", (modePage & MapMode.Writable) ? "W" : "", (modePage & MapMode.NoExecute) ? "" : "X",
+				(modePage & MapMode.User) ? "-User" : "");
 	}
 }
