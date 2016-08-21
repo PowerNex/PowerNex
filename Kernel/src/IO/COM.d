@@ -54,7 +54,7 @@ struct COM {
 	void Write(ubyte d) {
 		while (!CanSend()) {
 		}
-		Out(cast(ushort)port, d);
+		Out!ubyte(cast(ushort)port, d);
 	}
 
 	void Write(T : ubyte)(T[] data) {
