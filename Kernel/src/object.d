@@ -48,18 +48,7 @@ with an empty main:
 
 		without_custom_runtime_reflection: runtime reflection will be bare minimum, don't use typeinfo except as like an opaque pointer. You also won't need the special linker script if you go without libc with this option.
 */
-
-nothrow pure size_t strlen(const(char)* c) {
-	if (c is null)
-		return 0;
-
-	size_t l = 0;
-	while (*c) {
-		c++;
-		l++;
-	}
-	return l;
-}
+import Data.String : strlen;
 
 void main() {
 }
@@ -136,7 +125,7 @@ extern (C) {
 
 	// the compiler spits this out all the time
 	Object _d_newclass(const ClassInfo ci) {
-		log.Debug("Creating a new class of type: ", ci.name);
+		//log.Debug("Creating a new class of type: ", ci.name);
 		void* memory = GetKernelHeap.Alloc(ci.init.length);
 		if (memory is null) {
 			log.Fatal("\n\n_d_newclass malloc failure\n\n");
