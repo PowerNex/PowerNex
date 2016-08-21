@@ -1,0 +1,40 @@
+#+TITLE: PowerNex - ReadMe
+#+AUTHOR: Dan Printzell
+#+EMAIL: me@vild.io
+
+* PowerNex
+PowerNex is a kernel written in the [[https://dlang.org][D Programming Language]].
+The goal is to have a whole OS written in D, where PowerNex powers the core.
+
+The name PowerNex comes from the words `power` and `next`. A kernel to power the
+next generation of hardware.
+** Building
+It requires a crosscompiler, see link below for download.
+It uses my build system called [[https://github.com/Vild/Wild][Wild]].
+It expects the wild binary to be located in the root directory of PowerNex, then
+you just need to run `./build` to build.
+
+*Please note that Wild is under development and the compiled result may not work!*
+*This means that it is recommended to use the prebuilt executable below*
+
+[[https://mega.nz/#!cx913RZZ!i3lHemFSPRT5kgdbGjS9YgXLKx0bV84Jg50cOYOdxUg][Prebuild toolchain (wild and compilers) for (Arch)Linux x64]]
+
+One tip is to run `source env.sh`, this adds shortcuts for building and running.
+	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
+** System requirements
+- A 64bit processor
+- At least 32 MiB of ram
+
+*Recommended & Supported Virtual Machines*
+- QEMU
+- VirtualBox
+** Developers
+*** Main
+- [[https://github.com/Vild/][Dan "Wild" Printzell]]
+*** Contributors
+- [[https://github.com/M4GNV5][Jakob "M4GNV5" Löw]]
+** Thanks to
+- Adam D. Ruppe - For his [[http://arsdnet.net/dcode/minimal.zip][minimal.zip]], which contains a bare bone minimal d runtime. Which this kernel is based on.
+- Bloodmanovski - For his D Kernel [[https://github.com/Bloodmanovski/Trinix][Trinix]], His files for booting x64 really helped me a lot.
+** License
+Mozilla Public License, version 2.0
