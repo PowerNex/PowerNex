@@ -28,6 +28,7 @@ import HW.PCI.PCI;
 import HW.CMOS.CMOS;
 import System.SyscallHandler;
 import Data.TextBuffer : scr = GetBootTTY;
+import Data.ELF;
 
 import Bin.BasicShell;
 
@@ -44,9 +45,20 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	scheduler.AddThread(new BasicShellThread());
+	string initFile = "/Binary/Init";
 
-	while (true) {
+	ELF init = new ELF(cast(FileNode)rootFS.Root.FindNode(initFile));
+	if (init.Valid) {
+		scr.Writeln(initFile, " is valid! Loading...");
+
+		scr.Writeln();
+		auto tmp = scr.Foreground;
+		scr.Foreground = scr.Background;
+		scr.Background = tmp;
+		init.MapAndRun();
+	} else {
+		scr.Writeln("Invalid ELF64 file");
+		log.Fatal("Invalid ELF64 file!");
 	}
 
 	scr.Foreground = Color(255, 0, 255);

@@ -38,6 +38,19 @@
 		"MakeInitrd" : {
 			"command": "Utils/MakeInitrd",
 			"arguments": "$in $out"
+		},
+
+		"user-dc": {
+			"command": "cc/bin/powernex-dmd",
+			"arguments": "-m64 -debug -c -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+		},
+		"user-ac": {
+			"command": "cc/bin/x86_64-powernex-as",
+			"arguments": "--64 -o $out $in"
+		},
+		"user-ld": {
+			"command": "cc/bin/x86_64-powernex-ld",
+			"arguments": "-o $out $in"
 		}
 	},
 	"phonies": {
@@ -58,6 +71,15 @@
 		}
 	},
 	"rules": {
+		"Userspace/Init/*.o": {
+			"processor": "user-dc",
+			"input": "Userspace/Init/*.d"
+		},
+		"Initrd/Binary/Init": {
+			"processor": "user-ld",
+			"input": "Userspace/Init/*.o"
+		},
+
 		"Kernel/obj/DCode.o": {
 			"processor": "dc",
 			"input": "Kernel/src/*.d"
@@ -91,6 +113,7 @@
 		"Disk/boot/PowerNex.krl",
 		"Initrd/Data/PowerNex.map",
 		"Initrd/Data/Font/TTYFont.psf",
+		"Initrd/Binary/Init",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]
