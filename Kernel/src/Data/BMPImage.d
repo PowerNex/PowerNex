@@ -101,48 +101,25 @@ private:
 
 		log.Debug("rid: ", cast(int)rid, " gid: ", cast(int)gid, " bid: ", cast(int)bid, " aid: ", cast(int)aid);
 
-		if (auto f = cast(InitrdFileNode)file) {
-			ubyte[] d = f.RawAccess;
-			for (int y = bitmap.height - 1; y >= 0; y--) {
-				for (int x = 0; x < bitmap.width; x++, offset += bytesPerPixel) {
-					ubyte[] buf = d[offset .. offset + bytesPerPixel];
+		ubyte[bytesPerPixel] buf = void;
+		for (int y = bitmap.height - 1; y >= 0; y--) {
+			for (int x = 0; x < bitmap.width; x++) {
+				file.Read(buf, offset += bytesPerPixel);
 
-					immutable ubyte r = rid != ubyte.max ? buf[rid] : 0;
-					immutable ubyte g = gid != ubyte.max ? buf[gid] : 0;
-					immutable ubyte b = bid != ubyte.max ? buf[bid] : 0;
+				immutable ubyte r = rid != ubyte.max ? buf[rid] : 0;
+				immutable ubyte g = gid != ubyte.max ? buf[gid] : 0;
+				immutable ubyte b = bid != ubyte.max ? buf[bid] : 0;
 
-					static if (bpp == 32)
-						immutable ubyte a = aid != ubyte.max ? buf[aid] : 255;
-					else
-						immutable ubyte a = 0;
+				static if (bpp == 32)
+					immutable ubyte a = aid != ubyte.max ? buf[aid] : 255;
+				else
+					immutable ubyte a = 0;
 
-					data[y * bitmap.width + x] = Color(r, g, b, a);
-				}
-
-				if (pad)
-					offset = (offset + 4) & ~0b11;
+				data[y * bitmap.width + x] = Color(r, g, b, a);
 			}
-		} else {
-			ubyte[bytesPerPixel] buf = void;
-			for (int y = bitmap.height - 1; y >= 0; y--) {
-				for (int x = 0; x < bitmap.width; x++) {
-					file.Read(buf, offset += bytesPerPixel);
 
-					immutable ubyte r = rid != ubyte.max ? buf[rid] : 0;
-					immutable ubyte g = gid != ubyte.max ? buf[gid] : 0;
-					immutable ubyte b = bid != ubyte.max ? buf[bid] : 0;
-
-					static if (bpp == 32)
-						immutable ubyte a = aid != ubyte.max ? buf[aid] : 255;
-					else
-						immutable ubyte a = 0;
-
-					data[y * bitmap.width + x] = Color(r, g, b, a);
-				}
-
-				if (pad)
-					offset = (offset + 4) & ~0b11;
-			}
+			if (pad)
+				offset = (offset + 4) & ~0b11;
 		}
 	}
 }
