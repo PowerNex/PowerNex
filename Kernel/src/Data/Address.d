@@ -1,6 +1,7 @@
 module Data.Address;
 
 private mixin template AddressBase(Type = ulong) {
+	alias Func = void function();
 	Type addr;
 
 	alias addr this;
@@ -13,6 +14,10 @@ private mixin template AddressBase(Type = ulong) {
 		this.addr = addr;
 	}
 
+	this(Func addr) {
+		this.addr = cast(Type)addr;
+	}
+
 	typeof(this) opBinary(string op)(void* other) const {
 		return typeof(this)(mixin("addr" ~ op ~ "cast(Type)other"));
 	}
@@ -23,6 +28,18 @@ private mixin template AddressBase(Type = ulong) {
 
 	typeof(this) opBinary(string op)(typeof(this) other) const {
 		return opBinary!op(other.Ptr);
+	}
+
+	typeof(this) opOpAssign(string op)(void* other) {
+		return typeof(this)(mixin("addr" ~ op ~ "= cast(Type)other"));
+	}
+
+	typeof(this) opOpAssign(string op)(Type other) {
+		return typeof(this)(mixin("addr" ~ op ~ "= other"));
+	}
+
+	typeof(this) opOpAssign(string op)(typeof(this) other) {
+		return opOpAssign!op(other.Ptr);
 	}
 
 	int opCmp(typeof(this) other) const {
@@ -59,6 +76,15 @@ private mixin template AddressBase(Type = ulong) {
 	@property Type Int(Type addr) {
 		this.addr = addr;
 		return addr;
+	}
+
+	@property Func Function() const {
+		return cast(Func)addr;
+	}
+
+	@property Func Function(Func addr) {
+		this.addr = cast(Type)addr;
+		return cast(Func)addr;
 	}
 }
 
