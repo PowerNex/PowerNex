@@ -124,6 +124,8 @@ public:
 		setVideoMode(1280, 720, VBE_DISPI_BPP_32, true, true);
 		pixelData = pixelData.ptr[0 .. width * height];
 
+		putRect(0, 0, 1280, 720, Color(0, 0x22, 0x22));
+
 		textY += 2;
 		textMaxX = width / font.Width - 1;
 		textMaxY = height / font.Height;
@@ -136,7 +138,7 @@ public:
 	}
 
 	void Clear() {
-		putRect(0, 0, width, height, Color(0, 0, 0));
+		putRect(0, 0, width, height, Color(0, 0x22, 0x22));
 		textX = textY = 0;
 	}
 
@@ -151,7 +153,7 @@ public:
 				pixelData[i] = pixelData[i + diff];
 
 			textY -= diffLines;
-			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, Color(0, 0, 0));
+			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, Color(0, 0x22, 0x22));
 		}
 
 		int y = (textY - neededLines) * font.Height;
@@ -234,16 +236,16 @@ private:
 				putRect(x + column, y + cast(int)idxRow, 1, 1, (row & (1 << (7 - column))) ? fg : bg);
 	}
 
-	void putPixel(int x, int y, Color color) {
-		int location = y * width + x;
+	void putPixel(long x, long y, Color color) {
+		long location = y * width + x;
 		if (location < 0 && location >= width * height)
 			return;
 		pixelData.ptr[location] = color;
 	}
 
-	void putRect(int x, int y, int width, int height, Color color) {
-		for (int yy = y; yy < y + height; yy++)
-			for (int xx = x; xx < x + width; xx++)
+	public void putRect(long x, long y, long width, long height, Color color) {
+		for (long yy = y; yy < y + height; yy++)
+			for (long xx = x; xx < x + width; xx++)
 				putPixel(xx, yy, color);
 	}
 
