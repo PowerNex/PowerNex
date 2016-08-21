@@ -224,6 +224,7 @@ private:
 		import Data.TextBuffer : scr = GetBootTTY;
 		import IO.Log;
 
+		regs.IntNumber &= 0xFF;
 		if (32 <= regs.IntNumber && regs.IntNumber <= 48) {
 			if (regs.IntNumber >= 40)
 				Out!ubyte(0xA0, 0x20);
@@ -234,12 +235,33 @@ private:
 			handler(regs);
 		else
 			with (regs) {
-				scr.Writeln("UNCAUGHT INTERRUPT: ", cast(InterruptType)IntNumber, " Errorcode: ", ErrorCode);
-				log.Fatal("Uncaught interrupt!\r\n", "\tIntNumber: ", cast(void*)IntNumber, " ErrorCode: ",
-						cast(void*)ErrorCode, "\r\n", "\tRAX: ", cast(void*)RAX, " RBX: ", cast(void*)RBX, " RCX: ",
-						cast(void*)RCX, " RDX: ", cast(void*)RDX, "\r\n", "\tRSI: ", cast(void*)RSI, " RDI: ",
-						cast(void*)RDI, " RBP: ", cast(void*)RBP, "\r\n", "\tRIP: ", cast(void*)RIP, " RSP: ",
-						cast(void*)RSP, " Flags: ", cast(void*)Flags, " SS: ", cast(void*)SS, " CS: ", cast(void*)CS);
+				import Data.Color;
+
+				scr.Foreground = Color(255, 0, 0);
+				scr.Writeln("===> UNCAUGHT INTERRUPT");
+				scr.Writeln("IRQ = ", cast(InterruptType)IntNumber, " | RIP = ", cast(void*)RIP);
+				scr.Writeln("RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX);
+				scr.Writeln("RCX = ", cast(void*)RCX, " | RDX = ", cast(void*)RDX);
+				scr.Writeln("RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI);
+				scr.Writeln("RSP = ", cast(void*)RSP, " | RBP = ", cast(void*)RBP);
+				scr.Writeln(" R8 = ", cast(void*)R8, "  |  R9 = ", cast(void*)R9);
+				scr.Writeln("R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11);
+				scr.Writeln("R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13);
+				scr.Writeln("R14 = ", cast(void*)R14, " | R15 = ", cast(void*)R15);
+				scr.Writeln(" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS);
+				scr.Writeln(" CR2 = ", cast(void*)CR2);
+				scr.Writeln("Flags: ", cast(void*)Flags);
+				scr.Writeln("Errorcode: ", cast(void*)ErrorCode);
+
+				log.Fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", cast(InterruptType)IntNumber, " | RIP = ",
+						cast(void*)RIP, "\n", "RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n", "RCX = ",
+						cast(void*)RCX, " | RDX = ", cast(void*)RDX, "\n", "RDI = ", cast(void*)RDI, " | RSI = ",
+						cast(void*)RSI, "\n", "RSP = ", cast(void*)RSP, " | RBP = ", cast(void*)RBP, "\n", " R8 = ",
+						cast(void*)R8, "  |  R9 = ", cast(void*)R9, "\n", "R10 = ", cast(void*)R10, " | R11 = ",
+						cast(void*)R11, "\n", "R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13, "\n", "R14 = ",
+						cast(void*)R14, " | R15 = ", cast(void*)R15, "\n", " CS = ", cast(void*)CS, "  |  SS = ",
+						cast(void*)SS, "\n", " CR2 = ", cast(void*)CR2, "\n", "Flags: ", cast(void*)Flags, "\n",
+						"Errorcode: ", cast(void*)ErrorCode);
 			}
 	}
 }

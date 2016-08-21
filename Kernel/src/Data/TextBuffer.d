@@ -53,6 +53,8 @@ public:
 	}
 
 	void Write(Args...)(Args args) {
+		import Data.Address;
+
 		size_t startPos = count;
 		Color fg = defaultFG;
 		Color bg = defaultBG;
@@ -67,6 +69,9 @@ public:
 			} else static if (is(T : V*, V)) {
 				write("0x", fg, bg, flags);
 				writeNumber(cast(ulong)arg, 16, fg, bg, flags);
+			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
+				write("0x", fg, bg, flags);
+				writeNumber(cast(ulong)arg.Int, 16, fg, bg, flags);
 			} else static if (is(T == enum))
 				writeEnum(arg, fg, bg, flags);
 			else static if (is(T == bool))
@@ -75,9 +80,12 @@ public:
 				write(arg, fg, bg, flags);
 			else static if (isNumber!T)
 				writeNumber(arg, 10, fg, bg, flags);
+			else static if (isFloating!T)
+				writeFloating(cast(double)arg, 10, fg, bg, flags);
 			else
 				write(arg.toString, fg, bg, flags);
 		}
+
 		if (onChanged)
 			onChanged(startPos, count);
 	}
@@ -184,6 +192,11 @@ private:
 	void writeNumber(S = long)(S value, uint base, Color fg, Color bg, SlotFlags flags) if (isNumber!S) {
 		char[S.sizeof * 8] buf;
 		write(itoa(value, buf, base), fg, bg, flags);
+	}
+
+	void writeFloating(double value, uint base, Color fg, Color bg, SlotFlags flags) {
+		char[double.sizeof * 8] buf;
+		write(dtoa(value, buf, base), fg, bg, flags);
 	}
 
 	void writeEnum(T)(T value, Color fg, Color bg, SlotFlags flags) if (is(T == enum)) {
