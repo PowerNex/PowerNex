@@ -67,15 +67,15 @@ start:
 
 	# Enable PAE
 	mov %cr4, %eax
-	bts $5, %eax
+	bts $5, %eax # physical address extension
 	mov %eax, %cr4
 
 	# Set long mode bit in EFER MSR
 	mov $0xC0000080, %ecx # Refers to EFER MSR
 	rdmsr
 	bts $11, %eax
-	bts $8, %eax
 	bts $0, %eax
+	bts $8, %eax
 	wrmsr
 
 	mov $(PML4 - KERNEL_VMA), %eax
@@ -83,9 +83,16 @@ start:
 
 	# Enable paging and write protected
 	mov %cr0, %eax
-	bts $31, %eax
-	bts $16, %eax
+	bts $1, %eax # monitor co-processor
+	btr $2, %eax # clear coprocessor emulation
+	bts $16, %eax # write protect
+	bts $31, %eax # paging
 	mov %eax, %cr0
+
+	mov %cr4, %eax
+	bts $9, %eax # fxsave and fxrstor instructions
+	bts $10, %eax # unmasked simd floating point exceptions
+	mov %eax, %cr4
 
 .remapIRQ:
 .SET MasterControl, 0x20
@@ -194,15 +201,15 @@ x64NotSupported_msg:
 .align 0x1000
 .SET PRESENT,     0x1
 .SET WRITEABLE,   0x2
+.SET USER,   			0x4
 .SET MAP4M,       0x80
-.SET UNKNOWN_BIT, 0x0
-.SET PW, PRESENT + WRITEABLE
-.SET ATTR, (- KERNEL_VMA + PW)
-.SET ATTR_MAP, (PW + MAP4M)
-.SET STACK_ATTR, (- KERNEL_VMA + PW + UNKNOWN_BIT)
+.SET MAP_MODE, PRESENT + WRITEABLE
+.SET ATTR, (- KERNEL_VMA + MAP_MODE)
+.SET ATTR_MAP, (MAP_MODE + MAP4M)
+.SET STACK_ATTR, (- KERNEL_VMA + MAP_MODE)
 
 .macro mapPage from, to
-	.int \from + PW + UNKNOWN_BIT, 0
+	.int \from + MAP_MODE, 0
 	.if \to-\from
 		mapPage "(\from+0x1000)", \to
 	.endif
@@ -215,13 +222,7 @@ PML4:
 	.int PDP + ATTR, 0 # Identity map for low 4MB
 	.space (255) * 8
 	.int PDP_MAP + ATTR, 0
-	.space (63) * 8
-	.quad 0 #.int PDP_STACK + ATTR, 0 # Kernel stack
-	.space (187) * 8
-
-	.quad 0 #.int PML4 + ATTR, 0 # Fractal mapping
-	.quad 0
-	.quad 0
+	.space (254) * 8
 	.int PDP_HIGH + ATTR, 0 # Map low 4MB to kernel base
 
 PDP:
