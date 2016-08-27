@@ -22,6 +22,8 @@ private extern (C) {
 
 extern (C) __gshared Process* currentProcess;
 
+alias WakeUpFunc = bool function(Process*, void*);
+
 class Scheduler {
 public:
 	void Init() {
@@ -108,7 +110,6 @@ public:
 		SwitchProcess(false);
 	}
 
-	alias WakeUpFunc = bool function(Process*, void*);
 	void WakeUp(WaitReason reason, WakeUpFunc check = &wakeUpDefault, void* data = cast(void*)0) {
 		bool wokeUp = false;
 
