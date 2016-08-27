@@ -1,16 +1,16 @@
 .text
 .code64
 
-.global spinlock_lock
-spinlock_lock:
+.global mutex_spinlock
+mutex_spinlock:
 .retry:
 	mov $1, %RBX;
 	lock cmpxchgq %RBX, (%RDI)
 	jnz .retry
 	ret
 
-.global spinlock_trylock
-spinlock_trylock:
+.global mutex_trylock
+mutex_trylock:
 	mov $1, %RBX;
 	lock cmpxchgq %RBX, (%RDI)
 	jnz .r
@@ -18,7 +18,7 @@ spinlock_trylock:
 .r:
 	ret
 
-.global spinlock_unlock
-spinlock_unlock:
+.global mutex_unlock
+mutex_unlock:
 	movq $1, (%RDI)
 	ret

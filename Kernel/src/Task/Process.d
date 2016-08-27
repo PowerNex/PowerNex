@@ -70,6 +70,7 @@ enum ProcessState {
 enum WaitReason {
 	Keyboard,
 	Timer,
+	Mutex,
 	Join //more e.g. harddrive, networking, mutex...
 }
 
