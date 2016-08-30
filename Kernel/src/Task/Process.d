@@ -26,12 +26,16 @@ struct TLS {
 
 	static TLS* Init(Process* process, ubyte[] data) {
 		VirtAddress addr = VirtAddress(process.heap.Alloc(data.length + TLS.sizeof));
+		memcpy(addr.Ptr, data.ptr, data.length);
 		TLS* this_ = (addr + data.length).Ptr!TLS;
 		this_.self = this_;
 		this_.startOfTLS = addr.Ptr!ubyte[0 .. data.length];
 		this_.process = process;
-		memcpy(addr.Ptr, data.ptr, data.length);
 		return this_;
+	}
+
+	void Free() {
+		process.heap.Free(startOfTLS.ptr);
 	}
 }
 

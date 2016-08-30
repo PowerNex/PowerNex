@@ -109,6 +109,7 @@ public:
 		Process* process = new Process();
 		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		process.image.kernelStack = kernelStack;
+		process.image.defaultTLS = current.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
@@ -167,6 +168,7 @@ public:
 		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		process.image.userStack = userStack;
 		process.image.kernelStack = kernelStack;
+		process.image.defaultTLS = current.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
