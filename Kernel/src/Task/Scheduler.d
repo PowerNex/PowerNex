@@ -1,5 +1,6 @@
 module Task.Scheduler;
 import Data.Address;
+import Data.Color;
 import Data.LinkedList;
 import Task.Process;
 import CPU.GDT;
@@ -246,8 +247,7 @@ public:
 						description.destroy;
 						//TODO free stack
 
-						if (children)
-							children.destroy;
+						//children was destroy'ed when calling Exit
 					}
 					child.destroy;
 
@@ -266,6 +266,30 @@ public:
 		current.state = ProcessState.Exited;
 
 		log.Info(current.pid, "(", current.name, ") is now dead! Returncode: ", cast(void*)returncode);
+
+		if(current == initProcess) {
+			scr.Foreground = Color(255, 0, 255);
+			scr.Background = Color(255, 255, 0);
+			scr.Writeln("Init process exited. No more work to do.");
+			log.Fatal("Init process exited. No more work to do.");
+		}
+
+		for(int i = 0; i < current.children.Length; i++) {
+			Process* child = current.children[i];
+
+			if(child.state == ProcessState.Exited) {
+				child.name.destroy;
+				child.description.destroy;
+				//TODO free stack
+
+				child.destroy;
+			}
+			else {
+				//TODO send SIGHUP etc.
+				initProcess.children.Add(child);
+			}
+		}
+		current.children.destroy;
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
