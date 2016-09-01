@@ -110,7 +110,6 @@ public:
 		Process* process = new Process();
 		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = current.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
@@ -169,7 +168,6 @@ public:
 		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		process.image.userStack = userStack;
 		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = current.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
@@ -276,22 +274,24 @@ public:
 			log.Fatal("Init process exited. No more work to do.");
 		}
 
-		for(int i = 0; i < current.children.Length; i++) {
-			Process* child = current.children[i];
+		if(current.children != null) {
+			for(int i = 0; i < current.children.Length; i++) {
+				Process* child = current.children[i];
 
-			if(child.state == ProcessState.Exited) {
-				child.name.destroy;
-				child.description.destroy;
-				//TODO free stack
+				if(child.state == ProcessState.Exited) {
+					child.name.destroy;
+					child.description.destroy;
+					//TODO free stack
 
-				child.destroy;
+					child.destroy;
+				}
+				else {
+					//TODO send SIGHUP etc.
+					initProcess.children.Add(child);
+				}
 			}
-			else {
-				//TODO send SIGHUP etc.
-				initProcess.children.Add(child);
-			}
+			current.children.destroy;
 		}
-		current.children.destroy;
 
 		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
 		SwitchProcess(false);
