@@ -274,7 +274,7 @@ public:
 			log.Fatal("Init process exited. No more work to do.");
 		}
 
-		if(current.children != null) {
+		if(current.children) {
 			for(int i = 0; i < current.children.Length; i++) {
 				Process* child = current.children[i];
 
