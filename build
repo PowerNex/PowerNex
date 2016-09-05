@@ -7,6 +7,10 @@
 			"command": "cc/bin/powernex-dmd",
 			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
+		"dc-header": {
+			"command": "cc/bin/powernex-dmd",
+			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in"
+		},
 		"ac": {
 			"command": "cc/bin/x86_64-powernex-as",
 			"arguments": "--64 -o $out $in"
@@ -40,21 +44,33 @@
 			"arguments": "$in $out"
 		},
 
+		"RemoveImports" : {
+			"command": "sed",
+			"arguments": "-e 's/^import .*//g' -e 's/enum/import PowerNex.Data.Address;\\nenum/' $in > $out"
+		},
+
 		"user-dc": {
 			"command": "cc/bin/powernex-dmd",
-			"arguments": "-m64 -debug -c -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+			"arguments": "-m64 -debug -c -IUserspace/libRT/src -IUserspace/libPowerNex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
 		"user-ac": {
 			"command": "cc/bin/x86_64-powernex-as",
 			"arguments": "--64 -o $out $in"
 		},
+		"user-ar": {
+			"command": "cc/bin/x86_64-powernex-ar",
+			"arguments": "rcs $out $in"
+		},
 		"user-ld": {
 			"command": "cc/bin/x86_64-powernex-ld",
-			"arguments": "-o $out $in"
+			"arguments": "-o $out $in Userspace/lib/libRT.a Userspace/lib/libPowerNex.a"
 		}
 	},
 	"phonies": {
-
+		"Userspace/Syscall.di" : {
+			"processor": "dc-header",
+			"input": "Kernel/src/System/Syscall.d"
+		}
 	},
 	"missing": {
 		"Utils/GenerateSymbols": {
@@ -71,13 +87,37 @@
 		}
 	},
 	"rules": {
-		"Userspace/Init/*.o": {
+		"Userspace/libRT/obj/DCode.o": {
 			"processor": "user-dc",
-			"input": "Userspace/Init/*.d"
+			"input": "Userspace/libRT/src/*.d"
+		},
+		"Userspace/lib/libRT.a": {
+			"processor": "user-ar",
+			"input": "Userspace/libRT/obj/*.o"
+		},
+
+
+		"Userspace/libPowerNex/src/PowerNex/Internal/Syscall.di": {
+			"processor": "RemoveImports",
+			"input": "Userspace/Syscall.di"
+		},
+		"Userspace/libPowerNex/obj/DCode.o": {
+			"processor": "user-dc",
+			"input": "Userspace/libPowerNex/src/*.d"
+		},
+		"Userspace/lib/libPowerNex.a": {
+			"processor": "user-ar",
+			"input": "Userspace/libPowerNex/obj/*.o"
+		},
+
+
+		"Userspace/Init/obj/DCode.o": {
+			"processor": "user-dc",
+			"input": "Userspace/Init/src/*.d"
 		},
 		"Initrd/Binary/Init": {
 			"processor": "user-ld",
-			"input": "Userspace/Init/*.o"
+			"input": "Userspace/Init/obj/*.o"
 		},
 
 		"Kernel/obj/DCode.o": {
@@ -113,6 +153,9 @@
 		"Disk/boot/PowerNex.krl",
 		"Initrd/Data/PowerNex.map",
 		"Initrd/Data/Font/TTYFont.psf",
+		"Userspace/libPowerNex/src/PowerNex/Internal/Syscall.di",
+		"Userspace/lib/libRT.a",
+		"Userspace/lib/libPowerNex.a",
 		"Initrd/Binary/Init",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
