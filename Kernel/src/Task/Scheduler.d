@@ -18,6 +18,8 @@ private extern (C) {
 	void cloneHelper();
 }
 
+extern (C) __gshared Process* currentProcess;
+
 void autoExit() {
 	asm {
 		naked;
@@ -36,11 +38,11 @@ public:
 		initIdle(); // PID 0
 		initKernel(); // PID 1
 		pidCounter = 2;
-		current = initProcess;
+		currentProcess = initProcess;
 	}
 
 	void SwitchProcess(bool reschedule = true) {
-		if (!current)
+		if (!currentProcess)
 			return;
 
 		ulong storeRBP = void;
@@ -53,7 +55,7 @@ public:
 		if (storeRIP == SWITCH_MAGIC) // Swap is done
 			return;
 
-		with (current.threadState) {
+		with (currentProcess.threadState) {
 			rbp = storeRBP;
 			rsp = storeRSP;
 			rip = storeRIP;
@@ -66,19 +68,19 @@ public:
 			}
 		}
 
-		if (reschedule && current != idleProcess) {
-			current.state = ProcessState.Ready;
-			readyProcesses.Add(current);
+		if (reschedule && currentProcess != idleProcess) {
+			currentProcess.state = ProcessState.Ready;
+			readyProcesses.Add(currentProcess);
 		}
 
 		doSwitching();
 	}
 
 	void WaitFor(WaitReason reason, ulong data = 0) {
-		current.state = ProcessState.Waiting;
-		current.wait = reason;
-		current.waitData = data;
-		waitingProcesses.Add(current);
+		currentProcess.state = ProcessState.Waiting;
+		currentProcess.wait = reason;
+		currentProcess.waitData = data;
+		waitingProcesses.Add(currentProcess);
 		SwitchProcess(false);
 	}
 
@@ -95,7 +97,7 @@ public:
 			}
 		}
 
-		if (wokeUp && current == idleProcess)
+		if (wokeUp && currentProcess == idleProcess)
 			SwitchProcess();
 	}
 
@@ -110,7 +112,7 @@ public:
 		Process* process = new Process();
 		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = current.image.defaultTLS;
+		process.image.defaultTLS = currentProcess.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
@@ -118,29 +120,29 @@ public:
 			stack -= size;
 		}
 
-		process.syscallRegisters = current.syscallRegisters;
+		process.syscallRegisters = currentProcess.syscallRegisters;
 		process.syscallRegisters.RAX = 0;
 
 		set(kernelStack, process.syscallRegisters);
 
 		with (process) {
 			pid = getFreePid;
-			name = current.name.dup;
+			name = currentProcess.name.dup;
 
-			uid = current.uid;
-			gid = current.gid;
+			uid = currentProcess.uid;
+			gid = currentProcess.gid;
 
-			parent = current.parent;
-			heap = new Heap(current.heap);
+			parent = currentProcess.parent;
+			heap = new Heap(currentProcess.heap);
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = kernelStack;
 			threadState.rsp = kernelStack;
-			threadState.fpuEnabled = current.threadState.fpuEnabled;
-			threadState.paging = new Paging(current.threadState.paging);
-			threadState.tls = TLS.Init(current);
+			threadState.fpuEnabled = currentProcess.threadState.fpuEnabled;
+			threadState.paging = new Paging(currentProcess.threadState.paging);
+			threadState.tls = TLS.Init(currentProcess);
 
-			kernelProcess = current.kernelProcess;
+			kernelProcess = currentProcess.kernelProcess;
 
 			state = ProcessState.Ready;
 		}
@@ -164,12 +166,12 @@ public:
 		import IO.Log;
 
 		log.Debug("userStack: ", userStack);
-		if (!userStack.Int) // current.heap will be new the new process heap
-			userStack = VirtAddress(current.heap.Alloc(StackSize)) + StackSize;
+		if (!userStack.Int) // currentProcess.heap will be new the new process heap
+			userStack = VirtAddress(currentProcess.heap.Alloc(StackSize)) + StackSize;
 		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		process.image.userStack = userStack;
 		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = current.image.defaultTLS;
+		process.image.defaultTLS = currentProcess.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
@@ -187,10 +189,10 @@ public:
 
 		with (process.syscallRegisters) {
 			RIP = VirtAddress(func);
-			CS = current.syscallRegisters.CS;
-			Flags = current.syscallRegisters.Flags;
+			CS = currentProcess.syscallRegisters.CS;
+			Flags = currentProcess.syscallRegisters.Flags;
 			RSP = userStack;
-			SS = current.syscallRegisters.SS;
+			SS = currentProcess.syscallRegisters.SS;
 		}
 
 		set(kernelStack, process.syscallRegisters);
@@ -199,24 +201,24 @@ public:
 			pid = getFreePid;
 			name = processName.dup;
 
-			uid = current.uid;
-			gid = current.gid;
+			uid = currentProcess.uid;
+			gid = currentProcess.gid;
 
-			parent = current;
-			heap = current.heap;
-			current.heap.RefCounter++;
+			parent = currentProcess;
+			heap = currentProcess.heap;
+			currentProcess.heap.RefCounter++;
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = kernelStack;
 			threadState.rsp = kernelStack;
-			threadState.fpuEnabled = current.threadState.fpuEnabled;
-			threadState.paging = current.threadState.paging;
+			threadState.fpuEnabled = currentProcess.threadState.fpuEnabled;
+			threadState.paging = currentProcess.threadState.paging;
 			threadState.paging.RefCounter++;
 			threadState.tls = TLS.Init(process, false);
 
 			// image.stack is set above
 
-			kernelProcess = current.kernelProcess;
+			kernelProcess = currentProcess.kernelProcess;
 
 			state = ProcessState.Ready;
 		}
@@ -236,12 +238,12 @@ public:
 
 	ulong Join(PID pid = 0) {
 		while (true) {
-			for (int i = 0; i < current.children.Length; i++) {
-				Process* child = current.children.Get(i);
+			for (int i = 0; i < currentProcess.children.Length; i++) {
+				Process* child = currentProcess.children.Get(i);
 
 				if (child.state == ProcessState.Exited && (pid == 0 || child.pid == pid)) {
 					ulong code = child.returnCode;
-					current.children.Remove(child);
+					currentProcess.children.Remove(child);
 					allProcesses.Remove(child);
 
 					with (child) {
@@ -264,21 +266,25 @@ public:
 	void Exit(ulong returncode) {
 		import IO.Log : log;
 
-		current.returnCode = returncode;
-		current.state = ProcessState.Exited;
+		currentProcess.returnCode = returncode;
+		currentProcess.state = ProcessState.Exited;
 
-		log.Info(current.pid, "(", current.name, ") is now dead! Returncode: ", cast(void*)returncode);
+		log.Info(currentProcess.pid, "(", currentProcess.name, ") is now dead! Returncode: ", cast(void*)returncode);
 
-		if (current == initProcess) {
+		if (currentProcess == initProcess) {
+			auto fg = scr.Foreground;
+			auto bg = scr.Background;
 			scr.Foreground = Color(255, 0, 255);
 			scr.Background = Color(255, 255, 0);
 			scr.Writeln("Init process exited. No more work to do.");
+			scr.Foreground = fg;
+			scr.Background = bg;
 			log.Fatal("Init process exited. No more work to do.");
 		}
 
-		if (current.children) {
-			for (int i = 0; i < current.children.Length; i++) {
-				Process* child = current.children[i];
+		if (currentProcess.children) {
+			for (int i = 0; i < currentProcess.children.Length; i++) {
+				Process* child = currentProcess.children[i];
 
 				if (child.state == ProcessState.Exited) {
 					child.name.destroy;
@@ -291,16 +297,16 @@ public:
 					initProcess.children.Add(child);
 				}
 			}
-			current.children.destroy;
+			currentProcess.children.destroy;
 		}
 
-		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)current);
+		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)currentProcess);
 		SwitchProcess(false);
 		assert(0);
 	}
 
 	@property Process* CurrentProcess() {
-		return current;
+		return currentProcess;
 	}
 
 	@property LinkedList!Process AllProcesses() {
@@ -316,7 +322,6 @@ private:
 	LinkedList!Process allProcesses;
 	LinkedList!Process readyProcesses;
 	LinkedList!Process waitingProcesses;
-	Process* current;
 
 	Process* idleProcess;
 	Process* initProcess;
@@ -366,6 +371,15 @@ private:
 		VirtAddress userStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
 		idleProcess = new Process();
+
+		with (idleProcess.syscallRegisters) {
+			RIP = VirtAddress(&idle);
+			CS = 0x8;
+			Flags = 0x202;
+			RSP = userStack;
+			SS = CS + 8;
+		}
+
 		with (idleProcess) {
 			pid = 0;
 			name = "[Idle]";
@@ -439,21 +453,21 @@ private:
 	void doSwitching() {
 		import CPU.MSR;
 
-		current = nextProcess();
-		current.state = ProcessState.Running;
+		currentProcess = nextProcess();
+		currentProcess.state = ProcessState.Running;
 
-		ulong storeRIP = current.threadState.rip;
-		ulong storeRBP = current.threadState.rbp;
-		ulong storeRSP = current.threadState.rsp;
+		ulong storeRIP = currentProcess.threadState.rip;
+		ulong storeRBP = currentProcess.threadState.rbp;
+		ulong storeRSP = currentProcess.threadState.rsp;
 
-		current.threadState.paging.Install();
+		currentProcess.threadState.paging.Install();
 
-		if (current.threadState.tls)
-			MSR.FSBase = cast(ulong)current.threadState.tls.self;
+		if (currentProcess.threadState.tls)
+			MSR.FSBase = cast(ulong)currentProcess.threadState.tls.self;
 		else
 			MSR.FSBase = 0;
 
-		GDT.tss.RSP0 = current.image.kernelStack;
+		GDT.tss.RSP0 = currentProcess.image.kernelStack;
 
 		asm {
 			mov RAX, RBP; // RBP will be overritten below
