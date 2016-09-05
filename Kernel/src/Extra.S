@@ -6,8 +6,6 @@ CPU_refresh_iretq:
 	mov $0x10, %RAX
 	mov %AX, %DS
 	mov %AX, %ES
-	mov %AX, %FS
-	mov %AX, %GS
 	mov %AX, %SS
 
 	mov %RSP, %RDX
