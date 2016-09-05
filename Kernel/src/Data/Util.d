@@ -20,6 +20,10 @@ enum isLong(T) = is(Unqual!T == long) || is(Unqual!T == ulong);
 enum isNumber(T) = isByte!T || isShort!T || isInt!T || isLong!T;
 enum isFloating(T) = is(Unqual!T == float) || is(Unqual!T == double);
 
+enum isArray(T) = isDynamicArray!T || isStaticArray!T;
+enum isDynamicArray(T) = is(Unqual!T : E[], E);
+enum isStaticArray(T) = is(Unqual!T : E[n], E, size_t n);
+
 template TypeTuple(T...) {
 	alias TypeTuple = T;
 }
