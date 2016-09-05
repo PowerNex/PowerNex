@@ -73,9 +73,9 @@ start:
 	# Set long mode bit in EFER MSR
 	mov $0xC0000080, %ecx # Refers to EFER MSR
 	rdmsr
-	bts $11, %eax
-	bts $0, %eax
-	bts $8, %eax
+	bts $11, %eax # No execute enable
+	bts $0, %eax # SYSCALL/SYSRET
+	bts $8, %eax # Long mode enable
 	wrmsr
 
 	mov $(PML4 - KERNEL_VMA), %eax
