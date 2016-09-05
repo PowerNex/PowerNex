@@ -289,31 +289,55 @@ private void onPageFault(Registers* regs) {
 		scr.Writeln("Errorcode: ", cast(void*)ErrorCode, " (", (ErrorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(ErrorCode & (1 << 1) ? " Write" : " Read"), (ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"),
 				(ErrorCode & (1 << 3) ? " ReservedWrite" : ""), (ErrorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		scr.Writeln("PDP Mode: R", (modePdp & MapMode.Writable) ? "W" : "", (modePdp & MapMode.NoExecute) ? "" : "X",
-				(modePdp & MapMode.User) ? "-User" : "");
-		scr.Writeln("PD Mode: R", (modePd & MapMode.Writable) ? "W" : "", (modePd & MapMode.NoExecute) ? "" : "X",
-				(modePd & MapMode.User) ? "-User" : "");
-		scr.Writeln("PT Mode: R", (modePt & MapMode.Writable) ? "W" : "", (modePt & MapMode.NoExecute) ? "" : "X",
-				(modePt & MapMode.User) ? "-User" : "");
-		scr.Writeln("Page Mode: R", (modePage & MapMode.Writable) ? "W" : "", (modePage & MapMode.NoExecute) ? "" : "X",
-				(modePage & MapMode.User) ? "-User" : "");
+		scr.Writeln("PDP Mode: ", (tablePdp.Present) ? "R" : "", (modePdp & MapMode.Writable) ? "W" : "",
+				(modePdp & MapMode.NoExecute) ? "" : "X", (modePdp & MapMode.User) ? "-User" : "");
+		scr.Writeln("PD Mode: ", (tablePd.Present) ? "R" : "", (modePd & MapMode.Writable) ? "W" : "",
+				(modePd & MapMode.NoExecute) ? "" : "X", (modePd & MapMode.User) ? "-User" : "");
+		scr.Writeln("PT Mode: ", (tablePt.Present) ? "R" : "", (modePt & MapMode.Writable) ? "W" : "",
+				(modePt & MapMode.NoExecute) ? "" : "X", (modePt & MapMode.User) ? "-User" : "");
+		scr.Writeln("Page Mode: ", (tablePage.Present) ? "R" : "", (modePage & MapMode.Writable) ? "W" : "",
+				(modePage & MapMode.NoExecute) ? "" : "X", (modePage & MapMode.User) ? "-User" : "");
 
-		log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP, "\n", "RAX = ",
-				cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n", "RCX = ", cast(void*)RCX, " | RDX = ",
-				cast(void*)RDX, "\n", "RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI, "\n", "RSP = ",
-				cast(void*)RSP, " | RBP = ", cast(void*)RBP, "\n", " R8 = ", cast(void*)R8, "  |  R9 = ",
-				cast(void*)R9, "\n", "R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11, "\n", "R12 = ",
-				cast(void*)R12, " | R13 = ", cast(void*)R13, "\n", "R14 = ", cast(void*)R14, " | R15 = ",
-				cast(void*)R15, "\n", " CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n", " addr = ",
-				cast(void*)addr, "\n", "Flags: ", cast(void*)Flags, "\n", "Errorcode: ", cast(void*)ErrorCode, " (",
-				(ErrorCode & (1 << 0) ? " Present" : " NotPresent"), (ErrorCode & (1 << 1) ? " Write" : " Read"),
-				(ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"), (ErrorCode & (1 << 3) ? " ReservedWrite" : ""),
-				(ErrorCode & (1 << 4) ? " InstructionFetch" : ""), " )", "\n", "PDP Mode: R",
-				(modePdp & MapMode.Writable) ? "W" : "", (modePdp & MapMode.NoExecute) ? "" : "X", (modePdp & MapMode.User)
-				? "-User" : "", "\n", "PD Mode: R", (modePd & MapMode.Writable) ? "W" : "", (modePd & MapMode.NoExecute)
-				? "" : "X", (modePd & MapMode.User) ? "-User" : "", "\n", "PT Mode: R", (modePt & MapMode.Writable) ? "W"
-				: "", (modePt & MapMode.NoExecute) ? "" : "X", (modePt & MapMode.User) ? "-User" : "", "\n",
-				"Page Mode: R", (modePage & MapMode.Writable) ? "W" : "", (modePage & MapMode.NoExecute) ? "" : "X",
+		//dfmt off
+		log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP, "\n",
+			"RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n",
+			"RCX = ", cast(void*)RCX, " | RDX = ", cast(void*)RDX, "\n",
+			"RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI, "\n",
+			"RSP = ", cast(void*)RSP, " | RBP = ", cast(void*)RBP, "\n",
+			" R8 = ", cast(void*)R8, "  |  R9 = ", cast(void*)R9, "\n",
+			"R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11, "\n",
+			"R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13, "\n",
+			"R14 = ", cast(void*)R14, " | R15 = ", cast(void*)R15, "\n",
+			" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n",
+			" addr = ",	cast(void*)addr, "\n",
+			"Flags: ", cast(void*)Flags, "\n",
+			"Errorcode: ", cast(void*)ErrorCode, " (",
+				(ErrorCode & (1 << 0) ? " Present" : " NotPresent"),
+				(ErrorCode & (1 << 1) ? " Write" : " Read"),
+				(ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"),
+				(ErrorCode & (1 << 3) ? " ReservedWrite" : ""),
+				(ErrorCode & (1 << 4) ? " InstructionFetch" : ""),
+			" )", "\n",
+			"PDP Mode: ",
+				(tablePdp.Present) ? "R" : "",
+				(modePdp & MapMode.Writable) ? "W" : "",
+				(modePdp & MapMode.NoExecute) ? "" : "X",
+				(modePdp & MapMode.User) ? "-User" : "", "\n",
+			"PD Mode: ",
+				(tablePd.Present) ? "R" : "",
+				(modePd & MapMode.Writable) ? "W" : "",
+				(modePd & MapMode.NoExecute) ? "" : "X",
+				(modePd & MapMode.User) ? "-User" : "", "\n",
+			"PT Mode: ",
+				(tablePt.Present) ? "R" : "",
+				(modePt & MapMode.Writable) ? "W" : "",
+				(modePt & MapMode.NoExecute) ? "" : "X",
+				(modePt & MapMode.User) ? "-User" : "", "\n",
+			"Page Mode: ",
+				(tablePage.Present) ? "R" : "",
+				(modePage & MapMode.Writable) ? "W" : "",
+				(modePage & MapMode.NoExecute) ? "" : "X",
 				(modePage & MapMode.User) ? "-User" : "");
+		//dfmt on
 	}
 }
