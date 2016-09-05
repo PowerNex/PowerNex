@@ -1,6 +1,11 @@
 module CPU.MSR;
 
 enum MSRIdentifiers : uint {
+	EFER = 0xC0000080,
+	Star = 0xC0000081,
+	LStar = 0xC0000082,
+	CStar = 0xC0000083,
+	SFMask = 0xC0000084,
 	FSBase = 0xC0000100,
 	GSBase = 0xC0000101
 }
@@ -28,22 +33,22 @@ struct MSR {
 		return cast(ulong)high << 32UL | low;
 	}
 
-	@property static ulong FSBase() {
-		return Read(MSRIdentifiers.FSBase);
-	}
+	mixin(generateGetterSetter());
 
-	@property static ulong FSBase(ulong val) {
-		Write(MSRIdentifiers.FSBase, val);
-		return val;
-	}
+private:
+	static string generateGetterSetter() {
+		if (!__ctfe)
+			return "";
+		template generateGetterSetterEntry(alias item) {
+			enum generateGetterSetterEntry = `@property static ulong ` ~ item ~ `() { return Read(MSRIdentifiers.` ~ item
+					~ `); }
+@property static ulong ` ~ item ~ `(ulong val) { Write(MSRIdentifiers.` ~ item ~ `, val); return val;	}`;
+		}
 
-	@property static ulong GSBase() {
-		return Read(MSRIdentifiers.GSBase);
-	}
+		string output;
+		foreach (item; __traits(allMembers, MSRIdentifiers))
+			output ~= generateGetterSetterEntry!item;
 
-	@property static ulong GSBase(ulong val) {
-		Write(MSRIdentifiers.GSBase, val);
-		return val;
+		return output;
 	}
-
 }
