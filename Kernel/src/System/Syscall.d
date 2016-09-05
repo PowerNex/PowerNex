@@ -20,7 +20,7 @@ struct SyscallEntry {
 }
 
 @SyscallEntry(0, "Exit", "This terminates the current running process")
-void Exit(ulong errorcode) {
+void Exit(long errorcode) {
 	auto scheduler = GetScheduler;
 	scheduler.Exit(errorcode);
 
@@ -28,9 +28,9 @@ void Exit(ulong errorcode) {
 }
 
 @SyscallEntry(1, "Clone", "Start a new process")
-void Clone(ulong function(void*) func, VirtAddress stack, void* userdata, const(char)* name) {
+void Clone(ulong function(void*) func, VirtAddress stack, void* userdata, string name) {
 	auto scheduler = GetScheduler;
-	GetScheduler.CurrentProcess.syscallRegisters.RAX = scheduler.Clone(func, stack, userdata, name.fromStringz);
+	GetScheduler.CurrentProcess.syscallRegisters.RAX = scheduler.Clone(func, stack, userdata, name);
 }
 
 @SyscallEntry(2, "Fork", "Start a new process")
@@ -49,10 +49,10 @@ void Yield() {
 }
 
 @SyscallEntry(4, "Exec", "Replace current process with executable")
-void Exec(char* file) {
+void Exec(string file) {
 	import IO.Log : log;
 
-	log.Warning("Called Exec: ", file.fromStringz);
+	log.Warning("Called Exec: ", file);
 
 	while (true) {
 	}
@@ -74,8 +74,24 @@ void Free(void* addr) {
 	process.syscallRegisters.RAX = 0;
 }
 
-@SyscallEntry(16, "PrintCStr", "Free memory")
-void PrintCStr(char* str) {
+@SyscallEntry(7, "Realloc", "Reallocate memory")
+void Realloc(void* addr, ulong newSize) {
+	auto process = GetScheduler.CurrentProcess;
+	process.syscallRegisters.RAX = process.heap.Realloc(addr, newSize).VirtAddress;
+}
+
+@SyscallEntry(15, "Print", "Print a string to the screen")
+void Print(string str) {
+	import Data.TextBuffer : scr = GetBootTTY;
+
+	scr.Writeln(str);
+
+	auto process = GetScheduler.CurrentProcess;
+	process.syscallRegisters.RAX = 0;
+}
+
+@SyscallEntry(16, "PrintCStr", "Print a cstring to the screen")
+void PrintCStr(const(char)* str) {
 	import Data.TextBuffer : scr = GetBootTTY;
 
 	scr.Writeln(str.fromStringz);
