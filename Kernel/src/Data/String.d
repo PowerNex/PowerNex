@@ -178,21 +178,9 @@ size_t dtoa(double value, char* buf, ulong len, uint base = 10) {
 }
 
 string fromStringz(const(char)* str) {
-	size_t len = str.strlen;
-	const(char)[] a = str[0 .. str.strlen];
-
-	const(char)* s = cast(const(char)*)GetKernelHeap.Alloc(len);
-	memcpy(cast(void*)s, str, len);
-
-	return cast(string)s[0 .. len];
+	return cast(string)str[0 .. str.strlen];
 }
 
 string fromStringz(const(char)[] str) {
-	size_t len = str.strlen;
-	const(char)[] a = str[0 .. str.strlen];
-
-	const(char)* s = cast(const(char)*)GetKernelHeap.Alloc(len);
-	memcpy(cast(void*)s, str.ptr, len);
-
-	return cast(string)s[0 .. len];
+	return cast(string)str.ptr[0 .. str.strlen];
 }

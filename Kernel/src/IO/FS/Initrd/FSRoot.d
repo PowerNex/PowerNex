@@ -69,7 +69,7 @@ private:
 				continue;
 			}
 
-			node.Name = entry.name.fromStringz();
+			node.Name = entry.name.fromStringz().dup;
 			node.Root = this;
 			node.Parent = parent;
 			lookup[idx] = node.ID;
