@@ -355,6 +355,7 @@ public:
 				while (cur < end) {
 					auto page = paging.GetPage(cur);
 					page.Mode = mode;
+					paging.FlushPage(cur);
 					cur += 0x1000;
 				}
 

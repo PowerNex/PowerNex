@@ -36,3 +36,10 @@ CPU_ret_cr2:
 	mov %CR2, %RAX
 	ret
 .size CPU_ret_cr2, .-CPU_ret_cr2
+
+.global CPU_flushPage
+.type CPU_flushPage, %function
+CPU_flushPage:
+	invlpg (%rdi)
+	ret
+.size CPU_flushPage, .-CPU_flushPage

@@ -6,6 +6,8 @@ import Memory.FrameAllocator;
 import IO.Log;
 import Data.Linker;
 
+extern (C) void CPU_flushPage(ulong addr);
+
 enum MapMode : ulong { // TODO: Implement the rest.
 	Present = 1 << 0,
 	Writable = 1 << 1,
@@ -192,6 +194,9 @@ public:
 						myPTEntry.Data = phys;
 						myPTEntry.Mode = otherPTEntry_ptr.Mode;
 						myPTEntry.Present = true;
+						VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL);
+
+						FlushPage(addr);
 						memcpy(phys.Virtual.Ptr, otherPTEntry_ptr.Data.Virtual.Ptr, 0x1000 * 512); //Defined in object.d, 0x200 * 8 = 0x1000
 					} else {
 						Table!1* otherPTEntry = otherPTEntry_ptr.Data.Virtual.Ptr!(Table!1);
@@ -205,6 +210,10 @@ public:
 								Mode = otherPTEntry.children[ptIdx].Mode;
 								Present = true;
 							}
+
+							VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(
+									ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
+							FlushPage(addr);
 
 							memcpy(phys.Virtual.Ptr, otherPTEntry.children[ptIdx].Data.Virtual.Ptr, 0x1000); // TODO: Implement Copy-on-write, so we can skip this step!
 						}
@@ -234,6 +243,7 @@ public:
 		page.Mode = pageMode;
 		page.Data = phys;
 		page.Present = true;
+		FlushPage(virt);
 	}
 
 	void Unmap(VirtAddress virt) {
@@ -244,6 +254,7 @@ public:
 		page.Mode = MapMode.Empty;
 		page.Data = PhysAddress();
 		page.Present = false;
+		FlushPage(virt);
 	}
 
 	void UnmapAndFree(VirtAddress virt) {
@@ -256,6 +267,7 @@ public:
 		page.Mode = MapMode.Empty;
 		page.Data = PhysAddress();
 		page.Present = false;
+		FlushPage(virt);
 	}
 
 	PhysAddress MapFreeMemory(VirtAddress virt, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
@@ -331,10 +343,12 @@ public:
 							for (ushort ptIdx = 0; ptIdx < 512; ptIdx++)
 								with (myPTEntry.Get(ptIdx))
 									if (Present) {
-										log.Warning("Freeing Page: ",
-												VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(
-													ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL));
+										VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(
+												ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
+										log.Warning("Freeing Page: ", addr);
 										FrameAllocator.Free(Data);
+										Present = false;
+										FlushPage(addr);
 									}
 
 						log.Warning("Freeing Table!1: ",
@@ -351,6 +365,10 @@ public:
 			pdp_ptr.Data = PhysAddress();
 			pdp_ptr.Present = false;
 		}
+	}
+
+	void FlushPage(VirtAddress virt) {
+		CPU_flushPage(virt.Int);
 	}
 
 	@property Table!4* RootTable() {
