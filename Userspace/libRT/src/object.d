@@ -26,7 +26,7 @@ extern (C) void _start() {
 		call callMain;
 		mov RDI, RAX;
 		jmp exit;
-	};
+	}
 }
 
 void exit(ssize_t code = 0) {
