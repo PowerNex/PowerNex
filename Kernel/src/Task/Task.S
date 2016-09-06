@@ -38,6 +38,22 @@ switchToUserMode: // RIP = %rdi, RSP = %rsi
 	// Instruction pointer
 	push %rdi
 
+	mov $0, %rax
+	mov %rax, %rbx
+	mov %rax, %rcx
+	mov %rax, %rdx
+	mov %rax, %rsi
+	mov %rax, %rdi
+	mov %rax, %rbp
+	mov %rax, %r8
+	mov %rax, %r9
+	mov %rax, %r10
+	mov %rax, %r11
+	mov %rax, %r12
+	mov %rax, %r13
+	mov %rax, %r14
+	mov %rax, %r15
+
 	iretq
 
 .size switchToUserMode, .-switchToUserMode
