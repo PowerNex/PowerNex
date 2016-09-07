@@ -124,7 +124,7 @@ public:
 		setVideoMode(1280, 720, VBE_DISPI_BPP_32, true, true);
 		pixelData = pixelData.ptr[0 .. width * height];
 
-		putRect(0, 0, 1280, 720, Color(0, 0x22, 0x22));
+		putRect(0, 0, 1280, 720, background);
 
 		textY += 2;
 		textMaxX = width / font.Width - 1;
@@ -138,7 +138,7 @@ public:
 	}
 
 	void Clear() {
-		putRect(0, 0, width, height, Color(0, 0x22, 0x22));
+		putRect(0, 0, width, height, background);
 		textX = textY = 0;
 	}
 
@@ -153,7 +153,7 @@ public:
 				pixelData[i] = pixelData[i + diff];
 
 			textY -= diffLines;
-			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, Color(0, 0x22, 0x22));
+			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, background);
 		}
 
 		int y = (textY - neededLines) * font.Height;
@@ -183,6 +183,7 @@ private:
 	ushort width;
 	ushort height;
 	Color[] pixelData;
+	Color background = Color(0, 0x22, 0x22);
 
 	int textX;
 	int textY;
@@ -223,7 +224,7 @@ private:
 				pixelData[i] = pixelData[i + diff];
 
 			textY -= diffLines;
-			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, bg);
+			putRect(0, height - font.Height * diffLines, width, font.Height * diffLines, background);
 		}
 	}
 
