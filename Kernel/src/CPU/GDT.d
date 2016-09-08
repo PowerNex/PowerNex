@@ -164,6 +164,7 @@ private:
 		// User
 		SetCode(idx++, true, 3, true);
 		SetData(idx++, true, 3);
+		SetCode(idx++, true, 3, true); // This is need because (MSR_STAR.SYSRET_CS + 16) is the CS when returning to 64bit mode.
 
 		tssID = cast(ushort)idx;
 		SetTSS(idx, tss); // Uses 2 entries
