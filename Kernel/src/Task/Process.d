@@ -33,10 +33,6 @@ struct TLS {
 		this_.process = process;
 		return this_;
 	}
-
-	void Free() {
-		process.heap.Free(startOfTLS.ptr);
-	}
 }
 
 struct ThreadState {

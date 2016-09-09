@@ -378,11 +378,7 @@ public:
 		enum StackSize = 0x1000;
 		VirtAddress userStack = VirtAddress(process.heap.Alloc(StackSize)) + StackSize;
 		process.image.userStack = userStack;
-		with (process.threadState) {
-			if (tls)
-				tls.Free();
-			tls = TLS.Init(process, false);
-		}
+		process.threadState.tls = TLS.Init(process, false);
 
 		{
 			ubyte length = 0;
