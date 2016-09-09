@@ -49,16 +49,26 @@ void Yield() {
 }
 
 @SyscallEntry(4, "Exec", "Replace current process with executable")
-void Exec(string file) {
-	import IO.Log : log;
-
-	log.Warning("Called Exec: ", file);
-
-	while (true) {
-	}
+void Exec(string path, string[] args) {
+	import IO.FS.FileNode;
+	import Data.ELF : ELF;
 
 	auto process = GetScheduler.CurrentProcess;
-	process.syscallRegisters.RAX = 0xDEAD_C0DE;
+
+	FileNode file = cast(FileNode)process.currentDirectory.FindNode(path);
+	if (!file) {
+		process.syscallRegisters.RAX = 1;
+		return;
+	}
+
+	ELF elf = new ELF(file);
+	if (!elf.Valid) {
+		process.syscallRegisters.RAX = 2;
+		return;
+	}
+
+	elf.MapAndRun(args);
+	assert(0);
 }
 
 @SyscallEntry(5, "Alloc", "Allocate memory")
