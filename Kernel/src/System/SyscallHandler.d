@@ -72,11 +72,11 @@ private:
 			static if (idx)
 				o ~= ", ";
 			static if (isArray!val) {
-				o ~= "cast(" ~ val.stringof ~ ")" ~ ABI[abi_count++];
+				o ~= ABI[abi_count++];
 				assert(abi_count < ABI.length);
-				o ~= ".Ptr[0.." ~ ABI[abi_count++] ~ "]";
+				o ~= ".Array!(" ~ val.stringof ~ ")(" ~ ABI[abi_count++] ~ ")";
 			} else
-				o ~= "cast(" ~ val.stringof ~ ")" ~ ABI[abi_count++] ~ ".Ptr";
+				o ~= "cast(" ~ val.stringof ~ ")" ~ ABI[abi_count++] ~ ".Int"; //!(" ~ val.stringof ~ ")";
 		}
 
 		o ~= ");";

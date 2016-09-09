@@ -178,6 +178,16 @@ extern (C) {
 		return px;
 	}
 
+	void[] _d_arraycast(size_t newTypeSize, size_t curTypeSize, void[] arr) nothrow {
+		auto len = curTypeSize * arr.length;
+
+		if (len % newTypeSize)
+			assert(0);
+
+		*cast(size_t*)&arr = len / newTypeSize;
+		return arr;
+	}
+
 	extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs) {
 		size_t length;
 		auto size = unqualify(ti.next).tsize; // array element size
