@@ -55,7 +55,7 @@ extern (C) int kmain(uint magic, ulong info) {
 		auto tmp = scr.Foreground;
 		scr.Foreground = scr.Background;
 		scr.Background = tmp;
-		init.MapAndRun();
+		init.MapAndRun([initFile]);
 	} else {
 		scr.Writeln("Invalid ELF64 file");
 		log.Fatal("Invalid ELF64 file!");

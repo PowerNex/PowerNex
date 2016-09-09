@@ -1,12 +1,19 @@
 module object;
 
-import PowerNex.Data.String : strlen;
+import PowerNex.Data.String : strlen, fromStringz;
 import PowerNex.Syscall : Syscall;
 
 int main(string[] args);
 int callMain() {
 	try {
-		string[] args = ["TODO"];
+		char** argv;
+		size_t argc;
+		Syscall.GetArguments(&argc, &argv);
+
+		string[] args = new string[argc];
+		foreach (idx, arg; argv[0 .. argc])
+			args[idx] = arg.fromStringz;
+
 		return main(args);
 	}
 	catch (Throwable t) {
@@ -16,8 +23,6 @@ int callMain() {
 		return (1);
 	}
 }
-
-__gshared string[] environment;
 
 extern (C) void _start() {
 	asm {

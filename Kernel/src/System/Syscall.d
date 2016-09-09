@@ -80,6 +80,14 @@ void Realloc(void* addr, ulong newSize) {
 	process.syscallRegisters.RAX = process.heap.Realloc(addr, newSize).VirtAddress;
 }
 
+@SyscallEntry(8, "GetArguments", "Reallocate memory")
+void GetArguments(size_t* argc, char*** argv) { //TODO: add Check for userspace pointer
+	auto process = GetScheduler.CurrentProcess;
+	*argc = process.image.arguments.length - 1; // Don't count the null at the end
+	*argv = process.image.arguments.ptr;
+	process.syscallRegisters.RAX = 0;
+}
+
 @SyscallEntry(15, "Print", "Print a string to the screen")
 void Print(string str) {
 	import Data.TextBuffer : scr = GetBootTTY;

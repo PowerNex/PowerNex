@@ -54,6 +54,8 @@ struct ImageInformation {
 	VirtAddress userStack;
 	VirtAddress kernelStack;
 	ubyte[] defaultTLS;
+	char*[] arguments;
+
 	//TODO: fill in
 }
 

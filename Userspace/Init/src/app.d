@@ -26,6 +26,11 @@ private:
 int main(string[] args) {
 	Syscall.Print("Hello World from Userspace and D!");
 
+	Syscall.Print("Arguments:");
+	foreach (arg; args)
+		Syscall.Print(arg);
+	Syscall.Print("");
+
 	Syscall.Print("Trying to clone!");
 	Syscall.Clone(&cloneEntry, VirtAddress(&CloneStack.ptr[0x1000]), null, "Cloned process!");
 

@@ -309,7 +309,7 @@ public:
 		}
 	}
 
-	void MapAndRun() {
+	void MapAndRun(string[] args) {
 		import Memory.Paging;
 		import Task.Scheduler;
 
@@ -382,6 +382,28 @@ public:
 			if (tls)
 				tls.Free();
 			tls = TLS.Init(process, false);
+		}
+
+		{
+			ubyte length = 0;
+			foreach (arg; args)
+				length += arg.length + 1;
+
+			const ulong endOfArgs = length;
+			length += ulong.sizeof * (args.length + 1);
+
+			VirtAddress elfArgs = process.heap.Alloc(length).VirtAddress;
+			VirtAddress cur = elfArgs;
+			char*[] entries = (elfArgs + endOfArgs).Ptr!(char*)[0 .. args.length + 1];
+			foreach (idx, arg; args) {
+				entries[idx] = cur.Ptr!char;
+				cur.Ptr!char[0 .. arg.length] = arg[];
+				cur.Ptr!ubyte[arg.length] = 0;
+				cur += arg.length + 1;
+			}
+			entries[$ - 1] = null;
+
+			process.image.arguments = cast(char*[])entries;
 		}
 
 		switchToUserMode(header.entry.Int, userStack.Int);
