@@ -317,6 +317,11 @@ public:
 		Process* process = scheduler.CurrentProcess;
 		Paging paging = process.threadState.paging;
 
+		string[] tmpArgs;
+		tmpArgs.length = args.length;
+		foreach (idx, arg; args)
+			tmpArgs[idx] = arg.dup;
+
 		if (process.heap && !(--process.heap.RefCounter))
 			process.heap.destroy;
 
@@ -382,16 +387,16 @@ public:
 
 		{
 			ubyte length = 0;
-			foreach (arg; args)
+			foreach (arg; tmpArgs)
 				length += arg.length + 1;
 
 			const ulong endOfArgs = length;
-			length += ulong.sizeof * (args.length + 1);
+			length += ulong.sizeof * (tmpArgs.length + 1);
 
 			VirtAddress elfArgs = process.heap.Alloc(length).VirtAddress;
 			VirtAddress cur = elfArgs;
-			char*[] entries = (elfArgs + endOfArgs).Ptr!(char*)[0 .. args.length + 1];
-			foreach (idx, arg; args) {
+			char*[] entries = (elfArgs + endOfArgs).Ptr!(char*)[0 .. tmpArgs.length + 1];
+			foreach (idx, arg; tmpArgs) {
 				entries[idx] = cur.Ptr!char;
 				cur.Ptr!char[0 .. arg.length] = arg[];
 				cur.Ptr!ubyte[arg.length] = 0;
@@ -405,6 +410,10 @@ public:
 		process.name = file.Name;
 		process.image.file = file;
 		process.image.elf = this;
+
+		foreach (arg; tmpArgs)
+			arg.destroy;
+		tmpArgs.destroy;
 
 		switchToUserMode(header.entry.Int, userStack.Int);
 	}
