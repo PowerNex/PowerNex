@@ -34,15 +34,6 @@ int main(string[] args) {
 	Syscall.Print("Trying to clone!");
 	Syscall.Clone(&cloneEntry, VirtAddress(&CloneStack.ptr[0x1000]), null, "Cloned process!");
 
-	Syscall.Print("Testing fork...");
-	ulong pid = Syscall.Fork();
-
-	if (!pid) {
-		Syscall.Print("Fork child!");
-		return 0x31415;
-	} else
-		Syscall.Print("Fork parent!");
-
 	Syscall.Print("Testing StructTest...");
 	StructTest sTest = StructTest(1327);
 	Syscall.Print("Testing ClassTest...");
@@ -51,6 +42,15 @@ int main(string[] args) {
 	char[17] buf;
 	Syscall.Print("ClassTest.O = ");
 	Syscall.Print(itoa(cTest.O, buf));
+
+	Syscall.Print("Testing fork...");
+	ulong pid = Syscall.Fork();
+
+	if (!pid) {
+		Syscall.Print("Fork child!");
+		return cast(int)Syscall.Exec("/Binary/Shell", ["Test1", "Test arg 2", "2939239"]).Int;
+	} else
+		Syscall.Print("Fork parent!");
 	while (true)
 		Syscall.Yield();
 }
