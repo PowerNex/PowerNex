@@ -120,6 +120,15 @@
 			"input": "Userspace/Init/obj/*.o"
 		},
 
+		"Userspace/Shell/obj/DCode.o": {
+			"processor": "user-dc",
+			"input": "Userspace/Shell/src/*.d"
+		},
+		"Initrd/Binary/Shell": {
+			"processor": "user-ld",
+			"input": "Userspace/Shell/obj/*.o"
+		},
+
 		"Kernel/obj/DCode.o": {
 			"processor": "dc",
 			"input": "Kernel/src/*.d"
@@ -157,6 +166,7 @@
 		"Userspace/lib/libRT.a",
 		"Userspace/lib/libPowerNex.a",
 		"Initrd/Binary/Init",
+		"Initrd/Binary/Shell",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]
