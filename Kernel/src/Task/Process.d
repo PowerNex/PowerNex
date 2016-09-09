@@ -5,6 +5,9 @@ import Data.LinkedList;
 import Memory.Paging;
 import Memory.Heap;
 import Data.Register;
+import IO.FS.FileNode;
+import IO.FS.DirectoryNode;
+import Data.ELF;
 
 extern (C) void switchToUserMode(ulong loc, ulong stack);
 
@@ -51,6 +54,8 @@ struct ImageInformation {
 	VirtAddress kernelStack;
 	ubyte[] defaultTLS;
 	char*[] arguments;
+	FileNode file;
+	ELF elf;
 
 	//TODO: fill in
 }
@@ -81,6 +86,7 @@ struct Process {
 	bool kernelProcess;
 	Registers syscallRegisters;
 	Heap heap;
+	DirectoryNode currentDirectory;
 
 	Process* parent;
 	LinkedList!Process children;

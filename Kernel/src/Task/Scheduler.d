@@ -9,6 +9,7 @@ import Task.Mutex.SpinLockMutex;
 import Data.TextBuffer : scr = GetBootTTY;
 import Memory.Heap;
 import Memory.Paging;
+import KMain : rootFS;
 
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
@@ -144,6 +145,8 @@ public:
 
 			kernelProcess = currentProcess.kernelProcess;
 
+			currentDirectory = currentProcess.currentDirectory;
+
 			state = ProcessState.Ready;
 		}
 
@@ -219,6 +222,8 @@ public:
 			// image.stack is set above
 
 			kernelProcess = currentProcess.kernelProcess;
+
+			currentDirectory = currentProcess.currentDirectory;
 
 			state = ProcessState.Ready;
 		}
@@ -404,8 +409,9 @@ private:
 
 			kernelProcess = true;
 
-			state = ProcessState.Ready;
+			currentDirectory = rootFS.Root;
 
+			state = ProcessState.Ready;
 		}
 		allProcesses.Add(idleProcess);
 	}
@@ -435,6 +441,8 @@ private:
 			image.kernelStack = kernelStack;
 
 			kernelProcess = false;
+
+			currentDirectory = rootFS.Root;
 
 			state = ProcessState.Running;
 

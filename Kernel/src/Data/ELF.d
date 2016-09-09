@@ -402,6 +402,10 @@ public:
 			process.image.arguments = cast(char*[])entries;
 		}
 
+		process.name = file.Name;
+		process.image.file = file;
+		process.image.elf = this;
+
 		switchToUserMode(header.entry.Int, userStack.Int);
 	}
 
