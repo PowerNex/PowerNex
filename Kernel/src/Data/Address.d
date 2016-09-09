@@ -14,8 +14,12 @@ private mixin template AddressBase(Type = ulong) {
 		this.addr = addr;
 	}
 
-	this(Func addr) {
-		this.addr = cast(Type)addr;
+	this(Func func) {
+		this.addr = cast(Type)func;
+	}
+
+	this(T)(T[] arr) {
+		this.addr = cast(Type)arr.ptr;
 	}
 
 	typeof(this) opBinary(string op)(void* other) const {
@@ -82,9 +86,18 @@ private mixin template AddressBase(Type = ulong) {
 		return cast(Func)addr;
 	}
 
-	@property Func Function(Func addr) {
-		this.addr = cast(Type)addr;
+	@property Func Function(Func func) {
+		this.addr = cast(Type)func;
 		return cast(Func)addr;
+	}
+
+	T Array(T : X[], X)(size_t length) const {
+		return (cast(X*)addr)[0 .. length];
+	}
+
+	@property T Array(T)(T array) {
+		this.addr = cast(Type)array.ptr;
+		return array;
 	}
 }
 
