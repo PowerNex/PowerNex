@@ -21,15 +21,6 @@ private extern (C) {
 
 extern (C) __gshared Process* currentProcess;
 
-void autoExit() {
-	asm {
-		naked;
-		mov RDI, RAX;
-		mov RAX, 0;
-		int 0x80;
-	}
-}
-
 class Scheduler {
 public:
 	void Init() {
@@ -188,7 +179,7 @@ public:
 			RAX = 0xDEAD_C0DE;
 		}
 
-		set(userStack, cast(ulong)&autoExit);
+		set(userStack, 0); // Jump to null if it forgot to run exit.
 
 		with (process.syscallRegisters) {
 			RIP = VirtAddress(func);
