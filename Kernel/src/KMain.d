@@ -6,6 +6,7 @@ version (PowerNex) {
 	static assert(0, "Please use the customized toolchain located here: http://wild.tk/PowerNex-Env.tar.xz");
 }
 
+import IO.COM;
 import IO.Log;
 import IO.Keyboard;
 import IO.FS;
@@ -29,8 +30,8 @@ import HW.CMOS.CMOS;
 import System.SyscallHandler;
 import Data.TextBuffer : scr = GetBootTTY;
 import Data.ELF;
-
-import Bin.BasicShell;
+import IO.ConsoleManager;
+import IO.FS.IO.Console;
 
 immutable uint major = __VERSION__ / 1000;
 immutable uint minor = __VERSION__ % 1000;
@@ -52,9 +53,7 @@ extern (C) int kmain(uint magic, ulong info) {
 		scr.Writeln(initFile, " is valid! Loading...");
 
 		scr.Writeln();
-		auto tmp = scr.Foreground;
-		scr.Foreground = scr.Background;
-		scr.Background = tmp;
+		scr.Foreground = Color(255, 255, 0);
 		init.MapAndRun([initFile]);
 	} else {
 		scr.Writeln("Invalid ELF64 file");
@@ -79,6 +78,8 @@ void BootTTYToTextmode(size_t start, size_t end) {
 
 void PreInit() {
 	import IO.TextMode;
+
+	COM.Init();
 
 	scr;
 	scr.OnChangedCallback = &BootTTYToTextmode;
@@ -138,8 +139,8 @@ void Init(uint magic, ulong info) {
 	scr.Writeln("Initrd initializing...");
 	LoadInitrd();
 
-	scr.Writeln("BGA initializing...");
-	GetBGA.Init(new PSF(cast(FileNode)rootFS.Root.FindNode("/Data/Font/TTYFont.psf")));
+	scr.Writeln("Starting ConsoleManager...");
+	GetConsoleManager.Init();
 
 	scr.Writeln("Scheduler initializing...");
 	GetScheduler.Init();
@@ -149,6 +150,7 @@ void LoadInitrd() {
 	import IO.FS;
 	import IO.FS.Initrd;
 	import IO.FS.System;
+	import IO.FS.IO;
 
 	auto initrd = Multiboot.GetModule("initrd");
 	if (initrd[0] == initrd[1]) {
@@ -189,5 +191,6 @@ void LoadInitrd() {
 	log.SetSymbolMap(VirtAddress(symbols.RawAccess.ptr));
 	log.Info("Successfully loaded symbols!");
 
+	mount("/IO", new IOFSRoot());
 	mount("/System", new SystemFSRoot());
 }
