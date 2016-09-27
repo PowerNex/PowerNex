@@ -186,7 +186,7 @@ private:
 
 		// Combine forwards
 		sizeGain = 0;
-		while (freeChunk.next && !freeChunk.next.isAllocated) {
+		while (freeChunk && freeChunk.next && !freeChunk.next.isAllocated) {
 			freeChunk = freeChunk.next;
 			sizeGain += freeChunk.size + MemoryHeader.sizeof;
 		}
@@ -254,9 +254,12 @@ private void onPageFault(Registers* regs) {
 		if (paging) {
 			auto root = paging.RootTable();
 			tablePdp = root.Get(cast(ushort)(addr.Int >> 39) & 0x1FF);
-			tablePd = tablePdp.Data.Virtual.Ptr!(Table!3).Get(cast(ushort)(addr.Int >> 30) & 0x1FF);
-			tablePt = tablePd.Data.Virtual.Ptr!(Table!2).Get(cast(ushort)(addr.Int >> 21) & 0x1FF);
-			tablePage = tablePt.Data.Virtual.Ptr!(Table!1).Get(cast(ushort)(addr.Int >> 12) & 0x1FF);
+			if (tablePdp && tablePdp.Present)
+				tablePd = tablePdp.Data.Virtual.Ptr!(Table!3).Get(cast(ushort)(addr.Int >> 30) & 0x1FF);
+			if (tablePd && tablePd.Present)
+				tablePt = tablePd.Data.Virtual.Ptr!(Table!2).Get(cast(ushort)(addr.Int >> 21) & 0x1FF);
+			if (tablePt && tablePt.Present)
+				tablePage = tablePt.Data.Virtual.Ptr!(Table!1).Get(cast(ushort)(addr.Int >> 12) & 0x1FF);
 		}
 
 		MapMode modePdp;
@@ -289,13 +292,13 @@ private void onPageFault(Registers* regs) {
 		scr.Writeln("Errorcode: ", cast(void*)ErrorCode, " (", (ErrorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(ErrorCode & (1 << 1) ? " Write" : " Read"), (ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"),
 				(ErrorCode & (1 << 3) ? " ReservedWrite" : ""), (ErrorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		scr.Writeln("PDP Mode: ", (tablePdp.Present) ? "R" : "", (modePdp & MapMode.Writable) ? "W" : "",
+		scr.Writeln("PDP Mode: ", (tablePdp && tablePdp.Present) ? "R" : "", (modePdp & MapMode.Writable) ? "W" : "",
 				(modePdp & MapMode.NoExecute) ? "" : "X", (modePdp & MapMode.User) ? "-User" : "");
-		scr.Writeln("PD Mode: ", (tablePd.Present) ? "R" : "", (modePd & MapMode.Writable) ? "W" : "",
+		scr.Writeln("PD Mode: ", (tablePd && tablePd.Present) ? "R" : "", (modePd & MapMode.Writable) ? "W" : "",
 				(modePd & MapMode.NoExecute) ? "" : "X", (modePd & MapMode.User) ? "-User" : "");
-		scr.Writeln("PT Mode: ", (tablePt.Present) ? "R" : "", (modePt & MapMode.Writable) ? "W" : "",
+		scr.Writeln("PT Mode: ", (tablePt && tablePt.Present) ? "R" : "", (modePt & MapMode.Writable) ? "W" : "",
 				(modePt & MapMode.NoExecute) ? "" : "X", (modePt & MapMode.User) ? "-User" : "");
-		scr.Writeln("Page Mode: ", (tablePage.Present) ? "R" : "", (modePage & MapMode.Writable) ? "W" : "",
+		scr.Writeln("Page Mode: ", (tablePage && tablePage.Present) ? "R" : "", (modePage & MapMode.Writable) ? "W" : "",
 				(modePage & MapMode.NoExecute) ? "" : "X", (modePage & MapMode.User) ? "-User" : "");
 
 		//dfmt off
@@ -319,22 +322,22 @@ private void onPageFault(Registers* regs) {
 				(ErrorCode & (1 << 4) ? " InstructionFetch" : ""),
 			" )", "\n",
 			"PDP Mode: ",
-				(tablePdp.Present) ? "R" : "",
+				(tablePdp && tablePdp.Present) ? "R" : "",
 				(modePdp & MapMode.Writable) ? "W" : "",
 				(modePdp & MapMode.NoExecute) ? "" : "X",
 				(modePdp & MapMode.User) ? "-User" : "", "\n",
 			"PD Mode: ",
-				(tablePd.Present) ? "R" : "",
+				(tablePd && tablePd.Present) ? "R" : "",
 				(modePd & MapMode.Writable) ? "W" : "",
 				(modePd & MapMode.NoExecute) ? "" : "X",
 				(modePd & MapMode.User) ? "-User" : "", "\n",
 			"PT Mode: ",
-				(tablePt.Present) ? "R" : "",
+				(tablePt && tablePt.Present) ? "R" : "",
 				(modePt & MapMode.Writable) ? "W" : "",
 				(modePt & MapMode.NoExecute) ? "" : "X",
 				(modePt & MapMode.User) ? "-User" : "", "\n",
 			"Page Mode: ",
-				(tablePage.Present) ? "R" : "",
+				(tablePage && tablePage.Present) ? "R" : "",
 				(modePage & MapMode.Writable) ? "W" : "",
 				(modePage & MapMode.NoExecute) ? "" : "X",
 				(modePage & MapMode.User) ? "-User" : "");

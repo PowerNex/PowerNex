@@ -73,6 +73,22 @@ enum WaitReason {
 	Join //more e.g. harddrive, networking, mutex...
 }
 
+struct FileDescriptor {
+	size_t id;
+	FileNode node;
+	this(FileDescriptor* fd) {
+		this.id = fd.id;
+		this.node = fd.node;
+		node.Open();
+	}
+
+	this(size_t id, FileNode node) {
+		this.id = id;
+		this.node = node;
+		node.Open();
+	}
+}
+
 struct Process {
 	PID pid;
 	string name;
@@ -94,7 +110,9 @@ struct Process {
 	ProcessState state;
 	ulong returnCode;
 
-	// MUTEX LOCKS
 	WaitReason wait;
 	ulong waitData;
+
+	LinkedList!FileDescriptor fileDescriptors;
+	size_t fdCounter;
 }

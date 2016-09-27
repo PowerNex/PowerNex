@@ -63,7 +63,7 @@ private:
 		if (registerCount > 5)
 			foreach (save; saveRegisters[0 .. registerCount - 5])
 				o ~= "\t\tpush " ~ save ~ ";\n";
-		o ~= "\t\tmov RAX, " ~ itoa(attr.id, buf) ~ ";\n";
+		o ~= "\t\tmov RAX, " ~ itoa(cast(ulong)attr.id, buf) ~ ";\n";
 
 		size_t abi_count;
 		foreach (idx, val; p) {

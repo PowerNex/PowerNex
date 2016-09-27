@@ -10,6 +10,7 @@ import Data.TextBuffer : scr = GetBootTTY;
 import Memory.Heap;
 import Memory.Paging;
 import KMain : rootFS;
+import IO.ConsoleManager;
 
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
@@ -94,6 +95,8 @@ public:
 	}
 
 	void USleep(ulong usecs) {
+		if (!usecs)
+			usecs = 1;
 		WaitFor(WaitReason.Timer, usecs);
 	}
 
@@ -124,7 +127,7 @@ public:
 			uid = currentProcess.uid;
 			gid = currentProcess.gid;
 
-			parent = currentProcess.parent;
+			parent = currentProcess;
 			heap = new Heap(currentProcess.heap);
 
 			threadState.rip = VirtAddress(&cloneHelper);
@@ -138,15 +141,19 @@ public:
 
 			currentDirectory = currentProcess.currentDirectory;
 
+			fileDescriptors = new LinkedList!FileDescriptor;
+			for (size_t i = 0; i < currentProcess.fileDescriptors.Length; i++)
+				fileDescriptors.Add(new FileDescriptor(currentProcess.fileDescriptors.Get(i)));
+			fdCounter = currentProcess.fdCounter;
+
 			state = ProcessState.Ready;
 		}
 
-		if (process.parent)
-			with (process.parent) {
-				if (!children)
-					children = new LinkedList!Process;
-				children.Add(process);
-			}
+		with (currentProcess) {
+			if (!children)
+				children = new LinkedList!Process;
+			children.Add(process);
+		}
 
 		allProcesses.Add(process);
 		readyProcesses.Add(process);
@@ -216,15 +223,19 @@ public:
 
 			currentDirectory = currentProcess.currentDirectory;
 
+			fileDescriptors = new LinkedList!FileDescriptor;
+			for (size_t i = 0; i < currentProcess.fileDescriptors.Length; i++)
+				fileDescriptors.Add(new FileDescriptor(currentProcess.fileDescriptors.Get(i)));
+			fdCounter = currentProcess.fdCounter;
+
 			state = ProcessState.Ready;
 		}
 
-		if (process.parent)
-			with (process.parent) {
-				if (!children)
-					children = new LinkedList!Process;
-				children.Add(process);
-			}
+		with (currentProcess) {
+			if (!children)
+				children = new LinkedList!Process;
+			children.Add(process);
+		}
 
 		allProcesses.Add(process);
 		readyProcesses.Add(process);
@@ -233,27 +244,35 @@ public:
 	}
 
 	ulong Join(PID pid = 0) {
+		if (!currentProcess.children)
+			return 0x1000;
 		while (true) {
+			bool foundit;
 			for (int i = 0; i < currentProcess.children.Length; i++) {
 				Process* child = currentProcess.children.Get(i);
 
-				if (child.state == ProcessState.Exited && (pid == 0 || child.pid == pid)) {
-					ulong code = child.returnCode;
-					currentProcess.children.Remove(child);
-					allProcesses.Remove(child);
+				if (pid == 0 || child.pid == pid) {
+					foundit = true;
+					if (child.state == ProcessState.Exited) {
+						ulong code = child.returnCode;
+						currentProcess.children.Remove(child);
+						allProcesses.Remove(child);
 
-					with (child) {
-						name.destroy;
-						description.destroy;
-						//TODO free stack
+						with (child) {
+							name.destroy;
+							description.destroy;
+							//TODO free stack
 
-						//children was destroy'ed when calling Exit
+							//children was destroy'ed when calling Exit
+						}
+						child.destroy;
+
+						return code;
 					}
-					child.destroy;
-
-					return code;
 				}
 			}
+			if (pid && !foundit)
+				return 0x1001;
 
 			WaitFor(WaitReason.Join, pid);
 		}
@@ -276,6 +295,12 @@ public:
 			scr.Foreground = fg;
 			scr.Background = bg;
 			log.Fatal("Init process exited. No more work to do.");
+		}
+
+		for (size_t i = 0; i < currentProcess.fileDescriptors.Length; i++) {
+			FileDescriptor* fd = currentProcess.fileDescriptors.Get(i);
+			fd.node.Close();
+			fd.destroy;
 		}
 
 		if (currentProcess.children) {
@@ -310,7 +335,7 @@ public:
 	}
 
 private:
-	enum StackSize = 0x1000;
+	enum StackSize = 0x1_0000;
 	enum ulong SWITCH_MAGIC = 0x1111_DEAD_C0DE_1111;
 
 	ulong pidCounter;
@@ -402,6 +427,8 @@ private:
 
 			currentDirectory = rootFS.Root;
 
+			fileDescriptors = new LinkedList!FileDescriptor;
+
 			state = ProcessState.Ready;
 		}
 		allProcesses.Add(idleProcess);
@@ -434,6 +461,8 @@ private:
 			kernelProcess = false;
 
 			currentDirectory = rootFS.Root;
+			fileDescriptors = new LinkedList!FileDescriptor;
+			fileDescriptors.Add(new FileDescriptor(fdCounter++, GetConsoleManager.VirtualConsoles[0]));
 
 			state = ProcessState.Running;
 
