@@ -51,7 +51,6 @@ struct Log {
 	}
 
 	void Init() {
-		COM1.Init();
 		indent = 0;
 		enabled = true;
 	}
@@ -108,7 +107,15 @@ struct Log {
 				COM1.Write(arg);
 			else static if (isNumber!T)
 				COM1.Write(itoa(arg, buf, 10));
-			else static if (isFloating!T)
+			else static if (is(T : ubyte[])) {
+				COM1.Write("[");
+				foreach (idx, a; arg) {
+					if (idx)
+						COM1.Write(", ");
+					COM1.Write(itoa(a, buf, 16));
+				}
+				COM1.Write("]");
+			} else static if (isFloating!T)
 				COM1.Write(dtoa(cast(double)arg, buf, 10));
 			else
 				COM1.Write("UNKNOWN TYPE '", T.stringof, "'");
@@ -169,6 +176,13 @@ struct Log {
 			rip = rbp + ulong.sizeof;
 			if (!*rip.Ptr!ulong)
 				break;
+
+			import Task.Scheduler : currentProcess, TablePtr;
+
+			TablePtr!(void)* page = currentProcess.threadState.paging.GetPage(rip);
+			if (!page || !page.Present)
+				break;
+
 			COM1.Write("\t[");
 
 			{
