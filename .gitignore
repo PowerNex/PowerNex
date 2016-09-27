@@ -20,3 +20,4 @@ Initrd/Binary
 *.a
 *.krl
 *.di
+*~
