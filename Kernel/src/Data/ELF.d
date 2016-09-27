@@ -407,7 +407,7 @@ public:
 			process.image.arguments = cast(char*[])entries;
 		}
 
-		process.name = file.Name;
+		process.name = file.Name.dup;
 		process.image.file = file;
 		process.image.elf = this;
 
