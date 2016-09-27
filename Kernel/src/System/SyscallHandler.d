@@ -38,7 +38,7 @@ private:
 
 		process.syscallRegisters = *regs;
 		with (regs)
-	outer : switch (RAX) {
+	outer : switch (cast(SyscallID)RAX) {
 			foreach (func; __traits(derivedMembers, System.Syscall)) {
 				foreach (attr; __traits(getAttributes, mixin(func))) {
 					static if (is(typeof(attr) == SyscallEntry)) {

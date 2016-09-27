@@ -340,7 +340,20 @@ class Throwable : Object { // required by the D compiler
 	}
 
 	void print() {
-		asm { //log.Fatal(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
+		import PowerNex.Data.String;
+
+		char[ulong.sizeof * 8] buf;
+		Syscall.Write(0, cast(ubyte[])this.classinfo.name, 0);
+		Syscall.Write(0, cast(ubyte[])"@", 0);
+		Syscall.Write(0, cast(ubyte[])file, 0);
+		Syscall.Write(0, cast(ubyte[])"(", 0);
+
+		Syscall.Write(0, cast(ubyte[])itoa(line, buf, 10), 0);
+		Syscall.Write(0, cast(ubyte[])"): ", 0);
+		Syscall.Write(0, cast(ubyte[])message, 0);
+		Syscall.Write(0, cast(ubyte[])"\n", 0);
+		exit(1);
+		asm {
 			hlt;
 		}
 	}
