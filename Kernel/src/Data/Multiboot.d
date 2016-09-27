@@ -152,6 +152,10 @@ struct Multiboot {
 	__gshared int MemoryMapCount;
 	__gshared ulong MemorySize;
 
+	__gshared string[256] cmd_key;
+	__gshared string[256] cmd_value;
+	__gshared size_t cmd_length;
+
 	static void ParseHeader(uint magic, ulong info) {
 		if (magic != BOOTLOADER_MAGIC) {
 			scr.Writeln("Error: Bad multiboot 2 magic: %d", magic);
@@ -171,9 +175,30 @@ struct Multiboot {
 			switch (mbt.Type) {
 			case MultibootTagType.CmdLine:
 				auto tmp = cast(MultibootTagString*)mbt;
-				char* str = &tmp.String;
+				string str = cast(string)(&tmp.String)[0 .. tmp.Size - 9];
+				log.Debug("CmdLine: ", str);
+				if (!str.length)
+					break;
 
-				//log.Info("Name: CMDLine, Value: ", cast(string)str[0 .. tmp.Size - 9]);
+				size_t start;
+				size_t divider;
+				size_t cur;
+				while (cur < str.length) {
+					if (str[cur] == ' ') {
+						cmd_key[cmd_length] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
+						cmd_value[cmd_length] = (start > divider) ? null : str[divider + 1 .. cur];
+						log.Debug("\tKey: '", cmd_key[cmd_length], "' Value: '", cmd_value[cmd_length], "'");
+						cmd_length++;
+						start = cur + 1;
+					} else if (str[cur] == '=')
+						divider = cur;
+					cur++;
+				}
+				cmd_key[cmd_length] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
+				cmd_value[cmd_length] = (start > divider) ? null : str[divider + 1 .. cur];
+				log.Debug("\tKey: '", cmd_key[cmd_length], "' Value: '", cmd_value[cmd_length], "'");
+				cmd_length++;
+
 				break;
 
 			case MultibootTagType.BootLoaderName:
@@ -298,5 +323,12 @@ struct Multiboot {
 				return [PhysAddress(mod.ModStart).Virtual, PhysAddress(mod.ModEnd).Virtual];
 		}
 		return [VirtAddress(), VirtAddress()];
+	}
+
+	static string* GetArgument(string key) {
+		foreach (idx, k; cmd_key[0 .. cmd_length])
+			if (k == key)
+				return &cmd_value[idx];
+		return null;
 	}
 }
