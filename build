@@ -5,11 +5,11 @@
 	"processors": {
 		"dc": {
 			"command": "cc/bin/powernex-dmd",
-			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -JKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
 		"dc-header": {
 			"command": "cc/bin/powernex-dmd",
-			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in"
+			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -JKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in"
 		},
 		"ac": {
 			"command": "cc/bin/x86_64-powernex-as",
@@ -81,7 +81,7 @@
 			"processor": "ndc",
 			"input": "Utils/MakeInitrd.d"
 		},
-		"Initrd/Data/Font/TTYFont.psf.gz": {
+		"Kernel/src/Bin/ConsoleFont.psf.gz": {
 			"processor": "copy",
 			"input": "/usr/share/kbd/consolefonts/lat9w-16.psfu.gz"
 		}
@@ -129,6 +129,25 @@
 			"input": "Userspace/Shell/obj/*.o"
 		},
 
+
+		"Userspace/HelloWorld/obj/DCode.o": {
+			"processor": "user-dc",
+			"input": "Userspace/HelloWorld/src/*.d"
+		},
+		"Initrd/Binary/HelloWorld": {
+			"processor": "user-ld",
+			"input": "Userspace/HelloWorld/obj/*.o"
+		},
+
+		"Userspace/Cat/obj/DCode.o": {
+			"processor": "user-dc",
+			"input": "Userspace/Cat/src/*.d"
+		},
+		"Initrd/Binary/Cat": {
+			"processor": "user-ld",
+			"input": "Userspace/Cat/obj/*.o"
+		},
+
 		"Kernel/obj/DCode.o": {
 			"processor": "dc",
 			"input": "Kernel/src/*.d"
@@ -145,9 +164,9 @@
 			"processor": "GenerateSymbols",
 			"input": "Disk/boot/PowerNex.krl"
 		},
-		"Initrd/Data/Font/TTYFont.psf": {
+		"Kernel/src/Bin/ConsoleFont.psf": {
 			"processor": "gzip-d",
-			"input": "Initrd/Data/Font/TTYFont.psf.gz"
+			"input": "Kernel/src/Bin/ConsoleFont.psf.gz"
 		},
 		"Disk/boot/PowerNex.dsk": {
 			"processor": "MakeInitrd",
@@ -159,14 +178,16 @@
 		}
 	},
 	"targets": [
+		"Kernel/src/Bin/ConsoleFont.psf",
 		"Disk/boot/PowerNex.krl",
 		"Initrd/Data/PowerNex.map",
-		"Initrd/Data/Font/TTYFont.psf",
 		"Userspace/libPowerNex/src/PowerNex/Internal/Syscall.di",
 		"Userspace/lib/libRT.a",
 		"Userspace/lib/libPowerNex.a",
 		"Initrd/Binary/Init",
 		"Initrd/Binary/Shell",
+		"Initrd/Binary/HelloWorld",
+		"Initrd/Binary/Cat",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]
