@@ -38,7 +38,8 @@ public:
 		return -1;
 	}
 
-	override void Open() {
+	override bool Open() {
+		return true;
 	}
 
 	override void Close() {

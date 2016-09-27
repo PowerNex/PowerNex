@@ -10,7 +10,7 @@ public:
 		this.size = size;
 	}
 
-	abstract void Open();
+	abstract bool Open();
 	abstract void Close();
 	abstract ulong Read(ubyte[] buffer, ulong offset);
 	abstract ulong Write(ubyte[] buffer, ulong offset);

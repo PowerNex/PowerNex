@@ -23,6 +23,7 @@ public:
 		node.Root = null;
 		mount.Root = root;
 		mount.Parent = this;
+		mount.RootMount.Parent = this;
 		return mount;
 	}
 
@@ -31,6 +32,7 @@ public:
 			log.Error("Tried to run Unmount on ", node.Name, " but it doesn't belong to ", name, "! Redirecting");
 			node.Parent.Unmount(node);
 		}
+		node.RootMount.Parent = null;
 		node.Parent = null;
 		node.Root = null;
 		DirectoryNode dir = node.OldNode;
@@ -44,7 +46,18 @@ public:
 		return nodes[0 .. nodeCount];
 	}
 
+	DirectoryNode SetParentNoUpdate(DirectoryNode node) {
+		if (!node)
+			parent = oldParent;
+		else {
+			oldParent = parent;
+			parent = node;
+		}
+		return parent;
+	}
+
 package:
+
 	Node Add(Node node) {
 		return add(node);
 	}
@@ -54,13 +67,15 @@ package:
 	}
 
 	Node FindNode(string path, bool firstTime) {
+		import KMain : rootFS;
+
 		log.Info("CUR: ", Name, " FindNode: ", path, " firstTime: ", firstTime);
 		if (!path.length)
 			return this;
 
 		if (path[0] == '/') {
 			if (firstTime)
-				return root.Root.FindNode(path[1 .. $], false);
+				return rootFS.Root.FindNode(path[1 .. $], false); //root.Root.FindNode(path[1 .. $], false);
 
 			while (path.length && path[0] == '/')
 				path = path[1 .. $];
@@ -68,15 +83,15 @@ package:
 				return this;
 		}
 
-		if (path[0 .. 2] == "..") {
+		if (path.length > 1 && path[0 .. 2] == "..") {
 			DirectoryNode p = parent;
 			if (!p)
 				p = root.Root;
 			return p.FindNode(path[2 .. $], false);
-		} else if (path[0 .. 2] == "./")
+		} else if (path.length > 1 && path[0 .. 2] == "./")
 			path = path[2 .. $];
 
-		if (!path.length)
+		if (!path.length || path.length == 1 && path[0] == '.')
 			return this;
 
 		ulong end = 0;
@@ -100,6 +115,8 @@ package:
 				if (end == path.length)
 					return n;
 
+				if (auto mp = cast(MountPointNode)node)
+					return mp.RootMount.Root.FindNode(path[end + 1 .. $], false);
 				if (auto dir = cast(DirectoryNode)node)
 					return dir.FindNode(path[end + 1 .. $], false);
 
@@ -111,6 +128,7 @@ package:
 	}
 
 protected:
+	DirectoryNode oldParent;
 	Node[] nodes;
 	ulong nodeCount;
 

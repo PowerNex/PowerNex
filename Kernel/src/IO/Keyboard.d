@@ -1,11 +1,10 @@
 module IO.Keyboard;
 
-import Task.Process;
+__EOF__ import Task.Process;
 import Task.Scheduler;
 
 struct Keyboard {
-public:
-	static wchar Pop() {
+	public : static wchar Pop() {
 		wchar ch = Peek();
 		while (!ch) {
 			GetScheduler.WaitFor(WaitReason.Keyboard);
@@ -28,7 +27,6 @@ public:
 		GetScheduler.WakeUp(WaitReason.Keyboard);
 	}
 
-private:
-	__gshared wchar[256] buffer;
+	private : __gshared wchar[256] buffer;
 	__gshared ubyte start, end;
 }

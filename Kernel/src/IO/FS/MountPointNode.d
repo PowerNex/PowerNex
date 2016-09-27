@@ -27,6 +27,10 @@ public:
 		return mount.Root.Nodes;
 	}
 
+	@property FSRoot RootMount() {
+		return mount;
+	}
+
 	@property DirectoryNode OldNode() {
 		return oldNode;
 	}

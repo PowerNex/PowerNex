@@ -231,9 +231,9 @@ private:
 	void renderChar(wchar ch, int x, int y, Color fg, Color bg) {
 		x *= font.Width;
 		y *= font.Height;
-		ubyte[] charData = font.GetChar(ch);
-		foreach (idxRow, ubyte row; charData)
-			foreach (column; 0 .. 8)
+		ulong[] charData = font.GetChar(ch);
+		foreach (idxRow, ulong row; charData)
+			foreach (column; 0 .. font.Width)
 				putRect(x + column, y + cast(int)idxRow, 1, 1, (row & (1 << (7 - column))) ? fg : bg);
 	}
 

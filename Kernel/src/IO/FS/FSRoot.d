@@ -24,6 +24,14 @@ public:
 		return root;
 	}
 
+	@property DirectoryNode Parent() {
+		return root.Parent;
+	}
+
+	@property DirectoryNode Parent(DirectoryNode parent) {
+		return root.SetParentNoUpdate(parent);
+	}
+
 package:
 	Node Add(Node node) {
 		if (node.Root == this)
@@ -70,9 +78,9 @@ protected:
 		return node;
 	}
 
-	void addAt(string path, Node node) {
+	Node addAt(string path, Node node) {
 		if (path[0] != '/' || path[$ - 1] == '/')
-			return;
+			return null;
 		ulong start = 1;
 		ulong end = 1;
 		DirectoryNode parent = Root;
@@ -93,5 +101,6 @@ protected:
 		node.Name = path[start .. $];
 		node.Root = this;
 		node.Parent = parent;
+		return node;
 	}
 }

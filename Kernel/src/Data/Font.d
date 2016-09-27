@@ -1,7 +1,7 @@
 module Data.Font;
 
 interface Font {
-	ubyte[] GetChar(size_t ch);
+	ulong[] GetChar(dchar ch);
 	@property uint Width();
 	@property uint Height();
 }

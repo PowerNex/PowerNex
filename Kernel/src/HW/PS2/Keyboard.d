@@ -201,6 +201,8 @@ private:
 	}
 
 	static void onIRQ(Registers* regs) {
+		import IO.ConsoleManager;
+
 		ubyte data = get(false);
 		if (!enabled)
 			return;
@@ -209,26 +211,30 @@ private:
 
 		KeyCode key = combineKeyData(data);
 		if (key != KeyCode.None) {
-			wchar ch;
+			dchar ch;
 
-			bool shift = state.IsSet(KeyCode.LeftShift) || state.IsSet(KeyCode.RightShift);
-			bool caps = modifiers.CapsLock;
-			bool num = modifiers.NumLock;
+			const bool shift = state.IsSet(KeyCode.LeftShift) || state.IsSet(KeyCode.RightShift);
+			const bool caps = modifiers.CapsLock;
+			const bool num = modifiers.NumLock;
 
-			if (ch == wchar.init && caps != shift)
+			if (ch == dchar.init && caps != shift)
 				ch = FindShiftedCharTranslate(key);
 
-			if (ch == wchar.init && shift)
+			if (ch == dchar.init && shift)
 				ch = FindShiftedEtcTranslate(key);
 
-			if (ch == wchar.init && num)
+			if (ch == dchar.init && num)
 				ch = FindKeypadTranslate(key);
 
-			if (ch == wchar.init)
+			if (ch == dchar.init)
 				ch = FindNormalTranslate(key);
 
-			if (ch != wchar.init)
-				Keyboard.Push(ch);
+			if (ch != dchar.init) {
+				const bool ctrl = state.IsSet(KeyCode.LeftCtrl) || state.IsSet(KeyCode.RightCtrl);
+				const bool alt = state.IsSet(KeyCode.LeftAlt) || state.IsSet(KeyCode.RightAlt);
+				GetConsoleManager.AddKeyboardInput(ch, ctrl, alt, shift);
+				//Keyboard.Push(ch);
+			}
 		}
 	}
 

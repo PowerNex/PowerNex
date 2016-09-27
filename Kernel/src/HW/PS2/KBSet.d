@@ -198,19 +198,19 @@ KeyCode FindKeycode(ushort id) {
 	return PS2Layout[id];
 }
 
-wchar FindShiftedCharTranslate(KeyCode key) {
+dchar FindShiftedCharTranslate(KeyCode key) {
 	return ShiftedCharTranslation[key];
 }
 
-wchar FindShiftedEtcTranslate(KeyCode key) {
+dchar FindShiftedEtcTranslate(KeyCode key) {
 	return ShiftedEtcTranslation[key];
 }
 
-wchar FindKeypadTranslate(KeyCode key) {
+dchar FindKeypadTranslate(KeyCode key) {
 	return KeypadTranslation[key];
 }
 
-wchar FindNormalTranslate(KeyCode key) {
+dchar FindNormalTranslate(KeyCode key) {
 	return NormalTranslation[key];
 }
 
@@ -336,7 +336,7 @@ private __gshared KeyCode[512] PS2LayoutEN_US = [
 	E0Bit | 0x2f: KeyCode.Menu,
 ];
 
-private __gshared wchar[KeyCode.max] NormalTranslationEN_US = [
+private __gshared dchar[KeyCode.max] NormalTranslationEN_US = [
 	KeyCode.Escape: 27,
 	KeyCode.GraveTilde: '`',
 	KeyCode._1: '1',
@@ -391,7 +391,7 @@ private __gshared wchar[KeyCode.max] NormalTranslationEN_US = [
 	KeyCode.Space: ' '
 ];
 
-private __gshared wchar[KeyCode.max] KeypadTranslationEN_US = [
+private __gshared dchar[KeyCode.max] KeypadTranslationEN_US = [
 	KeyCode.KP7: '7',
 	KeyCode.KP4: '4',
 	KeyCode.KP1: '1',
@@ -410,7 +410,7 @@ private __gshared wchar[KeyCode.max] KeypadTranslationEN_US = [
 	KeyCode.KPReturn: '\n'
 ];
 
-private __gshared wchar[KeyCode.max] ShiftedEtcTranslationEN_US = [
+private __gshared dchar[KeyCode.max] ShiftedEtcTranslationEN_US = [
 	KeyCode.GraveTilde: '~',
 	KeyCode._1: '!',
 	KeyCode._2: '@',
@@ -434,7 +434,7 @@ private __gshared wchar[KeyCode.max] ShiftedEtcTranslationEN_US = [
 	KeyCode.Slash: '?',
 ];
 
-private __gshared wchar[KeyCode.max] ShiftedCharTranslationEN_US = [
+private __gshared dchar[KeyCode.max] ShiftedCharTranslationEN_US = [
 	KeyCode.Q: 'Q',
 	KeyCode.W: 'W',
 	KeyCode.E: 'E',

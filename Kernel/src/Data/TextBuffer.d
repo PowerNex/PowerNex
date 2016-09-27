@@ -65,7 +65,7 @@ public:
 				write(arg, fg, bg, flags);
 			else static if (is(T == BinaryInt)) {
 				write("0b", fg, bg, flags);
-				writeNumber(cast(ulong)arg, 2, fg, bg, flags);
+				writeNumber(arg.Int, 2, fg, bg, flags);
 			} else static if (is(T : V*, V)) {
 				write("0x", fg, bg, flags);
 				writeNumber(cast(ulong)arg, 16, fg, bg, flags);
