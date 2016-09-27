@@ -26,7 +26,12 @@ align(1):
 	}
 
 	Color opBinary(string op)(ubyte rhs) {
-		return Color(cast(ubyte)(r / rhs), cast(ubyte)(g / rhs), cast(ubyte)(b / rhs), a);
+		return Color(cast(ubyte)(mixin("r" ~ op ~ "rhs")), cast(ubyte)(mixin("g" ~ op ~ "rhs")), cast(ubyte)(mixin("b" ~ op ~ "rhs")), a);
+	}
+
+	Color opOpAssign(string op)(ubyte rhs) {
+		this = opBinary!op(rhs);
+		return this;
 	}
 
 	bool opEquals(const Color o) const {
