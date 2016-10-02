@@ -135,7 +135,7 @@ public:
 			threadState.rsp = kernelStack;
 			threadState.fpuEnabled = currentProcess.threadState.fpuEnabled;
 			threadState.paging = new Paging(currentProcess.threadState.paging);
-			threadState.tls = TLS.Init(currentProcess);
+			threadState.tls = TLS.Init(process);
 
 			kernelProcess = currentProcess.kernelProcess;
 
@@ -490,10 +490,7 @@ private:
 
 		currentProcess.threadState.paging.Install();
 
-		if (currentProcess.threadState.tls)
-			MSR.FSBase = cast(ulong)currentProcess.threadState.tls.self;
-		else
-			MSR.FSBase = 0;
+		MSR.FSBase = cast(ulong)currentProcess.threadState.tls;
 
 		GDT.tss.RSP0 = currentProcess.image.kernelStack;
 
