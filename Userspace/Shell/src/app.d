@@ -142,7 +142,7 @@ private:
 	void execute(Command* cmd) {
 		switch (cmd.args[0]) {
 		case "help":
-			Println("Commands: help, echo, clear, exit, memory, time, sleep, ls, cd, cat");
+			Println("Commands: help, echo, clear, exit, time, sleep, ls, cd");
 			break;
 
 		case "exit":
