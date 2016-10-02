@@ -5,11 +5,11 @@
 	"processors": {
 		"dc": {
 			"command": "cc/bin/powernex-dmd",
-			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -JKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+			"arguments": "-m64 -fPIC -debug -c -g -IKernel/src -JKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
 		"dc-header": {
 			"command": "cc/bin/powernex-dmd",
-			"arguments": "-m64 -fPIC -debug -c -gc -IKernel/src -JKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in"
+			"arguments": "-m64 -fPIC -debug -c -g -IKernel/src -JKernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in"
 		},
 		"ac": {
 			"command": "cc/bin/x86_64-powernex-as",
@@ -51,7 +51,7 @@
 
 		"user-dc": {
 			"command": "cc/bin/powernex-dmd",
-			"arguments": "-m64 -debug -c -IUserspace/libRT/src -IUserspace/libPowerNex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
+			"arguments": "-m64 -debug -c -g -IUserspace/libRT/src -IUserspace/libPowerNex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in"
 		},
 		"user-ac": {
 			"command": "cc/bin/x86_64-powernex-as",
@@ -148,6 +148,15 @@
 			"input": "Userspace/Cat/obj/*.o"
 		},
 
+		"Userspace/DLogo/obj/DCode.o": {
+			"processor": "user-dc",
+			"input": "Userspace/DLogo/src/*.d"
+		},
+		"Initrd/Binary/DLogo": {
+			"processor": "user-ld",
+			"input": "Userspace/DLogo/obj/*.o"
+		},
+
 		"Kernel/obj/DCode.o": {
 			"processor": "dc",
 			"input": "Kernel/src/*.d"
@@ -188,6 +197,7 @@
 		"Initrd/Binary/Shell",
 		"Initrd/Binary/HelloWorld",
 		"Initrd/Binary/Cat",
+		"Initrd/Binary/DLogo",
 		"Disk/boot/PowerNex.dsk",
 		"PowerNex.iso"
 	]
