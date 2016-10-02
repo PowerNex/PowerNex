@@ -17,7 +17,7 @@ you just need to run `./build` to build.
 *Please note that Wild is under development and the compiled result may not work!*
 *This means that it is recommended to use the prebuilt executable below*
 
-[[https://mega.nz/#!cx913RZZ!i3lHemFSPRT5kgdbGjS9YgXLKx0bV84Jg50cOYOdxUg][Prebuild toolchain (wild and compilers) for (Arch)Linux x64]]
+[[https://definewild.se/PowerNex-Toolchain-03-10-2016.tar.xz][Prebuild toolchain (wild and compilers) for (Arch)Linux x64]]
 
 One tip is to run `source env.sh`, this adds shortcuts for building and running.
 	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
