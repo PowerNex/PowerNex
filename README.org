@@ -23,10 +23,11 @@ One tip is to run `source env.sh`, this adds shortcuts for building and running.
 	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
 ** System requirements
 - A 64bit processor
-- At least 32 MiB of ram
+- At least 128 MiB of ram (Probably work on less)
 
 *Recommended & Supported Virtual Machines*
 - QEMU
+-- Recommended launch command ~qemu-system-x86_64 -cdrom PowerNex.iso -m 128 -no-reboot~
 - VirtualBox
 ** Developers
 *** Main
