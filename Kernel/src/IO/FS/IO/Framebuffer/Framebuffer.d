@@ -31,11 +31,46 @@ public:
 	}
 
 	override ulong Read(ubyte[] buffer, ulong offset) {
-		return 0;
+		if (!active)
+			return 0;
+		size_t length = width * height * Color.sizeof + size_t.sizeof * 2;
+		if (offset >= length)
+			return 0;
+		ulong size = buffer.length;
+		ulong end = size + offset;
+		if (end > length) {
+			end = length;
+			long tmp = end - offset;
+			size = (tmp < 0) ? 0 : tmp;
+		}
+
+		size_t[] header = [width, height];
+
+		if (offset < 16) {
+			auto wroteHeader = ((size < 16) ? size : 16) - offset;
+			memcpy(buffer.ptr, &header[offset], wroteHeader);
+			if (buffer.length > size)
+				memcpy(&buffer[wroteHeader], pixels.Ptr, size - wroteHeader);
+		} else
+			memcpy(buffer.ptr, &pixels.Ptr[offset - 16], size);
+
+		return size;
+
 	}
 
 	override ulong Write(ubyte[] buffer, ulong offset) {
-		return 0;
+		if (!active)
+			return 0;
+
+		size_t pixelLength = width * height * Color.sizeof;
+		if (offset > pixelLength)
+			return 0;
+
+		size_t size = buffer.length;
+		if (size + offset > pixelLength)
+			size = pixelLength - offset;
+		memcpy(&pixels.Ptr[offset], buffer.ptr, size);
+		return buffer.length;
 	}
 
 	void RenderPixel(ssize_t x, ssize_t y, Color c) {
