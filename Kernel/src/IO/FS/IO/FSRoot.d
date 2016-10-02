@@ -6,8 +6,6 @@ import IO.FS.IO;
 import IO.FS.IO.Console;
 import IO.FS.IO.Framebuffer;
 
-__gshared VirtualConsole[4] virtualConsoles; //XXX:
-
 class IOFSRoot : FSRoot {
 public:
 	this() {
@@ -19,16 +17,11 @@ public:
 		addAt("/Zero", new ZeroNode());
 		addAt("/True", new BoolNode(true));
 		addAt("/False", new BoolNode(false));
-		addAt("/StandardIO", new SoftLinkNode(NodePermissions.DefaultPermissions, "Console/Console0"));
-		addAt("/stdout", new SoftLinkNode(NodePermissions.DefaultPermissions, "Console/Console0"));
-		addAt("/stdin", new SoftLinkNode(NodePermissions.DefaultPermissions, "Console/Console0"));
-		addAt("/stderr", new SoftLinkNode(NodePermissions.DefaultPermissions, "Console/Console0"));
 
 		Framebuffer[4] fbs;
 		VirtualConsoleScreen[4] vcss;
 
 		{
-			addAt("/Framebuffer/CurrentFramebuffer", new SoftLinkNode(NodePermissions.DefaultPermissions, "Framebuffer/BGAFramebuffer1"));
 			addAt("/Framebuffer/Framebuffer1", fbs[0] = new BGAFramebuffer(1280, 720));
 			addAt("/Framebuffer/Framebuffer2", fbs[1] = new BGAFramebuffer(1280, 720));
 			addAt("/Framebuffer/Framebuffer3", fbs[2] = new BGAFramebuffer(1280, 720));
@@ -45,10 +38,10 @@ public:
 		}
 
 		{
-			addAt("/Console/VirtualConsole1", virtualConsoles[0] = new VirtualConsole(vcss[0]));
-			addAt("/Console/VirtualConsole2", virtualConsoles[1] = new VirtualConsole(vcss[1]));
-			addAt("/Console/VirtualConsole3", virtualConsoles[2] = new VirtualConsole(vcss[2]));
-			addAt("/Console/VirtualConsole4", virtualConsoles[3] = new VirtualConsole(vcss[3]));
+			addAt("/Console/VirtualConsole1", new VirtualConsole(vcss[0]));
+			addAt("/Console/VirtualConsole2", new VirtualConsole(vcss[1]));
+			addAt("/Console/VirtualConsole3", new VirtualConsole(vcss[2]));
+			addAt("/Console/VirtualConsole4", new VirtualConsole(vcss[3]));
 		}
 
 		{
