@@ -171,6 +171,7 @@ void Open(string file) {
 		process.syscallRegisters.RAX = 0;
 		return;
 	}
+	node.Open();
 
 	auto id = process.fdCounter++;
 	process.fileDescriptors.Add(new FileDescriptor(id, node));
