@@ -206,6 +206,8 @@ void ReOpen(size_t id, string file) {
 			return;
 		}
 	}
+
+	process.syscallRegisters.RAX = 1;
 }
 
 @SyscallEntry(SyscallID.Close)
