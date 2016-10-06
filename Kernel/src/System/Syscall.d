@@ -26,6 +26,7 @@ enum SyscallID : ulong {
 
 	Open,
 	Close,
+	ReOpen,
 	Read,
 	Write,
 
@@ -61,8 +62,6 @@ enum SyscallID : ulong {
 	Free,
 	Realloc,
 	GetArguments,
-
-	SwapFD
 }
 
 struct SyscallEntry {
@@ -178,6 +177,37 @@ void Open(string file) {
 	process.syscallRegisters.RAX = id;
 }
 
+@SyscallEntry(SyscallID.ReOpen)
+void ReOpen(size_t id, string file) {
+	import KMain : rootFS;
+	import IO.FS;
+
+	Process* process = GetScheduler.CurrentProcess;
+	if (false && !(cast(void*)file.ptr).VirtAddress.IsValidToRead(file.length)) {
+		process.syscallRegisters.RAX = 0;
+		import IO.Log;
+
+		log.Warning("Failed to Read!");
+		return;
+	}
+
+	for (size_t i = 0; i < process.fileDescriptors.Length; i++) {
+		FileDescriptor* item = process.fileDescriptors.Get(i);
+		if (item.id == id) {
+			item.node.Close();
+
+			item.node = cast(FileNode)rootFS.Root.FindNode(file);
+			if (!item.node) {
+				process.syscallRegisters.RAX = 1;
+				return;
+			}
+
+			process.syscallRegisters.RAX = 0;
+			return;
+		}
+	}
+}
+
 @SyscallEntry(SyscallID.Close)
 void Close(size_t id) {
 	import KMain : rootFS;
@@ -255,33 +285,6 @@ void GetTimestamp() {
 
 	Process* process = GetScheduler.CurrentProcess;
 	process.syscallRegisters.RAX = GetCMOS.TimeStamp;
-}
-
-@SyscallEntry(SyscallID.SwapFD)
-void SwapFD(size_t fdID1, size_t fdID2) {
-	import IO.FS;
-
-	Process* process = GetScheduler.CurrentProcess;
-
-	FileDescriptor* find(size_t id) {
-		for (size_t i = 0; i < process.fileDescriptors.Length; i++) {
-			FileDescriptor* item = process.fileDescriptors.Get(i);
-			if (item.id == id)
-				return item;
-		}
-		return null;
-	}
-
-	FileDescriptor* fd1 = find(fdID1);
-	FileDescriptor* fd2 = find(fdID2);
-	if (!fd1 || !fd2) {
-		process.syscallRegisters.RAX = 1;
-	} else if (fd1.node != fd2.node) {
-		FileNode tmp = fd1.node;
-		fd1.node = fd2.node;
-		fd2.node = tmp;
-		process.syscallRegisters.RAX = 0;
-	}
 }
 
 struct DirectoryListing {
