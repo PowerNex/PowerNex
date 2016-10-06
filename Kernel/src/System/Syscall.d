@@ -191,17 +191,19 @@ void ReOpen(size_t id, string file) {
 		return;
 	}
 
+
 	for (size_t i = 0; i < process.fileDescriptors.Length; i++) {
 		FileDescriptor* item = process.fileDescriptors.Get(i);
 		if (item.id == id) {
-			item.node.Close();
-
-			item.node = cast(FileNode)rootFS.Root.FindNode(file);
-			if (!item.node) {
+			FileNode newNode = cast(FileNode)rootFS.Root.FindNode(file);
+			if (!newNode) {
 				process.syscallRegisters.RAX = 1;
 				return;
 			}
 
+			item.node.Close();
+			item.node = newNode;
+			item.node.Open();
 			process.syscallRegisters.RAX = 0;
 			return;
 		}
