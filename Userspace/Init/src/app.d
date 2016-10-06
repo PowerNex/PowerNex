@@ -35,29 +35,19 @@ void Println(string str) {
 int main(string[] args) {
 	Println("Init system loading...");
 
-	size_t fd = Syscall.Open("/IO/Console/VirtualConsole4");
-	spawnShell(fd);
-	Syscall.Close(fd);
+	spawnShell("/IO/Console/VirtualConsole4");
+	spawnShell("/IO/Console/VirtualConsole3");
+	spawnShell("/IO/Console/VirtualConsole2");
+	spawnShell("/IO/Console/VirtualConsole1");
 
-	fd = Syscall.Open("/IO/Console/VirtualConsole3");
-	spawnShell(fd);
-	Syscall.Close(fd);
-
-	fd = Syscall.Open("/IO/Console/VirtualConsole2");
-	spawnShell(fd);
-	Syscall.Close(fd);
-
-	fd = Syscall.Open("/IO/Console/VirtualConsole1");
-	spawnShell(fd);
-	Syscall.Close(fd);
 	while (true)
 		Syscall.Join(0);
 }
 
-void spawnShell(size_t fd) {
+void spawnShell(string virtConsole) {
 	ulong pid = Syscall.Fork();
 	if (!pid) {
-		Syscall.SwapFD(0, fd);
+		Syscall.ReOpen(0, virtConsole);
 		Syscall.Exec("/Binary/Shell", []);
 		Syscall.Exit(1);
 	}
