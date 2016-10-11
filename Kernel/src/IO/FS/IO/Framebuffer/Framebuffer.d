@@ -164,13 +164,12 @@ private:
 	}
 
 	void renderChar(Font font, dchar ch, ssize_t x, ssize_t y, Color fg, Color bg) {
-		ulong[] charData = font.GetChar(ch);
-		foreach (idxRow, ulong row; charData)
+		ulong[] charData = new ulong[font.BufferSize];
+		foreach (idxRow, ulong row; font.GetChar(ch, charData))
 			foreach (column; 0 .. font.Width)
 				putPixel(x + column, y + idxRow, (row & (1 << (font.Width - 1 - column))) ? fg : bg);
 
-		// XXX: Yes this is a memory leak, but it crashes
-		//charData.destroy;
+		charData.destroy;
 	}
 
 	void renderRect(ssize_t x, ssize_t y, size_t width, size_t height, Color color) {

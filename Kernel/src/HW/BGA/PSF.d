@@ -53,7 +53,6 @@ public:
 		if (!valid)
 			return;
 
-		bitmapOfChar = new ulong[hdr.height];
 		parseUnicode();
 	}
 
@@ -72,7 +71,6 @@ public:
 		unicodeTable = file[hdr.headersize + hdr.charsize * hdr.length .. $];
 
 		valid = true;
-		bitmapOfChar = new ulong[hdr.height];
 		parseUnicode();
 	}
 
@@ -80,15 +78,17 @@ public:
 		return valid;
 	}
 
-	ulong[] GetChar(dchar ch) {
+	ref ulong[] GetChar(dchar ch, ref return ulong[] buffer) {
 		import IO.Log;
 
-		//ulong[] bitmapOfChar = new ulong[hdr.height];
-		foreach (ref row; bitmapOfChar)
+		foreach (ref row; buffer)
 			row = 0;
 
-		if (ch >= MAX_CHARS)
-			return bitmapOfChar;
+		if (buffer.length < hdr.height)
+			return buffer;
+
+		if (ch >= MAX_CHARS || ch == dchar.init)
+			ch = 0;
 
 		dchar[MAX_RENDERER_PART] parts;
 		if (auto id = charJumpTable[ch])
@@ -108,11 +108,15 @@ public:
 				for (size_t partByte = 0; partByte < widthBytes; partByte++)
 					bitmapRow = bitmapRow << 8 | fontData[partOffset + row * widthBytes + partByte];
 
-				bitmapOfChar[row] |= bitmapRow;
+				buffer[row] |= bitmapRow;
 			}
 		}
 
-		return bitmapOfChar;
+		return buffer;
+	}
+
+	@property size_t BufferSize() {
+		return hdr.height;
 	}
 
 	@property uint Width() {
@@ -128,8 +132,6 @@ private:
 	psf2_header hdr;
 	ubyte[] fontData;
 	ubyte[] unicodeTable;
-
-	ulong[] bitmapOfChar;
 
 	enum MAX_CHARS = 0x10000;
 	enum MAX_RENDERER = MAX_CHARS;
