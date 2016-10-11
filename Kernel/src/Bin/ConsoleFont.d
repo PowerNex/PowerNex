@@ -1,7 +1,7 @@
 module Bin.ConsoleFont;
 
 import Data.Font;
-import HW.BGA.PSF;
+import Data.PSF;
 
 private __gshared ubyte[] ConsoleFont_PSF = cast(ubyte[])import("Bin/ConsoleFont.psf");
 

@@ -23,8 +23,6 @@ import Data.Address;
 import Memory.Heap;
 import Task.Scheduler;
 import ACPI.RSDP;
-import HW.BGA.BGA;
-import HW.BGA.PSF;
 import HW.PCI.PCI;
 import HW.CMOS.CMOS;
 import System.SyscallHandler;

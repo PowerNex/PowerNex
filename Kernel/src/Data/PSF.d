@@ -1,4 +1,4 @@
-module HW.BGA.PSF;
+module Data.PSF;
 
 import Data.Font;
 import Data.UTF;
