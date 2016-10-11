@@ -366,21 +366,9 @@ private:
 	}
 
 	static void idle() {
-		import HW.BGA.BGA : GetBGA;
-		import Data.Color;
-
-		auto w = GetBGA.Width;
-		//auto h = GetBGA.Height;
-		Color color = Color(0x88, 0x53, 0x12);
 		asm {
 		start:
 			sti;
-		}
-		color.r += 10;
-		color.g += 10;
-		color.b += 10;
-		GetBGA.putRect(w - 10, 0, 10, 10, color);
-		asm {
 			hlt;
 			jmp start;
 		}
