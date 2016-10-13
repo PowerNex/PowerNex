@@ -38,15 +38,46 @@ public:
 		if (!currentProcess)
 			return;
 
+		ulong storeRIP = void;
 		ulong storeRBP = void;
 		ulong storeRSP = void;
+
+		// These will only be stored on the stack
+		ulong storeRBX = void;
+		ulong storeR12 = void;
+		ulong storeR13 = void;
+		ulong storeR14 = void;
+		ulong storeR15 = void;
+
 		asm {
+			push RCX; // Save RCX incase D stored someting important there
 			mov storeRBP[RBP], RBP;
 			mov storeRSP[RBP], RSP;
+
+			mov storeRBX[RBP], RBX;
+			mov storeR12[RBP], R12;
+			mov storeR13[RBP], R13;
+			mov storeR14[RBP], R14;
+			mov storeR15[RBP], R15;
+
+			call getRIP;
+			mov storeRIP[RBP], RAX;
+			mov RCX, SWITCH_MAGIC;
+			cmp RCX, RAX;
+			jne noReturn;
+
+			pop RCX;
 		}
-		ulong storeRIP = getRIP();
-		if (storeRIP == SWITCH_MAGIC) // Swap is done
-			return;
+		return;
+		asm {
+		noReturn:
+			mov RBX, storeRBX[RBP];
+			mov R12, storeR12[RBP];
+			mov R13, storeR13[RBP];
+			mov R14, storeR14[RBP];
+			mov R15, storeR15[RBP];
+			pop RCX;
+		}
 
 		with (currentProcess.threadState) {
 			rbp = storeRBP;
@@ -485,11 +516,11 @@ private:
 		asm {
 			mov RAX, RBP; // RBP will be overritten below
 
-			mov RBX, storeRIP[RAX];
+			mov RCX, storeRIP[RAX]; // RCX is the return address
 			mov RBP, storeRBP[RAX];
 			mov RSP, storeRSP[RAX];
 			mov RAX, SWITCH_MAGIC;
-			jmp RBX;
+			jmp RCX;
 		}
 	}
 }
