@@ -9,7 +9,7 @@ private extern (C) void mutex_unlock(ulong* value);
 struct ScheduleMutex {
 public:
 	void Lock() {
-		while(!mutex_trylock(&value)) {}
+		while(!mutex_trylock(&value))
 			GetScheduler.WaitFor(WaitReason.Mutex, cast(ulong)&this);
 	}
 
