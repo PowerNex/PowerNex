@@ -3,22 +3,22 @@
 #+EMAIL: me@vild.io
 
 * Introduction
-This document will explain the codestyle that the PowerNex kernel uses.
+This document explains the codestyle that the PowerNex kernel uses.
 Please use this as a reference when hacking on PowerNex
 
 * Style
-The Code style is based on the official [[http://dlang.org/dstyle.html][DStyle]] but with a few small changes.
+The PowerNex kernel's code style is based on [[http://dlang.org/dstyle.html][DStyle]], with a few changes.
 
 ** Changes
 *** Use tabs instead of spaces
-This is because different people have different preferences for how much each level should be indentated.
+This is because different people have different preferences for how much each level should be indented.
 **** Spaces for alignment
 *** Braces should be on the same line as the declarations
 *** Add as many attribute to functions as possible
-**** pure nothrow @nogc @safe
+**** ~pure nothrow @nogc @safe~
 
 * Example program
-Example cat program
+Example ~cat~ program
 #+begin_src d
   /**
     ,* DESCIPTION
