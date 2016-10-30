@@ -1,0 +1,154 @@
+#+TITLE: PowerNex Codestyle
+#+AUTHOR: Dan Printzell
+#+EMAIL: me@vild.io
+
+* Introduction
+This document will explain the codestyle that the PowerNex kernel uses.
+Please use this as a reference when hacking on PowerNex
+
+* Style
+The Code style is based on the official [[http://dlang.org/dstyle.html][DStyle]] but with a few small changes.
+
+** Changes
+*** Use tabs instead of spaces
+This is because different people have different preferences for how much each level should be indentated.
+**** Spaces for alignment
+*** Braces should be on the same line as the declarations
+*** Add as many attribute to functions as possible
+**** pure nothrow @nogc @safe
+
+* Example program
+Example cat program
+#+begin_src d
+  /**
+    ,* DESCIPTION
+    ,*
+    ,* Copyright: © Dan Printzell 2016
+    ,* License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+    ,*  (See accompanying file LICENSE)
+    ,* Authors: Dan Printzell
+    ,*/
+
+  /*
+   ,* This Source Code Form is subject to the terms of the Mozilla Public License, v.2.0.
+   ,* If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
+   ,*/
+
+  module cat;
+
+  import powernex.file;
+
+  /**
+   ,* This is the main function for the cat program.
+   ,* Params:
+   ,*  args = A list of file to be outputted
+   ,* Returns:
+   ,*  If not zero it there was a error during the execution of the program
+   ,*/
+  int main(string[] args) {
+    import powernex.stdio;
+    if (args.length == 1) {
+      writeln(args[0], ": <File 0> <File 1> ... <File N>");
+      return -1;
+    }
+
+    foreach (file; args[1 .. $]) {
+      writeln("*", file, "*");
+      File fd = File(file);
+      if (!fd.valid) {
+        writeln("File not found!");
+        continue;
+      }
+      scope (exit)
+        fd.close();
+
+      ubyte[0x1000] buf;
+
+      size_t r;
+      do {
+        r = fd.read(buf);
+        write(cast(string)buf[0 .. r]);
+      } while (r);
+    }
+
+    return 0;
+  }
+
+  /**
+   ,* File is a wrapper around the standard functions for reading files.
+   ,*/
+  struct File {
+  @safe:
+  public:
+    @disable this();
+    /**
+     ,* Open a file for reading or writing.
+     ,* Params:
+     ,*  file = The file to be opened
+     ,*  mode = The mode the file is to be opened with
+     ,*/
+    this(string file, string mode = "rb") {
+      _fd = open(file, mode);
+    }
+
+    /// Reads the file into $(PARAM buf)
+    /// Returns: The length of the read data
+    size_t read(ubyte[] buf) {
+      return .read(_fd, buf, _offset);
+    }
+
+    /// Write $(PARAM buf) to the file
+    /// Returns: The amount of data written
+    size_t write(ubyte[] buf) {
+      return .write(_fd, buf, _offset);
+    }
+
+    /// Close the file
+    void close() {
+      .close(_fd);
+    }
+
+    /// Check if the file is valid
+    @property bool valid() const {
+      return _fd != size_t.max;
+    }
+
+    /// The current offset in the file
+    @property size_t offset() const {
+      return _offset;
+    }
+
+    /// Set the offset in the file
+    @property size_t offset(size_t value) {
+      return _offset = value;
+    }
+
+  private:
+    size_t _fd;
+    size_t _offset;
+  }
+
+  /**
+   ,* This is a example function how you could implement a function that writes
+   ,* a string to stdout.
+   ,*
+   ,* Params:
+   ,*  str = The string that should be printed
+   ,*/
+  void myWrite(string str) @system @nogc nothrow {
+    import powernex.syscall : SyscallID;
+    ulong write = SyscallID.write;
+    ulong stdio = 0;
+
+    auto strPtr = str.ptr;
+    size_t strLen = str.length;
+    asm @nogc nothrow {
+      mov write, RAX;
+      mov stdio, RDI;
+      mov strPtr, RSI;
+      mov strLen, RDX;
+      syscall;
+    }
+  }
+
+#+end_src
