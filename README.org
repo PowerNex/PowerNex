@@ -1,14 +1,24 @@
-#+TITLE: PowerNex - ReadMe
+#+TITLE: PowerNex
 #+AUTHOR: Dan Printzell
 #+EMAIL: me@vild.io
 
-* PowerNex
+*Please note that the current code will have a major overhaul soon*
+
 PowerNex is a kernel written in the [[https://dlang.org][D Programming Language]].
 The goal is to have a whole OS written in D, where PowerNex powers the core.
 
 The name PowerNex comes from the words `power` and `next`. A kernel to power the
 next generation of hardware.
-** Building
+
+* Support the project
+You can support the project in many ways.
+- Make pull requests
+- Comment on issues
+ - Example help with [[https://github.com/Vild/PowerNex/issues/30][#30 Mascot]]
+- Donate
+ - Monthly donations: [[https://www.patreon.com/Wild][https://www.patreon.com/Wild]]
+ - One time donations: [[https://www.paypal.me/Vild][https://www.paypal.me/Vild]]
+* Building
 It requires a crosscompiler, see link below for download.
 It uses my build system called [[https://github.com/Vild/Wild][Wild]].
 It expects the wild binary to be located in the root directory of PowerNex, then
@@ -21,7 +31,7 @@ you just need to run `./build` to build.
 
 One tip is to run `source env.sh`, this adds shortcuts for building and running.
 	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
-** System requirements
+* System requirements
 - A 64bit processor
 - At least 128 MiB of ram (Probably work on less)
 
@@ -29,13 +39,13 @@ One tip is to run `source env.sh`, this adds shortcuts for building and running.
 - QEMU
 -- Recommended launch command ~qemu-system-x86_64 -cdrom PowerNex.iso -m 128 -no-reboot~
 - VirtualBox
-** Developers
-*** Main
+* Developers
+** Main
 - [[https://github.com/Vild/][Dan "Wild" Printzell]]
-*** Contributors
+** Contributors
 - [[https://github.com/M4GNV5][Jakob "M4GNV5" Löw]]
-** Thanks to
+* Thanks to
 - Adam D. Ruppe - For his [[http://arsdnet.net/dcode/minimal.zip][minimal.zip]], which contains a bare bone minimal d runtime. Which this kernel is based on.
 - Bloodmanovski - For his D Kernel [[https://github.com/Bloodmanovski/Trinix][Trinix]], His files for booting x64 really helped me a lot.
-** License
+* License
 Mozilla Public License, version 2.0
