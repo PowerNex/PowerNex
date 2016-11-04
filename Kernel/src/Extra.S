@@ -15,11 +15,11 @@ CPU_refresh_iretq:
 	pushfq
 	push $0x08
 
-	mov $.r, %RAX
+	mov $1f, %RAX
 	push %RAX
 	iretq
 
-	.r:
+	1:
 		ret
 .size CPU_refresh_iretq, .-CPU_refresh_iretq
 

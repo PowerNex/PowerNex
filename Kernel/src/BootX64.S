@@ -17,10 +17,10 @@ start64:
 	mov %ax, %gs
 	mov %ax, %ss
 
-	mov $.himem, %rax
+	mov $1f, %rax
 	jmp *%rax
 
-.himem:
+1:
 	xor %rax, %rax
 	mov %rax, %dr0
 
@@ -31,8 +31,8 @@ start64:
 	call _Dkmain_entry
 	cli
 
-.hang:
+1:
 	hlt
-	jmp .hang
+	jmp 1b
 
 .size	start64, .-start64
