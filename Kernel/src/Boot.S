@@ -21,8 +21,8 @@
 multiboot2_header:
 	.int MULTIBOOT2_HEADER_MAGIC
 	.int MULTIBOOT_ARCHITECTURE_I386
-	.int (.end - multiboot2_header)
-	.int -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + (.end - multiboot2_header))
+	.int (multiboot2_header_end - multiboot2_header)
+	.int -(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + (multiboot2_header_end - multiboot2_header))
 
 	.short MULTIBOOT_HEADER_TAG_ADDRESS
 	.short 0
@@ -40,7 +40,7 @@ multiboot2_header:
 	.short MULTIBOOT_HEADER_TAG_END
 	.short 0
 	.int 0
-.end:
+multiboot2_header_end:
 
 .text
 .code32
@@ -57,13 +57,13 @@ start:
 	mov $0x80000000, %eax
 	cpuid
 	cmp $0x80000001, %eax
-		jb .notx64Capable
+		jb notx64Capable
 
 	# Check so that x64 is supported
 	mov $0x80000001, %eax
 	cpuid
 	test $(1 << 29), %edx
-		jz .notx64Capable
+		jz notx64Capable
 
 	# Enable PAE
 	mov %cr4, %eax
@@ -94,7 +94,7 @@ start:
 	bts $10, %eax # unmasked simd floating point exceptions
 	mov %eax, %cr4
 
-.remapIRQ:
+remapIRQ:
 .SET MasterControl, 0x20
 .SET MasterData, 0x21
 .SET SlaveControl, 0xA0
@@ -121,25 +121,25 @@ start:
 	out %al, $MasterData # Sets the masks to 0
 	out %al, $SlaveData
 
-.jumpToX64:
+jumpToX64:
 	# Load x64 GDT
 	lgdt (gdtPointer - KERNEL_VMA)
 	# Jump into x64
 	ljmp $0x8, $(start64 - KERNEL_VMA)
 
-.notx64Capable:
+notx64Capable:
 	mov $0x4A, %ah
 	mov $0xB8000, %edi
 	mov $(x64NotSupported_msg - KERNEL_VMA), %esi
 
-.loop:
+writeString:
 	lodsb
 	test %al, %al
-		jz .hidecursor
+		jz hidecursor
 	stosw
-	jmp .loop
+	jmp writeString
 
-.hidecursor:
+hidecursor:
 	mov $0x0F, %al
 	mov $0x3D4, %dx
 	out %al, %dx
@@ -156,10 +156,10 @@ start:
 	mov $0x3D5, %dx
 	out %al, %dx
 
-.hlt:
+hlt:
 	cli
 	hlt
-	jmp .hlt
+	jmp hlt
 
 .section .data
 .global multiboot_magic

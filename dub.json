@@ -1,7 +1,0 @@
-{
-	"name": "PowerNex",
-	"copyright": "Copyright © 2015, wildn00b",
-	"targetOutput": "none",
-	"sourcePaths": ["Kernel/src"],
-	"importPaths": ["Kernel/src"]
-}

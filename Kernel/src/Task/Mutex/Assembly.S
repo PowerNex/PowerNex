@@ -3,19 +3,19 @@
 
 .global mutex_spinlock
 mutex_spinlock:
-.retry:
+1:
 	mov $1, %RBX;
 	lock cmpxchgq %RBX, (%RDI)
-	jnz .retry
+	jnz 1b
 	ret
 
 .global mutex_trylock
 mutex_trylock:
 	mov $1, %RBX;
 	lock cmpxchgq %RBX, (%RDI)
-	jnz .r
+	jnz 1f
 	mov $1, %RAX
-.r:
+1:
 	ret
 
 .global mutex_unlock

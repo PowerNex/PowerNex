@@ -21,3 +21,7 @@ Initrd/Binary
 *.krl
 *.di
 *~
+*.ninja*
+*.reggae
+objs
+compile_commands.json
