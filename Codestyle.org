@@ -7,27 +7,42 @@ This document explains the codestyle that the PowerNex kernel uses.
 Please use this as a reference when hacking on PowerNex
 
 * Style
-The PowerNex kernel's code style is based on [[http://dlang.org/dstyle.html][DStyle]], with a few changes.
+- Use tabs instead of spaces for indenting
+ - Spaces for alignment
+- Soft max line length is 120, hard max length is 160
+- Braces should be on the same line as the declarations
+- Add as many attribute to functions as possible
+ - UDA / ~pure~ / ~nothrow~ / ~@nogc~ / ~@safe~
+ - Attribute are added before the type
+  - Const/Immutable are added before {
+- Types uses PascalCase
+- Functions/variables uses camelCase
+ - Prepend ~_~ if it is private
+ - Append ~_~ if the word is a keyword and you can't find another good word
+- Constants uses camelCase
+- Modules names are all lowercase.
+- Acronyms
+ - If the first letter is uppercase then the whole acronym should have uppercase letters.
+  - ~class UTFParser {...}~
+ - If the first letter is lowercase then the whole acronym should have lowercase letters.
+  - ~dchar utfLetter;~
+- Aliases should be written like ~alias Type = typeof(array[0]);~
+- Document all the modules, types and functions.
 
-** Changes
-*** Use tabs instead of spaces
-This is because different people have different preferences for how much each level should be indented.
-**** Spaces for alignment
-*** Braces should be on the same line as the declarations
-*** Add as many attribute to functions as possible
-**** ~pure nothrow @nogc @safe~
+The PowerNex kernel's code style is based on [[http://dlang.org/dstyle.html][DStyle]].
+If you have any questions about the style just open a issue or send a email to me@vild.io
 
 * Example program
 Example ~cat~ program
 #+begin_src d
   /**
-    ,* DESCIPTION
-    ,*
-    ,* Copyright: © Dan Printzell 2016
-    ,* License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
-    ,*  (See accompanying file LICENSE)
-    ,* Authors: Dan Printzell
-    ,*/
+   ,* DESCIPTION
+   ,*
+   ,* Copyright: © Dan Printzell 2016
+   ,* License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+   ,*  (See accompanying file LICENSE)
+   ,* Authors: Dan Printzell
+   ,*/
 
   /*
    ,* This Source Code Form is subject to the terms of the Mozilla Public License, v.2.0.
@@ -135,7 +150,7 @@ Example ~cat~ program
    ,* Params:
    ,*  str = The string that should be printed
    ,*/
-  void myWrite(string str) @system @nogc nothrow {
+  @system @nogc nothrow void myWrite(string str) {
     import powernex.syscall : SyscallID;
     ulong write = SyscallID.write;
     ulong stdio = 0;
