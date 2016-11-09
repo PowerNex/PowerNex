@@ -55,7 +55,7 @@ package:
 		if (i >= nodeCount)
 			return node;
 
-		for (; i < nodeCount; i++)
+		for (; i < nodeCount - 1; i++)
 			nodes[i] = nodes[i + 1];
 		nodeCount--;
 		return node;

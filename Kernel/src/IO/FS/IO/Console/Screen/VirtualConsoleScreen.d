@@ -138,7 +138,7 @@ private:
 
 	size_t[] lineStarts;
 
-	ref UTF8Range prepareData(ref UTF8Range str) {
+	ref UTF8Range prepareData(ref return UTF8Range str) {
 		size_t charCount = curX;
 		size_t lines;
 
