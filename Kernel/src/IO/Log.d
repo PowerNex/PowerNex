@@ -66,7 +66,7 @@ struct Log {
 		symbols = map;
 	}
 
-	void opCall(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(LogLevel level, Arg args) {
+	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(LogLevel level, Arg args) {
 		char[ulong.sizeof * 8] buf;
 		if (!enabled)
 			return;
@@ -124,27 +124,27 @@ struct Log {
 		COM1.Write("\r\n");
 	}
 
-	void Verbose(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+	void Verbose(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
 		this.opCall!(file, func, line)(LogLevel.VERBOSE, args);
 	}
 
-	void Debug(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+	void Debug(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
 		this.opCall!(file, func, line)(LogLevel.DEBUG, args);
 	}
 
-	void Info(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+	void Info(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
 		this.opCall!(file, func, line)(LogLevel.INFO, args);
 	}
 
-	void Warning(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+	void Warning(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
 		this.opCall!(file, func, line)(LogLevel.WARNING, args);
 	}
 
-	void Error(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+	void Error(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
 		this.opCall!(file, func, line)(LogLevel.ERROR, args);
 	}
 
-	void Fatal(string file = __FILE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+	void Fatal(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
 		this.opCall!(file, func, line)(LogLevel.FATAL, args);
 		PrintStackTrace(true);
 		import IO.TextMode : GetScreen;
