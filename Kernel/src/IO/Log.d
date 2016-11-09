@@ -55,7 +55,7 @@ struct Log {
 		enabled = true;
 	}
 
-	@property ref bool Enabled() {
+	@property ref bool Enabled() return {
 		return enabled;
 	}
 

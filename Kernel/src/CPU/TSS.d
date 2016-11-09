@@ -15,7 +15,7 @@ align(1):
 	align(4096) ubyte[1 << 16] ioBitmap;
 	ubyte stopper = 0xFF;
 
-	@property ref VirtAddress RSP0() {
+	@property ref VirtAddress RSP0() return {
 		return rsp[0];
 	}
 

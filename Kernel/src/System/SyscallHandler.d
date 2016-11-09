@@ -40,13 +40,14 @@ private:
 		with (regs)
 	outer : switch (cast(SyscallID)RAX) {
 			foreach (func; __traits(derivedMembers, System.Syscall)) {
-				foreach (attr; __traits(getAttributes, mixin(func))) {
-					static if (is(typeof(attr) == SyscallEntry)) {
+				static if (is(typeof(mixin("System.Syscall." ~ func)) == function))
+					foreach (attr; __traits(getAttributes, mixin("System.Syscall." ~ func))) {
+						static if (is(typeof(attr) == SyscallEntry)) {
 		case attr.id:
-						mixin(generateFunctionCall!func);
-						break outer;
+							mixin(generateFunctionCall!func);
+							break outer;
+						}
 					}
-				}
 			}
 		default:
 			scr.Writeln("UNKNOWN SYSCALL: ", cast(void*)RAX);
