@@ -21,7 +21,7 @@ private enum {
 	psf2Startseq = 0xFE
 }
 
-private struct psf2_header {
+private struct PSF2Header {
 	ubyte[4] magic;
 	uint version_;
 	uint headersize; /* offset of bitmaps in file */
@@ -57,9 +57,9 @@ public:
 	}
 
 	this(ubyte[] file) {
-		if (file.length < psf2_header.sizeof)
+		if (file.length < PSF2Header.sizeof)
 			return;
-		_hdr = *cast(psf2_header*)file.ptr;
+		_hdr = *cast(PSF2Header*)file.ptr;
 
 		_valid = (_hdr.magic[0] == psf2Magic0 && _hdr.magic[1] == psf2Magic1 && _hdr.magic[2] == psf2Magic2 && _hdr.magic[3] == psf2Magic3);
 		if (!_valid)
@@ -129,7 +129,7 @@ public:
 
 private:
 	bool _valid;
-	psf2_header _hdr;
+	PSF2Header _hdr;
 	ubyte[] _fontData;
 	ubyte[] _unicodeTable;
 

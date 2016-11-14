@@ -70,7 +70,7 @@ T inplaceClass(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class))
 }
 
 struct BinaryInt {
-	ulong Int;
+	ulong int_;
 }
 
 void swap(T)(ref T t1, ref T t2) {
