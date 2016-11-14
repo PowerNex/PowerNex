@@ -1,8 +1,8 @@
-module Data.Font;
+module data.font;
 
 interface Font {
-	@property size_t BufferSize();
-	ref ulong[] GetChar(dchar ch, ref return ulong[] buffer);
-	@property uint Width();
-	@property uint Height();
+	@property size_t bufferSize();
+	ref ulong[] getChar(dchar ch, ref return ulong[] buffer);
+	@property uint width();
+	@property uint height();
 }

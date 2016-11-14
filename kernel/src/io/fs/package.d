@@ -1,13 +1,13 @@
-module IO.FS;
+module io.fs;
 
 public {
-	import IO.FS.Node;
-	import IO.FS.NodePermission;
-	import IO.FS.FileNode;
-	import IO.FS.DirectoryNode;
-	import IO.FS.MountPointNode;
-	import IO.FS.HardLinkNode;
-	import IO.FS.SoftLinkNode;
+	import io.fs.node;
+	import io.fs.nodepermission;
+	import io.fs.filenode;
+	import io.fs.directorynode;
+	import io.fs.mountpointnode;
+	import io.fs.hardlinknode;
+	import io.fs.softlinknode;
 
-	import IO.FS.FSRoot;
+	import io.fs.fsroot;
 }

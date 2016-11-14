@@ -1,8 +1,8 @@
-module IO.FS.IO;
+module io.fs.io;
 
 public {
-	import IO.FS.IO.Console;
-	import IO.FS.IO.FSRoot;
-	import IO.FS.IO.ZeroNode;
-	import IO.FS.IO.BoolNode;
+	import io.fs.io.console;
+	import io.fs.io.fsroot;
+	import io.fs.io.zeronode;
+	import io.fs.io.boolnode;
 }

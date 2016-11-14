@@ -1,13 +1,13 @@
-module Task.Process;
+module task.process;
 
-import Data.Address;
-import Data.LinkedList;
-import Memory.Paging;
-import Memory.Heap;
-import Data.Register;
-import IO.FS.FileNode;
-import IO.FS.DirectoryNode;
-import Data.ELF;
+import data.address;
+import data.linkedlist;
+import memory.paging;
+import memory.heap;
+import data.register;
+import io.fs.filenode;
+import io.fs.directorynode;
+import data.elf;
 
 extern (C) void switchToUserMode(ulong loc, ulong stack);
 
@@ -20,19 +20,19 @@ struct TLS {
 
 	@disable this();
 
-	static TLS* Init(Process* process, bool currentData = true) {
+	static TLS* init(Process* process, bool currentData = true) {
 		if (currentData && process.parent)
-			return Init(process, process.parent.threadState.tls.startOfTLS);
+			return init(process, process.parent.threadState.tls.startOfTLS);
 		else
-			return Init(process, process.image.defaultTLS);
+			return init(process, process.image.defaultTLS);
 	}
 
-	static TLS* Init(Process* process, ubyte[] data) {
-		VirtAddress addr = VirtAddress(process.heap.Alloc(data.length + TLS.sizeof));
-		memcpy(addr.Ptr, data.ptr, data.length);
-		TLS* this_ = (addr + data.length).Ptr!TLS;
+	static TLS* init(Process* process, ubyte[] data) {
+		VirtAddress addr = VirtAddress(process.heap.alloc(data.length + TLS.sizeof));
+		memcpy(addr.ptr, data.ptr, data.length);
+		TLS* this_ = (addr + data.length).ptr!TLS;
 		this_.self = this_;
-		this_.startOfTLS = addr.Ptr!ubyte[0 .. data.length];
+		this_.startOfTLS = addr.ptr!ubyte[0 .. data.length];
 		this_.process = process;
 		return this_;
 	}
@@ -61,17 +61,17 @@ struct ImageInformation {
 }
 
 enum ProcessState {
-	Running,
-	Ready,
-	Waiting,
-	Exited
+	running,
+	ready,
+	waiting,
+	exited
 }
 
 enum WaitReason {
-	Keyboard,
-	Timer,
-	Mutex,
-	Join //more e.g. harddrive, networking, mutex...
+	keyboard,
+	timer,
+	mutex,
+	join //more e.g. harddrive, networking, mutex...
 }
 
 struct FileDescriptor {
@@ -80,13 +80,13 @@ struct FileDescriptor {
 	this(FileDescriptor* fd) {
 		this.id = fd.id;
 		this.node = fd.node;
-		node.Open();
+		node.open();
 	}
 
 	this(size_t id, FileNode node) {
 		this.id = id;
 		this.node = node;
-		node.Open();
+		node.open();
 	}
 }
 

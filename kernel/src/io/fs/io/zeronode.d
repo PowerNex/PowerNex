@@ -1,27 +1,27 @@
-module IO.FS.IO.ZeroNode;
+module io.fs.io.zeronode;
 
-import IO.FS;
-import IO.FS.IO;
+import io.fs;
+import io.fs.io;
 
 class ZeroNode : FileNode {
 public:
 	this() {
-		super(NodePermissions.DefaultPermissions, 0);
+		super(NodePermissions.defaultPermissions, 0);
 	}
 
-	override ulong Read(ubyte[] buffer, ulong offset) {
+	override ulong read(ubyte[] buffer, ulong offset) {
 		return 0;
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
+	override ulong write(ubyte[] buffer, ulong offset) {
 		return -1;
 	}
 
-	override bool Open() {
+	override bool open() {
 		return true;
 	}
 
-	override void Close() {
+	override void close() {
 	}
 
 private:

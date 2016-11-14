@@ -1,13 +1,13 @@
-module IO.FS.IO.Console.Screen.FormattedChar;
+module io.fs.io.console.screen.formattedchar;
 
-import Data.Color;
+import data.color;
 
 enum CharStyle {
-	None,
-	Bold = 1 << 0,
-	Underline = 1 << 1,
-	Italic = 1 << 2,
-	Strikethru = 1 << 3
+	none,
+	bold = 1 << 0,
+	underline = 1 << 1,
+	italic = 1 << 2,
+	strikethru = 1 << 3
 }
 
 struct FormattedChar {

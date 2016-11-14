@@ -1,29 +1,29 @@
-import PowerNex.Syscall;
-import PowerNex.Data.Address;
-import PowerNex.Data.String;
+import powernex.syscall;
+import powernex.data.address;
+import powernex.data.string_;
 
-void Print(string str) {
-	Syscall.Write(0UL, cast(ubyte[])str, 0UL);
+void print(string str) {
+	Syscall.write(0UL, cast(ubyte[])str, 0UL);
 }
 
-void Println(string str) {
-	Print(str);
-	Print("\n");
+void println(string str) {
+	print(str);
+	print("\n");
 }
 
 int main(string[] args) {
 	if (args.length == 1) {
-		Print(args[0]);
-		Println(": <File 0> <File 1> ... <File N>");
+		print(args[0]);
+		println(": <File 0> <File 1> ... <File N>");
 		return 0;
 	}
 	foreach (file; args[1 .. $]) {
-		Print("*");
-		Print(file);
-		Println("*");
-		size_t fd = Syscall.Open(file);
+		print("*");
+		print(file);
+		println("*");
+		size_t fd = Syscall.open(file);
 		if (!fd) {
-			Println("File not found!");
+			println("File not found!");
 			continue;
 		}
 		ubyte[0x1000] buf;
@@ -31,12 +31,12 @@ int main(string[] args) {
 		size_t r = 0;
 		size_t offset = 0;
 		do {
-			r = Syscall.Read(fd, buf, offset);
+			r = Syscall.read(fd, buf, offset);
 			offset += r;
-			Print(cast(string)buf[0 .. r]);
+			print(cast(string)buf[0 .. r]);
 		}
 		while (r);
-		Syscall.Close(fd);
+		Syscall.close(fd);
 	}
 	return 0;
 }

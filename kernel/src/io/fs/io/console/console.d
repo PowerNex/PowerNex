@@ -1,11 +1,11 @@
-module IO.FS.IO.Console.Console;
+module io.fs.io.console.console;
 
-import IO.FS;
-import IO.FS.IO.Console;
+import io.fs;
+import io.fs.io.console;
 
 abstract class Console : FileNode {
 public:
 	this() {
-		super(NodePermissions.DefaultPermissions, 0);
+		super(NodePermissions.defaultPermissions, 0);
 	}
 }

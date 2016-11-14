@@ -1,61 +1,61 @@
-module IO.COM;
+module io.com;
 
-import IO.Port;
-import CPU.IDT;
-import Data.Register;
+import io.port;
+import cpu.idt;
+import data.register;
 
-ref COM COM1() {
-	return COMPorts[0];
+ref COM com1() {
+	return comPorts[0];
 }
 
-ref COM COM2() {
-	return COMPorts[1];
+ref COM com2() {
+	return comPorts[1];
 }
 
-ref COM COM3() {
-	return COMPorts[2];
+ref COM com3() {
+	return comPorts[2];
 }
 
-ref COM COM4() {
-	return COMPorts[3];
+ref COM com4() {
+	return comPorts[3];
 }
 
-__gshared COM[] COMPorts = [COM(0x3F8), COM(0x2F8), COM(0x3E8), COM(0x2E8)];
+__gshared COM[] comPorts = [COM(0x3F8), COM(0x2F8), COM(0x3E8), COM(0x2E8)];
 
 enum Mode {
-	EightByteNoParityOneStopBit = 0x03,
-	DivisorLatch = 0x80,
+	eightByteNoParityOneStopBit = 0x03,
+	divisorLatch = 0x80,
 }
 
 enum PortNumber : ushort {
-	Transmit = 0, // w
-	Recieve = 0, // r
-	DivisorLow = 0, // rw latch
-	InterruptEnable = 1, // rw
-	DivisorHigh = 1, // rw latch
-	InterruptIdentifier = 2, // r
-	FIFOControl = 2, // w
-	LineControl = 3, // rw
-	ModemControl = 4, // rw
-	LineStatus = 5, // r
-	ModemStatus = 6, // r
-	Scratch = 7, // rw
+	transmit = 0, // w
+	recieve = 0, // r
+	divisorLow = 0, // rw latch
+	interruptEnable = 1, // rw
+	divisorHigh = 1, // rw latch
+	interruptIdentifier = 2, // r
+	fifoControl = 2, // w
+	lineControl = 3, // rw
+	modemControl = 4, // rw
+	lineStatus = 5, // r
+	modemStatus = 6, // r
+	scratch = 7, // rw
 }
 
 enum InterruptSettings : ubyte {
-	EnableTransmit = 1 << 1,
-	EnableRecieve = 1 << 0,
+	enableTransmit = 1 << 1,
+	enableRecieve = 1 << 0,
 }
 
 enum StatusInfo : ubyte {
-	Interrupt = 1 << 0,
-	Reason = 0b1110,
+	interrupt = 1 << 0,
+	reason = 0b1110,
 
-	ReasonStatus = 0b0110,
-	ReasonReceiver = 0b0100,
-	ReasonFIFO = 0b1100,
-	ReasonTransmission = 0b0010,
-	ReasonModem = 0b0000,
+	reasonStatus = 0b0110,
+	reasonReceiver = 0b0100,
+	reasonFifo = 0b1100,
+	reasonTransmission = 0b0010,
+	reasonModem = 0b0000,
 }
 
 struct COM {
@@ -63,101 +63,102 @@ struct COM {
 	char[0x1000] buf;
 	ushort start, end;
 
-	static void Init() {
-		enum Divisor = 115200;
-		ushort speed = Divisor / 9600;
+	static void init() {
+		enum divisor = 115200;
+		ushort speed = divisor / 9600;
 
-		IDT.Register(IRQ(4), &handleIRQ4);
-		IDT.Register(IRQ(3), &handleIRQ3);
+		IDT.register(irq(4), &_handleIRQ4);
+		IDT.register(irq(3), &_handleIRQ3);
 
-		foreach (com; COMPorts) {
-			Out!ubyte(cast(ushort)(com.port + PortNumber.InterruptEnable), 0);
+		foreach (com; comPorts) {
+			outp!ubyte(cast(ushort)(com.port + PortNumber.interruptEnable), 0);
 
-			Out!ubyte(cast(ushort)(com.port + PortNumber.LineControl), Mode.DivisorLatch | Mode.EightByteNoParityOneStopBit);
-			Out!ubyte(cast(ushort)(com.port + PortNumber.DivisorHigh), cast(ubyte)(speed >> 8));
-			Out!ubyte(cast(ushort)(com.port + PortNumber.DivisorLow), cast(ubyte)speed);
+			outp!ubyte(cast(ushort)(com.port + PortNumber.lineControl), Mode.divisorLatch | Mode.eightByteNoParityOneStopBit);
+			outp!ubyte(cast(ushort)(com.port + PortNumber.divisorHigh), cast(ubyte)(speed >> 8));
+			outp!ubyte(cast(ushort)(com.port + PortNumber.divisorLow), cast(ubyte)speed);
 
-			Out!ubyte(cast(ushort)(com.port + PortNumber.LineControl), Mode.EightByteNoParityOneStopBit);
+			outp!ubyte(cast(ushort)(com.port + PortNumber.lineControl), Mode.eightByteNoParityOneStopBit);
 
-			Out!ubyte(cast(ushort)(com.port + PortNumber.FIFOControl), 0xC7); // Enable FIFO, clear them, with 14-byte threshold
+			outp!ubyte(cast(ushort)(com.port + PortNumber.fifoControl), 0xC7); // Enable FIFO, clear them, with 14-byte threshold
 
-			Out!ubyte(cast(ushort)(com.port + PortNumber.InterruptEnable), InterruptSettings.EnableRecieve);
+			outp!ubyte(cast(ushort)(com.port + PortNumber.interruptEnable), InterruptSettings.enableRecieve);
 		}
 	}
 
-	bool CanRead() {
+	bool canRead() {
 		return (start != end);
 	}
 
-	ubyte Read() {
-		while (!CanRead()) { //XXX:
+	ubyte read() {
+		while (!canRead()) { //XXX:
 		}
 		return buf[(++start % 0x1000)];
 	}
 
-	bool CanSend() {
-		return !!(In(cast(ushort)(port + 5)) & 0x20);
+	bool canSend() {
+		return !!(inp!ubyte(cast(ushort)(port + 5)) & 0x20);
 	}
 
-	void Write(ubyte d) {
-		while (!CanSend()) { //XXX: fix deadlock
+	void write(ubyte d) {
+		while (!canSend()) { //XXX: fix deadlock
 		}
-		Out!ubyte(cast(ushort)port, d);
+		outp!ubyte(cast(ushort)port, d);
 	}
 
-	void Write(T : ubyte)(T[] data) {
+	void write(T : ubyte)(T[] data) {
 		foreach (d; data)
-			Write(d);
+			write(d);
 	}
 
-	void Write(Args...)(Args args) {
+	void write(Args...)(Args args) {
 		foreach (arg; args)
-			Write(arg);
+			write(arg);
 	}
 
-	static void handleIRQ3(Registers*) {
-		handleIRQ!COM2();
-		handleIRQ!COM4();
+private:
+	static void _handleIRQ3(Registers*) {
+		_handleIRQ!com2();
+		_handleIRQ!com4();
 	}
 
-	static void handleIRQ4(Registers*) {
-		handleIRQ!COM1();
-		handleIRQ!COM3();
+	static void _handleIRQ4(Registers*) {
+		_handleIRQ!com1();
+		_handleIRQ!com3();
 	}
 
-	static void handleIRQ(alias com)() {
-		import Data.TextBuffer : scr = GetBootTTY;
-		import Data.Util : BinaryInt;
+	static void _handleIRQ(alias com)() {
+		import data.textbuffer : scr = getBootTTY;
+		import data.util : BinaryInt;
 
-		StatusInfo status = cast(StatusInfo)In!ubyte(cast(ushort)(com.port + PortNumber.InterruptIdentifier));
-		while (!(status & StatusInfo.Interrupt)) {
-			status &= StatusInfo.Reason;
+		StatusInfo status = cast(StatusInfo)inp!ubyte(cast(ushort)(com.port + PortNumber.interruptIdentifier));
+		while (!(status & StatusInfo.interrupt)) {
+			status &= StatusInfo.reason;
 			switch (status) with (StatusInfo) {
-			case ReasonStatus:
-				ubyte line = In(cast(ushort)(com.port + PortNumber.LineStatus));
+			case reasonStatus:
+				ubyte line = inp!ubyte(cast(ushort)(com.port + PortNumber.lineStatus));
 				//TODO: Check line status?
 				break;
-			case ReasonReceiver:
-			case ReasonFIFO: //TODO: Check if ReasonFIFO should be it's own case
-				while (In(cast(ushort)(com.port + PortNumber.LineStatus)) & 0x1) {
-					ubyte tmp = In(com.port);
+			case reasonReceiver:
+			case reasonFifo: //TODO: Check if ReasonFIFO should be it's own case
+				while (inp!ubyte(cast(ushort)(com.port + PortNumber.lineStatus)) & 0x1) {
+					ubyte tmp = inp!ubyte(com.port);
 					//scr.Writeln("Char: ", tmp);
 					if ((com.end + 1 % 0x1000) != com.start)
 						com.buf[(++com.end % 0x1000)] = tmp;
 				}
 				break;
-			case ReasonTransmission:
-				//TODO: Transmit stuff here
+			case reasonTransmission:
+				//TODO: transmit stuff here
 				break;
-			case ReasonModem:
-				ubyte modem = In(cast(ushort)(com.port + PortNumber.ModemStatus));
+			case reasonModem:
+				ubyte modem = inp!ubyte(cast(ushort)(com.port + PortNumber.modemStatus));
 				//TODO: Check modem status?
 				break;
 			default: // Will never happen!
 				assert(0);
 				break;
 			}
-			status = cast(StatusInfo)In!ubyte(cast(ushort)(com.port + PortNumber.InterruptIdentifier));
+			status = cast(StatusInfo)inp!ubyte(cast(ushort)(com.port + PortNumber.interruptIdentifier));
 		}
 	}
 }

@@ -1,46 +1,45 @@
-module HW.PS2.Keyboard;
+module hw.ps2.keyboard;
 
-import CPU.IDT;
-import Data.Register;
-import Data.BitField;
-import IO.Log;
-import IO.Port;
-import IO.Keyboard;
-import HW.PS2.KBSet;
+import cpu.idt;
+import data.register;
+import data.bitfield;
+import io.log;
+import io.port;
+import hw.ps2.kbset;
 
 /// This is a class for controlling the 8042 PS/2 controller
 struct PS2Keyboard {
 public:
-	static void Init() {
+	static void init() {
 		ubyte result;
 
-		IDT.Register(IRQ(1), &onIRQ);
-		IDT.Register(IRQ(2), &ignore);
+		IDT.register(irq(1), &_onIRQ);
+		IDT.register(irq(2), &_ignore);
 
-		sendCtlCmd(0xAD /* Disable port 1 */ );
-		sendCtlCmd(0xA7 /* Disable port 2 */ );
+		_sendCtlCmd(0xAD /* Disable port 1 */ );
+		_sendCtlCmd(0xA7 /* Disable port 2 */ );
 
-		while (getStatus.OutputFull)
-			get(false);
-		sendCtlCmd(0x20 /* Read configuration */ );
-		result = get();
+		while (_getStatus.OutputFull)
+			_get(false);
+		_sendCtlCmd(0x20 /* Read configuration */ );
+		result = _get();
 		result &= ~0b100_0010; // Clear Translation bit (aka enable scancode set 2) and IRQ flags
-		sendCtlCmd(0x60 /* Write configuration */ );
-		sendCmd(result);
-		sendCtlCmd(0xAE /* Enable port 1 */ );
-		sendCmd(0xFF /* Reset */ );
+		_sendCtlCmd(0x60 /* Write configuration */ );
+		_sendCmd(result);
+		_sendCtlCmd(0xAE /* Enable port 1 */ );
+		_sendCmd(0xFF /* Reset */ );
 		while (result != 0xAA)
-			result = get();
-		setLED();
-		enabled = true;
+			result = _get();
+		_setLED();
+		_enabled = true;
 	}
 
 private:
-	struct keyboardStatus {
-		private ubyte value;
+	struct KeyboardStatus {
+		private ubyte _value;
 
 		//dfmt off
-		mixin(Bitfield!(value,
+		mixin(bitfield!(_value,
 			"OutputFull", 1,
 			"InputFull", 1,
 			"SelfTestSucceeded", 1,
@@ -52,192 +51,192 @@ private:
 		//dfmt on
 	}
 
-	struct keyState {
+	struct KeyState {
 		ulong[4] bitmaps;
-		private enum countPerInt = ulong.sizeof * 8;
-		private enum length = bitmaps.length * countPerInt;
+		private enum _countPerInt = ulong.sizeof * 8;
+		private enum _length = bitmaps.length * _countPerInt;
 
-		void Set(KeyCode key) {
+		void set(KeyCode key) {
 			ubyte bit = cast(ubyte)key;
 
-			bitmaps[bit / countPerInt] |= 1 << (bit % countPerInt);
+			bitmaps[bit / _countPerInt] |= 1 << (bit % _countPerInt);
 		}
 
-		bool IsSet(KeyCode key) {
+		bool isSet(KeyCode key) {
 			ubyte bit = cast(ubyte)key;
 
-			return !!(bitmaps[bit / countPerInt] & 1 << (bit % countPerInt));
+			return !!(bitmaps[bit / _countPerInt] & 1 << (bit % _countPerInt));
 		}
 
-		void Clear(KeyCode key) {
+		void clear(KeyCode key) {
 			ubyte bit = cast(ubyte)key;
 
-			bitmaps[bit / countPerInt] &= ~(1 << (bit % countPerInt));
+			bitmaps[bit / _countPerInt] &= ~(1 << (bit % _countPerInt));
 		}
 
-		void Toggle(KeyCode key) {
-			if (IsSet(key))
-				Clear(key);
+		void toggle(KeyCode key) {
+			if (isSet(key))
+				clear(key);
 			else
-				Set(key);
+				set(key);
 		}
 	}
 
-	struct modifierState {
-		private ubyte data;
+	struct ModifierState {
+		private ubyte _data;
 
-		mixin(Bitfield!(data, "NumLock", 1, "CapsLock", 1, "ScrollLock", 1));
+		mixin(bitfield!(_data, "numLock", 1, "capsLock", 1, "scrollLock", 1));
 	}
 
-	enum ushort DataPort = 0x60;
-	enum ushort ControllerPort = 0x64; // Read -> Status Register / Write -> Command Register
+	enum ushort _dataPort = 0x60;
+	enum ushort _controllerPort = 0x64; // Read -> Status Register / Write -> Command Register
 
-	__gshared bool enabled;
-	__gshared keyState state;
-	__gshared modifierState modifiers;
+	__gshared bool _enabled;
+	__gshared KeyState _state;
+	__gshared ModifierState _modifiers;
 
-	static KeyCode combineKeyData(ubyte ch) {
+	static KeyCode _combineKeyData(ubyte ch) {
 		enum VBoxHack { // XXX: Fixed VBox scancode set 2 problems
-			None,
-			NumLock,
-			CapsLock,
+			none,
+			numLock,
+			capsLock,
 		}
 
-		__gshared VBoxHack vboxHackState = VBoxHack.None;
+		__gshared VBoxHack vboxHackState = VBoxHack.none;
 		__gshared bool nextUnpress = false;
 		__gshared bool nextExtended = false;
 		__gshared int nextSpecial = 0;
 
-		KeyCode key = KeyCode.None;
+		KeyCode key = KeyCode.none;
 
 		if (ch == 0xF0) {
 			nextUnpress = true;
-			return KeyCode.None;
+			return KeyCode.none;
 		} else if (nextSpecial == 2) {
 			nextSpecial--; // Should maybe save ch?
-			return KeyCode.None;
+			return KeyCode.none;
 		} else if (ch == 0xE0) {
 			nextExtended = true;
-			return KeyCode.None;
+			return KeyCode.none;
 		} else if (ch == 0xE1) {
 			nextSpecial = 2;
-			return KeyCode.None;
+			return KeyCode.none;
 		}
 
 		if (nextExtended)
-			key = FindKeycode(E0Bit | (ch & 0x7F));
+			key = findKeycode(e0Bit | (ch & 0x7F));
 		else if (nextSpecial == 1)
-			key = FindKeycode(E1Bit | (ch & 0x7F));
+			key = findKeycode(e1Bit | (ch & 0x7F));
 		else
-			key = FindKeycode(ch);
+			key = findKeycode(ch);
 
 		if (nextUnpress) {
-			state.Clear(key);
+			_state.clear(key);
 
-			vboxHackState = VBoxHack.None;
+			vboxHackState = VBoxHack.none;
 			nextUnpress = false;
 			nextExtended = false;
 			nextSpecial = 0;
-			return KeyCode.None;
+			return KeyCode.none;
 		}
 
-		state.Set(key);
+		_state.set(key);
 
-		if (key == KeyCode.CapsLock && vboxHackState != VBoxHack.CapsLock) {
-			modifiers.CapsLock = !modifiers.CapsLock;
-			setLED();
-			vboxHackState = VBoxHack.CapsLock;
-		} else if (vboxHackState != VBoxHack.NumLock && key == KeyCode.NumLock) {
-			modifiers.NumLock = !modifiers.NumLock;
-			setLED();
-			vboxHackState = VBoxHack.NumLock;
-		} else if (key == KeyCode.ScrollLock) {
-			modifiers.ScrollLock = !modifiers.ScrollLock;
-			setLED();
+		if (key == KeyCode.capsLock && vboxHackState != VBoxHack.capsLock) {
+			_modifiers.capsLock = !_modifiers.capsLock;
+			_setLED();
+			vboxHackState = VBoxHack.capsLock;
+		} else if (vboxHackState != VBoxHack.numLock && key == KeyCode.numLock) {
+			_modifiers.numLock = !_modifiers.numLock;
+			_setLED();
+			vboxHackState = VBoxHack.numLock;
+		} else if (key == KeyCode.scrollLock) {
+			_modifiers.scrollLock = !_modifiers.scrollLock;
+			_setLED();
 		} else
-			vboxHackState = VBoxHack.None;
+			vboxHackState = VBoxHack.none;
 		return key;
 	}
 
-	static void waitGet() {
-		while (!getStatus.OutputFull) {
+	static void _waitGet() {
+		while (!_getStatus.OutputFull) {
 		}
 	}
 
-	static void waitSend() {
-		while (getStatus.InputFull) {
+	static void _waitSend() {
+		while (_getStatus.InputFull) {
 		}
 	}
 
-	static ubyte get(bool wait = true) {
+	static ubyte _get(bool wait = true) {
 		if (wait)
-			waitGet();
-		return In!ubyte(DataPort);
+			_waitGet();
+		return inp!ubyte(_dataPort);
 	}
 
-	static keyboardStatus getStatus() {
-		return keyboardStatus(In!ubyte(ControllerPort));
+	static KeyboardStatus _getStatus() {
+		return KeyboardStatus(inp!ubyte(_controllerPort));
 	}
 
-	static void sendCmd(ubyte cmd) {
-		waitSend();
-		Out!ubyte(DataPort, cmd);
+	static void _sendCmd(ubyte cmd) {
+		_waitSend();
+		outp!ubyte(_dataPort, cmd);
 	}
 
-	static void sendCtlCmd(ubyte cmd) {
-		waitSend();
-		Out!ubyte(ControllerPort, cmd);
+	static void _sendCtlCmd(ubyte cmd) {
+		_waitSend();
+		outp!ubyte(_controllerPort, cmd);
 	}
 
-	static void setLED() {
-		enabled = false;
-		sendCmd(0xED);
-		while (get() != 0xFA) {
+	static void _setLED() {
+		_enabled = false;
+		_sendCmd(0xED);
+		while (_get() != 0xFA) {
 		}
-		sendCmd(modifiers.CapsLock << 2 | modifiers.NumLock << 1 | modifiers.ScrollLock);
-		while (get() != 0xFA) {
+		_sendCmd(_modifiers.capsLock << 2 | _modifiers.numLock << 1 | _modifiers.scrollLock);
+		while (_get() != 0xFA) {
 		}
-		enabled = true;
+		_enabled = true;
 	}
 
-	static void onIRQ(Registers* regs) {
-		import IO.ConsoleManager;
+	static void _onIRQ(Registers* regs) {
+		import io.consolemanager;
 
-		ubyte data = get(false);
-		if (!enabled)
+		ubyte data = _get(false);
+		if (!_enabled)
 			return;
 		//if (data == 0x00 || data == 0xAA || data == 0xEE || data == 0xFA || data == 0xFC || data == 0xFD || data == 0xFE || data == 0xFF)
 		//acontinue;
 
-		KeyCode key = combineKeyData(data);
-		if (key != KeyCode.None) {
+		KeyCode key = _combineKeyData(data);
+		if (key != KeyCode.none) {
 			dchar ch;
 
-			const bool shift = state.IsSet(KeyCode.LeftShift) || state.IsSet(KeyCode.RightShift);
-			const bool caps = modifiers.CapsLock;
-			const bool num = modifiers.NumLock;
+			const bool shift = _state.isSet(KeyCode.leftShift) || _state.isSet(KeyCode.rightShift);
+			const bool caps = _modifiers.capsLock;
+			const bool num = _modifiers.numLock;
 
 			if (ch == dchar.init && caps != shift)
-				ch = FindShiftedCharTranslate(key);
+				ch = findShiftedCharTranslate(key);
 
 			if (ch == dchar.init && shift)
-				ch = FindShiftedEtcTranslate(key);
+				ch = findShiftedEtcTranslate(key);
 
 			if (ch == dchar.init && num)
-				ch = FindKeypadTranslate(key);
+				ch = findKeypadTranslate(key);
 
 			if (ch == dchar.init)
-				ch = FindNormalTranslate(key);
+				ch = findNormalTranslate(key);
 
 			if (ch != dchar.init) {
-				const bool ctrl = state.IsSet(KeyCode.LeftCtrl) || state.IsSet(KeyCode.RightCtrl);
-				const bool alt = state.IsSet(KeyCode.LeftAlt) || state.IsSet(KeyCode.RightAlt);
-				GetConsoleManager.AddKeyboardInput(ch, ctrl, alt, shift);
+				const bool ctrl = _state.isSet(KeyCode.leftCtrl) || _state.isSet(KeyCode.rightCtrl);
+				const bool alt = _state.isSet(KeyCode.leftAlt) || _state.isSet(KeyCode.rightAlt);
+				getConsoleManager.addKeyboardInput(ch, ctrl, alt, shift);
 				//Keyboard.Push(ch);
 			}
 		}
 	}
 
-	static void ignore(Registers*) {
+	static void _ignore(Registers*) {
 	}
 }

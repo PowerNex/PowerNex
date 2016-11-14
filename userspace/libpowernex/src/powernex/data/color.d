@@ -1,4 +1,4 @@
-module PowerNex.Data.Color;
+module powernex.data.color;
 
 struct Color {
 align(1):

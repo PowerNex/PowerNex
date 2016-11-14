@@ -1,17 +1,17 @@
-module Data.Register;
+module data.register;
 
-import Data.Address;
+import data.address;
 
-private extern (C) VirtAddress CPU_ret_cr2();
+private extern (C) VirtAddress cpuRetCR2();
 
 struct Registers {
 align(1):
-	VirtAddress R15, R14, R13, R12, R11, R10, R9, R8;
-	VirtAddress RBP, RDI, RSI, RDX, RCX, RBX, RAX;
-	VirtAddress IntNumber, ErrorCode;
-	VirtAddress RIP, CS, Flags, RSP, SS;
+	VirtAddress r15, r14, r13, r12, r11, r10, r9, r8;
+	VirtAddress rbp, rdi, rsi, rdx, rcx, rbx, rax;
+	VirtAddress intNumber, errorCode;
+	VirtAddress rip, cs, flags, rsp, ss;
 
-	@property VirtAddress CR2() const {
-		return CPU_ret_cr2();
+	@property VirtAddress cr2() const {
+		return cpuRetCR2();
 	}
 }

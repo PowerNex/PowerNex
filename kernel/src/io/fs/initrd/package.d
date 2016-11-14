@@ -1,6 +1,6 @@
-module IO.FS.Initrd;
+module io.fs.initrd;
 
 public {
-	import IO.FS.Initrd.FSRoot;
-	import IO.FS.Initrd.FileNode;
+	import io.fs.initrd.fsroot;
+	import io.fs.initrd.filenode;
 }

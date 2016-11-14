@@ -1,60 +1,60 @@
-module IO.ConsoleManager;
+module io.consolemanager;
 
-import IO.FS.IO.Console;
+import io.fs.io.console;
 
 class ConsoleManager {
 public:
-	void Init() {
-		import KMain : rootFS;
-		import IO.FS;
-		import IO.Log;
+	void init() {
+		import kmain : rootFS;
+		import io.fs;
+		import io.log;
 
-		DirectoryNode csDir = cast(DirectoryNode)rootFS.Root.FindNode("/IO/Console");
+		DirectoryNode csDir = cast(DirectoryNode)rootFS.root.findNode("/io/console");
 		if (!csDir)
-			log.Error("/IO/Console/ missing");
+			log.error("/io/console/ missing");
 
-		auto nodes = csDir.Nodes;
-		vcs = new VirtualConsole[4]; //XXX:
+		auto nodes = csDir.nodes;
+		_vcs = new VirtualConsole[4]; //XXX:
 		size_t idx = 0;
 		foreach (node; nodes) {
 			if (auto _ = cast(VirtualConsole)node)
-				vcs[idx++] = _;
+				_vcs[idx++] = _;
 		}
 
-		vcs[active].Active = true;
+		_vcs[_active].active = true;
 	}
 
-	void AddKeyboardInput(dchar ch, bool ctrl, bool alt, bool shift) {
-		if (!vcs.length)
+	void addKeyboardInput(dchar ch, bool ctrl, bool alt, bool shift) {
+		if (!_vcs.length)
 			return;
 
 		if ((ch >= '1' || ch <= '9') && alt) {
 			size_t want = ch - '1';
-			if (want < vcs.length && want != active) {
-				vcs[active].Active = false;
-				active = want;
-				vcs[active].Active = true;
+			if (want < _vcs.length && want != _active) {
+				_vcs[_active].active = false;
+				_active = want;
+				_vcs[_active].active = true;
 			}
 		} else
-			vcs[active].AddKeyboardInput(ch);
+			_vcs[_active].addKeyboardInput(ch);
 	}
 
-	@property VirtualConsole[] VirtualConsoles() {
-		return vcs;
+	@property VirtualConsole[] virtualConsoles() {
+		return _vcs;
 	}
 
 private:
-	size_t active;
-	VirtualConsole[] vcs;
+	size_t _active;
+	VirtualConsole[] _vcs;
 }
 
-ConsoleManager GetConsoleManager() {
-	import Data.Util : InplaceClass;
+ConsoleManager getConsoleManager() {
+	import data.util : inplaceClass;
 
 	__gshared ubyte[__traits(classInstanceSize, ConsoleManager)] data;
 	__gshared ConsoleManager cm;
 
 	if (!cm)
-		cm = InplaceClass!ConsoleManager(data);
+		cm = inplaceClass!ConsoleManager(data);
 	return cm;
 }

@@ -1,17 +1,17 @@
-import PowerNex.Syscall;
-import PowerNex.Data.Address;
-import PowerNex.Data.String;
+import powernex.syscall;
+import powernex.data.address;
+import powernex.data.string_;
 
-void Print(string str) {
-	Syscall.Write(0UL, cast(ubyte[])str, 0UL);
+void print(string str) {
+	Syscall.write(0UL, cast(ubyte[])str, 0UL);
 }
 
-void Println(string str) {
-	Print(str);
-	Print("\n");
+void println(string str) {
+	print(str);
+	print("\n");
 }
 
 int main(string[] args) {
-	Println("Hello World from Userspace and D!");
+	println("Hello World from Userspace and D!");
 	return 0;
 }

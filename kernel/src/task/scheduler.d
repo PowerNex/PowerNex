@@ -1,16 +1,16 @@
-module Task.Scheduler;
-import Data.Address;
-import Data.Color;
-import Data.LinkedList;
-import Task.Process;
-import CPU.GDT;
-import CPU.PIT;
-import Task.Mutex.SpinLockMutex;
-import Data.TextBuffer : scr = GetBootTTY;
-import Memory.Heap;
-import Memory.Paging;
-import KMain : rootFS;
-import IO.ConsoleManager;
+module task.scheduler;
+import data.address;
+import data.color;
+import data.linkedlist;
+import task.process;
+import cpu.gdt;
+import cpu.pit;
+import task.mutex.spinlockmutex;
+import data.textbuffer : scr = getBootTTY;
+import memory.heap;
+import memory.paging;
+import kmain : rootFS;
+import io.consolemanager;
 
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
@@ -20,24 +20,24 @@ private extern (C) {
 	void cloneHelper();
 }
 
-extern (C) __gshared Process* currentProcess;
+extern (C) __gshared Process* _currentProcess;
 
 alias WakeUpFunc = bool function(Process*, void*);
 
 class Scheduler {
 public:
-	void Init() {
-		allProcesses = new LinkedList!Process();
-		readyProcesses = new LinkedList!Process();
-		waitingProcesses = new LinkedList!Process();
-		initIdle(); // PID 0
-		initKernel(); // PID 1
-		pidCounter = 2;
-		currentProcess = initProcess;
+	void init() {
+		_allProcesses = new LinkedList!Process();
+		_readyProcesses = new LinkedList!Process();
+		_waitingProcesses = new LinkedList!Process();
+		_initIdle(); // PID 0
+		_initKernel(); // PID 1
+		_pidCounter = 2;
+		_currentProcess = _initProcess;
 	}
 
-	void SwitchProcess(bool reschedule = true) {
-		if (!currentProcess)
+	void switchProcess(bool reschedule = true) {
+		if (!_currentProcess)
 			return;
 
 		ulong storeRIP = void;
@@ -64,7 +64,7 @@ public:
 
 			call getRIP;
 			mov storeRIP[RBP], RAX;
-			mov RCX, SWITCH_MAGIC;
+			mov RCX, _switchMagic;
 			cmp RCX, RAX;
 			jne noReturn;
 
@@ -81,7 +81,7 @@ public:
 			pop RCX;
 		}
 
-		with (currentProcess.threadState) {
+		with (_currentProcess.threadState) {
 			rbp = storeRBP;
 			rsp = storeRSP;
 			rip = storeRIP;
@@ -94,201 +94,201 @@ public:
 			}
 		}
 
-		if (reschedule && currentProcess != idleProcess) {
-			currentProcess.state = ProcessState.Ready;
-			readyProcesses.Add(currentProcess);
+		if (reschedule && _currentProcess != _idleProcess) {
+			_currentProcess.state = ProcessState.ready;
+			_readyProcesses.add(_currentProcess);
 		}
 
-		doSwitching();
+		_doSwitching();
 	}
 
-	void WaitFor(WaitReason reason, ulong data = 0) {
-		currentProcess.state = ProcessState.Waiting;
-		currentProcess.wait = reason;
-		currentProcess.waitData = data;
-		waitingProcesses.Add(currentProcess);
-		SwitchProcess(false);
+	void waitFor(WaitReason reason, ulong data = 0) {
+		_currentProcess.state = ProcessState.waiting;
+		_currentProcess.wait = reason;
+		_currentProcess.waitData = data;
+		_waitingProcesses.add(_currentProcess);
+		switchProcess(false);
 	}
 
-	void WakeUp(WaitReason reason, WakeUpFunc check = &wakeUpDefault, void* data = cast(void*)0) {
+	void wakeUp(WaitReason reason, WakeUpFunc check = &_wakeUpDefault, void* data = cast(void*)0) {
 		bool wokeUp = false;
 
-		for (int i = 0; i < waitingProcesses.Length; i++) {
-			Process* p = waitingProcesses.Get(i);
+		for (int i = 0; i < _waitingProcesses.length; i++) {
+			Process* p = _waitingProcesses.get(i);
 			if (p.wait == reason && check(p, data)) {
 				wokeUp = true;
-				waitingProcesses.Remove(i);
-				readyProcesses.Add(p);
+				_waitingProcesses.remove(i);
+				_readyProcesses.add(p);
 			}
 		}
 
-		if (wokeUp && currentProcess == idleProcess)
-			SwitchProcess();
+		if (wokeUp && _currentProcess == _idleProcess)
+			switchProcess();
 	}
 
-	void USleep(ulong usecs) {
+	void uSleep(ulong usecs) {
 		if (!usecs)
 			usecs = 1;
-		WaitFor(WaitReason.Timer, usecs);
+		waitFor(WaitReason.timer, usecs);
 	}
 
-	PID Fork() {
-		import IO.Log : log;
-		import Memory.Paging : Paging;
+	PID fork() {
+		import io.log : log;
+		import memory.paging : Paging;
 
 		Process* process = new Process();
-		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		VirtAddress kernelStack = VirtAddress(new ubyte[_stackSize].ptr) + _stackSize;
 		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = currentProcess.image.defaultTLS;
+		process.image.defaultTLS = _currentProcess.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
-			*(stack - size).Ptr!T = value;
+			*(stack - size).ptr!T = value;
 			stack -= size;
 		}
 
-		process.syscallRegisters = currentProcess.syscallRegisters;
-		process.syscallRegisters.RAX = 0;
+		process.syscallRegisters = _currentProcess.syscallRegisters;
+		process.syscallRegisters.rax = 0;
 
 		set(kernelStack, process.syscallRegisters);
 
 		with (process) {
-			pid = getFreePid;
-			name = currentProcess.name.dup;
+			pid = _getFreePid;
+			name = _currentProcess.name.dup;
 
-			uid = currentProcess.uid;
-			gid = currentProcess.gid;
+			uid = _currentProcess.uid;
+			gid = _currentProcess.gid;
 
-			parent = currentProcess;
-			heap = new Heap(currentProcess.heap);
+			parent = _currentProcess;
+			heap = new Heap(_currentProcess.heap);
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = kernelStack;
 			threadState.rsp = kernelStack;
-			threadState.fpuEnabled = currentProcess.threadState.fpuEnabled;
-			threadState.paging = new Paging(currentProcess.threadState.paging);
-			threadState.tls = TLS.Init(process);
+			threadState.fpuEnabled = _currentProcess.threadState.fpuEnabled;
+			threadState.paging = new Paging(_currentProcess.threadState.paging);
+			threadState.tls = TLS.init(process);
 
-			kernelProcess = currentProcess.kernelProcess;
+			kernelProcess = _currentProcess.kernelProcess;
 
-			currentDirectory = currentProcess.currentDirectory;
+			currentDirectory = _currentProcess.currentDirectory;
 
 			fileDescriptors = new LinkedList!FileDescriptor;
-			for (size_t i = 0; i < currentProcess.fileDescriptors.Length; i++)
-				fileDescriptors.Add(new FileDescriptor(currentProcess.fileDescriptors.Get(i)));
-			fdCounter = currentProcess.fdCounter;
+			for (size_t i = 0; i < _currentProcess.fileDescriptors.length; i++)
+				fileDescriptors.add(new FileDescriptor(_currentProcess.fileDescriptors.get(i)));
+			fdCounter = _currentProcess.fdCounter;
 
-			state = ProcessState.Ready;
+			state = ProcessState.ready;
 		}
 
-		with (currentProcess) {
+		with (_currentProcess) {
 			if (!children)
 				children = new LinkedList!Process;
-			children.Add(process);
+			children.add(process);
 		}
 
-		allProcesses.Add(process);
-		readyProcesses.Add(process);
+		_allProcesses.add(process);
+		_readyProcesses.add(process);
 
 		return process.pid;
 	}
 
 	alias CloneFunc = ulong function(void*);
-	PID Clone(CloneFunc func, VirtAddress userStack, void* userdata, string processName) {
+	PID clone(CloneFunc func, VirtAddress userStack, void* userdata, string processName) {
 		Process* process = new Process();
-		import IO.Log;
+		import io.log;
 
-		log.Debug("userStack: ", userStack);
-		if (!userStack.Int) // currentProcess.heap will be new the new process heap
-			userStack = VirtAddress(currentProcess.heap.Alloc(StackSize)) + StackSize;
-		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
+		log.debug_("userStack: ", userStack);
+		if (!userStack.num) // _currentProcess.heap will be new the new process heap
+			userStack = VirtAddress(_currentProcess.heap.alloc(_stackSize)) + _stackSize;
+		VirtAddress kernelStack = VirtAddress(new ubyte[_stackSize].ptr) + _stackSize;
 		process.image.userStack = userStack;
 		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = currentProcess.image.defaultTLS;
+		process.image.defaultTLS = _currentProcess.image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
-			*(stack - size).Ptr!T = value;
+			*(stack - size).ptr!T = value;
 			stack -= size;
 		}
 
 		with (process.syscallRegisters) {
-			RBP = userStack;
-			RDI = VirtAddress(userdata);
-			RAX = 0xDEAD_C0DE;
+			rbp = userStack;
+			rdi = VirtAddress(userdata);
+			rax = 0xDEAD_C0DE;
 		}
 
 		set(userStack, 0); // Jump to null if it forgot to run exit.
 
 		with (process.syscallRegisters) {
-			RIP = VirtAddress(func);
-			CS = currentProcess.syscallRegisters.CS;
-			Flags = currentProcess.syscallRegisters.Flags;
-			RSP = userStack;
-			SS = currentProcess.syscallRegisters.SS;
+			rip = VirtAddress(func);
+			cs = _currentProcess.syscallRegisters.cs;
+			flags = _currentProcess.syscallRegisters.flags;
+			rsp = userStack;
+			ss = _currentProcess.syscallRegisters.ss;
 		}
 
 		set(kernelStack, process.syscallRegisters);
 
 		with (process) {
-			pid = getFreePid;
+			pid = _getFreePid;
 			name = processName.dup;
 
-			uid = currentProcess.uid;
-			gid = currentProcess.gid;
+			uid = _currentProcess.uid;
+			gid = _currentProcess.gid;
 
-			parent = currentProcess;
-			heap = currentProcess.heap;
-			currentProcess.heap.RefCounter++;
+			parent = _currentProcess;
+			heap = _currentProcess.heap;
+			_currentProcess.heap.refCounter++;
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = kernelStack;
 			threadState.rsp = kernelStack;
-			threadState.fpuEnabled = currentProcess.threadState.fpuEnabled;
-			threadState.paging = currentProcess.threadState.paging;
-			threadState.paging.RefCounter++;
-			threadState.tls = TLS.Init(process, false);
+			threadState.fpuEnabled = _currentProcess.threadState.fpuEnabled;
+			threadState.paging = _currentProcess.threadState.paging;
+			threadState.paging.refCounter++;
+			threadState.tls = TLS.init(process, false);
 
 			// image.stack is set above
 
-			kernelProcess = currentProcess.kernelProcess;
+			kernelProcess = _currentProcess.kernelProcess;
 
-			currentDirectory = currentProcess.currentDirectory;
+			currentDirectory = _currentProcess.currentDirectory;
 
 			fileDescriptors = new LinkedList!FileDescriptor;
-			for (size_t i = 0; i < currentProcess.fileDescriptors.Length; i++)
-				fileDescriptors.Add(new FileDescriptor(currentProcess.fileDescriptors.Get(i)));
-			fdCounter = currentProcess.fdCounter;
+			for (size_t i = 0; i < _currentProcess.fileDescriptors.length; i++)
+				fileDescriptors.add(new FileDescriptor(_currentProcess.fileDescriptors.get(i)));
+			fdCounter = _currentProcess.fdCounter;
 
-			state = ProcessState.Ready;
+			state = ProcessState.ready;
 		}
 
-		with (currentProcess) {
+		with (_currentProcess) {
 			if (!children)
 				children = new LinkedList!Process;
-			children.Add(process);
+			children.add(process);
 		}
 
-		allProcesses.Add(process);
-		readyProcesses.Add(process);
+		_allProcesses.add(process);
+		_readyProcesses.add(process);
 
 		return process.pid;
 	}
 
-	ulong Join(PID pid = 0) {
-		if (!currentProcess.children)
+	ulong join(PID pid = 0) {
+		if (!_currentProcess.children)
 			return 0x1000;
 		while (true) {
 			bool foundit;
-			for (int i = 0; i < currentProcess.children.Length; i++) {
-				Process* child = currentProcess.children.Get(i);
+			for (int i = 0; i < _currentProcess.children.length; i++) {
+				Process* child = _currentProcess.children.get(i);
 
 				if (pid == 0 || child.pid == pid) {
 					foundit = true;
-					if (child.state == ProcessState.Exited) {
+					if (child.state == ProcessState.exited) {
 						ulong code = child.returnCode;
-						currentProcess.children.Remove(child);
-						allProcesses.Remove(child);
+						_currentProcess.children.remove(child);
+						_allProcesses.remove(child);
 
 						with (child) {
 							name.destroy;
@@ -306,40 +306,40 @@ public:
 			if (pid && !foundit)
 				return 0x1001;
 
-			WaitFor(WaitReason.Join, pid);
+			waitFor(WaitReason.join, pid);
 		}
 	}
 
-	void Exit(ulong returncode) {
-		import IO.Log : log;
+	void exit(ulong returncode) {
+		import io.log : log;
 
-		currentProcess.returnCode = returncode;
-		currentProcess.state = ProcessState.Exited;
+		_currentProcess.returnCode = returncode;
+		_currentProcess.state = ProcessState.exited;
 
-		log.Info(currentProcess.pid, "(", currentProcess.name, ") is now dead! Returncode: ", cast(void*)returncode);
+		log.info(_currentProcess.pid, "(", _currentProcess.name, ") is now dead! Returncode: ", cast(void*)returncode);
 
-		if (currentProcess == initProcess) {
-			auto fg = scr.Foreground;
-			auto bg = scr.Background;
-			scr.Foreground = Color(255, 0, 255);
-			scr.Background = Color(255, 255, 0);
-			scr.Writeln("Init process exited. No more work to do.");
-			scr.Foreground = fg;
-			scr.Background = bg;
-			log.Fatal("Init process exited. No more work to do.");
+		if (_currentProcess == _initProcess) {
+			auto fg = scr.foreground;
+			auto bg = scr.background;
+			scr.foreground = Color(255, 0, 255);
+			scr.background = Color(255, 255, 0);
+			scr.writeln("init process exited. No more work to do.");
+			scr.foreground = fg;
+			scr.background = bg;
+			log.fatal("init process exited. No more work to do.");
 		}
 
-		for (size_t i = 0; i < currentProcess.fileDescriptors.Length; i++) {
-			FileDescriptor* fd = currentProcess.fileDescriptors.Get(i);
-			fd.node.Close();
+		for (size_t i = 0; i < _currentProcess.fileDescriptors.length; i++) {
+			FileDescriptor* fd = _currentProcess.fileDescriptors.get(i);
+			fd.node.close();
 			fd.destroy;
 		}
 
-		if (currentProcess.children) {
-			for (int i = 0; i < currentProcess.children.Length; i++) {
-				Process* child = currentProcess.children[i];
+		if (_currentProcess.children) {
+			for (int i = 0; i < _currentProcess.children.length; i++) {
+				Process* child = _currentProcess.children[i];
 
-				if (child.state == ProcessState.Exited) {
+				if (child.state == ProcessState.exited) {
 					child.name.destroy;
 					child.description.destroy;
 					//TODO free stack
@@ -347,57 +347,57 @@ public:
 					child.destroy;
 				} else {
 					//TODO send SIGHUP etc.
-					initProcess.children.Add(child);
+					_initProcess.children.add(child);
 				}
 			}
-			currentProcess.children.destroy;
+			_currentProcess.children.destroy;
 		}
 
-		WakeUp(WaitReason.Join, cast(WakeUpFunc)&wakeUpJoin, cast(void*)currentProcess);
-		SwitchProcess(false);
+		wakeUp(WaitReason.join, cast(WakeUpFunc)&_wakeUpJoin, cast(void*)_currentProcess);
+		switchProcess(false);
 		assert(0);
 	}
 
-	@property Process* CurrentProcess() {
-		return currentProcess;
+	@property Process* currentProcess() {
+		return _currentProcess;
 	}
 
-	@property LinkedList!Process AllProcesses() {
-		return allProcesses;
+	@property LinkedList!Process allProcesses() {
+		return _allProcesses;
 	}
 
 private:
-	enum StackSize = 0x1_0000;
-	enum ulong SWITCH_MAGIC = 0x1111_DEAD_C0DE_1111;
+	enum _stackSize = 0x1_0000;
+	enum ulong _switchMagic = 0x1111_DEAD_C0DE_1111;
 
-	ulong pidCounter;
-	bool initialized;
-	LinkedList!Process allProcesses;
-	LinkedList!Process readyProcesses;
-	LinkedList!Process waitingProcesses;
+	ulong _pidCounter;
+	bool _initialized;
+	LinkedList!Process _allProcesses;
+	LinkedList!Process _readyProcesses;
+	LinkedList!Process _waitingProcesses;
 
-	Process* idleProcess;
-	Process* initProcess;
+	Process* _idleProcess;
+	Process* _initProcess;
 
-	ulong getFreePid() {
-		import IO.Log : log;
+	ulong _getFreePid() {
+		import io.log : log;
 
-		if (pidCounter == ulong.max)
-			log.Fatal("Out of pids!");
-		return pidCounter++;
+		if (_pidCounter == ulong.max)
+			log.fatal("Out of pids!");
+		return _pidCounter++;
 	}
 
-	static bool wakeUpDefault(Process* p, void* data) {
+	static bool _wakeUpDefault(Process* p, void* data) {
 		return true;
 	}
 
-	static bool wakeUpJoin(Process* p, Process* child) {
+	static bool _wakeUpJoin(Process* p, Process* child) {
 		if (p == child.parent && (p.waitData == 0 || p.waitData == child.pid))
 			return true;
 		return false;
 	}
 
-	static void idle() {
+	static void _idle() {
 		asm {
 		start:
 			sti;
@@ -406,22 +406,22 @@ private:
 		}
 	}
 
-	void initIdle() {
-		import Memory.Paging : GetKernelPaging;
+	void _initIdle() {
+		import memory.paging : getKernelPaging;
 
-		VirtAddress userStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
-		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
-		idleProcess = new Process();
+		VirtAddress userStack = VirtAddress(new ubyte[_stackSize].ptr) + _stackSize;
+		VirtAddress kernelStack = VirtAddress(new ubyte[_stackSize].ptr) + _stackSize;
+		_idleProcess = new Process();
 
-		with (idleProcess.syscallRegisters) {
-			RIP = VirtAddress(&idle);
-			CS = 0x8;
-			Flags = 0x202;
-			RSP = userStack;
-			SS = CS + 8;
+		with (_idleProcess.syscallRegisters) {
+			rip = VirtAddress(&_idle);
+			cs = 0x8;
+			flags = 0x202;
+			rsp = userStack;
+			ss = cs + 8;
 		}
 
-		with (idleProcess) {
+		with (_idleProcess) {
 			pid = 0;
 			name = "[Idle]";
 			description = "Idle thread";
@@ -429,40 +429,40 @@ private:
 			uid = 0;
 			gid = 0;
 
-			heap = GetKernelHeap;
-			heap.RefCounter++;
+			heap = getKernelHeap;
+			heap.refCounter++;
 
-			threadState.rip = VirtAddress(&idle);
+			threadState.rip = VirtAddress(&_idle);
 			threadState.rbp = userStack;
 			threadState.rsp = userStack;
 			threadState.fpuEnabled = false;
-			threadState.paging = GetKernelPaging();
-			threadState.paging.RefCounter++;
-			threadState.tls = TLS.Init(idleProcess); // image.defaultTLS is empty
+			threadState.paging = getKernelPaging();
+			threadState.paging.refCounter++;
+			threadState.tls = TLS.init(_idleProcess); // image.defaultTLS is empty
 
 			image.userStack = userStack;
 			image.kernelStack = kernelStack;
 
 			kernelProcess = true;
 
-			currentDirectory = rootFS.Root;
+			currentDirectory = rootFS.root;
 
 			fileDescriptors = new LinkedList!FileDescriptor;
 
-			state = ProcessState.Ready;
+			state = ProcessState.ready;
 		}
-		allProcesses.Add(idleProcess);
+		_allProcesses.add(_idleProcess);
 	}
 
-	void initKernel() {
-		import Memory.Paging : GetKernelPaging;
+	void _initKernel() {
+		import memory.paging : getKernelPaging;
 
-		initProcess = new Process();
+		_initProcess = new Process();
 
-		VirtAddress kernelStack = VirtAddress(new ubyte[StackSize].ptr) + StackSize;
-		with (initProcess) {
+		VirtAddress kernelStack = VirtAddress(new ubyte[_stackSize].ptr) + _stackSize;
+		with (_initProcess) {
 			pid = 1;
-			name = "Init";
+			name = "init";
 			description = "The init process";
 			uid = 0;
 			gid = 0;
@@ -471,48 +471,48 @@ private:
 			threadState.rbp = VirtAddress(0);
 			threadState.rsp = VirtAddress(0);
 			threadState.fpuEnabled = false;
-			threadState.paging = GetKernelPaging();
-			//threadState.paging.RefCounter++; Not needed. "Is" already +1 for this
-			threadState.tls = null; // This will be initialized when the init process is loaded
+			threadState.paging = getKernelPaging();
+			//threadState.paging.refCounter++; Not needed. "Is" already +1 for this
+			threadState.tls = null; // This will be _initialized when the init process is loaded
 
 			image.userStack = VirtAddress(&KERNEL_STACK_START);
 			image.kernelStack = kernelStack;
 
 			kernelProcess = false;
 
-			currentDirectory = rootFS.Root;
+			currentDirectory = rootFS.root;
 			fileDescriptors = new LinkedList!FileDescriptor;
-			fileDescriptors.Add(new FileDescriptor(fdCounter++, GetConsoleManager.VirtualConsoles[0]));
+			fileDescriptors.add(new FileDescriptor(fdCounter++, getConsoleManager.virtualConsoles[0]));
 
-			state = ProcessState.Running;
+			state = ProcessState.running;
 
-			heap = null; // This will be initialized when the init process is loaded
+			heap = null; // This will be _initialized when the init process is loaded
 		}
-		allProcesses.Add(initProcess);
+		_allProcesses.add(_initProcess);
 	}
 
-	Process* nextProcess() {
-		if (readyProcesses.Length)
-			return readyProcesses.Remove(0);
+	Process* _nextProcess() {
+		if (_readyProcesses.length)
+			return _readyProcesses.remove(0);
 		else
-			return idleProcess;
+			return _idleProcess;
 	}
 
-	void doSwitching() {
-		import CPU.MSR;
+	void _doSwitching() {
+		import cpu.msr;
 
-		currentProcess = nextProcess();
-		currentProcess.state = ProcessState.Running;
+		_currentProcess = _nextProcess();
+		_currentProcess.state = ProcessState.running;
 
-		ulong storeRIP = currentProcess.threadState.rip;
-		ulong storeRBP = currentProcess.threadState.rbp;
-		ulong storeRSP = currentProcess.threadState.rsp;
+		ulong storeRIP = _currentProcess.threadState.rip;
+		ulong storeRBP = _currentProcess.threadState.rbp;
+		ulong storeRSP = _currentProcess.threadState.rsp;
 
-		currentProcess.threadState.paging.Install();
+		_currentProcess.threadState.paging.install();
 
-		MSR.FSBase = cast(ulong)currentProcess.threadState.tls;
+		MSR.fsBase = cast(ulong)_currentProcess.threadState.tls;
 
-		GDT.tss.RSP0 = currentProcess.image.kernelStack;
+		GDT.tss.rsp0 = _currentProcess.image.kernelStack;
 
 		asm {
 			mov RAX, RBP; // RBP will be overritten below
@@ -520,18 +520,18 @@ private:
 			mov RCX, storeRIP[RAX]; // RCX is the return address
 			mov RBP, storeRBP[RAX];
 			mov RSP, storeRSP[RAX];
-			mov RAX, SWITCH_MAGIC;
+			mov RAX, _switchMagic;
 			jmp RCX;
 		}
 	}
 }
 
-Scheduler GetScheduler() {
-	import Data.Util : InplaceClass;
+Scheduler getScheduler() {
+	import data.util : inplaceClass;
 
 	__gshared Scheduler scheduler;
 	__gshared ubyte[__traits(classInstanceSize, Scheduler)] data;
 	if (!scheduler)
-		scheduler = InplaceClass!Scheduler(data);
+		scheduler = inplaceClass!Scheduler(data);
 	return scheduler;
 }

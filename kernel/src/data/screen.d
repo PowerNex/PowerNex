@@ -1,9 +1,9 @@
-module Data.Screen;
+module data.screen;
 
-import Data.Color;
+import data.color;
 
 interface Screen {
-	@property long Width();
-	@property long Height();
-	@property Color[] PixelData();
+	@property long width();
+	@property long height();
+	@property Color[] pixelData();
 }

@@ -1,23 +1,23 @@
-module Task.Mutex.SpinLockMutex;
+module task.mutex.spinlockmutex;
 
-private extern (C) void mutex_spinlock(ulong* value);
-private extern (C) ulong mutex_trylock(ulong* value);
-private extern (C) void mutex_unlock(ulong* value);
+private extern (C) void mutexSpinlock(ulong* value);
+private extern (C) ulong mutexTrylock(ulong* value);
+private extern (C) void mutexUnlock(ulong* value);
 
 struct SpinLockMutex {
 public:
-	void Lock() {
-		mutex_spinlock(&value);
+	void lock() {
+		mutexSpinlock(&_value);
 	}
 
-	bool TryLock() {
-		return !!mutex_trylock(&value);
+	bool tryLock() {
+		return !!mutexTrylock(&_value);
 	}
 
-	void Unlock() {
-		mutex_unlock(&value);
+	void unlock() {
+		mutexUnlock(&_value);
 	}
 
 private:
-	ulong value;
+	ulong _value;
 }

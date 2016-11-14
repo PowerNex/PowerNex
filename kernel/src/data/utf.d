@@ -1,9 +1,9 @@
-module Data.UTF;
+module data.utf;
 
-import IO.Log;
+import io.log;
 
-dchar ParseUTF8(ubyte[] data, ref size_t bytesUsed) {
-	__gshared immutable ubyte[] MASK_NEEDED = [0b0111_1111, 0b0011_1111, 0b0001_1111, 0b0000_1111, 0b0000_0111];
+dchar parseUTF8(ubyte[] data, ref size_t bytesUsed) {
+	__gshared immutable ubyte[] maskNeeded = [0b0111_1111, 0b0011_1111, 0b0001_1111, 0b0000_1111, 0b0000_0111];
 	uint ch;
 	if (!data.length) {
 		bytesUsed = 0;
@@ -18,8 +18,8 @@ dchar ParseUTF8(ubyte[] data, ref size_t bytesUsed) {
 			break;
 
 	if (expectedCharSize > 3) { // Invalid, char cannot have more than 4 bytes
-		log.Debug("Invalid, cannot have more than 4 bytes");
-		log.Warning("\t Error byte: ", cast(void*)data[0]);
+		log.debug_("Invalid, cannot have more than 4 bytes");
+		log.warning("\t Error byte: ", cast(void*)data[0]);
 		goto error;
 	} else if (expectedCharSize == 0) { // Doesn't require another bytes
 		bytesUsed = 1;
@@ -27,22 +27,22 @@ dchar ParseUTF8(ubyte[] data, ref size_t bytesUsed) {
 	} else if (expectedCharSize == 1) {
 		// If expectedCharSize is 1, it is a 'extra' char
 		// expectedCharSize can only be 0 (Means 1), 2, 3
-		log.Debug("Invalid byte");
-		log.Warning("\t Error byte: ", cast(void*)data[0]);
+		log.debug_("Invalid byte");
+		log.warning("\t Error byte: ", cast(void*)data[0]);
 		goto error;
 	}
 
 	if (data.length < expectedCharSize) {
-		log.Debug("Data array is too small! needed size: ", expectedCharSize, " is: ", data.length);
+		log.debug_("Data array is too small! needed size: ", expectedCharSize, " is: ", data.length);
 		goto error;
 	}
 
-	ch = data[0] & MASK_NEEDED[expectedCharSize];
+	ch = data[0] & maskNeeded[expectedCharSize];
 
 	for (size_t i = 1; i < expectedCharSize; i++) {
 		if ((data[i] & 0b1100_0000) != 0b1000_0000) {
-			log.Debug("Expected a 'extra' char, found a data char instead");
-			log.Warning("\t Error byte: ", cast(void*)data[i], " idx: ", i);
+			log.debug_("Expected a 'extra' char, found a data char instead");
+			log.warning("\t Error byte: ", cast(void*)data[i], " idx: ", i);
 			goto error;
 		}
 
@@ -58,7 +58,7 @@ error:
 	return dchar.init;
 }
 
-ubyte[4] ToUTF8(dchar ch, ref size_t bytesUsed) {
+ubyte[4] toUTF8(dchar ch, ref size_t bytesUsed) {
 	ubyte[4] ret;
 	uint ich = cast(uint)ch;
 	if (ich <= 0x7F) {
@@ -80,7 +80,7 @@ ubyte[4] ToUTF8(dchar ch, ref size_t bytesUsed) {
 		ret[3] = cast(ubyte)(ch >> (3 + 6 + 6)) | /* Clear second top bit */ 0x40 | /* Set top bit */ 0x80;
 		bytesUsed = 4;
 	} else // invalid size
-		return ToUTF8(dchar.init, bytesUsed);
+		return toUTF8(dchar.init, bytesUsed);
 
 	return ret;
 }
@@ -92,7 +92,7 @@ struct UTF8Range {
 
 	this(ubyte[] str) {
 		this.str = str;
-		this.current = ParseUTF8(str, bytesUsed);
+		this.current = parseUTF8(str, bytesUsed);
 	}
 
 	@property dchar front() const {
@@ -102,7 +102,7 @@ struct UTF8Range {
 	void popFront() {
 		str = str[bytesUsed .. $];
 		if (str.length)
-			current = ParseUTF8(str, bytesUsed);
+			current = parseUTF8(str, bytesUsed);
 		else
 			current = dchar.init;
 	}
@@ -117,7 +117,7 @@ struct UTF8Range {
 		size_t bytesUsed;
 		dchar ch;
 		while (str.length && index--) {
-			ch = ParseUTF8(str, bytesUsed);
+			ch = parseUTF8(str, bytesUsed);
 			str = str[bytesUsed .. $];
 		}
 		if (index)
@@ -134,7 +134,7 @@ struct UTF8Range {
 		size_t bytesUsed;
 		size_t count;
 		while (str.length) {
-			ParseUTF8(str, bytesUsed);
+			parseUTF8(str, bytesUsed);
 			str = str[bytesUsed .. $];
 			count++;
 		}

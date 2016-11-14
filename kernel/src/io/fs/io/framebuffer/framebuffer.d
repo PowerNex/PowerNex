@@ -1,39 +1,39 @@
-module IO.FS.IO.Framebuffer.Framebuffer;
+module io.fs.io.framebuffer.framebuffer;
 
-import IO.FS;
-import IO.FS.IO.Framebuffer;
+import io.fs;
+import io.fs.io.framebuffer;
 
-import Data.Address;
-import Data.Color;
-import Data.Font;
-import Memory.Paging;
+import data.address;
+import data.color;
+import data.font;
+import memory.paging;
 
 abstract class Framebuffer : FileNode {
 public:
 	this(PhysAddress physAddress, size_t width, size_t height) {
-		super(NodePermissions.DefaultPermissions, 0);
+		super(NodePermissions.defaultPermissions, 0);
 
-		this.width = width;
-		this.height = height;
+		_width = width;
+		_height = height;
 
 		//TODO: Map physAddress
-		pixels = physAddress.Virtual;
+		_pixels = physAddress.virtual;
 	}
 
-	override bool Open() {
-		if (inUse)
+	override bool open() {
+		if (_inUse)
 			return false;
-		return inUse = true;
+		return _inUse = true;
 	}
 
-	override void Close() {
-		inUse = false;
+	override void close() {
+		_inUse = false;
 	}
 
-	override ulong Read(ubyte[] buffer, ulong offset) {
-		if (!active)
+	override ulong read(ubyte[] buffer, ulong offset) {
+		if (!_active)
 			return 0;
-		size_t length = width * height * Color.sizeof + size_t.sizeof * 2;
+		size_t length = _width * _height * Color.sizeof + size_t.sizeof * 2;
 		if (offset >= length)
 			return 0;
 		ulong size = buffer.length;
@@ -44,142 +44,142 @@ public:
 			size = (tmp < 0) ? 0 : tmp;
 		}
 
-		size_t[] header = [width, height];
+		size_t[] header = [_width, _height];
 
 		if (offset < 16) {
 			auto wroteHeader = ((size < 16) ? size : 16) - offset;
 			memcpy(buffer.ptr, &header[offset], wroteHeader);
 			if (buffer.length > size)
-				memcpy(&buffer[wroteHeader], pixels.Ptr, size - wroteHeader);
+				memcpy(&buffer[wroteHeader], _pixels.ptr, size - wroteHeader);
 		} else
-			memcpy(buffer.ptr, &pixels.Ptr[offset - 16], size);
+			memcpy(buffer.ptr, &_pixels.ptr[offset - 16], size);
 
 		return size;
 
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
-		if (!active)
+	override ulong write(ubyte[] buffer, ulong offset) {
+		if (!_active)
 			return 0;
 
-		size_t pixelLength = width * height * Color.sizeof;
+		size_t pixelLength = _width * _height * Color.sizeof;
 		if (offset > pixelLength)
 			return 0;
 
 		size_t size = buffer.length;
 		if (size + offset > pixelLength)
 			size = pixelLength - offset;
-		memcpy(&pixels.Ptr[offset], buffer.ptr, size);
+		memcpy(&_pixels.ptr[offset], buffer.ptr, size);
 		return buffer.length;
 	}
 
-	void RenderPixel(ssize_t x, ssize_t y, Color c) {
-		if (!active)
+	void renderPixel(ssize_t x, ssize_t y, Color c) {
+		if (!_active)
 			return;
 		putPixel(x, y, c);
 	}
 
-	void RenderText(Font font, string str, ssize_t x, ssize_t y, Color fg, Color bg) {
-		if (!active)
+	void renderText(Font font, string str, ssize_t x, ssize_t y, Color fg, Color bg) {
+		if (!_active)
 			return;
-		renderText(font, str, x, y, fg, bg);
+		_renderText(font, str, x, y, fg, bg);
 	}
 
-	void RenderChar(Font font, dchar str, ssize_t x, ssize_t y, Color fg, Color bg) {
-		if (!active)
+	void renderChar(Font font, dchar str, ssize_t x, ssize_t y, Color fg, Color bg) {
+		if (!_active)
 			return;
-		renderChar(font, str, x, y, fg, bg);
+		_renderChar(font, str, x, y, fg, bg);
 	}
 
-	void RenderRect(ssize_t x, ssize_t y, size_t width, size_t height, Color color) {
-		if (!active)
+	void renderRect(ssize_t x, ssize_t y, size_t _width, size_t _height, Color color) {
+		if (!_active)
 			return;
-		renderRect(x, y, width, height, color);
+		_renderRect(x, y, _width, _height, color);
 	}
 
-	void RenderLine(ssize_t x0, ssize_t y0, ssize_t x1, ssize_t y1, Color c) {
-		if (!active)
+	void renderLine(ssize_t x0, ssize_t y0, ssize_t x1, ssize_t y1, Color c) {
+		if (!_active)
 			return;
-		renderLine(x0, y0, x1, y1, c);
+		_renderLine(x0, y0, x1, y1, c);
 	}
 
-	void RenderCircle(ssize_t x0, ssize_t y0, ssize_t radius, Color color) {
-		if (!active)
+	void renderCircle(ssize_t x0, ssize_t y0, ssize_t radius, Color color) {
+		if (!_active)
 			return;
-		renderCircle(x0, y0, radius, color);
+		_renderCircle(x0, y0, radius, color);
 	}
 
-	void MoveRegion(ssize_t toX, ssize_t toY, ssize_t fromX, ssize_t fromY, size_t width, size_t height) {
-		if (!active)
+	void moveRegion(ssize_t toX, ssize_t toY, ssize_t fromX, ssize_t fromY, size_t _width, size_t _height) {
+		if (!_active)
 			return;
 
-		moveRegion(toX, toY, fromX, fromY, width, height);
+		_moveRegion(toX, toY, fromX, fromY, _width, _height);
 	}
 
-	@property size_t Width() {
-		return width;
+	@property size_t width() {
+		return _width;
 	}
 
-	@property size_t Height() {
-		return height;
+	@property size_t height() {
+		return _height;
 	}
 
-	@property bool Active() {
-		return active;
+	@property bool active() {
+		return _active;
 	}
 
-	@property bool Active(bool active) {
-		if (active && !this.active)
-			OnActivate();
-		else if (!active && this.active)
-			OnDisable();
+	@property bool active(bool active) {
+		if (active && !_active)
+			onActivate();
+		else if (!active && _active)
+			onDisable();
 
-		this.active = active;
-		return active;
+		_active = active;
+		return _active;
 	}
 
 protected:
-	size_t width;
-	size_t height;
+	size_t _width;
+	size_t _height;
 
 	/// Activate the Framebuffer.
 	/// This should set the needed mode and rerender everything.
-	abstract void OnActivate();
-	abstract void OnDisable();
+	abstract void onActivate();
+	abstract void onDisable();
 
 private:
-	bool inUse;
-	VirtAddress pixels;
-	bool active;
+	bool _inUse;
+	VirtAddress _pixels;
+	bool _active;
 
 	pragma(inline, true) void putPixel(ssize_t x, ssize_t y, Color color) {
 		if (x < 0 && y < 0)
 			return;
-		*(pixels + (y * width + x) * Color.sizeof).Ptr!Color = color;
+		*(_pixels + (y * _width + x) * Color.sizeof).ptr!Color = color;
 	}
 
-	void renderText(Font font, string str, ssize_t x, ssize_t y, Color fg, Color bg) {
+	void _renderText(Font font, string str, ssize_t x, ssize_t y, Color fg, Color bg) {
 		foreach (ch; str)
-			RenderChar(font, ch, x += font.Width, y, fg, bg);
+			_renderChar(font, ch, x += font.width, y, fg, bg);
 	}
 
-	void renderChar(Font font, dchar ch, ssize_t x, ssize_t y, Color fg, Color bg) {
-		ulong[] charData = new ulong[font.BufferSize];
-		foreach (idxRow, ulong row; font.GetChar(ch, charData))
-			foreach (column; 0 .. font.Width)
-				putPixel(x + column, y + idxRow, (row & (1 << (font.Width - 1 - column))) ? fg : bg);
+	void _renderChar(Font font, dchar ch, ssize_t x, ssize_t y, Color fg, Color bg) {
+		ulong[] charData = new ulong[font.bufferSize];
+		foreach (idxRow, ulong row; font.getChar(ch, charData))
+			foreach (column; 0 .. font.width)
+				putPixel(x + column, y + idxRow, (row & (1 << (font.width - 1 - column))) ? fg : bg);
 
 		charData.destroy;
 	}
 
-	void renderRect(ssize_t x, ssize_t y, size_t width, size_t height, Color color) {
-		for (ssize_t yy = y; yy < y + height; yy++)
-			for (ssize_t xx = x; xx < x + width; xx++)
+	void _renderRect(ssize_t x, ssize_t y, size_t _width, size_t _height, Color color) {
+		for (ssize_t yy = y; yy < y + _height; yy++)
+			for (ssize_t xx = x; xx < x + _width; xx++)
 				putPixel(xx, yy, color);
 	}
 
-	void renderLine(ssize_t x0, ssize_t y0, ssize_t x1, ssize_t y1, Color c) {
-		import Data.Util : abs;
+	void _renderLine(ssize_t x0, ssize_t y0, ssize_t x1, ssize_t y1, Color c) {
+		import data.util : abs;
 
 		//Bresenham's line algorithm
 		const ssize_t steep = abs(y1 - y0) > abs(x1 - x0);
@@ -229,7 +229,7 @@ private:
 		}
 	}
 
-	void renderCircle(ssize_t x0, ssize_t y0, ssize_t radius, Color color) {
+	void _renderCircle(ssize_t x0, ssize_t y0, ssize_t radius, Color color) {
 		//Midpoint circle algorithm
 		ssize_t x = radius;
 		ssize_t y = 0;
@@ -254,14 +254,14 @@ private:
 		}
 	}
 
-	void moveRegion(ssize_t toX, ssize_t toY, ssize_t fromX, ssize_t fromY, size_t width, size_t height) {
+	void _moveRegion(ssize_t toX, ssize_t toY, ssize_t fromX, ssize_t fromY, size_t _width, size_t _height) {
 		if (fromY >= toY)
-			foreach (row; 0 .. height)
-				memmove((pixels + ((toY + row) * this.width + toX) * Color.sizeof).Ptr,
-						(pixels + ((fromY + row) * this.width + fromX) * Color.sizeof).Ptr, width * Color.sizeof);
+			foreach (row; 0 .. _height)
+				memmove((_pixels + ((toY + row) * this._width + toX) * Color.sizeof).ptr,
+						(_pixels + ((fromY + row) * this._width + fromX) * Color.sizeof).ptr, _width * Color.sizeof);
 		else
-					foreach_reverse (row; 0 .. height)
-						memmove((pixels + ((toY + row) * this.width + toX) * Color.sizeof).Ptr,
-								(pixels + ((fromY + row) * this.width + fromX) * Color.sizeof).Ptr, width * Color.sizeof);
+					foreach_reverse (row; 0 .. _height)
+						memmove((_pixels + ((toY + row) * this._width + toX) * Color.sizeof).ptr,
+								(_pixels + ((fromY + row) * this._width + fromX) * Color.sizeof).ptr, _width * Color.sizeof);
 	}
 }

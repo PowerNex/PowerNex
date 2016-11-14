@@ -1,102 +1,102 @@
-module Memory.Paging;
+module memory.paging;
 
-import Data.Address;
-import Data.BitField;
-import Memory.FrameAllocator;
-import IO.Log;
-import Data.Linker;
+import data.address;
+import data.bitfield;
+import memory.frameallocator;
+import io.log;
+import data.linker;
 
-extern (C) void CPU_flushPage(ulong addr);
+extern (C) void cpuFlushPage(ulong addr);
 
 enum MapMode : ulong { // TODO: Implement the rest.
-	Present = 1 << 0,
-	Writable = 1 << 1,
-	User = 1 << 2,
-	Map4M = 1 << 8,
-	NoExecute = 1UL << 63,
+	present = 1 << 0,
+	writable = 1 << 1,
+	user = 1 << 2,
+	map4M = 1 << 8,
+	noExecute = 1UL << 63,
 
-	Empty = 0,
-	DefaultKernel = Present | Writable,
-	DefaultUser = Present | User | Writable
+	empty = 0,
+	defaultKernel = present | writable,
+	defaultUser = present | user | writable
 }
 
 struct TablePtr(T) {
-	ulong data;
+	private ulong _data;
 
 	this(TablePtr!T other) {
-		data = other.data;
+		_data = other.data;
 	}
 
-	@property PhysAddress Data(PhysAddress address) {
-		Address = address.Int >> 12;
-		return Data();
+	@property PhysAddress data(PhysAddress address) {
+		this.address = address.num >> 12;
+		return data();
 	}
 
-	@property PhysAddress Data() {
-		return PhysAddress(Address << 12);
+	@property PhysAddress data() {
+		return PhysAddress(address << 12);
 	}
 
-	@property MapMode Mode(MapMode mode) {
-		ReadWrite = !!(mode & MapMode.Writable);
-		User = !!(mode & MapMode.User);
+	@property MapMode mode(MapMode mode) {
+		readWrite = !!(mode & MapMode.writable);
+		user = !!(mode & MapMode.user);
 		static if (!is(T == void))
-			Map4M = !!(mode & MapMode.Map4M);
-		NoExecute = !!(mode & MapMode.NoExecute);
+			map4M = !!(mode & MapMode.map4M);
+		noExecute = !!(mode & MapMode.noExecute);
 
-		return Mode();
+		return this.mode();
 	}
 
-	@property MapMode Mode() {
+	@property MapMode mode() {
 		MapMode mode;
 
-		if (Present)
-			mode |= MapMode.Present;
+		if (present)
+			mode |= MapMode.present;
 
-		if (ReadWrite)
-			mode |= MapMode.Writable;
-		if (User)
-			mode |= MapMode.User;
+		if (readWrite)
+			mode |= MapMode.writable;
+		if (user)
+			mode |= MapMode.user;
 		static if (!is(T == void))
-			if (Map4M)
-				mode |= MapMode.Map4M;
-		if (NoExecute)
-			mode |= MapMode.NoExecute;
+			if (map4M)
+				mode |= MapMode.map4M;
+		if (noExecute)
+			mode |= MapMode.noExecute;
 
 		return mode;
 	}
 
 	//dfmt off
 	static if (is(T == void)) {
-		mixin(Bitfield!(data,
-		"Present", 1,
-		"ReadWrite", 1,
-		"User", 1,
-		"WriteThrough", 1,
-		"CacheDisable", 1,
-		"Accessed", 1,
-		"Dirty", 1,
-		"PAT", 1,
-		"Global", 1,
-		"Avl", 3,
-		"Address", 40,
-		"Available", 11,
-		"NoExecute", 1
+		mixin(bitfield!(_data,
+		"present", 1,
+		"readWrite", 1,
+		"user", 1,
+		"writeThrough", 1,
+		"cacheDisable", 1,
+		"accessed", 1,
+		"dirty", 1,
+		"pat", 1,
+		"global", 1,
+		"avl", 3,
+		"address", 40,
+		"available", 11,
+		"noExecute", 1
 		));
 	} else {
-		mixin(Bitfield!(data,
-		"Present", 1,
-		"ReadWrite", 1,
-		"User", 1,
-		"WriteThrough", 1,
-		"CacheDisable", 1,
-		"Accessed", 1,
-		"Reserved", 1,
-		"Map4M", 1,
-		"Ignored", 1,
-		"Avl", 3,
-		"Address", 40,
-		"Available", 11,
-		"NoExecute", 1
+		mixin(bitfield!(_data,
+		"present", 1,
+		"readWrite", 1,
+		"user", 1,
+		"writeThrough", 1,
+		"cacheDisable", 1,
+		"accessed", 1,
+		"reserved", 1,
+		"map4M", 1,
+		"ignored", 1,
+		"avl", 3,
+		"address", 40,
+		"available", 11,
+		"noExecute", 1
 		));
 	}
 	//dfmt on
@@ -112,27 +112,27 @@ struct Table(int Level) {
 
 	ChildType[512] children;
 
-	ChildType* Get(ushort idx) {
+	ChildType* get(ushort idx) {
 		assert(idx < children.length);
 		ChildType* child = &children[idx];
 		return child;
 	}
 
 	static if (Level != 1)
-		ChildType* GetOrCreate(ushort idx, MapMode mode) {
+		ChildType* getOrCreate(ushort idx, MapMode mode) {
 			assert(idx < children.length);
 			ChildType* child = &children[idx];
 
-			if (!child.Present) {
-				if (mode & MapMode.Map4M)
-					log.Fatal("Map4M creation is not Allowed in GetOrCreate! Level: ", Level, " Index: ", idx);
+			if (!child.present) {
+				if (mode & MapMode.map4M)
+					log.fatal("Map4M creation is not Allowed in GetOrCreate! Level: ", Level, " Index: ", idx);
 
-				child.Data = PhysAddress(FrameAllocator.Alloc());
+				child.data = PhysAddress(FrameAllocator.alloc());
 
-				_memset64(child.Data.Virtual.Ptr, 0, 0x200); //Defined in object.d, 0x200 * 8 = 0x1000
+				_memset64(child.data.virtual.ptr, 0, 0x200); //Defined in object.d, 0x200 * 8 = 0x1000
 
-				child.Mode = mode;
-				child.Present = true;
+				child.mode = mode;
+				child.present = true;
 			}
 
 			return child;
@@ -141,80 +141,80 @@ struct Table(int Level) {
 
 static assert(Table!4.sizeof == (ulong[512]).sizeof);
 
-private extern (C) void CPU_install_cr3(PhysAddress addr);
+private extern (C) void cpuInstallCR3(PhysAddress addr);
 
 class Paging {
 public:
 	private this() {
-		rootPhys = PhysAddress(FrameAllocator.Alloc());
-		root = rootPhys.Virtual.Ptr!(Table!4);
-		_memset64(root, 0, 0x200); //Defined in object.d
-		refCounter++;
+		_rootPhys = PhysAddress(FrameAllocator.alloc());
+		_root = _rootPhys.virtual.ptr!(Table!4);
+		_memset64(_root, 0, 0x200); //Defined in object.d
+		_refCounter++;
 	}
 
 	this(void* pml4) {
-		root = cast(Table!4*)pml4;
-		refCounter++;
-		rootPhys = GetPage(VirtAddress(root)).Data;
+		_root = cast(Table!4*)pml4;
+		_refCounter++;
+		_rootPhys = getPage(VirtAddress(_root)).data;
 	}
 
 	this(Paging other) {
 		this();
 
-		Table!4* otherPML4 = other.root;
-		Table!4* myPML4 = root;
+		Table!4* otherPML4 = other._root;
+		Table!4* myPML4 = _root;
 		for (ushort pml4Idx = 0; pml4Idx < 512 - 1 /* Kernel PDP */ ; pml4Idx++) {
 			if (pml4Idx == 256) // See end of function for why
 				continue;
 
 			TablePtr!(Table!3) otherPDPEntry_ptr = otherPML4.children[pml4Idx];
-			if (!otherPDPEntry_ptr.Present)
+			if (!otherPDPEntry_ptr.present)
 				continue;
 
-			Table!3* otherPDPEntry = otherPDPEntry_ptr.Data.Virtual.Ptr!(Table!3);
-			Table!3* myPDPEntry = myPML4.GetOrCreate(pml4Idx, otherPDPEntry_ptr.Mode).Data.Virtual.Ptr!(Table!3);
+			Table!3* otherPDPEntry = otherPDPEntry_ptr.data.virtual.ptr!(Table!3);
+			Table!3* myPDPEntry = myPML4.getOrCreate(pml4Idx, otherPDPEntry_ptr.mode).data.virtual.ptr!(Table!3);
 
 			for (ushort pdpIdx = 0; pdpIdx < 512; pdpIdx++) {
 				TablePtr!(Table!2) otherPDEntry_ptr = otherPDPEntry.children[pdpIdx];
-				if (!otherPDEntry_ptr.Present)
+				if (!otherPDEntry_ptr.present)
 					continue;
 
-				Table!2* otherPDEntry = otherPDEntry_ptr.Data.Virtual.Ptr!(Table!2);
-				Table!2* myPDEntry = myPDPEntry.GetOrCreate(pdpIdx, otherPDEntry_ptr.Mode).Data.Virtual.Ptr!(Table!2);
+				Table!2* otherPDEntry = otherPDEntry_ptr.data.virtual.ptr!(Table!2);
+				Table!2* myPDEntry = myPDPEntry.getOrCreate(pdpIdx, otherPDEntry_ptr.mode).data.virtual.ptr!(Table!2);
 
 				for (ushort pdIdx = 0; pdIdx < 512; pdIdx++) {
 					TablePtr!(Table!1) otherPTEntry_ptr = otherPDEntry.children[pdIdx];
-					if (!otherPTEntry_ptr.Present)
+					if (!otherPTEntry_ptr.present)
 						continue;
 
-					if (otherPTEntry_ptr.Mode & MapMode.Map4M) {
-						TablePtr!(Table!1)* myPTEntry = myPDEntry.Get(pdIdx);
-						PhysAddress phys = PhysAddress(FrameAllocator.Alloc512());
-						myPTEntry.Data = phys;
-						myPTEntry.Mode = otherPTEntry_ptr.Mode;
-						myPTEntry.Present = true;
+					if (otherPTEntry_ptr.mode & MapMode.map4M) {
+						TablePtr!(Table!1)* myPTEntry = myPDEntry.get(pdIdx);
+						PhysAddress phys = PhysAddress(FrameAllocator.alloc512());
+						myPTEntry.data = phys;
+						myPTEntry.mode = otherPTEntry_ptr.mode;
+						myPTEntry.present = true;
 						VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL);
 
-						FlushPage(addr);
-						memcpy(phys.Virtual.Ptr, otherPTEntry_ptr.Data.Virtual.Ptr, 0x1000 * 512); //Defined in object.d, 0x200 * 8 = 0x1000
+						flushPage(addr);
+						memcpy(phys.virtual.ptr, otherPTEntry_ptr.data.virtual.ptr, 0x1000 * 512); //Defined in object.d, 0x200 * 8 = 0x1000
 					} else {
-						Table!1* otherPTEntry = otherPTEntry_ptr.Data.Virtual.Ptr!(Table!1);
-						Table!1* myPTEntry = myPDEntry.GetOrCreate(pdIdx, otherPTEntry_ptr.Mode).Data.Virtual.Ptr!(Table!1);
+						Table!1* otherPTEntry = otherPTEntry_ptr.data.virtual.ptr!(Table!1);
+						Table!1* myPTEntry = myPDEntry.getOrCreate(pdIdx, otherPTEntry_ptr.mode).data.virtual.ptr!(Table!1);
 
 						for (ushort ptIdx = 0; ptIdx < 512; ptIdx++) {
-							PhysAddress phys = FrameAllocator.Alloc();
-							assert(phys.Int);
+							PhysAddress phys = FrameAllocator.alloc();
+							assert(phys.num);
 							with (myPTEntry.children[ptIdx]) {
-								Data = phys;
-								Mode = otherPTEntry.children[ptIdx].Mode;
-								Present = true;
+								data = phys;
+								mode = otherPTEntry.children[ptIdx].mode;
+								present = true;
 							}
 
 							VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(
 									ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
-							FlushPage(addr);
+							flushPage(addr);
 
-							memcpy(phys.Virtual.Ptr, otherPTEntry.children[ptIdx].Data.Virtual.Ptr, 0x1000); // TODO: Implement Copy-on-write, so we can skip this step!
+							memcpy(phys.virtual.ptr, otherPTEntry.children[ptIdx].data.virtual.ptr, 0x1000); // TODO: Implement Copy-on-write, so we can skip this step!
 						}
 					}
 				}
@@ -224,178 +224,178 @@ public:
 		myPML4.children[511] = otherPML4.children[511]; // Map Kernel
 	}
 
-	void Map(VirtAddress virt, PhysAddress phys, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
-		if (phys.Int == 0)
+	void map(VirtAddress virt, PhysAddress phys, MapMode pageMode, MapMode tablesMode = MapMode.defaultUser) {
+		if (phys.num == 0)
 			return;
-		const ulong virtAddr = virt.Int;
+		const ulong virtAddr = virt.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
 		const ushort pdIdx = (virtAddr >> 21) & 0x1FF;
 		const ushort ptIdx = (virtAddr >> 12) & 0x1FF;
 
-		Table!3* pdp = root.GetOrCreate(pml4Idx, tablesMode).Data.Virtual.Ptr!(Table!3);
-		Table!2* pd = pdp.GetOrCreate(pdpIdx, tablesMode).Data.Virtual.Ptr!(Table!2);
-		Table!1* pt = pd.GetOrCreate(pdIdx, tablesMode).Data.Virtual.Ptr!(Table!1);
-		TablePtr!void* page = pt.Get(ptIdx);
+		Table!3* pdp = _root.getOrCreate(pml4Idx, tablesMode).data.virtual.ptr!(Table!3);
+		Table!2* pd = pdp.getOrCreate(pdpIdx, tablesMode).data.virtual.ptr!(Table!2);
+		Table!1* pt = pd.getOrCreate(pdIdx, tablesMode).data.virtual.ptr!(Table!1);
+		TablePtr!void* page = pt.get(ptIdx);
 
-		page.Mode = pageMode;
-		page.Data = phys;
-		page.Present = true;
-		FlushPage(virt);
+		page.mode = pageMode;
+		page.data = phys;
+		page.present = true;
+		flushPage(virt);
 	}
 
-	void Unmap(VirtAddress virt) {
-		auto page = GetPage(virt);
+	void unmap(VirtAddress virt) {
+		auto page = getPage(virt);
 		if (!page)
 			return;
 
-		page.Mode = MapMode.Empty;
-		page.Data = PhysAddress();
-		page.Present = false;
-		FlushPage(virt);
+		page.mode = MapMode.empty;
+		page.data = PhysAddress();
+		page.present = false;
+		flushPage(virt);
 	}
 
-	void UnmapAndFree(VirtAddress virt) {
-		auto page = GetPage(virt);
+	void unmapAndFree(VirtAddress virt) {
+		auto page = getPage(virt);
 		if (!page)
 			return;
 
-		FrameAllocator.Free(page.Data);
+		FrameAllocator.free(page.data);
 
-		page.Mode = MapMode.Empty;
-		page.Data = PhysAddress();
-		page.Present = false;
-		FlushPage(virt);
+		page.mode = MapMode.empty;
+		page.data = PhysAddress();
+		page.present = false;
+		flushPage(virt);
 	}
 
-	PhysAddress MapFreeMemory(VirtAddress virt, MapMode pageMode, MapMode tablesMode = MapMode.DefaultUser) {
-		PhysAddress phys = FrameAllocator.Alloc();
-		if (!phys.Int)
+	PhysAddress mapFreeMemory(VirtAddress virt, MapMode pageMode, MapMode tablesMode = MapMode.defaultUser) {
+		PhysAddress phys = FrameAllocator.alloc();
+		if (!phys.num)
 			return phys; // aka Null
-		Map(virt, phys, pageMode, tablesMode);
+		map(virt, phys, pageMode, tablesMode);
 		return phys;
 	}
 
-	TablePtr!(void)* GetPage(VirtAddress virt) {
-		if (virt.Int == 0)
+	TablePtr!(void)* getPage(VirtAddress virt) {
+		if (virt.num == 0)
 			return null;
-		const ulong virtAddr = virt.Int;
+		const ulong virtAddr = virt.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
 		const ushort pdIdx = (virtAddr >> 21) & 0x1FF;
 		const ushort ptIdx = (virtAddr >> 12) & 0x1FF;
 
-		auto pdpAddr = root.Get(pml4Idx);
-		if (!pdpAddr.Present)
+		auto pdpAddr = _root.get(pml4Idx);
+		if (!pdpAddr.present)
 			return null;
-		Table!3* pdp = pdpAddr.Data.Virtual.Ptr!(Table!3);
+		Table!3* pdp = pdpAddr.data.virtual.ptr!(Table!3);
 
-		auto pdAddr = pdp.Get(pdpIdx);
-		if (!pdAddr.Present)
+		auto pdAddr = pdp.get(pdpIdx);
+		if (!pdAddr.present)
 			return null;
-		Table!2* pd = pdAddr.Data.Virtual.Ptr!(Table!2);
+		Table!2* pd = pdAddr.data.virtual.ptr!(Table!2);
 
-		auto ptAddr = pd.Get(pdIdx);
-		if (!ptAddr.Present)
+		auto ptAddr = pd.get(pdIdx);
+		if (!ptAddr.present)
 			return null;
-		Table!1* pt = ptAddr.Data.Virtual.Ptr!(Table!1);
+		Table!1* pt = ptAddr.data.virtual.ptr!(Table!1);
 
-		return pt.Get(ptIdx);
+		return pt.get(ptIdx);
 	}
 
-	void Install() {
-		CPU_install_cr3(Root);
+	void install() {
+		cpuInstallCR3(root());
 	}
 
-	void RemoveUserspace(bool freePages) {
-		Table!4* myPML4 = root;
+	void removeUserspace(bool freePages) {
+		Table!4* myPML4 = _root;
 		for (ushort pml4Idx = 0; pml4Idx < 512 - 1 /* Kernel PDP */ ; pml4Idx++) {
 			if (pml4Idx == 256) // 512GiB Lower mapping
 				continue;
 
-			auto pdp_ptr = myPML4.Get(pml4Idx);
-			if (!pdp_ptr.Present)
+			auto pdp_ptr = myPML4.get(pml4Idx);
+			if (!pdp_ptr.present)
 				continue;
-			Table!3* myPDPEntry = pdp_ptr.Data.Virtual.Ptr!(Table!3);
+			Table!3* myPDPEntry = pdp_ptr.data.virtual.ptr!(Table!3);
 
 			for (ushort pdpIdx = 0; pdpIdx < 512; pdpIdx++) {
-				auto pd_ptr = myPDPEntry.Get(pdpIdx);
-				if (!pd_ptr.Present)
+				auto pd_ptr = myPDPEntry.get(pdpIdx);
+				if (!pd_ptr.present)
 					continue;
-				Table!2* myPDEntry = pd_ptr.Data.Virtual.Ptr!(Table!2);
+				Table!2* myPDEntry = pd_ptr.data.virtual.ptr!(Table!2);
 
 				for (ushort pdIdx = 0; pdIdx < 512; pdIdx++) {
-					auto pt_ptr = myPDEntry.Get(pdIdx);
-					if (!pt_ptr.Present)
+					auto pt_ptr = myPDEntry.get(pdIdx);
+					if (!pt_ptr.present)
 						continue;
 
-					if (pt_ptr.Mode & MapMode.Map4M) {
-						PhysAddress start = pt_ptr.Data;
+					if (pt_ptr.mode & MapMode.map4M) {
+						PhysAddress start = pt_ptr.data;
 						immutable PhysAddress end = start + 512 * 0x1000;
 						while (start < end)
-							FrameAllocator.Free(start += 0x1000);
+							FrameAllocator.free(start += 0x1000);
 					} else {
-						Table!1* myPTEntry = pt_ptr.Data.Virtual.Ptr!(Table!1);
+						Table!1* myPTEntry = pt_ptr.data.virtual.ptr!(Table!1);
 
 						if (freePages)
 							for (ushort ptIdx = 0; ptIdx < 512; ptIdx++)
-								with (myPTEntry.Get(ptIdx))
-									if (Present) {
+								with (myPTEntry.get(ptIdx))
+									if (present) {
 										VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(
 												ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
-										FrameAllocator.Free(Data);
-										Present = false;
-										FlushPage(addr);
+										FrameAllocator.free(data);
+										present = false;
+										flushPage(addr);
 									}
 
-						//log.Warning("Freeing Table!1: ", VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL));
-						FrameAllocator.Free(pt_ptr.Data);
+						//log.warning("Freeing Table!1: ", VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL));
+						FrameAllocator.free(pt_ptr.data);
 					}
 				}
-				//log.Warning("Freeing Table!2: ", VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL));
-				FrameAllocator.Free(pd_ptr.Data);
+				//log.warning("Freeing Table!2: ", VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL));
+				FrameAllocator.free(pd_ptr.data);
 			}
-			//log.Warning("Freeing Table!3: ", VirtAddress(cast(ulong)pml4Idx << 39UL));
-			FrameAllocator.Free(pdp_ptr.Data);
-			pdp_ptr.Mode = MapMode.Empty;
-			pdp_ptr.Data = PhysAddress();
-			pdp_ptr.Present = false;
+			//log.warning("Freeing Table!3: ", VirtAddress(cast(ulong)pml4Idx << 39UL));
+			FrameAllocator.free(pdp_ptr.data);
+			pdp_ptr.mode = MapMode.empty;
+			pdp_ptr.data = PhysAddress();
+			pdp_ptr.present = false;
 		}
 	}
 
-	void FlushPage(VirtAddress virt) {
-		CPU_flushPage(virt.Int);
+	void flushPage(VirtAddress virt) {
+		cpuFlushPage(virt.num);
 	}
 
-	@property Table!4* RootTable() {
-		return root;
+	@property Table!4* rootTable() {
+		return _root;
 	}
 
-	@property PhysAddress Root() {
-		return rootPhys;
+	@property PhysAddress root() {
+		return _rootPhys;
 	}
 
-	@property ref ulong RefCounter() {
-		return refCounter;
+	@property ref ulong refCounter() {
+		return _refCounter;
 	}
 
 private:
-	Table!4* root;
-	PhysAddress rootPhys;
-	ulong refCounter;
+	Table!4* _root;
+	PhysAddress _rootPhys;
+	ulong _refCounter;
 }
 
 private extern (C) extern __gshared {
-	ubyte PML4;
+	ubyte PML4; // Reference to PML4 in boot.S
 }
 
-Paging GetKernelPaging() {
-	import Data.Util : InplaceClass;
+Paging getKernelPaging() {
+	import data.util : inplaceClass;
 
 	__gshared ubyte[__traits(classInstanceSize, Paging)] data;
 	__gshared Paging kernelPaging;
 
 	if (!kernelPaging)
-		kernelPaging = InplaceClass!Paging(data, &PML4);
+		kernelPaging = inplaceClass!Paging(data, &PML4);
 	return kernelPaging;
 }

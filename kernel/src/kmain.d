@@ -1,4 +1,4 @@
-module KMain;
+module kmain;
 
 version (PowerNex) {
 	// Good job, you are now able to compile PowerNex!
@@ -6,189 +6,197 @@ version (PowerNex) {
 	static assert(0, "Please use the customized toolchain located here: http://wild.tk/PowerNex-Env.tar.xz");
 }
 
-import IO.COM;
-import IO.Log;
-import IO.Keyboard;
-import IO.FS;
-import CPU.GDT;
-import CPU.IDT;
-import CPU.PIT;
-import Data.Color;
-import Data.Multiboot;
-import HW.PS2.Keyboard;
-import Memory.Paging;
-import Memory.FrameAllocator;
-import Data.Linker;
-import Data.Address;
-import Memory.Heap;
-import Task.Scheduler;
-import ACPI.RSDP;
-import HW.PCI.PCI;
-import HW.CMOS.CMOS;
-import System.SyscallHandler;
-import Data.TextBuffer : scr = GetBootTTY;
-import Data.ELF;
-import IO.ConsoleManager;
-import IO.FS.IO.Console;
+import io.com;
+import io.log;
+import io.fs;
+import cpu.gdt;
+import cpu.idt;
+import cpu.pit;
+import data.color;
+import data.multiboot;
+import hw.ps2.keyboard;
+import memory.paging;
+import memory.frameallocator;
+import data.linker;
+import data.address;
+import memory.heap;
+import task.scheduler;
+import acpi.rsdp;
+import hw.pci.pci;
+import hw.cmos.cmos;
+import system.syscallhandler;
+import data.textbuffer : scr = getBootTTY;
+import data.elf;
+import io.consolemanager;
+import io.fs.io.console;
 
-immutable uint major = __VERSION__ / 1000;
-immutable uint minor = __VERSION__ % 1000;
+private immutable uint _major = __VERSION__ / 1000;
+private immutable uint _minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
 
 extern (C) int kmain(uint magic, ulong info) {
-	PreInit();
-	Welcome();
-	Init(magic, info);
+	preInit();
+	welcome();
+	init(magic, info);
 	asm {
 		sti;
 	}
 
-	string initFile = "/Binary/Init";
+	string initFile = "/bin/init";
 
-	ELF init = new ELF(cast(FileNode)rootFS.Root.FindNode(initFile));
-	if (init.Valid) {
-		scr.Writeln(initFile, " is valid! Loading...");
+	ELF init = new ELF(cast(FileNode)rootFS.root.findNode(initFile));
+	if (init.valid) {
+		scr.writeln(initFile, " is valid! Loading...");
 
-		scr.Writeln();
-		scr.Foreground = Color(255, 255, 0);
-		init.MapAndRun([initFile]);
+		scr.writeln();
+		scr.foreground = Color(255, 255, 0);
+		init.mapAndRun([initFile]);
 	} else {
-		scr.Writeln("Invalid ELF64 file");
-		log.Fatal("Invalid ELF64 file!");
+		scr.writeln("Invalid ELF64 file");
+		log.fatal("Invalid ELF64 file!");
 	}
 
-	scr.Foreground = Color(255, 0, 255);
-	scr.Background = Color(255, 255, 0);
-	scr.Writeln("kmain functions has exited!");
-	log.Fatal("kmain functions has exited!");
+	scr.foreground = Color(255, 0, 255);
+	scr.background = Color(255, 255, 0);
+	scr.writeln("kmain functions has exited!");
+	log.fatal("kmain functions has exited!");
 	return 0;
 }
 
-void BootTTYToTextmode(size_t start, size_t end) {
-	import IO.TextMode;
+void bootTTYToTextmode(size_t start, size_t end) {
+	import io.textmode;
 
 	if (start == -1 && end == -1)
-		GetScreen.Clear();
+		getScreen.clear();
 	else
-		GetScreen.Write(scr.Buffer[start .. end]);
+		getScreen.write(scr.buffer[start .. end]);
 }
 
-void PreInit() {
-	import IO.TextMode;
+void preInit() {
+	import io.textmode;
 
-	COM.Init();
-
+	COM.init();
 	scr;
-	scr.OnChangedCallback = &BootTTYToTextmode;
-	GetScreen.Clear();
+	scr.onChangedCallback = &bootTTYToTextmode;
+	getScreen.clear();
 
-	scr.Writeln("ACPI initializing...");
-	rsdp.Init();
+	scr.writeln("ACPI initializing...");
+	rsdp.init();
 
-	scr.Writeln("CMOS initializing...");
-	GetCMOS();
+	scr.writeln("CMOS initializing...");
+	getCMOS();
 
-	scr.Writeln("Log initializing...");
-	log.Init();
+	scr.writeln("Log initializing...");
+	log.init();
 
-	scr.Writeln("GDT initializing...");
-	GDT.Init();
+	scr.writeln("GDT initializing...");
+	GDT.init();
 
-	scr.Writeln("IDT initializing...");
-	IDT.Init();
+	scr.writeln("IDT initializing...");
+	IDT.init();
 
-	scr.Writeln("Syscall Handler initializing...");
-	SyscallHandler.Init();
+	scr.writeln("Syscall Handler initializing...");
+	SyscallHandler.init();
 
-	scr.Writeln("PIT initializing...");
-	PIT.Init();
+	scr.writeln("PIT initializing...");
+	PIT.init();
 
-	scr.Writeln("Keyboard initializing...");
-	PS2Keyboard.Init();
+	scr.writeln("Keyboard initializing...");
+	PS2Keyboard.init();
 }
 
-void Welcome() {
-	scr.Writeln("Welcome to PowerNex!");
-	scr.Writeln("\tThe number one D kernel!");
-	scr.Writeln("Compiled using '", __VENDOR__, "', D version ", major, ".", minor, "\n");
+void welcome() {
+	scr.writeln("Welcome to PowerNex!");
+	scr.writeln("\tThe number one D kernel!");
+	scr.writeln("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
 
-	log.Info("Welcome to PowerNex's serial console!");
-	log.Info("Compiled using '", __VENDOR__, "', D version ", major, ".", minor, "\n");
+	log.info("Welcome to PowerNex's serial console!");
+	log.info("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
 }
 
-void Init(uint magic, ulong info) {
-	scr.Writeln("Multiboot parsing...");
-	Multiboot.ParseHeader(magic, info);
+void init(uint magic, ulong info) {
+	scr.writeln("Multiboot parsing...");
+	log.info("Multiboot parsing...");
+	Multiboot.parseHeader(magic, info);
 
-	scr.Writeln("FrameAllocator initializing...");
-	FrameAllocator.Init();
+	scr.writeln("FrameAllocator initializing...");
+	log.info("FrameAllocator initializing...");
+	FrameAllocator.init();
 
-	scr.Writeln("Paging initializing...");
-	GetKernelPaging.RemoveUserspace(false); // Removes all mapping that are not needed for the kernel
-	GetKernelPaging.Install();
+	scr.writeln("Paging initializing...");
+	log.info("Paging initializing...");
+	getKernelPaging.removeUserspace(false); // Removes all mapping that are not needed for the kernel
+	getKernelPaging.install();
 
-	scr.Writeln("Heap initializing...");
-	GetKernelHeap;
+	scr.writeln("Heap initializing...");
+	log.info("Heap initializing...");
+	getKernelHeap;
 
-	scr.Writeln("PCI initializing...");
-	GetPCI;
+	scr.writeln("PCI initializing...");
+	log.info("PCI initializing...");
+	getPCI;
 
-	scr.Writeln("Initrd initializing...");
-	LoadInitrd();
+	scr.writeln("Initrd initializing...");
+	log.info("Initrd initializing...");
+	loadInitrd();
 
-	scr.Writeln("Starting ConsoleManager...");
-	GetConsoleManager.Init();
+	scr.writeln("Starting ConsoleManager...");
+	log.info("Starting ConsoleManager...");
+	getConsoleManager.init();
 
-	scr.Writeln("Scheduler initializing...");
-	GetScheduler.Init();
+	scr.writeln("Scheduler initializing...");
+	log.info("Scheduler initializing...");
+	getScheduler.init();
 }
 
-void LoadInitrd() {
-	import IO.FS;
-	import IO.FS.Initrd;
-	import IO.FS.System;
-	import IO.FS.IO;
+void loadInitrd() {
+	import io.fs;
+	import io.fs.initrd;
+	import io.fs.system;
+	import io.fs.io;
 
-	auto initrd = Multiboot.GetModule("initrd");
+	auto initrd = Multiboot.getModule("initrd");
 	if (initrd[0] == initrd[1]) {
-		scr.Writeln("Initrd missing");
-		log.Error("Initrd missing");
+		scr.writeln("Initrd missing");
+		log.error("Initrd missing");
 		return;
 	}
 
 	void mount(string path, FSRoot fs) {
-		Node mp = rootFS.Root.FindNode(path);
+		Node mp = rootFS.root.findNode(path);
 		if (mp && !cast(DirectoryNode)mp) {
-			log.Error(path, " is not a DirectoryNode!");
+			log.error(path, " is not a DirectoryNode!");
 			return;
 		}
 		if (!mp) {
-			mp = new DirectoryNode(NodePermissions.DefaultPermissions);
-			mp.Name = path[1 .. $];
-			mp.Root = rootFS;
-			mp.Parent = rootFS.Root;
+			mp = new DirectoryNode(NodePermissions.defaultPermissions);
+			mp.name = path[1 .. $]; //XXX:
+			mp.root = rootFS;
+			mp.parent = rootFS.root;
 		}
 
 		DirectoryNode mpDir = cast(DirectoryNode)mp;
-		mpDir.Parent.Mount(mpDir, fs);
+		mpDir.parent.mount(mpDir, fs);
 	}
 
 	rootFS = new InitrdFSRoot(initrd[0]);
 
-	Node file = rootFS.Root.FindNode("/Data/PowerNex.map");
+	Node file = rootFS.root.findNode("/data/powernex.map");
 	if (!file) {
-		log.Warning("Could not find the symbol file!");
+		log.warning("Could not find the symbol file!");
 		return;
 	}
 	InitrdFileNode symbols = cast(InitrdFileNode)file;
 	if (!symbols) {
-		log.Error("Symbol file is not of the type InitrdFileNode! It's a ", typeid(file).name);
+		log.error("Symbol file is not of the type InitrdFileNode! It's a ", typeid(file).name);
 		return;
 	}
-	log.SetSymbolMap(VirtAddress(symbols.RawAccess.ptr));
-	log.Info("Successfully loaded symbols!");
+	log.setSymbolMap(VirtAddress(symbols.rawAccess.ptr));
+	log.info("Successfully loaded symbols!");
 
-	mount("/IO", new IOFSRoot());
-	mount("/System", new SystemFSRoot());
+	log.info("Mounting /io!");
+	mount("/io", new IOFSRoot());
+	log.info("Mounting /system!");
+	mount("/system", new SystemFSRoot());
 }

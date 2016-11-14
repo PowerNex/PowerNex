@@ -1,6 +1,6 @@
-module Data.Address;
+module data.address;
 
-private mixin template AddressBase(Type = ulong) {
+private mixin template AddressBase(Type = size_t) {
 	alias Func = void function();
 	Type addr;
 
@@ -31,7 +31,7 @@ private mixin template AddressBase(Type = ulong) {
 	}
 
 	typeof(this) opBinary(string op)(typeof(this) other) const {
-		return opBinary!op(other.Ptr);
+		return opBinary!op(other.ptr);
 	}
 
 	typeof(this) opOpAssign(string op)(void* other) {
@@ -43,61 +43,61 @@ private mixin template AddressBase(Type = ulong) {
 	}
 
 	typeof(this) opOpAssign(string op)(typeof(this) other) {
-		return opOpAssign!op(other.Ptr);
+		return opOpAssign!op(other.ptr);
 	}
 
 	int opCmp(typeof(this) other) const {
-		if (Int < other.Int)
+		if (num < other.num)
 			return -1;
-		else if (Int > other.Int)
+		else if (num > other.num)
 			return 1;
 		else
 			return 0;
 	}
 
 	int opCmp(Type other) const {
-		if (Int < other)
+		if (num < other)
 			return -1;
-		else if (Int > other)
+		else if (num > other)
 			return 1;
 		else
 			return 0;
 	}
 
-	@property T* Ptr(T = void)() {
+	@property T* ptr(T = void)() {
 		return cast(T*)addr;
 	}
 
-	@property T* Ptr(T = void)(T addr) {
+	@property T* ptr(T = void)(T addr) {
 		this.addr = cast(Type)addr;
 		return cast(T*)addr;
 	}
 
-	@property Type Int() const {
+	@property Type num() const {
 		return addr;
 	}
 
-	@property Type Int(Type addr) {
+	@property Type num(Type addr) {
 		this.addr = addr;
 		return addr;
 	}
 
-	@property Func Function() const {
+	@property Func func() const {
 		return cast(Func)addr;
 	}
 
-	@property Func Function(Func func) {
+	@property Func func(Func func) {
 		this.addr = cast(Type)func;
 		return cast(Func)addr;
 	}
 
-	T Array(T : X[], X)(size_t length) const {
+	T array(T : X[], X)(size_t length) const {
 		return (cast(X*)addr)[0 .. length];
 	}
 
-	@property T Array(T)(T array) {
-		this.addr = cast(Type)array.ptr;
-		return array;
+	@property T array(T)(T array_) {
+		this.addr = cast(Type)array_.ptr;
+		return array_;
 	}
 }
 
@@ -108,16 +108,16 @@ struct VirtAddress {
 struct PhysAddress {
 	mixin AddressBase;
 
-	@property VirtAddress Virtual() const {
-		return VirtAddress(Int + 0xFFFF_8000_0000_0000);
+	@property VirtAddress virtual() const {
+		return VirtAddress(addr + 0xFFFF_8000_0000_0000);
 	}
 }
 
 struct PhysAddress32 {
 	mixin AddressBase!uint;
 
-	@property VirtAddress Virtual() const {
-		return VirtAddress(Int + 0xFFFF_8000_0000_0000);
+	@property VirtAddress virtual() const {
+		return VirtAddress(addr + 0xFFFF_8000_0000_0000);
 	}
 }
 

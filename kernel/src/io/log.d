@@ -1,9 +1,9 @@
-module IO.Log;
+module io.log;
 
-import IO.COM;
-import Data.Address;
-import Data.String;
-import Data.Util;
+import io.com;
+import data.address;
+import data.string_;
+import data.util;
 
 __gshared Log log;
 
@@ -16,140 +16,140 @@ TODO: FIX THIS!!!
 */
 
 enum LogLevel {
-	VERBOSE = '&',
-	DEBUG = '+',
-	INFO = '*',
-	WARNING = '#',
-	ERROR = '-',
-	FATAL = '!'
+	verbose = '&',
+	debug_ = '+',
+	info = '*',
+	warning = '#',
+	error = '-',
+	fatal = '!'
 }
 
 struct Log {
 	private struct SymbolDef {
 	align(1):
-		ulong Start;
-		ulong End;
-		ulong NameLength;
+		ulong start;
+		ulong end;
+		ulong nameLength;
 	}
 
 	private struct SymbolMap {
 	align(1):
-		char[4] Magic;
-		ulong Count;
-		SymbolDef Symbols;
+		char[4] magic;
+		ulong count;
+		SymbolDef symbols;
 	}
 
-	private int indent;
-	private bool enabled;
-	private SymbolMap* symbols;
+	private int _indent;
+	private bool _enabled;
+	private SymbolMap* _symbols;
 
 	// XXX: Page fault if this is not wrapped like this!
-	static ulong Seconds() {
-		import HW.CMOS.CMOS : GetCMOS;
+	static ulong seconds() {
+		import hw.cmos.cmos : getCMOS;
 
-		return GetCMOS.TimeStamp();
+		return getCMOS.timeStamp();
 	}
 
-	void Init() {
-		indent = 0;
-		enabled = true;
+	void init() {
+		_indent = 0;
+		_enabled = true;
 	}
 
-	@property ref bool Enabled() return {
-		return enabled;
+	@property ref bool enabled() return  {
+		return _enabled;
 	}
 
-	void SetSymbolMap(VirtAddress address) {
-		SymbolMap* map = cast(SymbolMap*)address.Ptr;
-		if (map.Magic[0 .. 4] != "DSYM")
+	void setSymbolMap(VirtAddress address) {
+		SymbolMap* map = cast(SymbolMap*)address.ptr;
+		if (map.magic[0 .. 4] != "DSYM")
 			return;
-		symbols = map;
+		_symbols = map;
 	}
 
 	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(LogLevel level, Arg args) {
 		char[ulong.sizeof * 8] buf;
-		if (!enabled)
+		if (!_enabled)
 			return;
-		for (int i = 0; i < indent; i++)
-			COM1.Write(' ');
+		for (int i = 0; i < _indent; i++)
+			com1.write(' ');
 
-		COM1.Write('[', itoa(Seconds(), buf, 10), ']');
-		COM1.Write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
+		com1.write('[', itoa(seconds(), buf, 10), ']');
+		com1.write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
 
-		COM1.Write(itoa(line, buf, 10));
-		COM1.Write("> ");
+		com1.write(itoa(line, buf, 10));
+		com1.write("> ");
 		mainloop: foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
-				COM1.Write(arg);
+				com1.write(arg);
 			else static if (is(T == enum)) {
-				foreach (i, e; EnumMembers!T)
+				foreach (i, e; enumMembers!T)
 					if (arg == e) {
-						COM1.Write(__traits(allMembers, T)[i]);
+						com1.write(__traits(allMembers, T)[i]);
 						continue mainloop;
 					}
-				COM1.Write("cast(");
-				COM1.Write(T.stringof);
-				COM1.Write(")");
-				COM1.Write(itoa(cast(ulong)arg, buf, 10));
+				com1.write("cast(");
+				com1.write(T.stringof);
+				com1.write(")");
+				com1.write(itoa(cast(ulong)arg, buf, 10));
 			} else static if (is(T == BinaryInt)) {
-				COM1.Write("0b");
-				COM1.Write(itoa(arg.Int, buf, 2));
+				com1.write("0b");
+				com1.write(itoa(arg.num, buf, 2));
 			} else static if (is(T : V*, V)) {
-				COM1.Write("0x");
-				COM1.Write(itoa(cast(ulong)arg, buf, 16));
+				com1.write("0x");
+				com1.write(itoa(cast(ulong)arg, buf, 16));
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
-				COM1.Write("0x");
-				COM1.Write(itoa(cast(ulong)arg.Int, buf, 16));
+				com1.write("0x");
+				com1.write(itoa(cast(ulong)arg.num, buf, 16));
 			} else static if (is(T == bool))
-				COM1.Write((arg) ? "true" : "false");
+				com1.write((arg) ? "true" : "false");
 			else static if (is(T : char))
-				COM1.Write(arg);
+				com1.write(arg);
 			else static if (isNumber!T)
-				COM1.Write(itoa(arg, buf, 10));
+				com1.write(itoa(arg, buf, 10));
 			else static if (is(T : ubyte[])) {
-				COM1.Write("[");
+				com1.write("[");
 				foreach (idx, a; arg) {
 					if (idx)
-						COM1.Write(", ");
-					COM1.Write(itoa(a, buf, 16));
+						com1.write(", ");
+					com1.write(itoa(a, buf, 16));
 				}
-				COM1.Write("]");
+				com1.write("]");
 			} else static if (isFloating!T)
-				COM1.Write(dtoa(cast(double)arg, buf, 10));
+				com1.write(dtoa(cast(double)arg, buf, 10));
 			else
-				COM1.Write("UNKNOWN TYPE '", T.stringof, "'");
+				com1.write("UNKNOWN TYPE '", T.stringof, "'");
 		}
 
-		COM1.Write("\r\n");
+		com1.write("\r\n");
 	}
 
-	void Verbose(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.VERBOSE, args);
+	void verbose(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+		this.opCall!(file, func, line)(LogLevel.verbose, args);
 	}
 
-	void Debug(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.DEBUG, args);
+	void debug_(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+		this.opCall!(file, func, line)(LogLevel.debug_, args);
 	}
 
-	void Info(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.INFO, args);
+	void info(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+		this.opCall!(file, func, line)(LogLevel.info, args);
 	}
 
-	void Warning(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.WARNING, args);
+	void warning(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+		this.opCall!(file, func, line)(LogLevel.warning, args);
 	}
 
-	void Error(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.ERROR, args);
+	void error(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+		this.opCall!(file, func, line)(LogLevel.error, args);
 	}
 
-	void Fatal(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.FATAL, args);
-		PrintStackTrace(true);
-		import IO.TextMode : GetScreen;
+	void fatal(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
+		this.opCall!(file, func, line)(LogLevel.fatal, args);
+		printStackTrace(true);
+		import io.textmode : getScreen;
 
-		GetScreen.WriteStatus("\t\tFATAL ERROR, READ COM.LOG!");
+		getScreen.writeStatus("\t\tFATAL ERROR, READ COM.LOG!");
 		asm {
 		forever:
 			hlt;
@@ -157,8 +157,8 @@ struct Log {
 		}
 	}
 
-	void PrintStackTrace(bool skipFirst = false) {
-		COM1.Write("\r\nSTACKTRACE:\r\n");
+	void printStackTrace(bool skipFirst = false) {
+		com1.write("\r\nSTACKTRACE:\r\n");
 		VirtAddress rbp;
 		VirtAddress rip;
 		asm {
@@ -167,63 +167,63 @@ struct Log {
 
 		if (skipFirst) {
 			rip = rbp + ulong.sizeof;
-			rbp = VirtAddress(*rbp.Ptr!ulong);
+			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
 
 		while (rbp && //
 				rbp > 0xFFFF_FFFF_8000_0000 && rbp < 0xFFFF_FFFF_F000_0000 // XXX: Hax fix
-				 && *rip.Ptr!ulong) {
+				 && *rip.ptr!ulong) {
 			rip = rbp + ulong.sizeof;
-			if (!*rip.Ptr!ulong)
+			if (!*rip.ptr!ulong)
 				break;
 
-			import Task.Scheduler : currentProcess, TablePtr;
+			import task.scheduler : getScheduler, TablePtr;
 
-			TablePtr!(void)* page = currentProcess.threadState.paging.GetPage(rip);
-			if (!page || !page.Present)
+			TablePtr!(void)* page = getScheduler.currentProcess.threadState.paging.getPage(rip);
+			if (!page || !page.present)
 				break;
 
-			COM1.Write("\t[");
+			com1.write("\t[");
 
 			{
 				char[ulong.sizeof * 8] buf;
-				COM1.Write("0x");
-				COM1.Write(itoa(*rip.Ptr!ulong, buf, 16));
+				com1.write("0x");
+				com1.write(itoa(*rip.ptr!ulong, buf, 16));
 			}
 
-			COM1.Write("] ");
+			com1.write("] ");
 
-			struct func {
+			struct Func {
 				string name;
 				ulong diff;
 			}
 
-			func getFuncName(ulong addr) {
-				if (!symbols)
-					return func("Unknown function", 0);
+			Func getFuncName(ulong addr) {
+				if (!_symbols)
+					return Func("Unknown function", 0);
 
-				SymbolDef* symbolDef = &symbols.Symbols;
-				for (int i = 0; i < symbols.Count; i++) {
-					if (symbolDef.Start <= addr && addr <= symbolDef.End)
-						return func(cast(string)(VirtAddress(symbolDef) + SymbolDef.sizeof)
-								.Ptr[0 .. symbolDef.NameLength], addr - symbolDef.Start);
-					symbolDef = cast(SymbolDef*)(VirtAddress(symbolDef) + SymbolDef.sizeof + symbolDef.NameLength).Ptr;
+				SymbolDef* symbolDef = &_symbols.symbols;
+				for (int i = 0; i < _symbols.count; i++) {
+					if (symbolDef.start <= addr && addr <= symbolDef.end)
+						return Func(cast(string)(VirtAddress(symbolDef) + SymbolDef.sizeof)
+								.ptr[0 .. symbolDef.nameLength], addr - symbolDef.start);
+					symbolDef = cast(SymbolDef*)(VirtAddress(symbolDef) + SymbolDef.sizeof + symbolDef.nameLength).ptr;
 				}
 
-				return func("Symbol not in map!", 0);
+				return Func("Symbol not in map!", 0);
 			}
 
-			func f = getFuncName(*rip.Ptr!ulong);
+			Func f = getFuncName(*rip.ptr!ulong);
 
-			COM1.Write(f.name);
+			com1.write(f.name);
 			if (f.diff) {
 				char[ulong.sizeof * 8] buf;
-				COM1.Write("+0x");
-				COM1.Write(itoa(f.diff, buf, 16));
+				com1.write("+0x");
+				com1.write(itoa(f.diff, buf, 16));
 			}
 
-			COM1.Write("\r\n");
-			rbp = VirtAddress(*rbp.Ptr!ulong);
+			com1.write("\r\n");
+			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
 	}
 

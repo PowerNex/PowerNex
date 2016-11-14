@@ -1,182 +1,181 @@
-module Data.Multiboot;
+module data.multiboot;
 
-import Data.Linker;
-import Data.TextBuffer : scr = GetBootTTY;
-import IO.Log;
-import Data.Address;
+import data.linker;
+import data.textbuffer : scr = getBootTTY;
+import io.log;
+import data.address;
 
 enum MultibootTagType {
-	Align = 8,
-	End = 0,
-	CmdLine,
-	BootLoaderName,
-	Module,
-	BasicMemInfo,
-	BootDev,
-	MemoryMap,
-	VBE,
-	FrameBuffer,
-	ElfSections,
-	APM,
-	EFI32,
-	EFI64,
-	SMBIOS,
-	ACPIOld,
-	ACPINew,
-	Network,
-	EFIMemoryMap,
-	EFIBS
+	align_ = 8,
+	end = 0,
+	cmdLine,
+	bootLoaderName,
+	module_,
+	basicMemInfo,
+	bootDev,
+	memoryMap,
+	vbe,
+	frameBuffer,
+	elfSections,
+	apm,
+	efi32,
+	efi64,
+	smbios,
+	acpiOld,
+	acpiNew,
+	network,
+	efiMemoryMap,
+	efibs
 }
 
 enum MultibootFramebufferType {
-	Indexed,
-	RGB,
-	EGAText
+	indexed,
+	rgd,
+	egaText
 }
 
 enum MultibootMemoryType {
-	Available = 1,
-	Reserved,
-	ACPIReclaimable,
-	NVS,
-	BadRAM
+	available = 1,
+	reserved,
+	acpiReclaimable,
+	nvs,
+	badRAM
 }
 
 struct MultibootColor {
 align(1):
-	ubyte Red;
-	ubyte Green;
-	ubyte Blue;
+	ubyte red;
+	ubyte green;
+	ubyte blue;
 }
 
 struct MultibootMemoryMap {
 align(1):
-	ulong Address;
-	ulong Length;
-	uint Type;
-	private uint m_zero;
+	ulong address;
+	ulong length;
+	uint type;
+	private uint _zero;
 }
 
 struct MultibootTag {
 align(1):
-	uint Type;
-	uint Size;
+	uint type;
+	uint size;
 }
 
 struct MultibootTagString {
 align(1):
-	uint Type;
-	uint Size;
-	char String;
+	uint type;
+	uint size;
+	char string_;
 }
 
 struct MultibootTagModule {
 align(1):
-	uint Type;
-	uint Size;
-	uint ModStart;
-	uint ModEnd;
-	char String;
+	uint type;
+	uint size;
+	uint modStart;
+	uint modEnd;
+	char string_;
 }
 
 struct MultibootTagBasicMemInfo {
 align(1):
-	uint Type;
-	uint Size;
-	uint Lower;
-	uint Upper;
+	uint type;
+	uint size;
+	uint lower;
+	uint upper;
 }
 
 struct MultibootTagBootDev {
 align(1):
-	uint Type;
-	uint Size;
-	uint BiosDev;
-	uint Slice;
-	uint Part;
+	uint type;
+	uint size;
+	uint biosDev;
+	uint slice;
+	uint part;
 }
 
 struct MultibootTagMemoryMap {
 align(1):
-	uint Type;
-	uint Size;
-	uint EntrySize;
-	uint EntryVersion;
-	MultibootMemoryMap Entry;
+	uint type;
+	uint size;
+	uint entrySize;
+	uint entryVersion;
+	MultibootMemoryMap entry;
 }
 
 struct MultibootTagFramebufferCommon {
 align(1):
-	uint Type;
-	uint Size;
+	uint type;
+	uint size;
 
-	ulong Address;
-	uint Pitch;
-	uint Width;
-	uint Height;
-	ubyte Bpp;
-	ubyte FramebufferType;
-	private ushort m_reserved;
+	ulong address;
+	uint pitch;
+	uint width;
+	uint geight;
+	ubyte bpp;
+	ubyte framebufferType;
+	private ushort _reserved;
 }
 
 struct MultibootTagFramebuffer {
 align(1):
-	MultibootTagFramebufferCommon Common;
+	MultibootTagFramebufferCommon common;
 
 	union {
 		struct {
-			ushort PaletteNumColors;
-			MultibootColor Palette;
+			ushort paletteNumColors;
+			MultibootColor palette;
 		}
 
 		struct {
-			ubyte RedFieldPos;
-			ubyte RedMaskSize;
-			ubyte GreenFieldPos;
-			ubyte GreenMaskSize;
-			ubyte BlueFieldPos;
-			ubyte BlueMaskSize;
+			ubyte redFieldPos;
+			ubyte redMaskSize;
+			ubyte greenFieldPos;
+			ubyte greenMaskSize;
+			ubyte blueFieldPos;
+			ubyte blueMaskSize;
 		}
 	}
 }
 
 struct Multiboot {
 	private enum {
-		HEADER_MAGIC = 0xE85250D6,
-		BOOTLOADER_MAGIC = 0x36D76289
+		headerMagic = 0xE85250D6,
+		bootloaderMagic = 0x36D76289
 	}
 
-	__gshared MultibootTagModule*[256] Modules;
-	__gshared MultibootMemoryMap*[256] MemoryMap;
-	__gshared int ModulesCount;
-	__gshared int MemoryMapCount;
-	__gshared ulong MemorySize;
+	__gshared MultibootTagModule*[256] modules;
+	__gshared MultibootMemoryMap*[256] memoryMap;
+	__gshared int modulesCount;
+	__gshared int memoryMapCount;
+	__gshared ulong memorySize;
 
-	__gshared string[256] cmd_key;
-	__gshared string[256] cmd_value;
-	__gshared size_t cmd_length;
+	__gshared string[256] cmdKey;
+	__gshared string[256] cmdValue;
+	__gshared size_t cmdLength;
 
-	static void ParseHeader(uint magic, ulong info) {
-		if (magic != BOOTLOADER_MAGIC) {
-			scr.Writeln("Error: Bad multiboot 2 magic: %d", magic);
+	static void parseHeader(uint magic, ulong info) {
+		if (magic != bootloaderMagic) {
+			scr.writeln("Error: Bad multiboot 2 magic: %d", magic);
 			while (true) {
 			}
 		}
 
 		if (info & 7) {
-			scr.Writeln("Error: Unaligned MBI");
+			scr.writeln("Error: Unaligned MBI");
 			while (true) {
 			}
 		}
 
-		//log.Info("Size: ", cast(ulong*)info);
-		MultibootTag* mbt = cast(MultibootTag*)(info + Linker.KernelStart + 8);
-		for (; mbt.Type != MultibootTagType.End; mbt = cast(MultibootTag*)(cast(ulong)mbt + ((mbt.Size + 7UL) & ~7UL))) {
-			switch (mbt.Type) {
-			case MultibootTagType.CmdLine:
+		MultibootTag* mbt = cast(MultibootTag*)(info + Linker.kernelStart + 8);
+		for (; mbt.type != MultibootTagType.end; mbt = cast(MultibootTag*)(cast(ulong)mbt + ((mbt.size + 7UL) & ~7UL))) {
+			switch (mbt.type) {
+			case MultibootTagType.cmdLine:
 				auto tmp = cast(MultibootTagString*)mbt;
-				string str = cast(string)(&tmp.String)[0 .. tmp.Size - 9];
-				log.Debug("CmdLine: ", str);
+				string str = cast(string)(&tmp.string_)[0 .. tmp.size - 9];
+				log.debug_("CmdLine: ", str);
 				if (!str.length)
 					break;
 
@@ -185,150 +184,106 @@ struct Multiboot {
 				size_t cur;
 				while (cur < str.length) {
 					if (str[cur] == ' ') {
-						cmd_key[cmd_length] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
-						cmd_value[cmd_length] = (start > divider) ? null : str[divider + 1 .. cur];
-						log.Debug("\tKey: '", cmd_key[cmd_length], "' Value: '", cmd_value[cmd_length], "'");
-						cmd_length++;
+						cmdKey[cmdLength] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
+						cmdValue[cmdLength] = (start > divider) ? null : str[divider + 1 .. cur];
+						log.debug_("\tKey: '", cmdKey[cmdLength], "' Value: '", cmdValue[cmdLength], "'");
+						cmdLength++;
 						start = cur + 1;
 					} else if (str[cur] == '=')
 						divider = cur;
 					cur++;
 				}
-				cmd_key[cmd_length] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
-				cmd_value[cmd_length] = (start > divider) ? null : str[divider + 1 .. cur];
-				log.Debug("\tKey: '", cmd_key[cmd_length], "' Value: '", cmd_value[cmd_length], "'");
-				cmd_length++;
-
+				cmdKey[cmdLength] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
+				cmdValue[cmdLength] = (start > divider) ? null : str[divider + 1 .. cur];
+				log.debug_("\tKey: '", cmdKey[cmdLength], "' Value: '", cmdValue[cmdLength], "'");
+				cmdLength++;
 				break;
 
-			case MultibootTagType.BootLoaderName:
-				auto tmp = cast(MultibootTagString*)mbt;
-				char* str = &tmp.String;
-
-				//log.Info("Name: BootLoaderName, Value: ", cast(string)str[0 .. tmp.Size - 9]);
+			case MultibootTagType.bootLoaderName:
 				break;
 
-			case MultibootTagType.Module:
+			case MultibootTagType.module_:
 				auto tmp = cast(MultibootTagModule*)mbt;
 
-				char* str = &tmp.String;
-				Modules[ModulesCount++] = tmp;
+				char* str = &tmp.string_;
+				modules[modulesCount++] = tmp;
 
-				log.Info("Name: Module, Start: ", cast(void*)tmp.ModStart, ", End: ", cast(void*)tmp.ModEnd,
-						", CMD: ", cast(string)str[0 .. tmp.Size - 17]);
+				log.info("Name: Module, Start: ", cast(void*)tmp.modStart, ", End: ", cast(void*)tmp.modEnd,
+						", CMD: ", cast(string)str[0 .. tmp.size - 17]);
 				break;
 
-			case MultibootTagType.BasicMemInfo:
+			case MultibootTagType.basicMemInfo:
 				auto tmp = cast(MultibootTagBasicMemInfo*)mbt;
-
-				//log.Info("Memory is: ", (tmp.Lower + tmp.Upper) / 1024, " MiB");
-				//log.Info("Name: BasicMemInfo, Lower: ", tmp.Lower, ", Upper: ", tmp.Upper);
-				MemorySize = tmp.Lower + tmp.Upper;
+				memorySize = tmp.lower + tmp.upper;
 				break;
 
-			case MultibootTagType.BootDev:
-				auto tmp = cast(MultibootTagBootDev*)mbt;
-				//log.Info("Name: BootDev, Device: ", tmp.BiosDev, ", Slice: ", tmp.Slice, ", Part: ", tmp.Part);
+			case MultibootTagType.bootDev:
 				break;
 
-			case MultibootTagType.MemoryMap:
-				//log.Info("MemoryMap ---->");
-				for (auto tmp = &(cast(MultibootTagMemoryMap*)mbt).Entry; cast(void*)tmp < (cast(void*)mbt + mbt.Size); tmp = cast(
-						MultibootMemoryMap*)(cast(ulong)tmp + (cast(MultibootTagMemoryMap*)mbt).EntrySize)) {
-					MemoryMap[MemoryMapCount++] = tmp;
-					log.Info("BaseAddr: ", cast(void*)tmp.Address, ", Length: ", cast(void*)tmp.Length, ", Type: ", tmp.Type);
+			case MultibootTagType.memoryMap:
+				for (auto tmp = &(cast(MultibootTagMemoryMap*)mbt).entry; cast(void*)tmp < (cast(void*)mbt + mbt.size); tmp = cast(
+						MultibootMemoryMap*)(cast(ulong)tmp + (cast(MultibootTagMemoryMap*)mbt).entrySize)) {
+					memoryMap[memoryMapCount++] = tmp;
+					log.info("BaseAddr: ", cast(void*)tmp.address, ", Length: ", cast(void*)tmp.length, ", Type: ", tmp.type);
 				}
 				break;
 
-			case MultibootTagType.VBE:
+			case MultibootTagType.vbe:
 				break;
 
-			case MultibootTagType.FrameBuffer:
-				uint color;
-				auto tmp = cast(MultibootTagFramebuffer*)mbt;
-
-				switch (tmp.Common.FramebufferType) {
-				case MultibootFramebufferType.Indexed:
-					uint distance;
-					uint bestDistance = 4 * 256 * 256;
-					auto palette = &tmp.Palette;
-
-					for (int i = 0; i < tmp.PaletteNumColors; i++) {
-						distance = (0xFF - palette[i].Blue) * (0xFF - palette[i].Blue) + palette[i].Red * palette[i].Red
-							+ palette[i].Green * palette[i].Green;
-
-						if (distance < bestDistance) {
-							color = i;
-							bestDistance = distance;
-						}
-					}
-					break;
-
-				case MultibootFramebufferType.RGB:
-					color = ((1 << tmp.BlueMaskSize) - 1) << tmp.BlueFieldPos;
-					break;
-
-				case MultibootFramebufferType.EGAText:
-					color = '\\' | 0x0100;
-					break;
-
-				default:
-					color = 0xFFFFFFFF;
-					break;
-				}
-
+			case MultibootTagType.frameBuffer:
 				break;
 
-			case MultibootTagType.ElfSections:
+			case MultibootTagType.elfSections:
 				break;
 
-			case MultibootTagType.APM:
+			case MultibootTagType.apm:
 				break;
 
-			case MultibootTagType.EFI32:
+			case MultibootTagType.efi32:
 				break;
 
-			case MultibootTagType.EFI64:
+			case MultibootTagType.efi64:
 				break;
 
-			case MultibootTagType.SMBIOS:
+			case MultibootTagType.smbios:
 				break;
 
-			case MultibootTagType.ACPIOld:
+			case MultibootTagType.acpiOld:
 				break;
 
-			case MultibootTagType.ACPINew:
+			case MultibootTagType.acpiNew:
 				break;
 
-			case MultibootTagType.Network:
+			case MultibootTagType.network:
 				break;
 
-			case MultibootTagType.EFIMemoryMap:
+			case MultibootTagType.efiMemoryMap:
 				break;
 
-			case MultibootTagType.EFIBS:
+			case MultibootTagType.efibs:
 				break;
 
 			default:
-				scr.Writeln("Multiboot2 Error tag type");
+				scr.writeln("Multiboot2 Error tag type");
 				break;
 			}
 		}
 	}
 
-	static VirtAddress[2] GetModule(string name) {
-		foreach (mod; Modules[0 .. ModulesCount]) {
-			char* str = &mod.String;
-			if (str[0 .. mod.Size - 17] == name)
-				return [PhysAddress(mod.ModStart).Virtual, PhysAddress(mod.ModEnd).Virtual];
+	static VirtAddress[2] getModule(string name) {
+		foreach (mod; modules[0 .. modulesCount]) {
+			char* str = &mod.string_;
+			if (str[0 .. mod.size - 17] == name)
+				return [PhysAddress(mod.modStart).virtual, PhysAddress(mod.modEnd).virtual];
 		}
 		return [VirtAddress(), VirtAddress()];
 	}
 
-	static string* GetArgument(string key) {
-		foreach (idx, k; cmd_key[0 .. cmd_length])
+	static string* getArgument(string key) {
+		foreach (idx, k; cmdKey[0 .. cmdLength])
 			if (k == key)
-				return &cmd_value[idx];
+				return &cmdValue[idx];
 		return null;
 	}
 }

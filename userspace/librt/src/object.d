@@ -1,14 +1,14 @@
 module object;
 
-import PowerNex.Data.String : strlen, fromStringz;
-import PowerNex.Syscall : Syscall;
+import powernex.data.string_ : strlen, fromStringz;
+import powernex.syscall : Syscall;
 
 int main(string[] args);
 int callMain() {
 	try {
 		char** argv;
 		size_t argc;
-		Syscall.GetArguments(&argc, &argv);
+		Syscall.getArguments(&argc, &argv);
 
 		string[] args = new string[argc];
 		foreach (idx, arg; argv[0 .. argc])
@@ -35,7 +35,7 @@ extern (C) void _start() {
 }
 
 void exit(ssize_t code = 0) {
-	Syscall.Exit(code);
+	Syscall.exit(code);
 }
 
 extern (C) {
@@ -60,7 +60,7 @@ extern (C) {
 
 	// the compiler spits this out all the time
 	Object _d_newclass(const ClassInfo ci) {
-		void* memory = Syscall.Alloc(ci.init.length).Ptr;
+		void* memory = Syscall.alloc(ci.init.length).ptr;
 		if (memory is null) {
 			asm { //log.Fatal("\n\n_d_newclass malloc failure\n\n");
 				hlt;
@@ -73,7 +73,7 @@ extern (C) {
 	}
 
 	extern (C) void* _d_newitemU(in TypeInfo ti) {
-		return Syscall.Alloc(ti.tsize).Ptr;
+		return Syscall.alloc(ti.tsize).ptr;
 	}
 
 	extern (C) void* _d_newitemT(in TypeInfo ti) {
@@ -96,7 +96,7 @@ extern (C) {
 		if (!length || !size)
 			return null;
 		else
-			return Syscall.Alloc(length * size).Ptr[0 .. length];
+			return Syscall.alloc(length * size).ptr[0 .. length];
 	}
 
 	extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length) {
@@ -138,7 +138,7 @@ extern (C) {
 		if (!length || !size)
 			return null;
 		else
-			return Syscall.Alloc(length * size).Ptr;
+			return Syscall.alloc(length * size).ptr;
 	}
 
 	void[] _d_arraycatT(TypeInfo ti, void[] x, void[] y) {
@@ -150,7 +150,7 @@ extern (C) {
 		if (!(x.length + y.length) || !size)
 			return null;
 
-		ubyte* data = Syscall.Alloc((x.length + y.length) * size).Ptr!ubyte;
+		ubyte* data = Syscall.alloc((x.length + y.length) * size).ptr!ubyte;
 		memcpy(data, x.ptr, x.length * size);
 		memcpy(data + (x.length * size), y.ptr, y.length * size);
 		return (cast(void*)data)[0 .. x.length + y.length];
@@ -158,13 +158,13 @@ extern (C) {
 
 	void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = Syscall.Realloc(p.ptr, newlength * size).Ptr[0 .. newlength];
+		*p = Syscall.realloc(p.ptr, newlength * size).ptr[0 .. newlength];
 		return *p;
 	}
 
 	void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = Syscall.Realloc(p.ptr, newlength * size).Ptr[0 .. newlength];
+		*p = Syscall.realloc(p.ptr, newlength * size).ptr[0 .. newlength];
 
 		return *p;
 	}
@@ -172,7 +172,7 @@ extern (C) {
 	byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) {
 		auto size = ti.next.tsize();
 		auto newlength = px.length + n;
-		void* newPtr = Syscall.Realloc(px.ptr, newlength * size).Ptr;
+		void* newPtr = Syscall.realloc(px.ptr, newlength * size).ptr;
 		*cast(size_t*)&px = newlength;
 		(cast(void**)(&px))[1] = newPtr;
 		return px;
@@ -198,7 +198,7 @@ extern (C) {
 		if (!length)
 			return null;
 
-		void* a = Syscall.Alloc(length * size).Ptr;
+		void* a = Syscall.alloc(length * size).ptr;
 
 		size_t j = 0;
 		foreach (b; arrs) {
@@ -340,18 +340,18 @@ class Throwable : Object { // required by the D compiler
 	}
 
 	void print() {
-		import PowerNex.Data.String;
+		import powernex.data.string_;
 
 		char[ulong.sizeof * 8] buf;
-		Syscall.Write(0, cast(ubyte[])this.classinfo.name, 0);
-		Syscall.Write(0, cast(ubyte[])"@", 0);
-		Syscall.Write(0, cast(ubyte[])file, 0);
-		Syscall.Write(0, cast(ubyte[])"(", 0);
+		Syscall.write(0, cast(ubyte[])this.classinfo.name, 0);
+		Syscall.write(0, cast(ubyte[])"@", 0);
+		Syscall.write(0, cast(ubyte[])file, 0);
+		Syscall.write(0, cast(ubyte[])"(", 0);
 
-		Syscall.Write(0, cast(ubyte[])itoa(line, buf, 10), 0);
-		Syscall.Write(0, cast(ubyte[])"): ", 0);
-		Syscall.Write(0, cast(ubyte[])message, 0);
-		Syscall.Write(0, cast(ubyte[])"\n", 0);
+		Syscall.write(0, cast(ubyte[])itoa(line, buf, 10), 0);
+		Syscall.write(0, cast(ubyte[])"): ", 0);
+		Syscall.write(0, cast(ubyte[])message, 0);
+		Syscall.write(0, cast(ubyte[])"\n", 0);
 		exit(1);
 		asm {
 			hlt;
@@ -436,7 +436,7 @@ class TypeInfo {
 	}
 	/// Run the destructor on the object and all its sub-objects
 	void destroy(void* p) const {
-		Syscall.Free(p);
+		Syscall.free(p);
 	}
 	/// Run the postblit on the object and all its sub-objects
 	void postblit(void* p) const {
@@ -1577,14 +1577,14 @@ immutable(T)[] immutable_alloc(T)(scope void delegate(T[]) initalizer) {
 }
 
 void destroy(void* memory) {
-	Syscall.Free(memory);
+	Syscall.free(memory);
 }
 
 void destroy(T : Object)(T object) {
 	auto dtor = cast(void function(Object o))object.classinfo.destructor;
 	if (dtor)
 		dtor(object);
-	Syscall.Free(cast(void*)object);
+	Syscall.free(cast(void*)object);
 }
 
 void destroy(T)(T[] array) {
@@ -1599,13 +1599,13 @@ void destroy(T)(T[] array) {
 		foreach (el; array)
 			destroy(cast(void*)el);
 	}
-	Syscall.Free(cast(void*)array.ptr);
+	Syscall.free(cast(void*)array.ptr);
 }
 
 // this would be used for automatic heap closures, but there's no way to free it...
 ///*
 extern (C) void* _d_allocmemory(size_t bytes) {
-	return Syscall.Alloc(bytes).Ptr;
+	return Syscall.alloc(bytes).ptr;
 }
 //*/
 
@@ -2369,7 +2369,7 @@ extern (C) int dstrcmp(char[] s1, char[] s2) {
 }
 
 inout(T)[] dup(T)(inout(T)[] a) {
-	void[] arr = Syscall.Alloc(T.sizeof * a.length)[0 .. a.length];
+	void[] arr = Syscall.alloc(T.sizeof * a.length)[0 .. a.length];
 	memcpy(arr.ptr, a.ptr, T.sizeof * a.length);
 	return *cast(inout(T)[]*)&arr;
 }

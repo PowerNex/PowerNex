@@ -1,6 +1,6 @@
-module IO.FS.System;
+module io.fs.system;
 
 public {
-	import IO.FS.System.FSRoot;
-	import IO.FS.System.VersionNode;
+	import io.fs.system.fsroot;
+	import io.fs.system.versionnode;
 }

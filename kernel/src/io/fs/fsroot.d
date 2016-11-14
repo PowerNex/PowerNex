@@ -1,80 +1,80 @@
-module IO.FS.FSRoot;
-import IO.FS;
-import IO.Log;
+module io.fs.fsroot;
+import io.fs;
+import io.log;
 
 abstract class FSRoot {
 public:
 	this(DirectoryNode root) {
-		this.root = root;
-		root.Root = this;
+		_root = root;
+		_root.root = this;
 	}
 
-	Node[] Nodes() {
-		return nodes[0 .. nodeCount];
+	Node[] nodes() {
+		return _nodes[0 .. _nodeCount];
 	}
 
-	Node GetNode(ulong id) {
-		foreach (node; nodes[0 .. nodeCount])
-			if (node.ID == id)
+	Node getNode(ulong id) {
+		foreach (node; _nodes[0 .. _nodeCount])
+			if (node.id == id)
 				return node;
 		return null;
 	}
 
-	@property ref DirectoryNode Root() {
-		return root;
+	@property ref DirectoryNode root() {
+		return _root;
 	}
 
-	@property DirectoryNode Parent() {
-		return root.Parent;
+	@property DirectoryNode parent() {
+		return _root.parent;
 	}
 
-	@property DirectoryNode Parent(DirectoryNode parent) {
-		return root.SetParentNoUpdate(parent);
+	@property DirectoryNode parent(DirectoryNode parent) {
+		return _root.setParentNoUpdate(parent);
 	}
 
 package:
-	Node Add(Node node) {
-		if (node.Root == this)
+	Node add(Node node) {
+		if (node.root == this)
 			return node;
-		if (nodes.length == nodeCount)
-			nodes.length += 8;
+		if (_nodes.length == _nodeCount)
+			_nodes.length += 8;
 
-		nodes[nodeCount++] = node;
-		node.ID = idCounter++;
-		log.Info("FSRoot Add: ", node.ID, "(", cast(void*)node, ")");
+		_nodes[_nodeCount++] = node;
+		node.id = _idCounter++;
+		log.info("FSRoot Add: ", node.id, "(", cast(void*)node, ")");
 		return node;
 	}
 
-	Node Remove(Node node) {
-		if (node.Root != this)
+	Node remove(Node node) {
+		if (node.root != this)
 			return node;
-		log.Info("FSRoot Remove: ", node.ID, "(", cast(void*)node, ")");
+		log.info("FSRoot Remove: ", node.id, "(", cast(void*)node, ")");
 		ulong i = 0;
-		while (i < nodeCount && nodes[i] != node)
+		while (i < _nodeCount && _nodes[i] != node)
 			i++;
-		if (i >= nodeCount)
+		if (i >= _nodeCount)
 			return node;
 
-		for (; i < nodeCount - 1; i++)
-			nodes[i] = nodes[i + 1];
-		nodeCount--;
+		for (; i < _nodeCount - 1; i++)
+			_nodes[i] = _nodes[i + 1];
+		_nodeCount--;
 		return node;
 	}
 
 protected:
-	DirectoryNode root;
-	Node[] nodes;
-	ulong nodeCount;
-	ulong idCounter;
+	DirectoryNode _root;
+	Node[] _nodes;
+	ulong _nodeCount;
+	ulong _idCounter;
 
 	DirectoryNode getOrAdd(DirectoryNode cur, string dir) {
-		if (auto node = cur.FindNode(dir))
+		if (auto node = cur.findNode(dir))
 			return cast(DirectoryNode)node;
 
-		auto node = new DirectoryNode(NodePermissions.DefaultPermissions);
-		node.Name = dir;
-		node.Root = this;
-		node.Parent = cur;
+		auto node = new DirectoryNode(NodePermissions.defaultPermissions);
+		node.name = dir;
+		node.root = this;
+		node.parent = cur;
 		return node;
 	}
 
@@ -83,7 +83,7 @@ protected:
 			return null;
 		ulong start = 1;
 		ulong end = 1;
-		DirectoryNode parent = Root;
+		DirectoryNode parent = root;
 		while (end < path.length) {
 			while (end < path.length && path[end] != '/')
 				end++;
@@ -98,9 +98,9 @@ protected:
 			end++;
 		}
 
-		node.Name = path[start .. $];
-		node.Root = this;
-		node.Parent = parent;
+		node.name = path[start .. $];
+		node.root = this;
+		node.parent = parent;
 		return node;
 	}
 }

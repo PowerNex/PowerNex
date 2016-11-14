@@ -1,58 +1,59 @@
-module IO.TextMode;
+module io.textmode;
 
-import IO.Port;
-import Data.Util;
-import Data.String;
-import Data.TextBuffer;
+import io.port;
+import data.util;
+import data.string_;
+import data.textbuffer;
 
 enum Colors : ubyte {
-	Black = 0,
-	Blue = 1,
-	Green = 2,
-	Cyan = 3,
-	Red = 4,
-	Magenta = 5,
-	Brown = 6,
-	LightGrey = 7,
-	DarkGrey = 8,
-	LightBlue = 9,
-	LightGreen = 10,
-	LightCyan = 11,
-	LightRed = 12,
-	LightMagenta = 13,
-	Yellow = 14,
-	White = 15
+	black = 0,
+	blue = 1,
+	green = 2,
+	cyan = 3,
+	red = 4,
+	magenta = 5,
+	brown = 6,
+	lightGrey = 7,
+	darkGrey = 8,
+	lightBlue = 9,
+	lightGreen = 10,
+	lightCyan = 11,
+	lightRed = 12,
+	lightMagenta = 13,
+	yellow = 14,
+	white = 15
 }
 
 struct Color {
-	private ubyte color;
+	private ubyte _color;
 
 	this(Colors fg, Colors bg) {
-		color = ((bg & 0xF) << 4) | (fg & 0xF);
+		_color = ((bg & 0xF) << 4) | (fg & 0xF);
 	}
 
-	@property Colors Foreground() {
-		return cast(Colors)(color & 0xF);
+	@property Colors foreground() {
+		return cast(Colors)(_color & 0xF);
 	}
 
-	@property Colors Foreground(Colors c) {
-		color = (color & 0xF0) | (c & 0xF);
-		return cast(Colors)(color & 0xF);
+	@property Colors foreground(Colors c) {
+		_color = (_color & 0xF0) | (c & 0xF);
+		return cast(Colors)(_color & 0xF);
 	}
 
-	@property Colors Background() {
-		return cast(Colors)((color >> 4) & 0xF);
+	@property Colors background() {
+		return cast(Colors)((_color >> 4) & 0xF);
 	}
 
-	@property Colors Background(Colors c) {
-		color = ((c & 0xF) << 4) | (color & 0xF);
-		return cast(Colors)((color >> 4) & 0xF);
+	@property Colors background(Colors c) {
+		_color = ((c & 0xF) << 4) | (_color & 0xF);
+		return cast(Colors)((_color >> 4) & 0xF);
 	}
 
 }
 
 struct Screen(int w, int h) {
-	private struct slot {
+	private struct VideoSlot {
+	align(1):
 		char ch;
 		Color color;
 	}
@@ -60,203 +61,205 @@ struct Screen(int w, int h) {
 	@disable this();
 
 	this(Colors fg, Colors bg, long videoMemory) {
-		this.screen = cast(slot[w * h]*)videoMemory;
-		this.x = 0;
-		this.y = 1;
-		this.color = Color(fg, bg);
-		this.enabled = true;
+		_screen = cast(VideoSlot[w * h]*)videoMemory;
+		_x = 0;
+		_y = 1;
+		_color = Color(fg, bg);
+		_enabled = true;
 	}
 
-	void Clear() {
-		if (!enabled)
+	void clear() {
+		if (!_enabled)
 			return;
-		foreach (ref slot slot; (*screen)[w .. $]) {
+
+		foreach (ref VideoSlot slot; (*_screen)[w .. $]) {
 			slot.ch = ' ';
-			slot.color = color;
+			slot.color = _color;
 		}
-		x = 0;
-		y = 1;
+		_x = 0;
+		_y = 1;
 	}
 
-	void Write(Slot[] slots) {
-		if (!enabled)
+	void write(Slot[] slots) {
+		if (!_enabled)
 			return;
 		foreach (slot; slots)
-			write(cast(char)slot.ch);
-		MoveCursor();
+			_write(cast(char)slot.ch);
+		_moveCursor();
 	}
 
-	void WriteStatus(Args...)(Args args) {
-		if (!enabled)
+	void writeStatus(Args...)(Args args) {
+		if (!_enabled)
 			return;
-		blockCursor++;
-		ubyte oldX = x;
-		ubyte oldY = y;
-		Color oldColor = color;
+		_blockCursor++;
+		ubyte oldX = _x;
+		ubyte oldY = _y;
+		Color oldColor = _color;
 
-		x = y = 0;
-		color = Color(Colors.White, Colors.Red);
-		Write(args);
+		_x = _y = 0;
+		_color = Color(Colors.white, Colors.red);
+		_write(args);
 
-		while (x < w - 1)
-			write(' ');
-		write(' ');
+		while (_x < w - 1)
+			_write(' ');
+		_write(' ');
 
-		x = oldX;
-		y = oldY;
-		color = oldColor;
-		blockCursor--;
+		_x = oldX;
+		_y = oldY;
+		_color = oldColor;
+		_blockCursor--;
 	}
 
-	void MoveCursor() {
-		if (!enabled)
+	void _moveCursor() {
+		if (!_enabled)
 			return;
-		if (blockCursor > 0)
+		if (_blockCursor > 0)
 			return;
-		ushort pos = y * w + x;
-		Out!ubyte(0x3D4, 14);
-		Out!ubyte(0x3D5, pos >> 8);
-		Out!ubyte(0x3D4, 15);
-		Out!ubyte(0x3D5, cast(ubyte)pos);
+		ushort pos = _y * w + _x;
+		outp!ubyte(0x3D4, 14);
+		outp!ubyte(0x3D5, pos >> 8);
+		outp!ubyte(0x3D4, 15);
+		outp!ubyte(0x3D5, cast(ubyte)pos);
 	}
 
-	@property ref Color CurrentColor() {
-		return color;
+	@property ref Color currentColor() {
+		return _color;
 	}
 
-	@property ref bool Enabled() {
-		return enabled;
+	@property ref bool enabled() {
+		return _enabled;
 	}
 
 private:
-	slot[w * h]* screen;
-	bool enabled;
-	ubyte x, y;
-	Color color;
-	int blockCursor;
+	VideoSlot[w * h]* _screen;
+	bool _enabled;
+	ubyte _x;
+	ubyte _y;
+	Color _color;
+	int _blockCursor;
 
-	void write(char ch) {
+	void _realWrite(char ch) {
 		if (ch == '\n') {
-			y++;
-			x = 0;
+			_y++;
+			_x = 0;
 		} else if (ch == '\r')
-			x = 0;
+			_x = 0;
 		else if (ch == '\b') {
-			if (x)
-				x--;
+			if (_x)
+				_x--;
 		} else if (ch == '\t') {
-			uint goal = (x + 8) & ~7;
-			for (; x < goal; x++)
-				(*screen)[y * w + x] = slot(' ', color);
-			if (x >= w) {
-				y++;
-				x %= w;
+			uint goal = (_x + 8) & ~7;
+			for (; _x < goal; _x++)
+				(*_screen)[_y * w + _x] = VideoSlot(' ', _color);
+			if (_x >= w) {
+				_y++;
+				_x %= w;
 			}
 		} else {
-			(*screen)[y * w + x] = slot(ch, color);
-			x++;
+			(*_screen)[_y * w + _x] = VideoSlot(ch, _color);
+			_x++;
 
-			if (x >= w) {
-				y++;
-				x = 0;
+			if (_x >= w) {
+				_y++;
+				_x = 0;
 			}
 		}
 
-		if (y >= h) {
+		if (_y >= h) {
 			for (int yy = 1; yy < h - 1; yy++)
 				for (int xx = 0; xx < w; xx++)
-					(*screen)[yy * w + xx] = (*screen)[(yy + 1) * w + xx];
+					(*_screen)[yy * w + xx] = (*_screen)[(yy + 1) * w + xx];
 
-			y--;
+			_y--;
 			for (int xx = 0; xx < w; xx++) {
-				auto slot = &(*screen)[y * w + xx];
+				auto slot = &(*_screen)[_y * w + xx];
 				slot.ch = ' ';
-				slot.color = Color(Colors.Cyan, Colors.Black); //XXX: Stupid hack to fix colors while scrolling
+				slot.color = Color(Colors.cyan, Colors.black); //XXX: Stupid hack to fix colors while scrolling
 			}
 		}
-		MoveCursor();
+		_moveCursor();
 	}
 
-	void Write(char ch) {
-		if (!enabled)
+	void _write(char ch) {
+		if (!_enabled)
 			return;
-		write(ch);
-		MoveCursor();
+		_realWrite(ch);
+		_moveCursor();
 	}
 
-	void Write(in char[] str) {
-		if (!enabled)
+	void _write(in char[] str) {
+		if (!_enabled)
 			return;
 		foreach (char ch; str)
-			write(ch);
-		MoveCursor();
+			_realWrite(ch);
+		_moveCursor();
 	}
 
-	void Write(char* str) {
-		if (!enabled)
+	void _write(char* str) {
+		if (!_enabled)
 			return;
 		while (*str)
-			write(*(str++));
-		MoveCursor();
+			_realWrite(*(str++));
+		_moveCursor();
 	}
 
-	void WriteNumber(S = int)(S value, uint base) if (isNumber!S) {
-		if (!enabled)
+	void _writeNumber(S = int)(S value, uint base) if (isNumber!S) {
+		if (!_enabled)
 			return;
 		char[S.sizeof * 8] buf;
-		Write(itoa(value, buf, base));
+		_write(itoa(value, buf, base));
 	}
 
-	void WriteEnum(T)(T value) if (is(T == enum)) {
-		if (!enabled)
+	void _writeEnum(T)(T value) if (is(T == enum)) {
+		if (!_enabled)
 			return;
-		foreach (i, e; EnumMembers!T)
+		foreach (i, e; enumMembers!T)
 			if (value == e) {
-				Write(__traits(allMembers, T)[i]);
+				_write(__traits(allMembers, T)[i]);
 				return;
 			}
 
-		Write("cast(", T.stringof, ")", value);
+		_write("cast(", T.stringof, ")", value);
 	}
 
-	void Write(Args...)(Args args) {
-		if (!enabled)
+	void _write(Args...)(Args args) {
+		if (!_enabled)
 			return;
-		blockCursor++;
+		_blockCursor++;
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
-				Write(arg);
+				_write(arg);
 			else static if (is(T == BinaryInt)) {
-				Write("0b");
-				WriteNumber(cast(ulong)arg, 2);
+				_write("0b");
+				_writeNumber(cast(ulong)arg, 2);
 			} else static if (is(T : V*, V)) {
-				Write("0x");
-				WriteNumber(cast(ulong)arg, 16);
+				_write("0x");
+				_writeNumber(cast(ulong)arg, 16);
 			} else static if (is(T == enum))
-				WriteEnum(arg);
+				_writeEnum(arg);
 			else static if (is(T == bool))
-				Write((arg) ? "true" : "false");
+				_write((arg) ? "true" : "false");
 			else static if (is(T : char))
 				write(arg);
 			else static if (isNumber!T)
-				WriteNumber(arg, 10);
+				_writeNumber(arg, 10);
 			else
-				Write("UNKNOWN TYPE '", T.stringof, "'");
+				_write("UNKNOWN TYPE '", T.stringof, "'");
 		}
-		blockCursor--;
-		MoveCursor();
+		_blockCursor--;
+		_moveCursor();
 	}
 
-	void Writeln(Args...)(Args args) {
-		if (!enabled)
+	void _writeln(Args...)(Args args) {
+		if (!_enabled)
 			return;
-		blockCursor++;
-		Write(args, '\n');
-		blockCursor--;
-		MoveCursor();
+		_blockCursor++;
+		_write(args, '\n');
+		_blockCursor--;
+		_moveCursor();
 	}
 
 }
 
-__gshared Screen!(80, 25) GetScreen = Screen!(80, 25)(Colors.Cyan, Colors.Black, 0xFFFF_FFFF_800B_8000);
+__gshared Screen!(80, 25) getScreen = Screen!(80, 25)(Colors.cyan, Colors.black, 0xFFFF_FFFF_800B_8000);

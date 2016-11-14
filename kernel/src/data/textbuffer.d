@@ -1,18 +1,18 @@
-module Data.TextBuffer;
+module data.textbuffer;
 
-import Data.Color;
-import Data.String;
-import Data.Util;
+import data.color;
+import data.string_;
+import data.util;
 
 enum SlotFlags : ushort {
-	Nothing,
-	Blinking = 1 << 0,
-	//Underline = 1 << 1,
-	//Bold = 1 << 2,
-	Shadow = 1 << 3,
-	InvertedColors = 1 << 4,
-	FlipX = 1 << 5,
-	FlipY = 1 << 6,
+	nothing,
+	blinking = 1 << 0,
+	//underline = 1 << 1,
+	//bold = 1 << 2,
+	shadow = 1 << 3,
+	invertedColors = 1 << 4,
+	flipX = 1 << 5,
+	flipY = 1 << 6,
 
 	unknown = 1 << 15,
 }
@@ -32,195 +32,195 @@ public:
 	alias OnChangedCallbackType = void function(size_t start, size_t end);
 
 	this(Slot[] buffer) {
-		this.buffer = buffer;
-		otherBuffer = true;
+		_buffer = buffer;
+		_otherBuffer = true;
 
-		defaultFG = Color(0, 255, 255);
-		defaultBG = Color(0, 0x22, 0x22);
+		_defaultFG = Color(0, 255, 255);
+		_defaultBG = Color(0, 0x22, 0x22);
 	}
 
 	this(size_t size) {
-		buffer = new Slot[size];
-		otherBuffer = false;
+		_buffer = new Slot[size];
+		_otherBuffer = false;
 
-		defaultFG = Color(0, 255, 255);
-		defaultBG = Color(0, 0x22, 0x22);
+		_defaultFG = Color(0, 255, 255);
+		_defaultBG = Color(0, 0x22, 0x22);
 	}
 
 	~this() {
-		if (!otherBuffer)
-			buffer.destroy;
+		if (!_otherBuffer)
+			_buffer.destroy;
 	}
 
-	void Write(Args...)(Args args) {
-		import Data.Address;
+	void write(Args...)(Args args) {
+		import data.address;
 
-		size_t startPos = count;
-		Color fg = defaultFG;
-		Color bg = defaultBG;
-		SlotFlags flags = defaultFlags;
+		size_t startPos = _count;
+		Color fg = _defaultFG;
+		Color bg = _defaultBG;
+		SlotFlags flags = _defaultFlags;
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
-				write(arg, fg, bg, flags);
+				_write(arg, fg, bg, flags);
 			else static if (is(T == BinaryInt)) {
-				write("0b", fg, bg, flags);
-				writeNumber(arg.Int, 2, fg, bg, flags);
+				_write("0b", fg, bg, flags);
+				_writeNumber(arg.num, 2, fg, bg, flags);
 			} else static if (is(T : V*, V)) {
-				write("0x", fg, bg, flags);
-				writeNumber(cast(ulong)arg, 16, fg, bg, flags);
+				_write("0x", fg, bg, flags);
+				_writeNumber(cast(ulong)arg, 16, fg, bg, flags);
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
-				write("0x", fg, bg, flags);
-				writeNumber(cast(ulong)arg.Int, 16, fg, bg, flags);
+				_write("0x", fg, bg, flags);
+				_writeNumber(cast(ulong)arg.num, 16, fg, bg, flags);
 			} else static if (is(T == enum))
-				writeEnum(arg, fg, bg, flags);
+				_writeEnum(arg, fg, bg, flags);
 			else static if (is(T == bool))
-				write((arg) ? "true" : "false", fg, bg, flags);
+				_write((arg) ? "true" : "false", fg, bg, flags);
 			else static if (is(T : char))
-				write(arg, fg, bg, flags);
+				_write(arg, fg, bg, flags);
 			else static if (isNumber!T)
-				writeNumber(arg, 10, fg, bg, flags);
+				_writeNumber(arg, 10, fg, bg, flags);
 			else static if (isFloating!T)
-				writeFloating(cast(double)arg, 10, fg, bg, flags);
+				_writeFloating(cast(double)arg, 10, fg, bg, flags);
 			else
-				write(arg.toString, fg, bg, flags);
+				_write(arg.toString, fg, bg, flags);
 		}
 
-		if (onChanged)
-			onChanged(startPos, count);
+		if (_onChanged)
+			_onChanged(startPos, _count);
 	}
 
-	void Writeln(Args...)(Args args) {
-		Write(args, '\n');
+	void writeln(Args...)(Args args) {
+		write(args, '\n');
 	}
 
-	void Writef(Args...)(wstring format, Args args) {
-		size_t startPos = count;
+	void writef(Args...)(wstring format, Args args) {
+		size_t startPos = _count;
 		static assert(0);
 
-		if (onChanged)
-			onChanged(startPos, count);
+		if (_onChanged)
+			_onChanged(startPos, _count);
 	}
 
-	void Writefln(Args...)(wstring format, Args args) {
-		size_t startPos = count;
-		OnChangedCallback cb = onChanged; //Hack to make it only update once.
-		onChanged = null;
+	void writefln(Args...)(wstring format, Args args) {
+		size_t startPos = _count;
+		OnChangedCallback cb = _onChanged; //Hack to make it only update once.
+		_onChanged = null;
 
-		Writef(args);
-		write('\n');
+		writef(format, args);
+		_write('\n');
 
-		onChanged = cb;
-		if (onChanged)
-			onChanged(startPos, count);
+		_onChanged = cb;
+		if (_onChanged)
+			_onChanged(startPos, _count);
 	}
 
-	void Clear() {
-		if (onChanged)
-			onChanged(-1, -1);
+	void clear() {
+		if (_onChanged)
+			_onChanged(-1, -1);
 	}
 
-	@property Slot[] Buffer() {
-		return buffer;
+	@property Slot[] buffer() {
+		return _buffer;
 	}
 
-	@property size_t Count() {
-		return count;
+	@property size_t count() {
+		return _count;
 	}
 
-	@property ref Color Foreground() {
-		return defaultFG;
+	@property ref Color foreground() {
+		return _defaultFG;
 	}
 
-	@property ref Color Background() {
-		return defaultBG;
+	@property ref Color background() {
+		return _defaultBG;
 	}
 
-	@property ref SlotFlags Flags() {
-		return defaultFlags;
+	@property ref SlotFlags flags() {
+		return _defaultFlags;
 	}
 
-	@property ref OnChangedCallbackType OnChangedCallback() {
-		return onChanged;
+	@property ref OnChangedCallbackType onChangedCallback() {
+		return _onChanged;
 	}
 
 private:
-	enum IncreaseSize = 0x1000;
+	enum increaseSize = 0x1000;
 
-	bool otherBuffer;
-	Slot[] buffer;
-	size_t count;
+	bool _otherBuffer;
+	Slot[] _buffer;
+	size_t _count;
 
-	Color defaultFG;
-	Color defaultBG;
-	SlotFlags defaultFlags;
+	Color _defaultFG;
+	Color _defaultBG;
+	SlotFlags _defaultFlags;
 
-	OnChangedCallbackType onChanged;
+	OnChangedCallbackType _onChanged;
 
-	void resize() {
-		if (otherBuffer) {
-			Slot[] newBuffer = new Slot[buffer.length + IncreaseSize];
+	void _resize() {
+		if (_otherBuffer) {
+			Slot[] newBuffer = new Slot[_buffer.length + increaseSize];
 			foreach (idx, slot; buffer)
 				newBuffer[idx] = slot;
-			buffer = newBuffer;
-			otherBuffer = false;
+			_buffer = newBuffer;
+			_otherBuffer = false;
 		} else
-			buffer.length += IncreaseSize;
+			_buffer.length += increaseSize;
 	}
 
-	void write(wchar ch, Color fg, Color bg, SlotFlags flags) {
-		if (buffer.length == count)
-			resize();
-		buffer[count++] = Slot(ch, fg, bg, flags);
+	void _write(wchar ch, Color fg, Color bg, SlotFlags flags) {
+		if (_buffer.length == _count)
+			_resize();
+		_buffer[_count++] = Slot(ch, fg, bg, flags);
 	}
 
-	void write(in char[] str, Color fg, Color bg, SlotFlags flags) {
+	void _write(in char[] str, Color fg, Color bg, SlotFlags flags) {
 		foreach (char ch; str)
-			write(ch, fg, bg, flags);
+			_write(ch, fg, bg, flags);
 	}
 
-	void write(in wchar[] str, Color fg, Color bg, SlotFlags flags) {
+	void _write(in wchar[] str, Color fg, Color bg, SlotFlags flags) {
 		foreach (wchar ch; str)
-			write(ch, fg, bg, flags);
+			_write(ch, fg, bg, flags);
 	}
 
-	void write(char* str, Color fg, Color bg, SlotFlags flags) {
+	void _write(char* str, Color fg, Color bg, SlotFlags flags) {
 		while (*str)
-			write(*(str++), fg, bg, flags);
+			_write(*(str++), fg, bg, flags);
 	}
 
-	void writeNumber(S = long)(S value, uint base, Color fg, Color bg, SlotFlags flags) if (isNumber!S) {
+	void _writeNumber(S = long)(S value, uint base, Color fg, Color bg, SlotFlags flags) if (isNumber!S) {
 		char[S.sizeof * 8] buf;
-		write(itoa(value, buf, base), fg, bg, flags);
+		_write(itoa(value, buf, base), fg, bg, flags);
 	}
 
-	void writeFloating(double value, uint base, Color fg, Color bg, SlotFlags flags) {
+	void _writeFloating(double value, uint base, Color fg, Color bg, SlotFlags flags) {
 		char[double.sizeof * 8] buf;
-		write(dtoa(value, buf, base), fg, bg, flags);
+		_write(dtoa(value, buf, base), fg, bg, flags);
 	}
 
-	void writeEnum(T)(T value, Color fg, Color bg, SlotFlags flags) if (is(T == enum)) {
-		foreach (i, e; EnumMembers!T)
+	void _writeEnum(T)(T value, Color fg, Color bg, SlotFlags flags) if (is(T == enum)) {
+		foreach (i, e; enumMembers!T)
 			if (value == e) {
-				write(__traits(allMembers, T)[i], fg, bg, flags);
+				_write(__traits(allMembers, T)[i], fg, bg, flags);
 				return;
 			}
 
-		write("cast(", fg, bg, flags);
-		write(T.stringof, fg, bg, flags);
-		write(")", fg, bg, flags);
-		writeNumber(cast(int)value, 10, fg, bg, flags);
+		_write("cast(", fg, bg, flags);
+		_write(T.stringof, fg, bg, flags);
+		_write(")", fg, bg, flags);
+		_writeNumber(cast(int)value, 10, fg, bg, flags);
 	}
 }
 
-TextBuffer GetBootTTY() {
-	import Data.Util : InplaceClass;
+TextBuffer getBootTTY() {
+	import data.util : inplaceClass;
 
 	__gshared TextBuffer textBuffer;
 	__gshared ubyte[__traits(classInstanceSize, TextBuffer)] buf;
 	__gshared Slot[0x1000] slotBuffer;
 
 	if (!textBuffer)
-		textBuffer = InplaceClass!TextBuffer(buf, slotBuffer);
+		textBuffer = inplaceClass!TextBuffer(buf, slotBuffer);
 	return textBuffer;
 }
