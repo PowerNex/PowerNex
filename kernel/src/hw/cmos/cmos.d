@@ -1,89 +1,86 @@
-module HW.CMOS.CMOS;
+module hw.cmos.cmos;
 
-import IO.Port;
+import io.port;
+import cpu.pit;
 
 private enum {
-	CMOS_ADDRESS = 0x70,
-	CMOS_DATA = 0x71,
+	cmosAddress = 0x70,
+	cmosData = 0x71,
 
-	CMOS_SECOND = 0,
-	CMOS_MINUTE = 2,
-	CMOS_HOUR = 4,
-	CMOS_DAY = 7,
-	CMOS_MONTH = 8,
-	CMOS_YEAR = 9,
+	cmosSecond = 0,
+	cmosMinute = 2,
+	cmosHour = 4,
+	cmosDay = 7,
+	cmosMonth = 8,
+	cmosYear = 9,
 
-	CMOS_REGA = 0x0A,
-	CMOS_REGB = 0x0B
+	cmosRega = 0x0A,
+	cmosRegb = 0x0B
 }
 
 class CMOS {
 public:
 	this(ubyte centuryReg) {
-		this.centuryReg = centuryReg;
-		RetrieveTime();
+		_centuryReg = centuryReg;
+		retrieveTime();
 	}
 
-	void RetrieveTime() {
-		import CPU.PIT;
-
+	void retrieveTime() {
 		ushort[128] last;
-		ushort[128] data;
-		dump(data);
+		ushort[128] rawData;
+		dump(rawData);
 
 		do {
-			foreach (idx, val; data)
+			foreach (idx, val; rawData)
 				last[idx] = val;
-			dump(data);
+			dump(rawData);
 		}
-		while (last[CMOS_SECOND] != data[CMOS_SECOND] || last[CMOS_MINUTE] != data[CMOS_MINUTE]
-				|| last[CMOS_HOUR] != data[CMOS_HOUR] || last[CMOS_DAY] != data[CMOS_DAY]
-				|| last[CMOS_MONTH] != data[CMOS_MONTH] || last[CMOS_YEAR] != data[CMOS_YEAR]
-				|| last[CMOS_YEAR] != data[CMOS_YEAR] || (centuryReg && last[centuryReg] != data[centuryReg]));
+		while (last[cmosSecond] != rawData[cmosSecond] || last[cmosMinute] != rawData[cmosMinute]
+				|| last[cmosHour] != rawData[cmosHour] || last[cmosDay] != rawData[cmosDay]
+				|| last[cmosMonth] != rawData[cmosMonth] || last[cmosYear] != rawData[cmosYear]
+				|| last[cmosYear] != rawData[cmosYear] || (_centuryReg && last[_centuryReg] != rawData[_centuryReg]));
 
-		PIT.Clear();
+		PIT.clear();
 
-		if (!(data[CMOS_REGB] & 0x04)) { // If data is BCD
-			data[CMOS_SECOND] = fromBCD(data[CMOS_SECOND]);
-			data[CMOS_MINUTE] = fromBCD(data[CMOS_MINUTE]);
-			data[CMOS_HOUR] = ((data[CMOS_HOUR] & 0x0F) + (((data[CMOS_HOUR] & 0x70) / 16) * 10)) | (data[CMOS_HOUR] & 0x80);
-			data[CMOS_DAY] = fromBCD(data[CMOS_DAY]);
-			data[CMOS_MONTH] = fromBCD(data[CMOS_MONTH]);
-			data[CMOS_YEAR] = fromBCD(data[CMOS_YEAR]);
-			if (centuryReg)
-				data[centuryReg] = fromBCD(data[centuryReg]);
+		if (!(rawData[cmosRegb] & 0x04)) { // If rawData is BCD
+			rawData[cmosSecond] = fromBCD(rawData[cmosSecond]);
+			rawData[cmosMinute] = fromBCD(rawData[cmosMinute]);
+			rawData[cmosHour] = ((rawData[cmosHour] & 0x0F) + (((rawData[cmosHour] & 0x70) / 16) * 10)) | (rawData[cmosHour] & 0x80);
+			rawData[cmosDay] = fromBCD(rawData[cmosDay]);
+			rawData[cmosMonth] = fromBCD(rawData[cmosMonth]);
+			rawData[cmosYear] = fromBCD(rawData[cmosYear]);
+			if (_centuryReg)
+				rawData[_centuryReg] = fromBCD(rawData[_centuryReg]);
 		}
 
-		if (!(data[CMOS_REGB] & 0x02) && (data[CMOS_HOUR] & 0x80)) // am/pm -> 24 hours
-			data[CMOS_HOUR] = ((data[CMOS_HOUR] & 0x7F) + 12) % 24;
+		if (!(rawData[cmosRegb] & 0x02) && (rawData[cmosHour] & 0x80)) // am/pm -> 24 hours
+			rawData[cmosHour] = ((rawData[cmosHour] & 0x7F) + 12) % 24;
 
-		if (centuryReg)
-			data[CMOS_YEAR] += data[centuryReg] * 100;
+		if (_centuryReg)
+			rawData[cmosYear] += rawData[_centuryReg] * 100;
 		else {
-			import Data.String;
+			import data.string_;
 
 			string year = __DATE__[$ - 4 .. $];
 			ushort currentYear = cast(ushort)atoi(year);
 
-			data[CMOS_YEAR] += (currentYear / 100) * 100;
-			if (data[CMOS_YEAR] < currentYear)
-				data[CMOS_YEAR] += 100;
+			rawData[cmosYear] += (currentYear / 100) * 100;
+			if (rawData[cmosYear] < currentYear)
+				rawData[cmosYear] += 100;
 		}
 
-		timestamp = secondsOfYear(cast(ushort)(data[CMOS_YEAR] - 1)) + secondsOfMonth(data[CMOS_MONTH] - 1,
-				data[CMOS_YEAR]) + (data[CMOS_DAY] - 1) * 86400 + (data[CMOS_HOUR]) * 3600 + (data[CMOS_MINUTE]) * 60 + data[CMOS_SECOND]
-			+ 0;
+		_timestamp = secondsOfYear(cast(ushort)(rawData[cmosYear] - 1)) + secondsOfMonth(rawData[cmosMonth] - 1,
+				rawData[cmosYear]) + (rawData[cmosDay] - 1) * 86400 + (rawData[cmosHour]) * 3600 + (
+				rawData[cmosMinute]) * 60 + rawData[cmosSecond] + 0;
 	}
 
-	@property ulong TimeStamp() {
-		import CPU.PIT;
-
-		return timestamp + PIT.Seconds;
+	@property ulong timeStamp() {
+		return _timestamp + PIT.seconds;
 	}
 
 private:
-	ulong timestamp;
-	ubyte centuryReg;
+	ulong _timestamp;
+	ubyte _centuryReg;
 
 	void dump(ref ushort[128] rawData) {
 		while (updateInProgress) {
@@ -93,13 +90,13 @@ private:
 	}
 
 	ubyte read(ubyte reg) {
-		Out!ubyte(CMOS_ADDRESS, reg); //(NMI_disable_bit << 7) |
-		return In!ubyte(CMOS_DATA);
+		outp!ubyte(cmosAddress, reg); //(NMI_disable_bit << 7) |
+		return inp!ubyte(cmosData);
 	}
 
 	void write(ubyte reg, ubyte data) {
-		Out!ubyte(CMOS_ADDRESS, reg); //(NMI_disable_bit << 7) |
-		return Out!ubyte(CMOS_DATA, data);
+		outp!ubyte(cmosAddress, reg); //(NMI_disable_bit << 7) |
+		return outp!ubyte(cmosData, data);
 	}
 
 	ushort fromBCD(ushort bcd) {
@@ -162,16 +159,16 @@ private:
 	}
 }
 
-CMOS GetCMOS() {
-	import Data.Util : InplaceClass;
+CMOS getCMOS() {
+	import data.util : inplaceClass;
 
 	__gshared ubyte[__traits(classInstanceSize, CMOS)] data;
 	__gshared CMOS cmos;
 
 	if (!cmos) {
-		import ACPI.RSDP : rsdp;
+		import acpi.rsdp : rsdp;
 
-		cmos = InplaceClass!CMOS(data, rsdp.FADTInstance.Century);
+		cmos = inplaceClass!CMOS(data, rsdp.fadtInstance.century);
 	}
 	return cmos;
 }

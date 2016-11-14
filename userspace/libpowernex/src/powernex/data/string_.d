@@ -1,6 +1,6 @@
-module PowerNex.Data.String;
+module powernex.data.string_;
 
-import PowerNex.Data.Util;
+import powernex.data.util;
 
 nothrow pure size_t strlen(const(char)* str) {
 	if (!str)
@@ -60,7 +60,7 @@ string itoa(S)(S v, char[] buf, uint base = 10) if (isNumber!S) {
 size_t itoa(S)(S v, char* buf, ulong len, uint base = 10) if (isNumber!S) {
 	assert(1 < base && base <= 16);
 	Unqual!S value = v;
-	immutable char[] BASE_CHARS = cast(immutable char[])"0123456789ABCDEF";
+	immutable char[] baseChars = cast(immutable char[])"0123456789ABCDEF";
 	size_t pos = len;
 	bool sign = false;
 
@@ -70,7 +70,7 @@ size_t itoa(S)(S v, char* buf, ulong len, uint base = 10) if (isNumber!S) {
 	}
 
 	do {
-		buf[--pos] = BASE_CHARS[value % base];
+		buf[--pos] = baseChars[value % base];
 		value /= base;
 	}
 	while (value);
@@ -83,12 +83,12 @@ size_t itoa(S)(S v, char* buf, ulong len, uint base = 10) if (isNumber!S) {
 
 long atoi(string str, uint base = 10) {
 	long result;
-	immutable char[] BASE_CHARS = cast(immutable char[])"0123456789ABCDEF";
+	immutable char[] baseChars = cast(immutable char[])"0123456789ABCDEF";
 
 	foreach (ch; str) {
 		long value;
 		for (value = 0; value <= base; value++)
-			if (BASE_CHARS[value] == ch)
+			if (baseChars[value] == ch)
 				break;
 		if (value > base)
 			return result;
@@ -104,7 +104,7 @@ string dtoa(double v, char[] buf, uint base = 10) {
 }
 
 bool isNan(double value) {
-	enum ulong NANMASK = 0x7FFUL;
+	enum ulong nanMask = 0x7FFUL;
 	union storage {
 		double v;
 		ulong i;
@@ -113,7 +113,7 @@ bool isNan(double value) {
 	storage s;
 	s.v = value;
 
-	return ((s.i >> 51UL) & NANMASK) == NANMASK;
+	return ((s.i >> 51UL) & nanMask) == nanMask;
 }
 
 size_t dtoa(double value, char* buf, ulong len, uint base = 10) {
@@ -146,14 +146,14 @@ size_t dtoa(double value, char* buf, ulong len, uint base = 10) {
 
 	ulong exponent = cast(ulong)value;
 	double fraction = value - exponent;
-	immutable char[] BASE_CHARS = cast(immutable char[])"0123456789ABCDEF";
+	immutable char[] baseChars = cast(immutable char[])"0123456789ABCDEF";
 
 	// Fraction
 	char[16] fracTmp;
 	int fracPos;
 	fraction *= base;
 	do {
-		fracTmp[fracPos++] = BASE_CHARS[cast(ulong)fraction % base];
+		fracTmp[fracPos++] = baseChars[cast(ulong)fraction % base];
 		fraction *= base;
 	}
 	while (fraction && fracPos < fracTmp.length);
@@ -165,7 +165,7 @@ size_t dtoa(double value, char* buf, ulong len, uint base = 10) {
 	buf[--pos] = '.';
 	// Exponent
 	do {
-		buf[--pos] = BASE_CHARS[exponent % base];
+		buf[--pos] = baseChars[exponent % base];
 		exponent /= base;
 	}
 	while (exponent);

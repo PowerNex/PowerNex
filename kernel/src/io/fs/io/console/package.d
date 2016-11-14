@@ -1,8 +1,8 @@
-module IO.FS.IO.Console;
+module io.fs.io.console;
 
 public {
-	import IO.FS.IO.Console.Console;
-	import IO.FS.IO.Console.SerialConsole;
-	import IO.FS.IO.Console.VirtualConsole;
-	import IO.FS.IO.Console.Screen;
+	import io.fs.io.console.console;
+	import io.fs.io.console.serialconsole;
+	import io.fs.io.console.virtualconsole;
+	import io.fs.io.console.screen;
 }

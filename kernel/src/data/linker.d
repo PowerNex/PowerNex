@@ -1,6 +1,6 @@
-module Data.Linker;
+module data.linker;
 
-import Data.Address;
+import data.address;
 
 /*
 	You have to do it like this because the linker will put the variable at the address.
@@ -18,31 +18,31 @@ private extern (C) extern __gshared {
 
 static struct Linker {
 public:
-	@property static PhysAddress KernelPhysStart() {
+	@property static PhysAddress kernelPhysStart() {
 		return PhysAddress(&KERNEL_LMA);
 	}
 
-	@property static VirtAddress KernelStart() {
+	@property static VirtAddress kernelStart() {
 		return VirtAddress(&KERNEL_VMA);
 	}
 
-	@property static VirtAddress KernelEnd() {
+	@property static VirtAddress kernelEnd() {
 		return VirtAddress(&KERNEL_END);
 	}
 
-	@property static VirtAddress KernelSymbolsStart() {
+	@property static VirtAddress kernelSymbolsStart() {
 		return VirtAddress(&KERNEL_SYMBOLS_START);
 	}
 
-	@property static VirtAddress KernelSymbolsEnd() {
+	@property static VirtAddress kernelSymbolsEnd() {
 		return VirtAddress(&KERNEL_SYMBOLS_END);
 	}
 
-	@property static VirtAddress KernelModulesStart() {
+	@property static VirtAddress kernelModulesStart() {
 		return VirtAddress(&KERNEL_MODULES_START);
 	}
 
-	@property static VirtAddress KernelModulesEnd() {
+	@property static VirtAddress kernelModulesEnd() {
 		return VirtAddress(&KERNEL_MODULES_END);
 	}
 }

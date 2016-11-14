@@ -1,23 +1,23 @@
-module IO.FS.System.VersionNode;
+module io.fs.system.versionnode;
 
-import IO.FS;
-import IO.FS.System;
-import Data.String;
+import io.fs;
+import io.fs.system;
+import data.string_;
 
-immutable uint major = __VERSION__ / 1000;
-immutable uint minor = __VERSION__ % 1000;
+private immutable uint _major = __VERSION__ / 1000;
+private immutable uint _minor = __VERSION__ % 1000;
 
 class VersionNode : FileNode {
 public:
 	this() {
-		super(NodePermissions.DefaultPermissions, 0);
+		super(NodePermissions.defaultPermissions, 0);
 	}
 
-	override ulong Read(ubyte[] buffer, ulong offset) {
+	override ulong read(ubyte[] buffer, ulong offset) {
 		char[16] majorBuf;
 		char[16] minorBuf;
 
-		string data = "Compiled using '" ~ __VENDOR__ ~ "' D version " ~ itoa(major, majorBuf) ~ "." ~ itoa(minor, minorBuf) ~ "\n";
+		string data = "Compiled using '" ~ __VENDOR__ ~ "' D version " ~ itoa(_major, majorBuf) ~ "." ~ itoa(_minor, minorBuf) ~ "\n";
 
 		if (offset >= data.length)
 			return 0;
@@ -34,15 +34,15 @@ public:
 		return size;
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
+	override ulong write(ubyte[] buffer, ulong offset) {
 		return -1;
 	}
 
-	override bool Open() {
+	override bool open() {
 		return true;
 	}
 
-	override void Close() {
+	override void close() {
 	}
 
 private:

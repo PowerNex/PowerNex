@@ -1,17 +1,17 @@
-module CPU.MSR;
+module cpu.msr;
 
 enum MSRIdentifiers : uint {
-	EFER = 0xC0000080,
-	Star = 0xC0000081,
-	LStar = 0xC0000082,
-	CStar = 0xC0000083,
-	SFMask = 0xC0000084,
-	FSBase = 0xC0000100,
-	GSBase = 0xC0000101
+	efer = 0xC0000080,
+	star = 0xC0000081,
+	lStar = 0xC0000082,
+	cStar = 0xC0000083,
+	sfMask = 0xC0000084,
+	fsBase = 0xC0000100,
+	gsBase = 0xC0000101
 }
 
 struct MSR {
-	static void Write(MSRIdentifiers ident, ulong value) {
+	static void write(MSRIdentifiers ident, ulong value) {
 		uint low = cast(uint)value;
 		uint high = cast(uint)(value >> 32);
 		asm {
@@ -22,7 +22,7 @@ struct MSR {
 		}
 	}
 
-	static ulong Read(MSRIdentifiers ident) {
+	static ulong read(MSRIdentifiers ident) {
 		uint low, high;
 		asm {
 			mov ECX, ident;
@@ -33,21 +33,21 @@ struct MSR {
 		return cast(ulong)high << 32UL | low;
 	}
 
-	mixin(generateGetterSetter());
+	mixin(_generateGetterSetter());
 
 private:
-	static string generateGetterSetter() {
+	static string _generateGetterSetter() {
 		if (!__ctfe)
 			return "";
-		template generateGetterSetterEntry(alias item) {
-			enum generateGetterSetterEntry = `@property static ulong ` ~ item ~ `() { return Read(MSRIdentifiers.` ~ item
-					~ `); }
-@property static ulong ` ~ item ~ `(ulong val) { Write(MSRIdentifiers.` ~ item ~ `, val); return val;	}`;
+		template _generateGetterSetterEntry(alias item) {
+			enum _generateGetterSetterEntry = `@property static ulong ` ~ item ~ `() { return read(MSRIdentifiers.`
+					~ item ~ `); }
+@property static ulong ` ~ item ~ `(ulong val) { write(MSRIdentifiers.` ~ item ~ `, val); return val;	}`;
 		}
 
 		string output;
 		foreach (item; __traits(allMembers, MSRIdentifiers))
-			output ~= generateGetterSetterEntry!item;
+			output ~= _generateGetterSetterEntry!item;
 
 		return output;
 	}

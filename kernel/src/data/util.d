@@ -1,4 +1,4 @@
-module Data.Util;
+module data.util;
 
 template Unqual(T) {
 	static if (is(T U == shared(const U)))
@@ -28,8 +28,8 @@ template TypeTuple(T...) {
 	alias TypeTuple = T;
 }
 
-template EnumMembers(E) if (is(E == enum)) {
-	template WithIdentifier(string ident) {
+template enumMembers(E) if (is(E == enum)) {
+	template withIdentifier(string ident) {
 		static if (ident == "Symbolize") {
 			template Symbolize(alias value) {
 				enum Symbolize = value;
@@ -39,19 +39,19 @@ template EnumMembers(E) if (is(E == enum)) {
 		}
 	}
 
-	template EnumSpecificMembers(names...) {
+	template enumSpecificMembers(names...) {
 		static if (names.length > 0) {
-			alias EnumSpecificMembers = TypeTuple!(WithIdentifier!(names[0]).Symbolize!(__traits(getMember, E,
-					names[0])), EnumSpecificMembers!(names[1 .. $]));
+			alias enumSpecificMembers = TypeTuple!(withIdentifier!(names[0]).Symbolize!(__traits(getMember, E,
+					names[0])), enumSpecificMembers!(names[1 .. $]));
 		} else {
-			alias EnumSpecificMembers = TypeTuple!();
+			alias enumSpecificMembers = TypeTuple!();
 		}
 	}
 
-	alias EnumMembers = EnumSpecificMembers!(__traits(allMembers, E));
+	alias enumMembers = enumSpecificMembers!(__traits(allMembers, E));
 }
 
-T InplaceClass(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class)) {
+T inplaceClass(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class)) {
 	static assert(!__traits(isAbstractClass, T), T.stringof ~ " is abstract and it can't be emplaced");
 
 	enum classSize = __traits(classInstanceSize, T);
@@ -73,7 +73,7 @@ struct BinaryInt {
 	ulong Int;
 }
 
-void Swap(T)(ref T t1, ref T t2) {
+void swap(T)(ref T t1, ref T t2) {
 	T tmp = t1;
 	t1 = t2;
 	t2 = tmp;

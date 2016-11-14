@@ -1,24 +1,24 @@
-module Data.PSF;
+module data.psf;
 
-import Data.Font;
-import Data.UTF;
-import IO.FS.FileNode;
+import data.font;
+import data.utf;
+import io.fs.filenode;
 
 private enum {
-	PSF2_MAGIC0 = 0x72,
-	PSF2_MAGIC1 = 0xb5,
-	PSF2_MAGIC2 = 0x4a,
-	PSF2_MAGIC3 = 0x86,
+	psf2Magic0 = 0x72,
+	psf2Magic1 = 0xb5,
+	psf2Magic2 = 0x4a,
+	psf2Magic3 = 0x86,
 
 	/* bits used in flags */
-	PSF2_HAS_UNICODE_TABLE = 0x01,
+	psf2HasUnicodeTable = 0x01,
 
 	/* max version recognized so far */
-	PSF2_MAXVERSION = 0,
+	psf2MaxVersion = 0,
 
 	/* UTF8 separators */
-	PSF2_SEPARATOR = 0xFF,
-	PSF2_STARTSEQ = 0xFE,
+	psf2Separator = 0xFF,
+	psf2Startseq = 0xFE
 }
 
 private struct psf2_header {
@@ -35,78 +35,78 @@ private struct psf2_header {
 class PSF : Font {
 public:
 	this(FileNode file) {
-		valid = read(file, hdr);
-		if (!valid)
+		_valid = file.read(_hdr, 0) == _hdr.sizeof;
+		if (!_valid)
 			return;
 
-		valid = (hdr.magic[0] == PSF2_MAGIC0 && hdr.magic[1] == PSF2_MAGIC1 && hdr.magic[2] == PSF2_MAGIC2 && hdr.magic[3] == PSF2_MAGIC3);
-		if (!valid)
+		_valid = (_hdr.magic[0] == psf2Magic0 && _hdr.magic[1] == psf2Magic1 && _hdr.magic[2] == psf2Magic2 && _hdr.magic[3] == psf2Magic3);
+		if (!_valid)
 			return;
 
-		fontData = new ubyte[hdr.charsize * hdr.length];
-		valid = file.Read(fontData, hdr.headersize) == fontData.length;
-		if (!valid)
+		_fontData = new ubyte[_hdr.charsize * _hdr.length];
+		_valid = file.read(_fontData, _hdr.headersize) == _fontData.length;
+		if (!_valid)
 			return;
 
-		unicodeTable = new ubyte[file.Size - hdr.headersize - fontData.length];
-		valid = file.Read(unicodeTable, hdr.headersize + fontData.length) == unicodeTable.length;
-		if (!valid)
+		_unicodeTable = new ubyte[file.size - _hdr.headersize - _fontData.length];
+		_valid = file.read(_unicodeTable, _hdr.headersize + _fontData.length) == _unicodeTable.length;
+		if (!_valid)
 			return;
 
-		parseUnicode();
+		_parseUnicode();
 	}
 
 	this(ubyte[] file) {
 		if (file.length < psf2_header.sizeof)
 			return;
-		hdr = *cast(psf2_header*)file.ptr;
+		_hdr = *cast(psf2_header*)file.ptr;
 
-		valid = (hdr.magic[0] == PSF2_MAGIC0 && hdr.magic[1] == PSF2_MAGIC1 && hdr.magic[2] == PSF2_MAGIC2 && hdr.magic[3] == PSF2_MAGIC3);
-		if (!valid)
+		_valid = (_hdr.magic[0] == psf2Magic0 && _hdr.magic[1] == psf2Magic1 && _hdr.magic[2] == psf2Magic2 && _hdr.magic[3] == psf2Magic3);
+		if (!_valid)
 			return;
 
-		if (hdr.charsize * hdr.length + hdr.headersize > file.length)
+		if (_hdr.charsize * _hdr.length + _hdr.headersize > file.length)
 			return;
-		fontData = file[hdr.headersize .. hdr.headersize + hdr.charsize * hdr.length];
-		unicodeTable = file[hdr.headersize + hdr.charsize * hdr.length .. $];
+		_fontData = file[_hdr.headersize .. _hdr.headersize + _hdr.charsize * _hdr.length];
+		_unicodeTable = file[_hdr.headersize + _hdr.charsize * _hdr.length .. $];
 
-		valid = true;
-		parseUnicode();
+		_valid = true;
+		_parseUnicode();
 	}
 
-	bool Valid() {
-		return valid;
+	bool valid() {
+		return _valid;
 	}
 
-	ref ulong[] GetChar(dchar ch, ref return ulong[] buffer) {
-		import IO.Log;
+	ref ulong[] getChar(dchar ch, ref return ulong[] buffer) {
+		import io.log;
 
 		foreach (ref row; buffer)
 			row = 0;
 
-		if (buffer.length < hdr.height)
+		if (buffer.length < _hdr.height)
 			return buffer;
 
-		if (ch >= MAX_CHARS || ch == dchar.init)
+		if (ch >= _maxChars || ch == dchar.init)
 			ch = 0;
 
-		dchar[MAX_RENDERER_PART] parts;
-		if (auto id = charJumpTable[ch])
-			parts = renderer[id];
+		dchar[_maxRendererPart] parts;
+		if (auto id = _charJumpTable[ch])
+			parts = _renderer[id];
 		else
 			parts[0] = ch;
 
-		size_t widthBytes = (hdr.width + 7) / 8;
+		size_t widthBytes = (_hdr.width + 7) / 8;
 		foreach (partId; parts) {
 			if (partId == dchar.init)
 				break;
-			size_t partOffset = partId * hdr.charsize;
-			if (partOffset + widthBytes * hdr.height >= fontData.length)
+			size_t partOffset = partId * _hdr.charsize;
+			if (partOffset + widthBytes * _hdr.height >= _fontData.length)
 				continue;
-			foreach (row; 0 .. hdr.height) {
+			foreach (row; 0 .. _hdr.height) {
 				ulong bitmapRow;
 				for (size_t partByte = 0; partByte < widthBytes; partByte++)
-					bitmapRow = bitmapRow << 8 | fontData[partOffset + row * widthBytes + partByte];
+					bitmapRow = bitmapRow << 8 | _fontData[partOffset + row * widthBytes + partByte];
 
 				buffer[row] |= bitmapRow;
 			}
@@ -115,74 +115,70 @@ public:
 		return buffer;
 	}
 
-	@property size_t BufferSize() {
-		return hdr.height;
+	@property size_t bufferSize() {
+		return _hdr.height;
 	}
 
-	@property uint Width() {
-		return hdr.width; //TODO: Hack space between font here later?
+	@property uint width() {
+		return _hdr.width; //TODO: Hack space between font here later?
 	}
 
-	@property uint Height() {
-		return hdr.height;
+	@property uint height() {
+		return _hdr.height;
 	}
 
 private:
-	bool valid;
-	psf2_header hdr;
-	ubyte[] fontData;
-	ubyte[] unicodeTable;
+	bool _valid;
+	psf2_header _hdr;
+	ubyte[] _fontData;
+	ubyte[] _unicodeTable;
 
-	enum MAX_CHARS = 0x10000;
-	enum MAX_RENDERER = MAX_CHARS;
-	enum MAX_RENDERER_PART = 4;
-	dchar[MAX_RENDERER_PART][MAX_RENDERER] renderer; // How to render a char
-	ushort[MAX_CHARS] charJumpTable; // Which renderer should be used to render the char
-	ushort rendererCount;
+	enum _maxChars = 0x10000;
+	enum _maxRenderer = _maxChars;
+	enum _maxRendererPart = 4;
+	dchar[_maxRendererPart][_maxRenderer] _renderer; // How to render a char
+	ushort[_maxChars] _charJumpTable; // Which renderer should be used to render the char
+	ushort _rendererCount;
 
-	bool read(T)(FileNode file, ref T t, ulong offset = 0) {
-		return file.Read((cast(ubyte*)(&t))[0 .. T.sizeof], offset) == T.sizeof;
-	}
-
-	void parseUnicode() {
+	void _parseUnicode() {
 		size_t idx;
 
 		// TODO: Fix. Totally wrong!
-		if (false && hdr.flags & PSF2_HAS_UNICODE_TABLE && unicodeTable.length) {
-			while (unicodeTable.length) {
-				import IO.Log;
+		if (false && _hdr.flags & psf2HasUnicodeTable && _unicodeTable.length) {
+			while (_unicodeTable.length) {
+				import io.log;
 
-				while (unicodeTable.length && unicodeTable[0] != PSF2_STARTSEQ) {
-					if (unicodeTable[0] == PSF2_SEPARATOR)
+				while (_unicodeTable.length && _unicodeTable[0] != psf2Startseq) {
+					if (_unicodeTable[0] == psf2Separator)
 						break;
 
 					size_t bytesUsed;
-					auto ch = ParseUTF8(unicodeTable, bytesUsed);
-					if (ch < MAX_CHARS)
-						charJumpTable[ch] = rendererCount;
-					unicodeTable = unicodeTable[bytesUsed .. $];
+					auto ch = parseUTF8(_unicodeTable, bytesUsed);
+					if (ch < _maxChars)
+						_charJumpTable[ch] = _rendererCount;
+					_unicodeTable = _unicodeTable[bytesUsed .. $];
 					idx += bytesUsed;
 				}
-				if (unicodeTable.length)
-					unicodeTable = unicodeTable[1 .. $];
+				if (_unicodeTable.length)
+					_unicodeTable = _unicodeTable[1 .. $];
 
 				size_t rendererPart;
-				while (unicodeTable.length && unicodeTable[0] != PSF2_SEPARATOR) {
-					if (rendererPart == MAX_RENDERER_PART) {
-						while (unicodeTable.length && unicodeTable[0] != PSF2_SEPARATOR)
-							unicodeTable = unicodeTable[1 .. $];
+				while (_unicodeTable.length && _unicodeTable[0] != psf2Separator) {
+					if (rendererPart == _maxRendererPart) {
+						while (_unicodeTable.length && _unicodeTable[0] != psf2Separator)
+							_unicodeTable = _unicodeTable[1 .. $];
 						break;
 					}
 
 					size_t bytesUsed;
-					renderer[rendererCount][rendererPart++] = ParseUTF8(unicodeTable, bytesUsed);
-					unicodeTable = unicodeTable[bytesUsed .. $];
+					_renderer[_rendererCount][rendererPart++] = parseUTF8(_unicodeTable, bytesUsed);
+					_unicodeTable = _unicodeTable[bytesUsed .. $];
 					idx += bytesUsed;
 				}
 
-				rendererCount++;
-				if (unicodeTable.length)
-					unicodeTable = unicodeTable[1 .. $];
+				_rendererCount++;
+				if (_unicodeTable.length)
+					_unicodeTable = _unicodeTable[1 .. $];
 			}
 		}
 	}

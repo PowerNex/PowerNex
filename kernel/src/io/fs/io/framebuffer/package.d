@@ -1,6 +1,6 @@
-module IO.FS.IO.Framebuffer;
+module io.fs.io.framebuffer;
 
 public {
-	import IO.FS.IO.Framebuffer.Framebuffer;
-	import IO.FS.IO.Framebuffer.BGAFramebuffer;
+	import io.fs.io.framebuffer.framebuffer;
+	import io.fs.io.framebuffer.bgaframebuffer;
 }

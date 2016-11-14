@@ -1,14 +1,14 @@
-module IO.FS.System.FSRoot;
+module io.fs.system.fsroot;
 
-import IO.FS;
-import IO.FS.System;
+import io.fs;
+import io.fs.system;
 
 class SystemFSRoot : FSRoot {
 public:
 	this() {
-		auto root = new DirectoryNode(NodePermissions.DefaultPermissions);
-		root.Name = "System";
-		root.ID = idCounter++;
+		auto root = new DirectoryNode(NodePermissions.defaultPermissions);
+		root.name = "system";
+		root.id = _idCounter++;
 		super(root);
 
 		addAt("/version", new VersionNode());

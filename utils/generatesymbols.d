@@ -1,3 +1,5 @@
+module generatesymbols;
+
 import std.stdio;
 import std.process;
 import std.demangle;
@@ -7,23 +9,23 @@ import std.conv;
 
 struct SymbolTable {
 align(1):
-	char[] Magic = ['D', 'S', 'Y', 'M'];
-	ulong Count;
+	char[] magic = ['D', 'S', 'Y', 'M'];
+	ulong count;
 }
 
 struct Line {
 align(1):
 	this(ulong start, ulong end, string name) {
-		Start = start;
-		End = end;
-		NameLength = name.length;
-		Name = name.dup;
+		this.start = start;
+		this.end = end;
+		this.nameLength = name.length;
+		this.name = name.dup;
 	}
 
-	ulong Start;
-	ulong End;
-	ulong NameLength;
-	char[] Name;
+	ulong start;
+	ulong end;
+	ulong nameLength;
+	char[] name;
 }
 
 int main(string[] args) {
@@ -40,16 +42,16 @@ int main(string[] args) {
 		.array;
 	//dfmt on
 
-	lines.each!(x => table.Count++);
+	lines.each!(x => table.count++);
 
-	output.rawWrite(table.Magic);
-	output.rawWrite((cast(ubyte*)&table.Count)[0 .. ulong.sizeof]);
+	output.rawWrite(table.magic);
+	output.rawWrite((cast(ubyte*)&table.count)[0 .. ulong.sizeof]);
 
 	foreach (Line line; lines) {
-		output.rawWrite((cast(ubyte*)&line.Start)[0 .. ulong.sizeof]);
-		output.rawWrite((cast(ubyte*)&line.End)[0 .. ulong.sizeof]);
-		output.rawWrite((cast(ubyte*)&line.NameLength)[0 .. ulong.sizeof]);
-		output.rawWrite(line.Name);
+		output.rawWrite((cast(ubyte*)&line.start)[0 .. ulong.sizeof]);
+		output.rawWrite((cast(ubyte*)&line.end)[0 .. ulong.sizeof]);
+		output.rawWrite((cast(ubyte*)&line.nameLength)[0 .. ulong.sizeof]);
+		output.rawWrite(line.name);
 	}
 
 	output.close();

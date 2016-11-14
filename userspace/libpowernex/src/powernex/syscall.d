@@ -1,44 +1,45 @@
-module PowerNex.Syscall;
+module powernex.syscall;
 
-import PowerNex.Internal.Syscall;
-import PowerNex.Data.Address;
+import powernex.internal.syscall;
+import powernex.data.address;
 
 struct Syscall {
 public:
-	mixin(generateFunctions);
+	mixin(_generateFunctions());
 
 private:
-	static string generateFunctions() {
+	static string _generateFunctions() {
 		if (!__ctfe) // Without this it tries to use _d_arrayappendT
 			return "";
 		string o;
-		foreach (func; __traits(derivedMembers, PowerNex.Internal.Syscall))
-			foreach (attr; __traits(getAttributes, mixin(func)))
-				static if (is(typeof(attr) == SyscallEntry))
-					o ~= generateFunctionDefinition!(func, attr) ~ "\n";
+		foreach (func; __traits(derivedMembers, powernex.internal.syscall))
+			static if (is(typeof(mixin("powernex.internal.syscall." ~ func)) == function))
+				foreach (attr; __traits(getAttributes, mixin("powernex.internal.syscall." ~ func)))
+					static if (is(typeof(attr) == SyscallEntry))
+						o ~= _generateFunctionDefinition!(func, attr) ~ "\n";
 		return o;
 	}
 
-	static string generateFunctionDefinition(alias func, alias attr)() {
+	static string _generateFunctionDefinition(alias func, alias attr)() {
 		if (!__ctfe) // Without this it tries to use _d_arrayappendT
 			return "";
 
-		import PowerNex.Data.Parameters;
-		import PowerNex.Data.String : itoa;
-		import PowerNex.Data.Util : isArray;
+		import powernex.data.parameters;
+		import powernex.data.string_ : itoa;
+		import powernex.data.util : isArray;
 
 		// These can be used because they will be saved first
 		string[] saveRegisters = ["R12", "R13", "R14", "R15"];
-		enum NAME = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
-		enum ABI = ["RDI", "RSI", "RDX", "R8", "R9", "R10", "R12", "R13", "R14", "R15"];
+		enum name = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
+		enum abi = ["RDI", "RSI", "RDX", "R8", "R9", "R10", "R12", "R13", "R14", "R15"];
 
-		alias p = Parameters!(mixin(func));
+		alias p = parameters!(mixin("powernex.internal.syscall." ~ func));
 		string o = "static VirtAddress " ~ func ~ "(";
 
 		foreach (idx, val; p) {
 			static if (idx)
 				o ~= ", ";
-			o ~= val.stringof ~ " " ~ NAME[idx];
+			o ~= val.stringof ~ " " ~ name[idx];
 		}
 		o ~= ") {\n";
 
@@ -49,11 +50,11 @@ private:
 				registerCount++;
 				continue;
 			}
-			o ~= "\tauto " ~ NAME[idx] ~ "_ptr = " ~ NAME[idx] ~ ".ptr;\n";
-			o ~= "\tauto " ~ NAME[idx] ~ "_length = " ~ NAME[idx] ~ ".length;\n";
+			o ~= "\tauto " ~ name[idx] ~ "_ptr = " ~ name[idx] ~ ".ptr;\n";
+			o ~= "\tauto " ~ name[idx] ~ "_length = " ~ name[idx] ~ ".length;\n";
 			registerCount += 2;
 		}
-		assert(registerCount < ABI.length);
+		assert(registerCount < abi.length);
 
 		char[ulong.sizeof * 8] buf;
 		o ~= "\tasm {\n";
@@ -68,10 +69,10 @@ private:
 		size_t abi_count;
 		foreach (idx, val; p) {
 			static if (isArray!val) {
-				o ~= "\t\tmov " ~ ABI[abi_count++] ~ ", " ~ NAME[idx] ~ "_ptr;\n";
-				o ~= "\t\tmov " ~ ABI[abi_count++] ~ ", " ~ NAME[idx] ~ "_length;\n";
+				o ~= "\t\tmov " ~ abi[abi_count++] ~ ", " ~ name[idx] ~ "_ptr;\n";
+				o ~= "\t\tmov " ~ abi[abi_count++] ~ ", " ~ name[idx] ~ "_length;\n";
 			} else
-				o ~= "\t\tmov " ~ ABI[abi_count++] ~ ", " ~ NAME[idx] ~ ";\n";
+				o ~= "\t\tmov " ~ abi[abi_count++] ~ ", " ~ name[idx] ~ ";\n";
 		}
 		//o ~= "\t\tint 0x80;\n";
 		o ~= "\t\tsyscall;\n";

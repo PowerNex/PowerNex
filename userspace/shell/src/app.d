@@ -1,52 +1,52 @@
-import PowerNex.Syscall;
-import PowerNex.Data.String;
+import powernex.syscall;
+import powernex.data.string_;
 
-void Print(string str) {
-	Syscall.Write(0UL, cast(ubyte[])str, 0UL);
+void print(string str) {
+	Syscall.write(0UL, cast(ubyte[])str, 0UL);
 }
 
-void Print(char[] str) {
-	Print(cast(string)str);
+void print(char[] str) {
+	print(cast(string)str);
 }
 
-void Print(char ch) {
-	Syscall.Write(0UL, cast(ubyte[])(&ch)[0 .. 1], 0UL);
+void print(char ch) {
+	Syscall.write(0UL, cast(ubyte[])(&ch)[0 .. 1], 0UL);
 }
 
-void Print(T)(T t) if (is(T == enum)) {
-	import PowerNex.Data.Util;
+void print(T)(T t) if (is(T == enum)) {
+	import powernex.data.util;
 
 	char[ulong.sizeof * 8] buf;
 
-	foreach (i, e; EnumMembers!T)
+	foreach (i, e; enumMembers!T)
 		if (t == e) {
-			Print(__traits(allMembers, T)[i]);
+			print(__traits(allMembers, T)[i]);
 			goto done;
 		}
-	Print("cast(");
-	Print(T.stringof);
-	Print(")");
-	Print(itoa(cast(ulong)t, buf, 10));
+	print("cast(");
+	print(T.stringof);
+	print(")");
+	print(itoa(cast(ulong)t, buf, 10));
 done:
 }
 
-void Println() {
-	Print("\n");
+void println() {
+	print("\n");
 }
 
-void Println(string str) {
-	Print(str);
-	Println();
+void println(string str) {
+	print(str);
+	println();
 }
 
 int main(string[] args) {
 	while (true) {
-		Println("Booting up shell...");
+		println("Booting up shell...");
 
 		BasicShell bs = new BasicShell();
-		bs.MainLoop();
+		bs.mainLoop();
 		bs.destroy;
-		Println("\x1B[2J");
+		println("\x1B[2J");
 	}
 
 	return 0;
@@ -54,9 +54,9 @@ int main(string[] args) {
 
 struct DirectoryListing {
 	enum Type {
-		Unknown,
-		File,
-		Directory,
+		unknown,
+		file,
+		directory
 	}
 
 	size_t id;
@@ -66,21 +66,21 @@ struct DirectoryListing {
 
 class BasicShell {
 public:
-	void MainLoop() {
+	void mainLoop() {
 		char[0x100] cwd;
-		while (!quit) {
-			size_t len = Syscall.GetCurrentDirectory(cwd);
-			Print(cwd[0 .. len]);
-			Print("/ \u0017 ");
-			Command* command = parseLine(readLine);
+		while (!_quit) {
+			size_t len = Syscall.getCurrentDirectory(cwd);
+			print(cwd[0 .. len]);
+			print("/ \u0017 ");
+			Command* command = _parseLine(_readLine);
 			if (command.args.length)
-				execute(command);
+				_execute(command);
 			command.destroy;
 		}
 	}
 
 private:
-	bool quit;
+	bool _quit;
 
 	struct Command {
 		char[][] args;
@@ -90,13 +90,13 @@ private:
 		}
 	}
 
-	char[] readLine() {
+	char[] _readLine() {
 		__gshared char[1024] line;
 		ubyte[1024] buf;
 		size_t idx = 0;
 
 		while (idx < 1024) {
-			size_t r = Syscall.Read(0, buf[idx .. $], 0);
+			size_t r = Syscall.read(0, buf[idx .. $], 0);
 			for (size_t i = 0; i < r; i++) {
 				char ch = cast(char)buf[idx + i];
 				if (ch == '\0')
@@ -107,22 +107,22 @@ private:
 					if (idx) {
 						idx--;
 						line[idx] = ' ';
-						Print("\b \b"); // Back ' ' Back
+						print("\b \b"); // Back ' ' Back
 					}
 					continue;
 				} else if (ch == '\n')
 					goto done;
-				Print(ch);
+				print(ch);
 				line[idx++] = ch;
 			}
 		}
 	done:
 
-		Print("\n");
+		print("\n");
 		return line[0 .. idx];
 	}
 
-	Command* parseLine(char[] line) {
+	Command* _parseLine(char[] line) {
 		char[][] args;
 
 		size_t start = 0;
@@ -139,88 +139,87 @@ private:
 		return new Command(args);
 	}
 
-	void execute(Command* cmd) {
+	void _execute(Command* cmd) {
 		switch (cmd.args[0]) {
 		case "help":
-			Println("Commands: help, echo, clear, exit, time, sleep, ls, cd");
+			println("Commands: help, echo, clear, exit, time, sleep, ls, cd");
 			break;
 
 		case "exit":
-			quit = true;
+			_quit = true;
 			break;
 
 		case "clear":
-			Println("\x1B[2J");
+			println("\x1B[2J");
 			break;
 
 		case "echo":
 			foreach (idx, arg; cmd.args[1 .. $]) {
-				Print(arg);
-				Print(" ");
+				print(arg);
+				print(" ");
 			}
-			Println();
+			println();
 			break;
 
 		case "time":
-			ulong timestamp = Syscall.GetTimestamp;
-			Print("Current timestamp: ");
+			ulong timestamp = Syscall.getTimestamp;
+			print("Current timestamp: ");
 			char[ulong.sizeof * 8] buf;
-			Println(itoa(timestamp, buf, 10));
+			println(itoa(timestamp, buf, 10));
 			break;
 
 		case "sleep":
 			if (cmd.args.length == 1) {
-				Println("sleep: <seconds>");
+				println("sleep: <seconds>");
 				break;
 			}
 			ulong secs = atoi(cast(string)cmd.args[1]);
-			Syscall.Sleep(secs * 1000);
+			Syscall.sleep(secs * 1000);
 			break;
 
 		case "ls":
 			DirectoryListing[32] listings = void;
 			void* ptr = cast(void*)listings.ptr;
 			size_t len = listings.length;
-			size_t count = Syscall.ListDirectory(ptr, len);
-			Println("ID\tName\t\tType");
+			size_t count = Syscall.listDirectory(ptr, len);
+			println("ID\tName\t\tType");
 			foreach (list; listings[0 .. count]) {
 				char[ulong.sizeof * 8] buf;
-				Print(itoa(list.id, buf, 10));
-				Print(":\t");
-				Print(list.name.fromStringz);
-				Print("\t\t");
-				Print(list.type);
-				Println();
+				print(itoa(list.id, buf, 10));
+				print(":\t");
+				print(list.name.fromStringz);
+				print("\t\t");
+				print(list.type);
+				println();
 			}
 			break;
 
 		case "cd":
 			if (cmd.args.length == 1)
-				Syscall.ChangeCurrentDirectory("/");
+				Syscall.changeCurrentDirectory("/");
 			else
-				Syscall.ChangeCurrentDirectory(cast(string)cmd.args[1]);
+				Syscall.changeCurrentDirectory(cast(string)cmd.args[1]);
 			break;
 
 		default:
-			size_t ret = SpawnAndWait(cmd);
-			Println();
-			Print("> Program returned: 0x");
+			size_t ret = _spawnAndWait(cmd);
+			println();
+			print("> Program returned: 0x");
 			char[ulong.sizeof * 8] buf;
-			Println(itoa(ret, buf, 16));
+			println(itoa(ret, buf, 16));
 			break;
 		}
 	}
 
-private:
-	size_t SpawnAndWait(Command* cmd) {
-		size_t pid = Syscall.Fork();
+	size_t _spawnAndWait(Command* cmd) {
+		size_t pid = Syscall.fork();
 
 		if (!pid) {
-			size_t status = Syscall.Exec(cast(string)cmd.args[0], cast(string[])cmd.args);
-			Println("Failed to launch program!");
-			Syscall.Exit(status);
+			size_t status = Syscall.exec(cast(string)cmd.args[0], cast(string[])cmd.args);
+			println("Failed to launch program!");
+			Syscall.exit(status);
 		}
 
-		return Syscall.Join(pid);
+		return Syscall.join(pid);
 	}
 }

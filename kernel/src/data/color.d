@@ -1,4 +1,4 @@
-module Data.Color;
+module data.color;
 
 struct Color {
 align(1):

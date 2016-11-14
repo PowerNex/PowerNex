@@ -1,52 +1,52 @@
-module ACPI.RSDP;
+module acpi.rsdp;
 
-import Data.Address;
-import Data.TextBuffer : scr = GetBootTTY;
-import IO.Port;
+import data.address;
+import data.textbuffer : scr = getBootTTY;
+import io.port;
 
 struct RSDPDescriptor {
 align(1):
-	char[8] Signature;
-	ubyte Checksum;
-	char[6] OEMID;
-	ubyte Revision;
-	PhysAddress32 RSDTAddress;
+	char[8] signature;
+	ubyte checksum;
+	char[6] oemID;
+	ubyte revision;
+	PhysAddress32 rsdtAddress;
 }
 
 struct RSDPDescriptor20 {
 align(1):
 	RSDPDescriptor firstPart;
 
-	uint Length;
-	PhysAddress XSDTAddress;
-	ubyte ExtendedChecksum;
+	uint length;
+	PhysAddress xsdtAddress;
+	ubyte extendedChecksum;
 	ubyte[3] reserved;
 }
 
 struct ACPISDTHeader {
 align(1):
-	char[4] Signature;
-	uint Length;
-	ubyte Revision;
-	ubyte Checksum;
-	char[6] OEMID;
-	char[8] OEMTableID;
-	uint OEMRevision;
-	uint CreatorID;
-	uint CreatorRevision;
+	char[4] signature;
+	uint length;
+	ubyte revision;
+	ubyte checksum;
+	char[6] oemID;
+	char[8] oemTableID;
+	uint oemRevision;
+	uint creatorID;
+	uint creatorRevision;
 }
 
 struct RSDT {
 	ACPISDTHeader h;
-	PhysAddress32[] PointerToOtherSDT() {
+	PhysAddress32[] pointerToOtherSDT() {
 		auto ptr = VirtAddress(&h) + h.sizeof;
-		return ptr.Ptr!PhysAddress32[0 .. (h.Length - h.sizeof) / 4];
+		return ptr.ptr!PhysAddress32[0 .. (h.length - h.sizeof) / 4];
 	}
 
-	T* GetSDT(T)(char[4] sig) {
-		foreach (PhysAddress32 addr; PointerToOtherSDT) {
-			ACPISDTHeader* hdr = addr.Virtual.Ptr!ACPISDTHeader;
-			if (hdr && hdr.Signature == sig)
+	T* getSDT(T)(char[4] sig) {
+		foreach (PhysAddress32 addr; pointerToOtherSDT) {
+			ACPISDTHeader* hdr = addr.virtual.ptr!ACPISDTHeader;
+			if (hdr && hdr.signature == sig)
 				return cast(T*)hdr;
 		}
 
@@ -57,123 +57,123 @@ struct RSDT {
 struct FADT {
 align(1):
 	ACPISDTHeader h;
-	uint FirmwareCtrl;
-	uint Dsdt;
+	uint firmwareCtrl;
+	uint dsdt;
 
-	ubyte Reserved;
+	ubyte reserved;
 
-	ubyte PreferredPowerManagementProfile;
-	ushort SCI_Interrupt;
-	uint SMI_CommandPort;
-	ubyte AcpiEnable;
-	ubyte AcpiDisable;
-	ubyte S4BIOS_REQ;
-	ubyte PSTATE_Control;
-	uint PM1aEventBlock;
-	uint PM1bEventBlock;
-	uint PM1aControlBlock;
-	uint PM1bControlBlock;
-	uint PM2ControlBlock;
-	uint PMTimerBlock;
-	uint GPE0Block;
-	uint GPE1Block;
-	ubyte PM1EventLength;
-	ubyte PM1ControlLength;
-	ubyte PM2ControlLength;
-	ubyte PMTimerLength;
-	ubyte GPE0Length;
-	ubyte GPE1Length;
-	ubyte GPE1Base;
-	ubyte CStateControl;
-	ushort WorstC2Latency;
-	ushort WorstC3Latency;
-	ushort FlushSize;
-	ushort FlushStride;
-	ubyte DutyOffset;
-	ubyte DutyWidth;
-	ubyte DayAlarm;
-	ubyte MonthAlarm;
-	ubyte Century;
+	ubyte preferredPowerManagementProfile;
+	ushort sciInterrupt;
+	uint smiCommandPort;
+	ubyte acpiEnable;
+	ubyte acpiDisable;
+	ubyte s4biosREQ;
+	ubyte pstateControl;
+	uint pm1aEventBlock;
+	uint pm1bEventBlock;
+	uint pm1aControlBlock;
+	uint pm1bControlBlock;
+	uint pm2ControlBlock;
+	uint pmTimerBlock;
+	uint gpe0Block;
+	uint gpe1Block;
+	ubyte pm1EventLength;
+	ubyte pm1ControlLength;
+	ubyte pm2ControlLength;
+	ubyte pmTimerLength;
+	ubyte gpe0Length;
+	ubyte gpe1Length;
+	ubyte gpe1Base;
+	ubyte cstateControl;
+	ushort worstC2Latency;
+	ushort worstC3Latency;
+	ushort flushSize;
+	ushort flushStride;
+	ubyte dutyOffset;
+	ubyte dutyWidth;
+	ubyte dayAlarm;
+	ubyte monthAlarm;
+	ubyte century;
 
-	ushort BootArchitectureFlags;
+	ushort bootArchitectureFlags;
 
-	ubyte Reserved2;
-	uint Flags;
+	ubyte reserved2;
+	uint flags;
 
-	GenericAddressStructure ResetReg;
+	GenericAddressStructure resetReg;
 
-	ubyte ResetValue;
-	ubyte[2] ARMBootArch;
-	ubyte MinorVersion;
+	ubyte resetValue;
+	ubyte[2] armBootArch;
+	ubyte minorVersion;
 }
 
 struct GenericAddressStructure {
 align(1):
-	ubyte AddressSpace;
-	ubyte BitWidth;
-	ubyte BitOffset;
-	ubyte AccessSize;
-	ulong Address;
+	ubyte addressSpace;
+	ubyte bitWidth;
+	ubyte bitOffset;
+	ubyte accessSize;
+	ulong address;
 }
 
 struct RSDP {
-	void Init() {
-		VirtAddress addr = getAddress();
-		if (!addr.Int)
-			return scr.Writeln("RSDP: Can't find!");
+	void init() {
+		VirtAddress addr = _getAddress();
+		if (!addr.num)
+			return scr.writeln("RSDP: Can't find!");
 
-		RSDPDescriptor* rsdp = addr.Ptr!RSDPDescriptor;
-		if (!rsdp || !checksum(rsdp))
-			return scr.Writeln("RSDPDescriptor: Invalid checksum");
+		RSDPDescriptor* rsdp = addr.ptr!RSDPDescriptor;
+		if (!rsdp || !_checksum(rsdp))
+			return scr.writeln("RSDPDescriptor: Invalid checksum");
 
-		rsdt = rsdp.RSDTAddress.Virtual.Ptr!RSDT;
+		rsdt = rsdp.rsdtAddress.virtual.ptr!RSDT;
 		if (!rsdt)
-			return scr.Writeln("RSDTDesciptor: invalid");
+			return scr.writeln("RSDTDesciptor: invalid");
 
-		fadt = rsdt.GetSDT!FADT("FACP");
-		if (!fadt || !checksum(fadt, fadt.h.Length))
-			return scr.Writeln("FADT: Invalid checksum");
+		fadt = rsdt.getSDT!FADT("FACP");
+		if (!fadt || !_checksum(fadt, fadt.h.length))
+			return scr.writeln("FADT: Invalid checksum");
 
-		scr.Writeln("ACPI Version: ", cast(int)fadt.h.Revision, ".", cast(int)fadt.MinorVersion);
+		scr.writeln("ACPI Version: ", cast(int)fadt.h.revision, ".", cast(int)fadt.minorVersion);
 
-		bool shouldEnable = !(fadt.SMI_CommandPort == 0 && fadt.AcpiEnable == 0 && fadt.AcpiDisable == 0 && fadt.PM1aControlBlock & 0x1);
+		bool shouldEnable = !(fadt.smiCommandPort == 0 && fadt.acpiEnable == 0 && fadt.acpiDisable == 0 && fadt.pm1aControlBlock & 0x1);
 
 		if (shouldEnable) {
-			Out!ubyte(cast(ushort)fadt.SMI_CommandPort, fadt.AcpiEnable);
-			while ((In!ushort(cast(ushort)fadt.PM1aControlBlock) & 1) == 0) {
+			outp!ubyte(cast(ushort)fadt.smiCommandPort, fadt.acpiEnable);
+			while ((inp!ushort(cast(ushort)fadt.pm1aControlBlock) & 1) == 0) {
 			}
 		}
 
-		ACPISDTHeader* dsdt = PhysAddress32(fadt.Dsdt).Virtual.Ptr!ACPISDTHeader;
-		if (!dsdt || dsdt.Signature != "DSDT" || !checksum(dsdt, dsdt.Length))
-			return scr.Writeln("DSDT: Invalid checksum");
+		ACPISDTHeader* dsdt = PhysAddress32(fadt.dsdt).virtual.ptr!ACPISDTHeader;
+		if (!dsdt || dsdt.signature != "DSDT" || !_checksum(dsdt, dsdt.length))
+			return scr.writeln("DSDT: Invalid checksum");
 
-		ACPISDTHeader* ssdt = rsdt.GetSDT!ACPISDTHeader("SSDT");
+		ACPISDTHeader* ssdt = rsdt.getSDT!ACPISDTHeader("SSDT");
 
-		if (!ssdt || !checksum(ssdt, ssdt.Length))
-			return scr.Writeln("SSDT: Invalid checksum");
+		if (!ssdt || !_checksum(ssdt, ssdt.length))
+			return scr.writeln("SSDT: Invalid checksum");
 
-		ubyte* s5Addr = (VirtAddress(dsdt) + ACPISDTHeader.sizeof).Ptr!ubyte;
-		size_t len = dsdt.Length - dsdt.sizeof;
+		ubyte* s5Addr = (VirtAddress(dsdt) + ACPISDTHeader.sizeof).ptr!ubyte;
+		size_t len = dsdt.length - dsdt.sizeof;
 		size_t i;
 
 		for (i = 0; i < len; i++) {
 			if (s5Addr[0 .. 4] == "_S5_") {
-				scr.Writeln("FOUND IT!");
+				scr.writeln("FOUND IT!");
 				break;
 			}
 			s5Addr++;
 		}
 
 		if (i == len)
-			return scr.Writeln("DSDT: Can't find _S5_");
+			return scr.writeln("DSDT: Can't find _S5_");
 
-		scr.Writeln("_S5_ Bytes -2 to 4: ", cast(void*)s5Addr[-2], ", ", cast(void*)s5Addr[-1], ", ",
+		scr.writeln("_S5_ Bytes -2 to 4: ", cast(void*)s5Addr[-2], ", ", cast(void*)s5Addr[-1], ", ",
 				cast(void*)s5Addr[0], ", ", cast(void*)s5Addr[1], ", ", cast(void*)s5Addr[2], ", ",
 				cast(void*)s5Addr[3], ", ", cast(void*)s5Addr[4]);
 
 		if (!((s5Addr[-1] == 0x08 || (s5Addr[-2] == 0x08 && s5Addr[-1] == '\\')) && s5Addr[4] == 0x12))
-			return scr.Writeln("_S5_: Parse error");
+			return scr.writeln("_S5_: Parse error");
 
 		s5Addr += 5;
 		s5Addr += ((*s5Addr & 0xC0) >> 6) + 2; // calculate PkgLength size
@@ -191,12 +191,12 @@ struct RSDP {
 		sciEn = 1;
 
 		valid = true;
-		scr.Writeln("#########RSDP VALID!########");
+		scr.writeln("#########RSDP VALID!########");
 	}
 
-	void Shutdown() {
+	void shutdown() {
 		if (!slpTypA) {
-			Out!ushort(0xB004, 0x0 | 0x2000);
+			outp!ushort(0xB004, 0x0 | 0x2000);
 
 			asm {
 				mov RAX, 0x1000; // Because page zero is not mapped
@@ -208,16 +208,16 @@ struct RSDP {
 			}
 		}
 
-		Out!ushort(cast(ushort)fadt.PM1aControlBlock, slpTypA | slpEn);
-		if (fadt.PM1bControlBlock != 0)
-			Out!ushort(cast(ushort)fadt.PM1bControlBlock, slpTypB | slpEn);
+		outp!ushort(cast(ushort)fadt.pm1aControlBlock, slpTypA | slpEn);
+		if (fadt.pm1bControlBlock != 0)
+			outp!ushort(cast(ushort)fadt.pm1bControlBlock, slpTypB | slpEn);
 	}
 
-	@property RSDT* RSDTInstance() {
+	@property RSDT* rsdtInstance() {
 		return rsdt;
 	}
 
-	@property FADT* FADTInstance() {
+	@property FADT* fadtInstance() {
 		return fadt;
 	}
 
@@ -231,16 +231,16 @@ private:
 	ushort slpEn;
 	ushort sciEn;
 
-	VirtAddress getAddress() {
+	VirtAddress _getAddress() {
 		VirtAddress ptr;
 		for (ptr = VirtAddress(0xFFFF_FFFF_800E_0000); ptr < 0xFFFF_FFFF_800F_FFFF; ptr += 16)
-			if (ptr.Ptr!char[0 .. 8] == "RSD PTR ")
+			if (ptr.ptr!char[0 .. 8] == "RSD PTR ")
 				return ptr;
 
 		return VirtAddress(null);
 	}
 
-	bool checksum(T)(T* obj, size_t size = T.sizeof) {
+	bool _checksum(T)(T* obj, size_t size = T.sizeof) {
 		if (!obj)
 			return false;
 		ubyte* ptr = cast(ubyte*)obj;

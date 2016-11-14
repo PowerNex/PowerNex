@@ -1,7 +1,7 @@
-module CPU.TSS;
+module cpu.tss;
 
-import Data.BitField;
-import Data.Address;
+import data.bitfield;
+import data.address;
 
 struct TSS {
 align(1):
@@ -15,12 +15,8 @@ align(1):
 	align(4096) ubyte[1 << 16] ioBitmap;
 	ubyte stopper = 0xFF;
 
-	@property ref VirtAddress RSP0() return {
+	@property ref VirtAddress rsp0() return  {
 		return rsp[0];
-	}
-
-	@property VirtAddress IOBitmap() {
-		return VirtAddress(&ioBitmap);
 	}
 }
 
@@ -48,10 +44,10 @@ align(1):
 	ubyte base16;
 
 	private ubyte data1;
-	mixin(Bitfield!(data1, "type", 4, "res0", 1, "dpl", 2, "present", 1));
+	mixin(bitfield!(data1, "type", 4, "res0", 1, "dpl", 2, "present", 1));
 
 	private ubyte data2;
-	mixin(Bitfield!(data2, "limit16", 4, "available", 1, "res1", 2, "granularity", 1));
+	mixin(bitfield!(data2, "limit16", 4, "available", 1, "res1", 2, "granularity", 1));
 
 	ubyte base24;
 }

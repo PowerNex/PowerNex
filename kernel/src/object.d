@@ -1,6 +1,6 @@
 module object;
 
-import IO.Log;
+import io.log;
 
 // over 3/4 of this file was copy/pasted from the real druntime with little to no modification
 
@@ -48,7 +48,7 @@ with an empty main:
 
 		without_custom_runtime_reflection: runtime reflection will be bare minimum, don't use typeinfo except as like an opaque pointer. You also won't need the special linker script if you go without libc with this option.
 */
-import Data.String : strlen;
+import data.string_ : strlen;
 
 void main() {
 }
@@ -59,7 +59,7 @@ int callKmain(uint magic, ulong info) {
 		return kmain(magic, info);
 	}
 	catch (Throwable t) {
-		log.Info("\n**UNCAUGHT EXCEPTION**\n");
+		log.info("\n**UNCAUGHT EXCEPTION**\n");
 		t.print();
 		t.destroy;
 		return (1);
@@ -125,10 +125,10 @@ extern (C) {
 
 	// the compiler spits this out all the time
 	Object _d_newclass(const ClassInfo ci) {
-		//log.Debug("Creating a new class of type: ", ci.name);
-		void* memory = GetKernelHeap.Alloc(ci.init.length);
+		//log.debug_("Creating a new class of type: ", ci.name);
+		void* memory = getKernelHeap.alloc(ci.init.length);
 		if (memory is null) {
-			log.Fatal("\n\n_d_newclass malloc failure\n\n");
+			log.fatal("\n\n_d_newclass malloc failure\n\n");
 			exit();
 		}
 
@@ -137,7 +137,7 @@ extern (C) {
 	}
 
 	extern (C) void* _d_newitemU(in TypeInfo ti) {
-		return GetKernelHeap.Alloc(ti.tsize);
+		return getKernelHeap.alloc(ti.tsize);
 	}
 
 	extern (C) void* _d_newitemT(in TypeInfo ti) {
@@ -160,7 +160,7 @@ extern (C) {
 		if (!length || !size)
 			return null;
 		else
-			return GetKernelHeap.Alloc(length * size)[0 .. length];
+			return getKernelHeap.alloc(length * size)[0 .. length];
 	}
 
 	extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length) {
@@ -202,17 +202,17 @@ extern (C) {
 		if (!length || !size)
 			return null;
 		else
-			return GetKernelHeap.Alloc(length * size);
+			return getKernelHeap.alloc(length * size);
 	}
 
 	void[] _d_arraycatT(TypeInfo ti, void[] x, void[] y) {
-		log.Fatal(ti.toString);
+		log.fatal(ti.toString);
 		auto size = ti.next.tsize();
 
 		if (!(x.length + y.length) || !size)
 			return null;
 
-		ubyte* data = cast(ubyte*)GetKernelHeap.Alloc((x.length + y.length) * size);
+		ubyte* data = cast(ubyte*)getKernelHeap.alloc((x.length + y.length) * size);
 		memcpy(data, x.ptr, x.length * size);
 		memcpy(data + (x.length * size), y.ptr, y.length * size);
 		return (cast(void*)data)[0 .. x.length + y.length];
@@ -220,13 +220,13 @@ extern (C) {
 
 	void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = GetKernelHeap.Realloc(p.ptr, newlength * size)[0 .. newlength];
+		*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
 		return *p;
 	}
 
 	void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = GetKernelHeap.Realloc(p.ptr, newlength * size)[0 .. newlength];
+		*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
 
 		return *p;
 	}
@@ -234,7 +234,7 @@ extern (C) {
 	byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) {
 		auto size = ti.next.tsize();
 		auto newlength = px.length + n;
-		void* newPtr = GetKernelHeap.Realloc(px.ptr, newlength * size);
+		void* newPtr = getKernelHeap.realloc(px.ptr, newlength * size);
 		*cast(size_t*)&px = newlength;
 		(cast(void**)(&px))[1] = newPtr;
 		return px;
@@ -245,7 +245,7 @@ extern (C) {
 
 		if (len % newTypeSize)
 			try
-				log.Fatal("Can't cast array! newTypeSize: ", newTypeSize, ", curTypeSize: ", curTypeSize, ", len: ", len);
+				log.fatal("Can't cast array! newTypeSize: ", newTypeSize, ", curTypeSize: ", curTypeSize, ", len: ", len);
 		catch (Exception) {
 		}
 
@@ -263,7 +263,7 @@ extern (C) {
 		if (!length)
 			return null;
 
-		void* a = GetKernelHeap.Alloc(length * size);
+		void* a = getKernelHeap.alloc(length * size);
 
 		size_t j = 0;
 		foreach (b; arrs) {
@@ -278,7 +278,7 @@ extern (C) {
 
 	// and these came when I started using foreach
 	void _d_unittestm(string file, uint line) {
-		log.Info("_d_unittest_");
+		log.info("_d_unittest_");
 		exit(1);
 	}
 
@@ -405,7 +405,7 @@ class Throwable : Object { // required by the D compiler
 	}
 
 	void print() {
-		log.Fatal(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
+		log.fatal(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
 	}
 }
 
@@ -486,9 +486,9 @@ class TypeInfo {
 	}
 	/// Run the destructor on the object and all its sub-objects
 	void destroy(void* p) const {
-		import Memory.Heap;
+		import memory.heap;
 
-		GetKernelHeap.Free(p);
+		getKernelHeap.free(p);
 	}
 	/// Run the postblit on the object and all its sub-objects
 	void postblit(void* p) const {
@@ -1628,17 +1628,17 @@ immutable(T)[] immutable_alloc(T)(scope void delegate(T[]) initalizer) {
 	return null;
 }
 
-import Memory.Heap;
+import memory.heap;
 
 void destroy(void* memory) {
-	GetKernelHeap.Free(memory);
+	getKernelHeap.free(memory);
 }
 
 void destroy(T : Object)(T object) {
 	auto dtor = cast(void function(Object o))object.classinfo.destructor;
 	if (dtor)
 		dtor(object);
-	GetKernelHeap.Free(cast(void*)object);
+	getKernelHeap.free(cast(void*)object);
 }
 
 void destroy(T)(T[] array) {
@@ -1653,13 +1653,13 @@ void destroy(T)(T[] array) {
 		foreach (el; array)
 			destroy(cast(void*)el);
 	}
-	GetKernelHeap.Free(cast(void*)array.ptr);
+	getKernelHeap.free(cast(void*)array.ptr);
 }
 
 // this would be used for automatic heap closures, but there's no way to free it...
 ///*
 extern (C) void* _d_allocmemory(size_t bytes) {
-	return GetKernelHeap.Alloc(bytes);
+	return getKernelHeap.alloc(bytes);
 }
 //*/
 
@@ -1864,7 +1864,7 @@ private {
 }
 
 void terminate() {
-	log.Info("Uncaught exception or busted up stack\n");
+	log.info("Uncaught exception or busted up stack\n");
 	exit();
 }
 
@@ -2423,15 +2423,15 @@ extern (C) int dstrcmp(char[] s1, char[] s2) {
 }
 
 inout(T)[] dup(T)(inout(T)[] a) {
-	import Memory.Heap : GetKernelHeap;
+	import memory.heap : getKernelHeap;
 
-	void[] arr = GetKernelHeap.Alloc(T.sizeof * a.length)[0 .. a.length];
+	void[] arr = getKernelHeap.alloc(T.sizeof * a.length)[0 .. a.length];
 	memcpy(arr.ptr, a.ptr, T.sizeof * a.length);
 	return *cast(inout(T)[]*)&arr;
 }
 
 extern (C) Throwable __dmd_begin_catch(_Unwind_Exception* exceptionObject) {
-	log.Error("STUB");
+	log.error("STUB");
 	return null;
 }
 
@@ -2450,10 +2450,10 @@ struct _Unwind_Context {
 alias ulong _Unwind_Exception_Class;
 extern (C) _Unwind_Reason_Code __dmd_personality_v0(int ver, _Unwind_Action actions,
 		_Unwind_Exception_Class exceptionClass, _Unwind_Exception* exceptionObject, _Unwind_Context* context) {
-	log.Error("STUB");
+	log.error("STUB");
 	return 0;
 }
 
 extern (C) void _Unwind_Resume(void*) {
-	log.Error("STUB");
+	log.error("STUB");
 }

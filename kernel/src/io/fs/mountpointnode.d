@@ -1,51 +1,51 @@
-module IO.FS.MountPointNode;
+module io.fs.mountpointnode;
 
-import IO.FS;
+import io.fs;
 
 class MountPointNode : DirectoryNode {
 public:
 	this(DirectoryNode oldNode, FSRoot mount) {
-		super(oldNode.Permission);
-		this.oldNode = oldNode;
-		this.mount = mount;
-		this.name = oldNode.Name;
+		super(oldNode.permission);
+		_oldNode = oldNode;
+		_mount = mount;
+		_name = _oldNode.name;
 	}
 
-	override Node FindNode(string path) {
-		return mount.Root.FindNode(path);
+	override Node findNode(string path) {
+		return _mount.root.findNode(path);
 	}
 
-	override MountPointNode Mount(DirectoryNode node, FSRoot fs) {
-		return mount.Root.Mount(node, fs);
+	override MountPointNode mount(DirectoryNode node, FSRoot fs) {
+		return _mount.root.mount(node, fs);
 	}
 
-	override DirectoryNode Unmount(MountPointNode node) {
-		return mount.Root.Unmount(node);
+	override DirectoryNode unmount(MountPointNode node) {
+		return _mount.root.unmount(node);
 	}
 
-	@property override Node[] Nodes() {
-		return mount.Root.Nodes;
+	@property override Node[] nodes() {
+		return _mount.root.nodes;
 	}
 
-	@property FSRoot RootMount() {
-		return mount;
+	@property FSRoot rootMount() {
+		return _mount;
 	}
 
-	@property DirectoryNode OldNode() {
-		return oldNode;
+	@property DirectoryNode oldNode() {
+		return _oldNode;
 	}
 
 protected:
-	DirectoryNode oldNode;
-	FSRoot mount;
+	DirectoryNode _oldNode;
+	FSRoot _mount;
 
-	override Node add(Node node) {
-		node.Root = mount;
-		return mount.Root.Add(node);
+	override Node _add(Node node) {
+		node.root = _mount;
+		return _mount.root.add(node);
 	}
 
-	override Node remove(Node node) {
-		node.Root = oldNode.Root;
-		return mount.Root.Remove(node);
+	override Node _remove(Node node) {
+		node.root = _oldNode.root;
+		return _mount.root.remove(node);
 	}
 }

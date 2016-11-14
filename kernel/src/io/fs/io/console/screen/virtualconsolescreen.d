@@ -1,45 +1,45 @@
-module IO.FS.IO.Console.Screen.VirtualConsoleScreen;
+module io.fs.io.console.screen.virtualconsolescreen;
 
-import IO.FS;
-import IO.FS.IO.Console.Screen;
-import Data.Address;
-import Data.Color;
-import Data.UTF;
+import io.fs;
+import io.fs.io.console.screen;
+import data.address;
+import data.color;
+import data.utf;
 
 abstract class VirtualConsoleScreen : FileNode {
 public:
 	this(size_t width, size_t height, FormattedChar clearChar) {
-		super(NodePermissions.DefaultPermissions, 0);
-		this.width = width;
-		this.height = height;
-		this.clearChar = clearChar;
-		this.screen = new FormattedChar[width * height];
-		for (size_t i = 0; i < screen.length; i++)
-			screen[i] = clearChar;
+		super(NodePermissions.defaultPermissions, 0);
+		_width = width;
+		_height = height;
+		_clearChar = clearChar;
+		_screen = new FormattedChar[width * height];
+		for (size_t i = 0; i < _screen.length; i++)
+			_screen[i] = _clearChar;
 
-		this.lineStarts = new size_t[height];
+		_lineStarts = new size_t[height];
 	}
 
 	~this() {
-		screen.destroy;
+		_screen.destroy;
 	}
 
-	override bool Open() {
-		if (inUse)
+	override bool open() {
+		if (_inUse)
 			return false;
-		return inUse = true;
+		return _inUse = true;
 	}
 
-	override void Close() {
-		inUse = false;
+	override void close() {
+		_inUse = false;
 	}
 
 	/++
 		TODO: Change how this works!
 		XXX: Casting FormattedChar to a ubyte array is crazy!
 	+/
-	override ulong Read(ubyte[] buffer, ulong offset) {
-		ubyte[] scr_b = cast(ubyte[])screen;
+	override ulong read(ubyte[] buffer, ulong offset) {
+		ubyte[] scr_b = cast(ubyte[])_screen;
 
 		size_t maxBytes = (buffer.length < scr_b.length) ? buffer.length : scr_b.length;
 
@@ -49,100 +49,100 @@ public:
 		return maxBytes;
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
+	override ulong write(ubyte[] buffer, ulong offset) {
 		UTF8Range str = UTF8Range(buffer);
 
 		if (active)
-			UpdateChar(curX, curY); // Remove cursor rendering
+			updateChar(_curX, _curY); // Remove cursor rendering
 
-		foreach (dchar ch; prepareData(str)) {
+		foreach (dchar ch; _prepareData(str)) {
 			switch (ch) {
 			case '\n':
-				curY++;
-				curX = 0;
+				_curY++;
+				_curX = 0;
 				break;
 			case '\r':
-				curX = 0;
+				_curX = 0;
 				break;
 			case '\b':
-				if (curX)
-					curX--;
+				if (_curX)
+					_curX--;
 				break;
 			case '\t':
-				size_t goal = (curX + 8) & ~7;
-				if (goal > width)
-					goal = width;
-				for (; curX < goal; curX++) {
-					screen[curY * width + curX] = clearChar;
+				size_t goal = (_curX + 8) & ~7;
+				if (goal > _width)
+					goal = _width;
+				for (; _curX < goal; _curX++) {
+					_screen[_curY * _width + _curX] = _clearChar;
 					if (active)
-						UpdateChar(curX, curY);
-					curX++;
+						updateChar(_curX, _curY);
+					_curX++;
 				}
-				if (curX >= width) {
-					curY++;
-					curX = 0;
+				if (_curX >= _width) {
+					_curY++;
+					_curX = 0;
 				}
 				break;
 			default:
-				screen[curY * width + curX] = FormattedChar(ch, Color(255, 255, 0), Color(0, 0, 0), CharStyle.None);
+				_screen[_curY * _width + _curX] = FormattedChar(ch, Color(255, 255, 0), Color(0, 0, 0), CharStyle.none);
 				if (active)
-					UpdateChar(curX, curY);
-				curX++;
-				if (curX >= width) {
-					curY++;
-					curX = 0;
+					updateChar(_curX, _curY);
+				_curX++;
+				if (_curX >= _width) {
+					_curY++;
+					_curX = 0;
 				}
 				break;
 			}
 		}
 		if (active)
-			UpdateCursor();
+			updateCursor();
 		return buffer.length;
 	}
 
-	void Clear() { //TODO:REMOVE
-		clear();
+	void clear() { //TODO:REMOVE
+		_clear();
 	}
 
-	@property bool Active() {
-		return active;
+	@property bool active() {
+		return _active;
 	}
 
-	@property bool Active(bool active) {
-		if (active && !this.active) {
-			for (size_t h = 0; h < height; h++)
-				for (size_t w = 0; w < width; w++)
-					UpdateChar(w, h);
-			UpdateCursor();
+	@property bool active(bool active) {
+		if (active && !_active) {
+			for (size_t h = 0; h < _height; h++)
+				for (size_t w = 0; w < _width; w++)
+					updateChar(w, h);
+			updateCursor();
 		}
-		this.active = active;
-		return active;
+		_active = active;
+		return _active;
 	}
 
 protected:
-	FormattedChar[] screen;
-	FormattedChar clearChar;
-	size_t width;
-	size_t height;
-	size_t curX;
-	size_t curY;
+	FormattedChar[] _screen;
+	FormattedChar _clearChar;
+	size_t _width;
+	size_t _height;
+	size_t _curX;
+	size_t _curY;
 
-	// abstract void OnNewText(size_t startIdx, size_t length); //TODO: Use this instead of UpdateChar?
-	abstract void OnScroll(size_t lineCount);
-	abstract void UpdateCursor();
-	abstract void UpdateChar(size_t x, size_t y);
+	// abstract void OnNewText(size_t startIdx, size_t length); //TODO: Use this instead of updateChar?
+	abstract void onScroll(size_t lineCount);
+	abstract void updateCursor();
+	abstract void updateChar(size_t x, size_t y);
 
 private:
-	bool inUse;
-	bool active;
+	bool _inUse;
+	bool _active;
 
-	size_t[] lineStarts;
+	size_t[] _lineStarts;
 
-	ref UTF8Range prepareData(ref return UTF8Range str) {
-		size_t charCount = curX;
+	ref UTF8Range _prepareData(ref return UTF8Range str) {
+		size_t charCount = _curX;
 		size_t lines;
 
-		//size_t[] lineStarts = new size_t[height];
+		//size_t[] _lineStarts = new size_t[_height];
 		size_t lsIdx;
 
 		// Calc the number line
@@ -162,8 +162,8 @@ private:
 					case 'J':
 						if (escapeValue == '2') {
 							str.popFrontN(idx + 1);
-							clear();
-							return prepareData(str);
+							_clear();
+							return _prepareData(str);
 						}
 						break;
 					default:
@@ -181,76 +181,76 @@ private:
 			} else if (ch == '\n') {
 				lines++;
 				charCount = 0;
-				lsIdx = (lsIdx + 1) % height;
-				lineStarts[lsIdx] = idx + 1; // Next char is the start of *new* the line
+				lsIdx = (lsIdx + 1) % _height;
+				_lineStarts[lsIdx] = idx + 1; // Next char is the start of *new* the line
 			} else if (ch == '\r') {
 				charCount = 0;
-				lineStarts[lsIdx] = idx + 1; // Update the lineStart on the current one
+				_lineStarts[lsIdx] = idx + 1; // Update the lineStart on the current one
 			} else if (ch == '\b') {
 				if (charCount)
 					charCount--;
 			} else if (ch == '\t') {
 				charCount = (charCount + 8) & ~7;
-				if (charCount > width)
-					charCount = width;
+				if (charCount > _width)
+					charCount = _width;
 			} else
 				charCount++;
 
-			while (charCount >= width) {
+			while (charCount >= _width) {
 				lines++;
-				charCount -= width;
-				lsIdx = (lsIdx + 1) % height;
-				lineStarts[lsIdx] = idx + 1; // The current char is the start of *new* the line
+				charCount -= _width;
+				lsIdx = (lsIdx + 1) % _height;
+				_lineStarts[lsIdx] = idx + 1; // The current char is the start of *new* the line
 			}
 
 			idx++;
 		}
 
-		if (curY + lines >= height) {
-			scroll(curY + lines - height + 1);
+		if (_curY + lines >= _height) {
+			_scroll(_curY + lines - _height + 1);
 
-			// Skip the beginning of the data, that would never be shown on the screen.
-			if (lines >= height) {
-				if (lineStarts[(lsIdx + 1) % height] < str.length) {
+			// Skip the beginning of the data, that would never be shown on the _screen.
+			if (lines >= _height) {
+				if (_lineStarts[(lsIdx + 1) % _height] < str.length) {
 					//XXX: Fix hack
-					str.popFrontN(lineStarts[(lsIdx + 1) % height] + 1);
-					//str = str[lineStarts[(lsIdx + 1) % height] + 1 .. $];
+					str.popFrontN(_lineStarts[(lsIdx + 1) % _height] + 1);
+					//str = str[_lineStarts[(lsIdx + 1) % _height] + 1 .. $];
 				} else
 					str = UTF8Range([]);
 			}
 
 		}
 
-		//lineStarts.destroy;
+		//_lineStarts.destroy;
 		return str;
 	}
 
-	void scroll(size_t lineCount) {
-		if (lineCount > height)
-			lineCount = height;
+	void _scroll(size_t lineCount) {
+		if (lineCount > _height)
+			lineCount = _height;
 
 		if (active)
-			UpdateChar(curX, curY); // Remove cursor rendering
+			updateChar(_curX, _curY); // Remove cursor rendering
 
 		if (active)
-			OnScroll(lineCount);
+			onScroll(lineCount);
 
-		size_t offset = FormattedChar.sizeof * lineCount * width;
-		memmove(screen.ptr, (screen.VirtAddress + offset).Ptr, screen.length * FormattedChar.sizeof - offset);
-		for (size_t i = screen.length - (lineCount * width); i < screen.length; i++)
-			screen[i] = clearChar;
+		size_t offset = FormattedChar.sizeof * lineCount * _width;
+		memmove(_screen.ptr, (_screen.VirtAddress + offset).ptr, _screen.length * FormattedChar.sizeof - offset);
+		for (size_t i = _screen.length - (lineCount * _width); i < _screen.length; i++)
+			_screen[i] = _clearChar;
 
-		ssize_t tmp = curY - lineCount;
+		ssize_t tmp = _curY - lineCount;
 		if (tmp < 0)
-			curY = curX = 0;
+			_curY = _curX = 0;
 		else
-			curY = tmp;
+			_curY = tmp;
 	}
 
-	void clear() {
-		scroll(height);
-		curX = curY = 0;
+	void _clear() {
+		_scroll(_height);
+		_curX = _curY = 0;
 		if (active)
-			UpdateCursor();
+			updateCursor();
 	}
 }

@@ -1,70 +1,70 @@
-module Memory.FrameAllocator;
+module memory.frameallocator;
 
-import Data.Address;
-import IO.Log;
-import Data.Linker;
-import Data.Multiboot;
+import data.address;
+import io.log;
+import data.linker;
+import data.multiboot;
 
 static struct FrameAllocator {
 public:
-	static void Init() {
-		neverFreeBelow = PhysAddress((Linker.KernelEnd - Linker.KernelStart + Linker.KernelPhysStart.Int).Int);
-		log.Warning("neverFreeBelow: ", neverFreeBelow);
+	static void init() {
+		_neverFreeBelow = PhysAddress((Linker.kernelEnd - Linker.kernelStart + Linker.kernelPhysStart.num).num);
+		log.warning("_neverFreeBelow: ", _neverFreeBelow);
 
-		maxFrames = Multiboot.MemorySize / 4;
-		foreach (ref ulong frame; preallocated)
+		_maxFrames = Multiboot.memorySize / 4;
+		foreach (ref ulong frame; _preallocated)
 			frame = ulong.max;
 
-		const ulong kernelUsedAmount = neverFreeBelow.Int / 0x1000;
+		const ulong kernelUsedAmount = _neverFreeBelow.num / 0x1000;
 		for (ulong i = 0; i < (kernelUsedAmount / 64) + 1; i++) {
-			bitmaps[i] = ulong.max;
-			usedFrames += 64;
+			_bitmaps[i] = ulong.max;
+			_usedFrames += 64;
 		}
 
-		auto maps = Multiboot.MemoryMap;
-		for (ulong i = 0; i < Multiboot.MemoryMapCount; i++) {
+		auto maps = Multiboot.memoryMap;
+		for (ulong i = 0; i < Multiboot.memoryMapCount; i++) {
 			auto m = maps[i];
-			if (m.Type != MultibootMemoryType.Available) {
-				log.Debug("Address: ", cast(void*)m.Address, " Size: ", m.Length, " Frames: ", m.Length / 0x1000);
-				for (ulong j = 0; j < m.Length / 0x1000; j++)
-					MarkFrame(m.Address / 0x1000 + j);
+			if (m.type != MultibootMemoryType.available) {
+				log.debug_("Address: ", cast(void*)m.address, " Size: ", m.length, " Frames: ", m.length / 0x1000);
+				for (ulong j = 0; j < m.length / 0x1000; j++)
+					markFrame(m.address / 0x1000 + j);
 			}
 		}
 
 		// Mark ACPI frames
 		for (ulong i = 0xE0000; i < 0x100000; i += 0x1000)
-			MarkFrame(i / 0x1000);
+			markFrame(i / 0x1000);
 
-		foreach (mod; Multiboot.Modules[0 .. Multiboot.ModulesCount])
-			for (ulong i = mod.ModStart; i < mod.ModEnd; i += 0x1000)
-				MarkFrame(i / 0x1000);
+		foreach (mod; Multiboot.modules[0 .. Multiboot.modulesCount])
+			for (ulong i = mod.modStart; i < mod.modEnd; i += 0x1000)
+				markFrame(i / 0x1000);
 
-		allocPreAlloc(); // Add some nodes to preallocated
+		_allocPreAlloc(); // Add some nodes to _preallocated
 	}
 
-	static void MarkFrame(ulong idx) {
-		foreach (ref ulong frame; preallocated)
+	static void markFrame(ulong idx) {
+		foreach (ref ulong frame; _preallocated)
 			if (frame == idx) {
 				frame = ulong.max;
 				return;
 			}
 
 		const ulong bitmapIdx = idx / 64;
-		assert(bitmapIdx < bitmaps.length);
+		assert(bitmapIdx < _bitmaps.length);
 		const ulong bitIdx = idx % 64;
 
-		ulong* bitmap = &(bitmaps[bitmapIdx]);
+		ulong* bitmap = &(_bitmaps[bitmapIdx]);
 
 		if (!(*bitmap & (1UL << bitIdx))) {
-			if (idx < maxFrames)
-				usedFrames++;
+			if (idx < _maxFrames)
+				_usedFrames++;
 			*bitmap |= (1UL << bitIdx);
 		}
 	}
 
-	static ulong GetFrame() {
-		ulong getFrame(bool tryAgain) {
-			foreach (idx, ref ulong frame; preallocated) {
+	static ulong getFrame() {
+		ulong getFrameImpl(bool tryAgain) {
+			foreach (idx, ref ulong frame; _preallocated) {
 				if (frame != ulong.max) {
 					const ulong ret = frame;
 					frame = ulong.max;
@@ -73,131 +73,131 @@ public:
 			}
 
 			if (tryAgain) {
-				allocPreAlloc();
-				return getFrame(false);
+				_allocPreAlloc();
+				return getFrameImpl(false);
 			}
 
 			bool hasSpacePrealloc = false;
 
-			foreach (ulong frame; preallocated)
+			foreach (ulong frame; _preallocated)
 				hasSpacePrealloc |= frame != ulong.max;
 
 			bool hasSpaceBitmap = false;
 
-			for (ulong i = 0; i < maxFrames && !hasSpaceBitmap; i++) {
+			for (ulong i = 0; i < _maxFrames && !hasSpaceBitmap; i++) {
 				const ulong bitmapIdx = i / 64;
-				assert(bitmapIdx < bitmaps.length);
+				assert(bitmapIdx < _bitmaps.length);
 				const ulong bitIdx = i % 64;
 
-				hasSpaceBitmap |= !(bitmaps[bitmapIdx] & (1UL << bitIdx));
+				hasSpaceBitmap |= !(_bitmaps[bitmapIdx] & (1UL << bitIdx));
 			}
 
 			return 0;
 		}
 
-		return getFrame(true);
+		return getFrameImpl(true);
 	}
 
-	static void FreeFrame(ulong idx) {
+	static void freeFrame(ulong idx) {
 		if (idx == 0)
 			return;
-		foreach (ref ulong frame; preallocated)
+		foreach (ref ulong frame; _preallocated)
 			if (frame == ulong.max) {
 				frame = idx;
 				return;
 			}
 
 		ulong bitmapIdx = idx / 64;
-		assert(bitmapIdx < bitmaps.length);
+		assert(bitmapIdx < _bitmaps.length);
 		const ulong bitIdx = idx % 64;
 
-		bitmaps[bitmapIdx] &= ~(1UL << bitIdx);
-		if (idx < maxFrames)
-			usedFrames--;
+		_bitmaps[bitmapIdx] &= ~(1UL << bitIdx);
+		if (idx < _maxFrames)
+			_usedFrames--;
 
-		if (bitmapIdx < currentBitmapIdx)
-			currentBitmapIdx = bitmapIdx;
+		if (bitmapIdx < _currentBitmapIdx)
+			_currentBitmapIdx = bitmapIdx;
 	}
 
-	static PhysAddress Alloc() {
-		return PhysAddress(GetFrame() << 12);
+	static PhysAddress alloc() {
+		return PhysAddress(getFrame() << 12);
 	}
 
 	/// Allocates 512 frames, returns the first one
-	static PhysAddress Alloc512() {
+	static PhysAddress alloc512() {
 		ulong firstGood;
 		ulong count;
-		while (currentBitmapIdx < maxFrames) {
-			if (bitmaps[currentBitmapIdx])
+		while (_currentBitmapIdx < _maxFrames) {
+			if (_bitmaps[_currentBitmapIdx])
 				count = 0;
 			else
 				count++;
 
 			if (count == 1)
-				firstGood = currentBitmapIdx;
+				firstGood = _currentBitmapIdx;
 			else if (count == 8)
 				break;
 
-			currentBitmapIdx++;
+			_currentBitmapIdx++;
 		}
 
 		if (count < 8)
 			return PhysAddress(0);
 
 		foreach (idx; 0 .. 8)
-			bitmaps[firstGood + idx] = ulong.max;
+			_bitmaps[firstGood + idx] = ulong.max;
 
 		return PhysAddress((firstGood * 64) << 12);
 	}
 
-	static void Free(PhysAddress memory) {
-		if (memory > neverFreeBelow)
-			FreeFrame(memory.Int / 0x1000);
+	static void free(PhysAddress memory) {
+		if (memory > _neverFreeBelow)
+			freeFrame(memory.num / 0x1000);
 	}
 
-	@property static ulong MaxFrames() {
-		return maxFrames;
+	@property static ulong maxFrames() {
+		return _maxFrames;
 	}
 
-	@property static ulong UsedFrames() {
-		return usedFrames;
+	@property static ulong usedFrames() {
+		return _usedFrames;
 	}
 
 private:
-	enum ulong maxmem = 0x100_0000_0000 - 1; //pow(2, 40)
+	enum ulong _maxmem = 0x100_0000_0000 - 1; //pow(2, 40)
 
-	__gshared PhysAddress neverFreeBelow;
-	__gshared ulong maxFrames;
-	__gshared ulong usedFrames;
-	__gshared ulong[((maxmem / 8) / 0x1000) / 64 + 1] bitmaps;
-	__gshared ulong currentBitmapIdx;
-	__gshared ulong[1] preallocated;
+	__gshared PhysAddress _neverFreeBelow;
+	__gshared ulong _maxFrames;
+	__gshared ulong _usedFrames;
+	__gshared ulong[((_maxmem / 8) / 0x1000) / 64 + 1] _bitmaps;
+	__gshared ulong _currentBitmapIdx;
+	__gshared ulong[1] _preallocated;
 
-	static void allocPreAlloc() {
+	static void _allocPreAlloc() {
 		bool reseted = false;
-		foreach (ref ulong frame; preallocated) {
+		foreach (ref ulong frame; _preallocated) {
 			if (frame != ulong.max)
 				continue;
 
-			while (bitmaps[currentBitmapIdx] == ulong.max) {
-				assert(currentBitmapIdx < bitmaps.length);
-				if (currentBitmapIdx != 0 && (currentBitmapIdx - 1) * 64 >= maxFrames) {
+			while (_bitmaps[_currentBitmapIdx] == ulong.max) {
+				assert(_currentBitmapIdx < _bitmaps.length);
+				if (_currentBitmapIdx != 0 && (_currentBitmapIdx - 1) * 64 >= _maxFrames) {
 					if (reseted)
-						return; // The error will be handled in GetFrame()
+						return; // The error will be handled in getFrame()
 					reseted = true;
-					currentBitmapIdx = 0;
+					_currentBitmapIdx = 0;
 				} else
-					currentBitmapIdx++;
+					_currentBitmapIdx++;
 			}
 
-			ulong* bitmap = &(bitmaps[currentBitmapIdx]);
+			ulong* bitmap = &(_bitmaps[_currentBitmapIdx]);
 			for (ulong i = 0; i < 64; i++) {
 				if (!(*bitmap & (1UL << i))) {
-					const ulong frameID = currentBitmapIdx * 64 + i;
-					if (frameID < maxFrames) {
+					const ulong frameID = _currentBitmapIdx * 64 + i;
+					if (frameID < _maxFrames) {
 						frame = frameID;
 						*bitmap |= (1UL << i);
-						usedFrames++;
+						_usedFrames++;
 					}
 					break;
 				}

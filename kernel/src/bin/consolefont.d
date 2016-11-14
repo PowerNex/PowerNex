@@ -1,17 +1,17 @@
-module Bin.ConsoleFont;
+module bin.consolefont;
 
-import Data.Font;
-import Data.PSF;
+import data.font;
+import data.psf;
 
-private __gshared ubyte[] ConsoleFont_PSF = cast(ubyte[])import("Bin/ConsoleFont.psf");
+private __gshared ubyte[] _consoleFont_PSF = cast(ubyte[])import("bin/consoleFont.psf");
 
-PSF GetConsoleFont() {
-	import Data.Util : InplaceClass;
+PSF getConsoleFont() {
+	import data.util : inplaceClass;
 
 	__gshared ubyte[__traits(classInstanceSize, PSF)] data;
 	__gshared PSF consoleFont;
 
 	if (!consoleFont)
-		consoleFont = InplaceClass!PSF(data, ConsoleFont_PSF);
+		consoleFont = inplaceClass!PSF(data, _consoleFont_PSF);
 	return consoleFont;
 }

@@ -1,8 +1,8 @@
-module IO.Port;
+module io.port;
 
-import Data.Util;
+import data.util;
 
-T In(T = ubyte)(ushort port) {
+T inp(T)(ushort port) {
 	T ret;
 	asm {
 		mov DX, port;
@@ -29,7 +29,7 @@ T In(T = ubyte)(ushort port) {
 	return ret;
 }
 
-void Out(T = ubyte)(ushort port, T d) {
+void outp(T)(ushort port, T d) {
 	uint data = d;
 	asm {
 		mov EAX, data;

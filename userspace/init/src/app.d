@@ -1,9 +1,9 @@
-import PowerNex.Syscall;
-import PowerNex.Data.Address;
-import PowerNex.Data.String;
+import powernex.syscall;
+import powernex.data.address;
+import powernex.data.string_;
 
-ulong ExitValue = 0;
-__gshared align(16) ubyte[0x1000] CloneStack = void;
+ulong exitValue = 0;
+__gshared align(16) ubyte[0x1000] cloneStack = void;
 
 struct StructTest {
 	int a;
@@ -12,43 +12,43 @@ struct StructTest {
 class ClassTest {
 public:
 	this(int a) {
-		this.o = a + 10;
+		_o = a + 10;
 	}
 
-	@property int O() {
-		return o;
+	@property int o() {
+		return _o;
 	}
 
 private:
-	int o;
+	int _o;
 }
 
-void Print(string str) {
-	Syscall.Write(0UL, cast(ubyte[])str, 0UL);
+void print(string str) {
+	Syscall.write(0UL, cast(ubyte[])str, 0UL);
 }
 
-void Println(string str) {
-	Print(str);
-	Print("\n");
+void println(string str) {
+	print(str);
+	print("\n");
 }
 
 int main(string[] args) {
-	Println("Init system loading...");
+	println("Init system loading...");
 
-	spawnShell("/IO/Console/VirtualConsole4");
-	spawnShell("/IO/Console/VirtualConsole3");
-	spawnShell("/IO/Console/VirtualConsole2");
-	spawnShell("/IO/Console/VirtualConsole1");
+	spawnShell("/io/console/virtualconsole4");
+	spawnShell("/io/console/virtualconsole3");
+	spawnShell("/io/console/virtualconsole2");
+	spawnShell("/io/console/virtualconsole1");
 
 	while (true)
-		Syscall.Join(0);
+		Syscall.join(0);
 }
 
 void spawnShell(string virtConsole) {
-	ulong pid = Syscall.Fork();
+	ulong pid = Syscall.fork();
 	if (!pid) {
-		Syscall.ReOpen(0, virtConsole);
-		Syscall.Exec("/Binary/Shell", []);
-		Syscall.Exit(1);
+		Syscall.reOpen(0, virtConsole);
+		Syscall.exec("/bin/shell", []);
+		Syscall.exit(1);
 	}
 }

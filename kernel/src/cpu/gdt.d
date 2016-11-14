@@ -1,82 +1,82 @@
-module CPU.GDT;
-import Data.BitField;
-import CPU.TSS;
+module cpu.gdt;
+import data.bitfield;
+import cpu.tss;
 
 align(1) struct GDTBase {
 align(1):
-	ushort Limit;
-	ulong Base;
+	ushort limit;
+	ulong base;
 }
 
 struct GDTCodeDescriptor {
 align(1):
-	ushort Limit = 0xFFFF;
-	ushort Base = 0x0000;
-	ubyte BaseMiddle = 0x00;
+	ushort limit = 0xFFFF;
+	ushort base = 0x0000;
+	ubyte baseMiddle = 0x00;
 	private ubyte flags1 = 0b11111101;
 	private ubyte flags2 = 0b00000000;
-	ubyte BaseHigh = 0x00;
+	ubyte baseHigh = 0x00;
 
-	mixin(Bitfield!(flags1, "zero3", 2, "c", 1, "ones0", 2, "dpl", 2, "p", 1));
-	mixin(Bitfield!(flags2, "zero4", 5, "l", 1, "d", 1, "Granularity", 1));
+	mixin(bitfield!(flags1, "zero3", 2, "c", 1, "ones0", 2, "dpl", 2, "p", 1));
+	mixin(bitfield!(flags2, "zero4", 5, "l", 1, "d", 1, "granularity", 1));
 }
 
 struct GDTDataDescriptor {
 align(1):
-	ushort Limit = 0xFFFF;
-	ushort Base = 0x0000;
-	ubyte BaseMiddle = 0x00;
+	ushort limit = 0xFFFF;
+	ushort base = 0x0000;
+	ubyte baseMiddle = 0x00;
 	private ubyte flags1 = 0b11110011;
 	private ubyte flags2 = 0b11001111;
-	ubyte BaseHigh = 0x00;
+	ubyte baseHigh = 0x00;
 
-	mixin(Bitfield!(flags1, "zero4", 5, "dpl", 2, "p", 1));
+	mixin(bitfield!(flags1, "zero4", 5, "dpl", 2, "p", 1));
 }
 
 struct GDTSystemDescriptor {
 align(1):
-	ushort LimitLow;
-	ushort BaseLow;
-	ubyte BaseMiddleLow;
+	ushort limitLow;
+	ushort baseLow;
+	ubyte baseMiddleLow;
 	private ubyte flags1;
 	private ubyte flags2;
-	ubyte BaseMiddleHigh;
+	ubyte baseMiddleHigh;
 
-	mixin(Bitfield!(flags1, "Type", 4, "Zero0", 1, "dpl", 2, "p", 1));
-	mixin(Bitfield!(flags2, "LimitHigh", 4, "avl", 1, "Zero1", 2, "g", 1));
+	mixin(bitfield!(flags1, "type", 4, "zero0", 1, "dpl", 2, "p", 1));
+	mixin(bitfield!(flags2, "limitHigh", 4, "avl", 1, "zero1", 2, "g", 1));
 }
 
 struct GDTSystemExtension {
 align(1):
-	uint BaseHigh;
+	uint baseHigh;
 	private uint reserved;
 }
 
 union GDTDescriptor {
 align(1):
-	GDTDataDescriptor Data;
-	GDTCodeDescriptor Code;
-	GDTSystemDescriptor SystemLow;
-	GDTSystemExtension SystemHigh;
+	GDTDataDescriptor data;
+	GDTCodeDescriptor code;
+	GDTSystemDescriptor systemLow;
+	GDTSystemExtension systemHigh;
 
-	TSSDescriptor1 TSS1;
-	TSSDescriptor2 TSS2;
+	TSSDescriptor1 tss1;
+	TSSDescriptor2 tss2;
 
-	ulong Value;
+	ulong value;
 }
 
 static assert(GDTDescriptor.sizeof == ulong.sizeof);
 
 enum GDTSystemType : ubyte {
-	LocalDescriptorTable = 0b0010,
-	AvailableTSS = 0b1001,
-	BusyTSS = 0b1011,
-	CallGate = 0b1100,
-	InterruptGate = 0b1110,
-	TrapGate = 0b1111
+	localDescriptorTable = 0b0010,
+	availableTSS = 0b1001,
+	busyTSS = 0b1011,
+	callGate = 0b1100,
+	interruptGate = 0b1110,
+	trapGate = 0b1111
 }
 
-private extern (C) void CPU_refresh_iretq();
+private extern (C) void cpuRefreshIREQ();
 
 static struct GDT {
 public:
@@ -85,89 +85,89 @@ public:
 	__gshared TSS tss;
 	__gshared ushort tssID;
 
-	static void Init() {
-		base.Limit = cast(ushort)(setupTable() * GDTDescriptor.sizeof - 1);
-		base.Base = cast(ulong)descriptors.ptr;
+	static void init() {
+		base.limit = cast(ushort)(_setupTable() * GDTDescriptor.sizeof - 1);
+		base.base = cast(ulong)descriptors.ptr;
 
-		Flush();
+		flush();
 	}
 
-	static void Flush() {
+	static void flush() {
 		void* baseAddr = cast(void*)(&base);
 		ushort id = cast(ushort)(tssID * GDTDescriptor.sizeof);
 		asm {
 			mov RAX, baseAddr;
 			lgdt [RAX];
-			call CPU_refresh_iretq;
+			call cpuRefreshIREQ;
 			ltr id;
 		}
 	}
 
-	static void SetNull(size_t index) {
-		descriptors[index].Value = 0;
+	static void setNull(size_t index) {
+		descriptors[index].value = 0;
 	}
 
-	static void SetCode(size_t index, bool conforming, ubyte DPL, bool present) {
-		descriptors[index].Code = GDTCodeDescriptor.init;
-		with (descriptors[index].Code) {
+	static void setCode(size_t index, bool conforming, ubyte dpl_, bool present) {
+		descriptors[index].code = GDTCodeDescriptor.init;
+		with (descriptors[index].code) {
 			c = conforming;
-			dpl = DPL;
+			dpl = dpl_;
 			p = present;
 			l = true;
 			d = false;
 		}
 	}
 
-	static void SetData(uint index, bool present, ubyte DPL) {
-		descriptors[index].Data = GDTDataDescriptor.init;
-		with (descriptors[index].Data) {
+	static void setData(uint index, bool present, ubyte dpl_) {
+		descriptors[index].data = GDTDataDescriptor.init;
+		with (descriptors[index].data) {
 			p = present;
-			dpl = DPL;
+			dpl = dpl_;
 		}
 	}
 
-	static void SetTSS(uint index, ref TSS tss) {
-		descriptors[index].TSS1 = TSSDescriptor1(tss);
-		descriptors[index + 1].TSS2 = TSSDescriptor2(tss);
+	static void setTSS(uint index, ref TSS tss) {
+		descriptors[index].tss1 = TSSDescriptor1(tss);
+		descriptors[index + 1].tss2 = TSSDescriptor2(tss);
 	}
 
-	void SetSystem(uint index, uint limit, ulong base, GDTSystemType segType, ubyte DPL, bool present, bool avail, bool granularity) {
-		descriptors[index].SystemLow = GDTSystemDescriptor.init;
-		descriptors[index + 1].SystemHigh = GDTSystemExtension.init;
+	void setSystem(uint index, uint limit, ulong base, GDTSystemType segType, ubyte dpl_, bool present, bool avail, bool granularity) {
+		descriptors[index].systemLow = GDTSystemDescriptor.init;
+		descriptors[index + 1].systemHigh = GDTSystemExtension.init;
 
-		with (descriptors[index].SystemLow) {
-			BaseLow = (base & 0xFFFF);
-			BaseMiddleLow = (base >> 16) & 0xFF;
-			BaseMiddleHigh = (base >> 24) & 0xFF;
+		with (descriptors[index].systemLow) {
+			baseLow = (base & 0xFFFF);
+			baseMiddleLow = (base >> 16) & 0xFF;
+			baseMiddleHigh = (base >> 24) & 0xFF;
 
-			LimitLow = limit & 0xFFFF;
-			LimitHigh = (limit >> 16) & 0xF;
+			limitLow = limit & 0xFFFF;
+			limitHigh = (limit >> 16) & 0xF;
 
-			Type = segType;
-			dpl = DPL;
+			type = segType;
+			dpl = dpl_;
 			p = present;
 			avl = avail;
 			g = granularity;
 		}
 
-		descriptors[index + 1].SystemHigh.BaseHigh = (base >> 32) & 0xFFFFFFFF;
+		descriptors[index + 1].systemHigh.baseHigh = (base >> 32) & 0xFFFFFFFF;
 	}
 
 private:
-	static uint setupTable() {
-		uint idx = 0;
-		SetNull(idx++);
+	static ushort _setupTable() {
+		ushort idx = 0;
+		setNull(idx++);
 		// Kernel
-		SetCode(idx++, false, 0, true);
-		SetData(idx++, true, 0);
+		setCode(idx++, false, 0, true);
+		setData(idx++, true, 0);
 
 		// User
-		SetCode(idx++, true, 3, true);
-		SetData(idx++, true, 3);
-		SetCode(idx++, true, 3, true); // This is need because (MSR_STAR.SYSRET_CS + 16) is the CS when returning to 64bit mode.
+		setCode(idx++, true, 3, true);
+		setData(idx++, true, 3);
+		setCode(idx++, true, 3, true); // This is need because (MSR_STAR.SYSRET_CS + 16) is the CS when returning to 64bit mode.
 
-		tssID = cast(ushort)idx;
-		SetTSS(idx, tss); // Uses 2 entries
+		tssID = idx;
+		setTSS(idx, tss); // Uses 2 entries
 		idx += 2;
 		return idx;
 	}

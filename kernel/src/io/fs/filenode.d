@@ -1,46 +1,54 @@
-module IO.FS.FileNode;
+module io.fs.filenode;
 
-import IO.FS;
-import IO.Log;
+import io.fs;
+import io.log;
 
 abstract class FileNode : Node {
 public:
 	this(NodePermissions permission, ulong size) {
 		super(permission);
-		this.size = size;
+		_size = size;
 	}
 
-	abstract bool Open();
-	abstract void Close();
-	abstract ulong Read(ubyte[] buffer, ulong offset);
-	abstract ulong Write(ubyte[] buffer, ulong offset);
+	abstract bool open();
+	abstract void close();
+	abstract ulong read(ubyte[] buffer, ulong offset);
+	abstract ulong write(ubyte[] buffer, ulong offset);
 
-	ulong Read(T)(T[] arr, ulong offset) {
-		ulong result = Read((cast(ubyte*)arr.ptr)[0 .. T.sizeof * arr.length], offset);
+	ulong read(T)(T[] arr, ulong offset) {
+		ulong result = read((cast(ubyte*)arr.ptr)[0 .. T.sizeof * arr.length], offset);
 		return result;
 	}
 
-	ulong Write(T)(T[] obj, ulong offset) {
-		ulong result = Write((cast(ubyte*)arr.ptr)[0 .. T.sizeof * arr.length], offset);
+	ulong write(T)(T[] obj, ulong offset) {
+		ulong result = write((cast(ubyte*)arr.ptr)[0 .. T.sizeof * arr.length], offset);
 		return result;
 	}
 
-	ulong Read(T)(T* obj, ulong offset) {
-		ulong result = Read((cast(ubyte*)obj)[0 .. T.sizeof], offset);
+	ulong read(T)(T* obj, ulong offset) {
+		ulong result = read((cast(ubyte*)obj)[0 .. T.sizeof], offset);
 		assert(result == T.sizeof);
 		return result;
 	}
 
-	ulong Write(T)(T* obj, ulong offset) {
-		ulong result = Write((cast(ubyte*)obj)[0 .. T.sizeof], offset);
+	ulong write(T)(T* obj, ulong offset) {
+		ulong result = write((cast(ubyte*)obj)[0 .. T.sizeof], offset);
 		assert(result == T.sizeof);
 		return result;
 	}
 
-	@property ulong Size() {
-		return size;
+	ulong read(T)(ref T obj, ulong offset) {
+		return read(&obj, offset);
+	}
+
+	ulong write(T)(ref T obj, ulong offset) {
+		return write(&obj, offset);
+	}
+
+	@property ulong size() {
+		return _size;
 	}
 
 private:
-	ulong size;
+	ulong _size;
 }

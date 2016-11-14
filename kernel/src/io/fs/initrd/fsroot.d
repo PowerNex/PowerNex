@@ -1,42 +1,42 @@
-module IO.FS.Initrd.FSRoot;
+module io.fs.initrd.fsroot;
 
-import IO.FS.Initrd;
-import IO.FS;
-import IO.Log;
+import io.fs.initrd;
+import io.fs;
+import io.log;
 
-import Data.Address;
-import Data.String;
+import data.address;
+import data.string_;
 
 class InitrdFSRoot : FSRoot {
 public:
 	this(VirtAddress initrdAddr) {
-		auto root = new DirectoryNode(NodePermissions.DefaultPermissions);
-		root.Name = "Initrd";
-		root.ID = idCounter++;
+		auto root = new DirectoryNode(NodePermissions.defaultPermissions);
+		root.name = "Initrd";
+		root.id = _idCounter++;
 		super(root);
 
-		initrd = cast(Initrd*)initrdAddr.Ptr;
-		if (initrd.Magic != MAGIC)
+		_initrd = cast(Initrd*)initrdAddr.ptr;
+		if (_initrd.magic != _magic)
 			return;
-		initrdEntries = (initrdAddr + Initrd.sizeof).Ptr!InitrdEntry[0 .. initrd.Count];
+		_initrdEntries = (initrdAddr + Initrd.sizeof).ptr!InitrdEntry[0 .. _initrd.count];
 		makeNodes();
 	}
 
-	@property InitrdEntry[] InitrdEntries() {
-		return initrdEntries;
+	@property InitrdEntry[] initrdEntries() {
+		return _initrdEntries;
 	}
 
 private:
-	enum MAGIC = ['D', 'S', 'K', '0'];
+	enum _magic = ['D', 'S', 'K', '0'];
 	enum Type : ulong {
-		File,
-		Folder
+		file,
+		folder
 	}
 
 	struct Initrd {
 	align(1):
-		char[4] Magic;
-		ulong Count;
+		char[4] magic;
+		ulong count;
 	}
 
 	struct InitrdEntry {
@@ -48,31 +48,31 @@ private:
 		ulong parent;
 	}
 
-	Initrd* initrd;
-	InitrdEntry[] initrdEntries;
+	Initrd* _initrd;
+	InitrdEntry[] _initrdEntries;
 
 	void makeNodes() {
 		ulong[] lookup;
-		lookup.length = initrdEntries.length;
-		foreach (idx, entry; initrdEntries) {
-			ubyte* offset = (VirtAddress(initrd) + entry.offset).Ptr!ubyte;
+		lookup.length = _initrdEntries.length;
+		foreach (idx, entry; _initrdEntries) {
+			ubyte* offset = (VirtAddress(_initrd) + entry.offset).ptr!ubyte;
 
-			auto parent = entry.parent == ulong.max ? root : cast(DirectoryNode)GetNode(lookup[entry.parent]);
+			auto parent = entry.parent == ulong.max ? root : cast(DirectoryNode)getNode(lookup[entry.parent]);
 
 			Node node;
-			if (entry.type == Type.File)
+			if (entry.type == Type.file)
 				node = new InitrdFileNode(offset, entry.size);
-			else if (entry.type == Type.Folder)
-				node = new DirectoryNode(NodePermissions.DefaultPermissions);
+			else if (entry.type == Type.folder)
+				node = new DirectoryNode(NodePermissions.defaultPermissions);
 			else {
-				log.Error("Unknown file type! ", entry.type);
+				log.error("Unknown file type! ", entry.type);
 				continue;
 			}
 
-			node.Name = entry.name.fromStringz().dup;
-			node.Root = this;
-			node.Parent = parent;
-			lookup[idx] = node.ID;
+			node.name = entry.name.fromStringz().dup;
+			node.root = this;
+			node.parent = parent;
+			lookup[idx] = node.id;
 		}
 		lookup.destroy;
 	}

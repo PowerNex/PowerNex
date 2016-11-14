@@ -1,15 +1,17 @@
+module makeinitrd;
+
 import std.stdio;
 
-enum MAGIC = ['D', 'S', 'K', '0'];
+enum magic = ['D', 'S', 'K', '0'];
 enum Type : ulong {
-	File,
-	Folder
+	file,
+	folder
 }
 
 struct Initrd {
 align(1):
-	char[4] Magic;
-	ulong Count;
+	char[4] magic;
+	ulong count;
 }
 
 struct InitrdEntry {
@@ -47,7 +49,7 @@ int main(string[] args) {
 	fp.length = entries.length;
 
 	foreach (idx, ref entry; entries) {
-		if (entry.type == Type.File) {
+		if (entry.type == Type.file) {
 			fp[idx] = File(fullFilename[idx], "rb");
 			entry.size = fp[idx].size;
 			entry.offset = offset;
@@ -60,7 +62,7 @@ int main(string[] args) {
 	foreach (entry; entries)
 		entry.writeln;
 
-	Initrd header = Initrd(MAGIC, entries.length);
+	Initrd header = Initrd(magic, entries.length);
 
 	f.rawWrite((cast(ubyte*)&header)[0 .. Initrd.sizeof]);
 	f.rawWrite((cast(ubyte*)entries.ptr)[0 .. InitrdEntry.sizeof * entries.length]);
@@ -71,7 +73,7 @@ int main(string[] args) {
 		long diff = cast(long)entry.offset - cast(long)f.size;
 		if (diff > 0)
 			f.rawWrite(nullbytes[0 .. diff]);
-		if (entry.type == Type.File) {
+		if (entry.type == Type.file) {
 			ubyte[] buf;
 			buf.length = entry.size;
 			if (buf.length)
@@ -100,10 +102,10 @@ void addFiles(string path, ulong parent, ref InitrdEntry[] entries, ref string[]
 	foreach (entry; dirEntries(path, SpanMode.shallow)) {
 		fullFilename ~= entry.name;
 		if (entry.isFile)
-			entries ~= InitrdEntry(entry.name.baseName.strip, 0, 0, Type.File, parent);
+			entries ~= InitrdEntry(entry.name.baseName.strip, 0, 0, Type.file, parent);
 		else {
 			ulong par = entries.length;
-			entries ~= InitrdEntry(entry.name.baseName.strip, 0, 0, Type.Folder, parent);
+			entries ~= InitrdEntry(entry.name.baseName.strip, 0, 0, Type.folder, parent);
 			addFiles(entry.name, par, entries, fullFilename);
 		}
 	}

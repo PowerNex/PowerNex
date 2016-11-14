@@ -1,168 +1,168 @@
-module Memory.Heap;
+module memory.heap;
 
-import Memory.Paging;
-import Data.Linker;
-import Data.Address;
-import IO.Log;
-import CPU.IDT;
-import Data.Register;
-import Task.Mutex.SpinLockMutex;
-import Data.BitField;
+import memory.paging;
+import data.linker;
+import data.address;
+import io.log;
+import cpu.idt;
+import data.register;
+import task.mutex.spinlockmutex;
+import data.bitfield;
 
-enum ulong MAGIC = 0xDEAD_BEEF_DEAD_C0DE;
+private enum ulong _magic = 0xDEAD_BEEF_DEAD_C0DE;
 
 private struct MemoryHeader {
 	ulong magic;
 	MemoryHeader* prev;
 	MemoryHeader* next;
 	private ulong data;
-	mixin(Bitfield!(data, "isAllocated", 1, "size", 63));
+	mixin(bitfield!(data, "isAllocated", 1, "size", 63));
 }
 
 class Heap {
 public:
 	this(Paging paging, MapMode mode, VirtAddress startAddr, VirtAddress maxAddr) {
-		this.paging = paging;
-		this.mode = mode;
-		this.startAddr = this.endAddr = startAddr;
-		this.maxAddr = maxAddr;
-		this.root = null;
-		this.end = null;
+		_paging = paging;
+		_mode = mode;
+		_startAddr = _endAddr = startAddr;
+		_maxAddr = maxAddr;
+		_root = null;
+		_end = null;
 
-		addNewPage();
-		root = end; // 'end' will be the latest allocated page
+		_addNewPage();
+		_root = _end; // 'end' will be the latest allocated page
 	}
 
 	this(Heap other) {
 		assert(other);
-		this.paging = other.paging;
-		this.mode = other.mode;
-		this.startAddr = other.startAddr;
-		this.endAddr = other.endAddr;
-		this.maxAddr = other.maxAddr;
-		this.root = other.root;
-		this.end = other.end;
+		_paging = other._paging;
+		_mode = other._mode;
+		_startAddr = other._startAddr;
+		_endAddr = other._endAddr;
+		_maxAddr = other._maxAddr;
+		_root = other._root;
+		_end = other._end;
 	}
 
 	~this() {
-		for (VirtAddress start = startAddr; start < endAddr; start += 0x1000)
-			paging.UnmapAndFree(start);
+		for (VirtAddress start = _startAddr; start < _endAddr; start += 0x1000)
+			_paging.unmapAndFree(start);
 	}
 
-	void* Alloc(ulong size) {
-		mutex.Lock;
+	void* alloc(ulong size) {
+		_mutex.lock;
 		if (!size)
 			return null;
 
-		MemoryHeader* freeChunk = root;
+		MemoryHeader* freeChunk = _root;
 		size += MinimalChunkSize - (size % MinimalChunkSize); // Good alignment maybe?
 
 		while (freeChunk && (freeChunk.isAllocated || freeChunk.size < size))
 			freeChunk = freeChunk.next;
 
 		while (!freeChunk || freeChunk.size < size) { // We are currently at the end chunk
-			if (!addNewPage()) { // This will work just because there is combine in addNewPage, which will increase the current chunks size
-				mutex.Unlock;
+			if (!_addNewPage()) { // This will work just because there is _combine in _addNewPage, which will increase the current chunks size
+				_mutex.unlock;
 				return null;
 			}
-			freeChunk = end; // Don't expected that freeChunk is valid, addNewPage runs combine
+			freeChunk = _end; // Don't expected that freeChunk is valid, _addNewPage runs _combine
 		}
 
-		split(freeChunk, size); // Make sure that we don't give away to much memory
+		_split(freeChunk, size); // Make sure that we don't give away to much memory
 
 		freeChunk.isAllocated = true;
-		mutex.Unlock;
-		return (VirtAddress(freeChunk) + MemoryHeader.sizeof).Ptr;
+		_mutex.unlock;
+		return (VirtAddress(freeChunk) + MemoryHeader.sizeof).ptr;
 	}
 
-	void Free(void* addr) {
-		mutex.Lock;
+	void free(void* addr) {
+		_mutex.lock;
 		if (!addr)
 			return;
-		MemoryHeader* hdr = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).Ptr;
+		MemoryHeader* hdr = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).ptr;
 		hdr.isAllocated = false;
 
-		combine(hdr);
+		_combine(hdr);
 
-		mutex.Unlock;
+		_mutex.unlock;
 	}
 
-	void* Realloc(void* addr, ulong size) {
-		void* newMem = Alloc(size);
-		mutex.Lock;
+	void* realloc(void* addr, ulong size) {
+		void* newMem = alloc(size);
+		_mutex.lock;
 		if (addr) {
-			MemoryHeader* old = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).Ptr;
+			MemoryHeader* old = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).ptr;
 			ubyte* src = cast(ubyte*)addr;
 			ubyte* dest = cast(ubyte*)newMem;
 			for (ulong i = 0; i < old.size && i < size; i++)
 				dest[i] = src[i];
 
-			mutex.Unlock;
-			Free(addr);
+			_mutex.unlock;
+			free(addr);
 		}
 		return newMem;
 	}
 
-	void PrintLayout() {
-		for (MemoryHeader* start = root; start; start = start.next) {
-			log.Info("address: ", start, "\tmagic: ", cast(void*)start.magic, "\thasPrev: ", !!start.prev,
+	void printLayout() {
+		for (MemoryHeader* start = _root; start; start = start.next) {
+			log.info("address: ", start, "\tmagic: ", cast(void*)start.magic, "\thasPrev: ", !!start.prev,
 					"\thasNext: ", !!start.next, "\tisAllocated: ", !!start.isAllocated, "\tsize: ", start.size,
 					"\tnext: ", start.next);
 
-			if (start.magic != MAGIC)
-				log.Fatal("====MAGIC IS WRONG====");
+			if (start.magic != _magic)
+				log.fatal("====MAGIC IS WRONG====");
 		}
 
-		log.Info("\n\n");
+		log.info("\n\n");
 	}
 
-	@property ref ulong RefCounter() {
-		return refCounter;
+	@property ref ulong refCounter() {
+		return _refCounter;
 	}
 
 private:
 	enum MinimalChunkSize = 32; /// Without header
 
-	SpinLockMutex mutex;
-	Paging paging;
-	MapMode mode;
-	MemoryHeader* root; /// Stores the first MemoryHeader
-	MemoryHeader* end; /// Stores the last MemoryHeader
-	VirtAddress startAddr; /// The start address of all the allocated data
-	VirtAddress endAddr; /// The end address of all the allocated data
-	VirtAddress maxAddr; /// The max address that can be allocated
-	ulong refCounter;
+	SpinLockMutex _mutex;
+	Paging _paging;
+	MapMode _mode;
+	MemoryHeader* _root; /// Stores the first MemoryHeader
+	MemoryHeader* _end; /// Stores the last MemoryHeader
+	VirtAddress _startAddr; /// The start address of all the allocated data
+	VirtAddress _endAddr; /// The end address of all the allocated data
+	VirtAddress _maxAddr; /// The max address that can be allocated
+	ulong _refCounter;
 
 	/// Map and add a new page to the list
-	bool addNewPage() {
-		MemoryHeader* oldEnd = end;
+	bool _addNewPage() {
+		MemoryHeader* oldEnd = _end;
 
-		if (endAddr >= maxAddr - 0x1000 /* Do I need this? */ )
+		if (_endAddr >= _maxAddr - 0x1000 /* Do I need this? */ )
 			return false;
-		if (paging.MapFreeMemory(endAddr, mode).Int == 0)
+		if (_paging.mapFreeMemory(_endAddr, _mode).num == 0)
 			return false;
 
-		_memset64(endAddr.Ptr, 0, 0x1000 / ulong.sizeof); //Defined in object.d
+		_memset64(_endAddr.ptr, 0, 0x1000 / ulong.sizeof); //Defined in object.d
 
-		end = cast(MemoryHeader*)endAddr.Ptr;
-		*end = MemoryHeader.init;
-		end.magic = MAGIC;
-		endAddr += 0x1000;
+		_end = cast(MemoryHeader*)_endAddr.ptr;
+		*_end = MemoryHeader.init;
+		_end.magic = _magic;
+		_endAddr += 0x1000;
 
-		end.prev = oldEnd;
+		_end.prev = oldEnd;
 		if (oldEnd)
-			oldEnd.next = end;
+			oldEnd.next = _end;
 
-		end.size = 0x1000 - MemoryHeader.sizeof;
-		end.next = null;
-		end.isAllocated = false;
+		_end.size = 0x1000 - MemoryHeader.sizeof;
+		_end.next = null;
+		_end.isAllocated = false;
 
-		combine(end); // Combine with other nodes if possible
+		_combine(_end); // Combine with other nodes if possible
 		return true;
 	}
 
 	/// 'chunk' should not be expected to be valid after this
-	MemoryHeader* combine(MemoryHeader* chunk) {
+	MemoryHeader* _combine(MemoryHeader* chunk) {
 		MemoryHeader* freeChunk = chunk;
 		ulong sizeGain = 0;
 
@@ -179,7 +179,7 @@ private:
 				freeChunk.next.prev = freeChunk;
 
 			*chunk = MemoryHeader.init; // Set the old header to zero
-			chunk.magic = MAGIC;
+			chunk.magic = _magic;
 
 			chunk = freeChunk;
 		}
@@ -199,16 +199,16 @@ private:
 		}
 
 		if (!chunk.next)
-			end = chunk;
+			_end = chunk;
 
 		return chunk;
 	}
 
 	/// It will only split if it can, chunk will always be approved to be allocated after the call this this function.
-	void split(MemoryHeader* chunk, ulong size) {
+	void _split(MemoryHeader* chunk, ulong size) {
 		if (chunk.size >= size + ( /* The smallest chunk size */ MemoryHeader.sizeof + MinimalChunkSize)) {
-			MemoryHeader* newChunk = cast(MemoryHeader*)(VirtAddress(chunk) + MemoryHeader.sizeof + size).Ptr;
-			newChunk.magic = MAGIC;
+			MemoryHeader* newChunk = cast(MemoryHeader*)(VirtAddress(chunk) + MemoryHeader.sizeof + size).ptr;
+			newChunk.magic = _magic;
 			newChunk.prev = chunk;
 			newChunk.next = chunk.next;
 			chunk.next = newChunk;
@@ -217,49 +217,49 @@ private:
 			chunk.size = size;
 
 			if (!newChunk.next)
-				end = newChunk;
+				_end = newChunk;
 		}
 	}
 }
 
 /// Get the kernel heap object
-Heap GetKernelHeap() {
-	import Data.Util : InplaceClass;
+Heap getKernelHeap() {
+	import data.util : inplaceClass;
 
 	__gshared ubyte[__traits(classInstanceSize, Heap)] data;
 	__gshared Heap kernelHeap;
 
 	if (!kernelHeap) {
-		kernelHeap = InplaceClass!Heap(data, GetKernelPaging, MapMode.DefaultUser, Linker.KernelEnd, VirtAddress(ulong.max));
-		IDT.Register(InterruptType.PageFault, &onPageFault);
+		kernelHeap = inplaceClass!Heap(data, getKernelPaging, MapMode.defaultUser, Linker.kernelEnd, VirtAddress(ulong.max));
+		IDT.register(InterruptType.pageFault, &_onPageFault);
 	}
 	return kernelHeap;
 }
 
-private void onPageFault(Registers* regs) {
-	import Data.TextBuffer : scr = GetBootTTY;
-	import IO.Log;
+private void _onPageFault(Registers* regs) {
+	import data.textbuffer : scr = getBootTTY;
+	import io.log;
 
 	with (regs) {
-		import Data.Color;
-		import Task.Scheduler : GetScheduler;
+		import data.color;
+		import task.scheduler : getScheduler;
 
-		auto addr = CR2;
+		auto addr = cr2;
 
 		TablePtr!(Table!3)* tablePdp;
 		TablePtr!(Table!2)* tablePd;
 		TablePtr!(Table!1)* tablePt;
 		TablePtr!(void)* tablePage;
-		Paging paging = GetScheduler().CurrentProcess.threadState.paging;
-		if (paging) {
-			auto root = paging.RootTable();
-			tablePdp = root.Get(cast(ushort)(addr.Int >> 39) & 0x1FF);
-			if (tablePdp && tablePdp.Present)
-				tablePd = tablePdp.Data.Virtual.Ptr!(Table!3).Get(cast(ushort)(addr.Int >> 30) & 0x1FF);
-			if (tablePd && tablePd.Present)
-				tablePt = tablePd.Data.Virtual.Ptr!(Table!2).Get(cast(ushort)(addr.Int >> 21) & 0x1FF);
-			if (tablePt && tablePt.Present)
-				tablePage = tablePt.Data.Virtual.Ptr!(Table!1).Get(cast(ushort)(addr.Int >> 12) & 0x1FF);
+		Paging _paging = getScheduler.currentProcess.threadState.paging;
+		if (_paging) {
+			auto _root = _paging.rootTable();
+			tablePdp = _root.get(cast(ushort)(addr.num >> 39) & 0x1FF);
+			if (tablePdp && tablePdp.present)
+				tablePd = tablePdp.data.virtual.ptr!(Table!3).get(cast(ushort)(addr.num >> 30) & 0x1FF);
+			if (tablePd && tablePd.present)
+				tablePt = tablePd.data.virtual.ptr!(Table!2).get(cast(ushort)(addr.num >> 21) & 0x1FF);
+			if (tablePt && tablePt.present)
+				tablePage = tablePt.data.virtual.ptr!(Table!1).get(cast(ushort)(addr.num >> 12) & 0x1FF);
 		}
 
 		MapMode modePdp;
@@ -267,80 +267,80 @@ private void onPageFault(Registers* regs) {
 		MapMode modePt;
 		MapMode modePage;
 		if (tablePdp)
-			modePdp = tablePdp.Mode;
+			modePdp = tablePdp.mode;
 		if (tablePd)
-			modePd = tablePd.Mode;
+			modePd = tablePd.mode;
 		if (tablePt)
-			modePt = tablePt.Mode;
+			modePt = tablePt.mode;
 		if (tablePage)
-			modePage = tablePage.Mode;
+			modePage = tablePage.mode;
 
-		scr.Foreground = Color(255, 0, 0);
-		scr.Writeln("===> PAGE FAULT");
-		scr.Writeln("IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP);
-		scr.Writeln("RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX);
-		scr.Writeln("RCX = ", cast(void*)RCX, " | RDX = ", cast(void*)RDX);
-		scr.Writeln("RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI);
-		scr.Writeln("RSP = ", cast(void*)RSP, " | RBP = ", cast(void*)RBP);
-		scr.Writeln(" R8 = ", cast(void*)R8, "  |  R9 = ", cast(void*)R9);
-		scr.Writeln("R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11);
-		scr.Writeln("R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13);
-		scr.Writeln("R14 = ", cast(void*)R14, " | R15 = ", cast(void*)R15);
-		scr.Writeln(" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS);
-		scr.Writeln(" addr = ", cast(void*)addr);
-		scr.Writeln("Flags: ", cast(void*)Flags);
-		scr.Writeln("Errorcode: ", cast(void*)ErrorCode, " (", (ErrorCode & (1 << 0) ? " Present" : " NotPresent"),
-				(ErrorCode & (1 << 1) ? " Write" : " Read"), (ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"),
-				(ErrorCode & (1 << 3) ? " ReservedWrite" : ""), (ErrorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		scr.Writeln("PDP Mode: ", (tablePdp && tablePdp.Present) ? "R" : "", (modePdp & MapMode.Writable) ? "W" : "",
-				(modePdp & MapMode.NoExecute) ? "" : "X", (modePdp & MapMode.User) ? "-User" : "");
-		scr.Writeln("PD Mode: ", (tablePd && tablePd.Present) ? "R" : "", (modePd & MapMode.Writable) ? "W" : "",
-				(modePd & MapMode.NoExecute) ? "" : "X", (modePd & MapMode.User) ? "-User" : "");
-		scr.Writeln("PT Mode: ", (tablePt && tablePt.Present) ? "R" : "", (modePt & MapMode.Writable) ? "W" : "",
-				(modePt & MapMode.NoExecute) ? "" : "X", (modePt & MapMode.User) ? "-User" : "");
-		scr.Writeln("Page Mode: ", (tablePage && tablePage.Present) ? "R" : "", (modePage & MapMode.Writable) ? "W" : "",
-				(modePage & MapMode.NoExecute) ? "" : "X", (modePage & MapMode.User) ? "-User" : "");
+		scr.foreground = Color(255, 0, 0);
+		scr.writeln("===> PAGE FAULT");
+		scr.writeln("IRQ = ", intNumber, " | RIP = ", cast(void*)rip);
+		scr.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
+		scr.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
+		scr.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
+		scr.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
+		scr.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
+		scr.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
+		scr.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
+		scr.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
+		scr.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
+		scr.writeln(" addr = ", cast(void*)addr);
+		scr.writeln("Flags: ", cast(void*)flags);
+		scr.writeln("Errorcode: ", cast(void*)errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
+				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
+				(errorCode & (1 << 3) ? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
+		scr.writeln("PDP Mode: ", (tablePdp && tablePdp.present) ? "R" : "", (modePdp & MapMode.writable) ? "W" : "",
+				(modePdp & MapMode.noExecute) ? "" : "X", (modePdp & MapMode.user) ? "-User" : "");
+		scr.writeln("PD Mode: ", (tablePd && tablePd.present) ? "R" : "", (modePd & MapMode.writable) ? "W" : "",
+				(modePd & MapMode.noExecute) ? "" : "X", (modePd & MapMode.user) ? "-User" : "");
+		scr.writeln("PT Mode: ", (tablePt && tablePt.present) ? "R" : "", (modePt & MapMode.writable) ? "W" : "",
+				(modePt & MapMode.noExecute) ? "" : "X", (modePt & MapMode.user) ? "-User" : "");
+		scr.writeln("Page Mode: ", (tablePage && tablePage.present) ? "R" : "", (modePage & MapMode.writable) ? "W" : "",
+				(modePage & MapMode.noExecute) ? "" : "X", (modePage & MapMode.user) ? "-User" : "");
 
 		//dfmt off
-		log.Fatal("===> PAGE FAULT", "\n", "IRQ = ", IntNumber, " | RIP = ", cast(void*)RIP, "\n",
-			"RAX = ", cast(void*)RAX, " | RBX = ", cast(void*)RBX, "\n",
-			"RCX = ", cast(void*)RCX, " | RDX = ", cast(void*)RDX, "\n",
-			"RDI = ", cast(void*)RDI, " | RSI = ", cast(void*)RSI, "\n",
-			"RSP = ", cast(void*)RSP, " | RBP = ", cast(void*)RBP, "\n",
-			" R8 = ", cast(void*)R8, "  |  R9 = ", cast(void*)R9, "\n",
-			"R10 = ", cast(void*)R10, " | R11 = ", cast(void*)R11, "\n",
-			"R12 = ", cast(void*)R12, " | R13 = ", cast(void*)R13, "\n",
-			"R14 = ", cast(void*)R14, " | R15 = ", cast(void*)R15, "\n",
-			" CS = ", cast(void*)CS, "  |  SS = ", cast(void*)SS, "\n",
+		log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", cast(void*)rip, "\n",
+			"RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n",
+			"RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n",
+			"RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi, "\n",
+			"RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n",
+			" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9, "\n",
+			"R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11, "\n",
+			"R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13, "\n",
+			"R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15, "\n",
+			" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss, "\n",
 			" addr = ",	cast(void*)addr, "\n",
-			"Flags: ", cast(void*)Flags, "\n",
-			"Errorcode: ", cast(void*)ErrorCode, " (",
-				(ErrorCode & (1 << 0) ? " Present" : " NotPresent"),
-				(ErrorCode & (1 << 1) ? " Write" : " Read"),
-				(ErrorCode & (1 << 2) ? " UserMode" : " KernelMode"),
-				(ErrorCode & (1 << 3) ? " ReservedWrite" : ""),
-				(ErrorCode & (1 << 4) ? " InstructionFetch" : ""),
+			"Flags: ", cast(void*)flags, "\n",
+			"Errorcode: ", cast(void*)errorCode, " (",
+				(errorCode & (1 << 0) ? " Present" : " NotPresent"),
+				(errorCode & (1 << 1) ? " Write" : " Read"),
+				(errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
+				(errorCode & (1 << 3) ? " ReservedWrite" : ""),
+				(errorCode & (1 << 4) ? " InstructionFetch" : ""),
 			" )", "\n",
 			"PDP Mode: ",
-				(tablePdp && tablePdp.Present) ? "R" : "",
-				(modePdp & MapMode.Writable) ? "W" : "",
-				(modePdp & MapMode.NoExecute) ? "" : "X",
-				(modePdp & MapMode.User) ? "-User" : "", "\n",
+				(tablePdp && tablePdp.present) ? "R" : "",
+				(modePdp & MapMode.writable) ? "W" : "",
+				(modePdp & MapMode.noExecute) ? "" : "X",
+				(modePdp & MapMode.user) ? "-User" : "", "\n",
 			"PD Mode: ",
-				(tablePd && tablePd.Present) ? "R" : "",
-				(modePd & MapMode.Writable) ? "W" : "",
-				(modePd & MapMode.NoExecute) ? "" : "X",
-				(modePd & MapMode.User) ? "-User" : "", "\n",
+				(tablePd && tablePd.present) ? "R" : "",
+				(modePd & MapMode.writable) ? "W" : "",
+				(modePd & MapMode.noExecute) ? "" : "X",
+				(modePd & MapMode.user) ? "-User" : "", "\n",
 			"PT Mode: ",
-				(tablePt && tablePt.Present) ? "R" : "",
-				(modePt & MapMode.Writable) ? "W" : "",
-				(modePt & MapMode.NoExecute) ? "" : "X",
-				(modePt & MapMode.User) ? "-User" : "", "\n",
+				(tablePt && tablePt.present) ? "R" : "",
+				(modePt & MapMode.writable) ? "W" : "",
+				(modePt & MapMode.noExecute) ? "" : "X",
+				(modePt & MapMode.user) ? "-User" : "", "\n",
 			"Page Mode: ",
-				(tablePage && tablePage.Present) ? "R" : "",
-				(modePage & MapMode.Writable) ? "W" : "",
-				(modePage & MapMode.NoExecute) ? "" : "X",
-				(modePage & MapMode.User) ? "-User" : "");
+				(tablePage && tablePage.present) ? "R" : "",
+				(modePage & MapMode.writable) ? "W" : "",
+				(modePage & MapMode.noExecute) ? "" : "X",
+				(modePage & MapMode.user) ? "-User" : "");
 		//dfmt on
 	}
 }

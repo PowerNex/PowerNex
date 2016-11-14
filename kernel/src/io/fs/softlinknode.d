@@ -1,22 +1,22 @@
-module IO.FS.SoftLinkNode;
+module io.fs.softlinknode;
 
-import IO.FS;
+import io.fs;
 
 class SoftLinkNode : Node {
 public:
 	this(NodePermissions permission, string path) {
 		super(permission);
-		this.path = path;
+		_path = path;
 	}
 
-	@property ref string Path() {
-		return path;
+	@property ref string path() {
+		return _path;
 	}
 
-	@property Node Target() {
-		return parent.FindNode(path);
+	@property Node target() {
+		return parent.findNode(_path);
 	}
 
 private:
-	string path;
+	string _path;
 }

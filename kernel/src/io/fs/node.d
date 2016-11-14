@@ -1,72 +1,72 @@
-module IO.FS.Node;
+module io.fs.node;
 
-import IO.FS;
+import io.fs;
 
-import Data.BitField;
-import IO.Log;
+import data.bitfield;
+import io.log;
 
 abstract class Node {
 public:
-	this(NodePermissions permission) {
-		this.root = null;
-		this.id = ulong.max;
-		this.name = "";
-		this.permission = permission;
-		this.parent = null;
+	this(NodePermissions _permission) {
+		_root = null;
+		_id = ulong.max;
+		_name = "";
+		_permission = _permission;
+		_parent = null;
 	}
 
-	@property FSRoot Root() {
-		return root;
+	@property FSRoot root() {
+		return _root;
 	}
 
-	@property FSRoot Root(FSRoot root) {
-		if (this.root == root)
-			return root;
-		if (this.root)
-			this.root.Remove(this);
+	@property FSRoot root(FSRoot root) {
+		if (_root == root)
+			return _root;
+		if (_root)
+			_root.remove(this);
 
 		if (root)
-			root.Add(this);
-		this.root = root;
-		return root;
+			root.add(this);
+		_root = root;
+		return _root;
 	}
 
-	@property ref ulong ID() {
-		return id;
+	@property ref ulong id() {
+		return _id;
 	}
 
-	@property ref string Name() {
-		return name;
+	@property ref string name() {
+		return _name;
 	}
 
-	@property ref NodePermissions Permission() {
-		return permission;
+	@property ref NodePermissions permission() {
+		return _permission;
 	}
 
-	@property DirectoryNode Parent() {
-		return parent;
+	@property DirectoryNode parent() {
+		return _parent;
 	}
 
-	@property DirectoryNode Parent(DirectoryNode parent) {
-		if (this.parent == parent)
-			return parent;
-		if (this.parent)
-			this.parent.Remove(this);
+	@property DirectoryNode parent(DirectoryNode parent) {
+		if (_parent == parent)
+			return _parent;
+		if (_parent)
+			_parent.remove(this);
 
 		if (parent)
-			parent.Add(this);
-		this.parent = parent;
-		return parent;
+			parent.add(this);
+		_parent = parent;
+		return _parent;
 	}
 
 	override string toString() const {
-		return name;
+		return _name;
 	}
 
 protected:
-	FSRoot root;
-	ulong id;
-	string name;
-	NodePermissions permission;
-	DirectoryNode parent;
+	FSRoot _root;
+	ulong _id;
+	string _name;
+	NodePermissions _permission;
+	DirectoryNode _parent;
 }

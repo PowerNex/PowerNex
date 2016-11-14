@@ -1,7 +1,7 @@
-module IO.FS.DirectoryNode;
+module io.fs.directorynode;
 
-import IO.FS;
-import IO.Log;
+import io.fs;
+import io.log;
 
 class DirectoryNode : Node {
 public:
@@ -9,73 +9,72 @@ public:
 		super(permission);
 	}
 
-	Node FindNode(string path) {
-		return FindNode(path, true);
+	Node findNode(string path) {
+		return findNode(path, true);
 	}
 
-	MountPointNode Mount(DirectoryNode node, FSRoot fs) {
-		if (node.Parent != this) {
-			log.Error("Tried to run Mount on ", node.Name, " but it doesn't belong to ", name, "! Redirecting");
-			node.Parent.Mount(node, fs);
+	MountPointNode mount(DirectoryNode node, FSRoot fs) {
+		if (node.parent != this) {
+			log.error("Tried to run Mount on ", node.name, " but it doesn't belong to ", name, "! Redirecting");
+			node.parent.mount(node, fs);
 		}
 		MountPointNode mount = new MountPointNode(node, fs);
-		node.Parent = null;
-		node.Root = null;
-		mount.Root = root;
-		mount.Parent = this;
-		mount.RootMount.Parent = this;
+		node.parent = null;
+		node.root = null;
+		mount.root = _root;
+		mount.parent = this;
+		mount.rootMount.parent = this;
 		return mount;
 	}
 
-	DirectoryNode Unmount(MountPointNode node) {
-		if (node.Parent != this) {
-			log.Error("Tried to run Unmount on ", node.Name, " but it doesn't belong to ", name, "! Redirecting");
-			node.Parent.Unmount(node);
+	DirectoryNode unmount(MountPointNode node) {
+		if (node.parent != this) {
+			log.error("Tried to run Unmount on ", node.name, " but it doesn't belong to ", name, "! Redirecting");
+			node.parent.unmount(node);
 		}
-		node.RootMount.Parent = null;
-		node.Parent = null;
-		node.Root = null;
-		DirectoryNode dir = node.OldNode;
-		dir.root = root;
-		dir.Parent = this;
+		node.rootMount.parent = null;
+		node.parent = null;
+		node.root = null;
+		DirectoryNode dir = node.oldNode;
+		dir.root = _root;
+		dir.parent = this;
 		node.destroy;
 		return dir;
 	}
 
-	@property Node[] Nodes() {
-		return nodes[0 .. nodeCount];
+	@property Node[] nodes() {
+		return _nodes[0 .. _nodeCount];
 	}
 
-	DirectoryNode SetParentNoUpdate(DirectoryNode node) {
+	DirectoryNode setParentNoUpdate(DirectoryNode node) {
 		if (!node)
-			parent = oldParent;
+			_parent = _oldParent;
 		else {
-			oldParent = parent;
-			parent = node;
+			_oldParent = _parent;
+			_parent = node;
 		}
-		return parent;
+		return _parent;
 	}
 
 package:
-
-	Node Add(Node node) {
-		return add(node);
+	Node add(Node node) {
+		return _add(node);
 	}
 
-	Node Remove(Node node) {
-		return remove(node);
+	Node remove(Node node) {
+		return _remove(node);
 	}
 
-	Node FindNode(string path, bool firstTime) {
-		import KMain : rootFS;
+	Node findNode(string path, bool firstTime) {
+		import kmain : rootFS;
 
-		log.Info("CUR: ", Name, " FindNode: ", path, " firstTime: ", firstTime);
+		log.info("CUR: ", name, " FindNode: ", path, " firstTime: ", firstTime);
 		if (!path.length)
 			return this;
 
 		if (path[0] == '/') {
 			if (firstTime)
-				return rootFS.Root.FindNode(path[1 .. $], false); //root.Root.FindNode(path[1 .. $], false);
+				return rootFS.root.findNode(path[1 .. $], false); //root.root.findNode(path[1 .. $], false);
 
 			while (path.length && path[0] == '/')
 				path = path[1 .. $];
@@ -86,8 +85,8 @@ package:
 		if (path.length > 1 && path[0 .. 2] == "..") {
 			DirectoryNode p = parent;
 			if (!p)
-				p = root.Root;
-			return p.FindNode(path[2 .. $], false);
+				p = root.root;
+			return p.findNode(path[2 .. $], false);
 		} else if (path.length > 1 && path[0 .. 2] == "./")
 			path = path[2 .. $];
 
@@ -99,15 +98,15 @@ package:
 		while (end < path.length && path[end] != '/')
 			end++;
 
-		foreach (node; nodes[0 .. nodeCount]) {
-			log.Info("\t cur Name: ", node.Name);
-			if (node.Name == path[0 .. end]) {
+		foreach (node; _nodes[0 .. _nodeCount]) {
+			log.info("\t cur Name: ", node.name);
+			if (node.name == path[0 .. end]) {
 				auto n = node;
 				while (true) {
 					if (auto hardlink = cast(HardLinkNode)n)
-						n = hardlink.Target;
+						n = hardlink.target;
 					else if (auto softlink = cast(SoftLinkNode)n)
-						n = softlink.Target;
+						n = softlink.target;
 					else
 						break;
 				}
@@ -116,9 +115,9 @@ package:
 					return n;
 
 				if (auto mp = cast(MountPointNode)node)
-					return mp.RootMount.Root.FindNode(path[end + 1 .. $], false);
+					return mp.rootMount.root.findNode(path[end + 1 .. $], false);
 				if (auto dir = cast(DirectoryNode)node)
-					return dir.FindNode(path[end + 1 .. $], false);
+					return dir.findNode(path[end + 1 .. $], false);
 
 				return null;
 			}
@@ -128,37 +127,37 @@ package:
 	}
 
 protected:
-	DirectoryNode oldParent;
-	Node[] nodes;
-	ulong nodeCount;
+	DirectoryNode _oldParent;
+	Node[] _nodes;
+	ulong _nodeCount;
 
-	Node add(Node node) {
-		if (node.Parent == this)
+	Node _add(Node node) {
+		if (node.parent == this)
 			return node;
-		log.Info("DirectoryNode ", ID, " Add: ", node.ID, "(", cast(void*)node, ")");
-		if (nodes.length == nodeCount) {
-			nodes.length += 8;
-			for (ulong i = nodeCount; i < nodes.length; i++)
-				nodes[i] = null;
+		log.info("DirectoryNode ", id, " Add: ", node.id, "(", cast(void*)node, ")");
+		if (_nodes.length == _nodeCount) {
+			_nodes.length += 8;
+			for (ulong i = _nodeCount; i < _nodes.length; i++)
+				_nodes[i] = null;
 		}
 
-		nodes[nodeCount++] = node;
+		_nodes[_nodeCount++] = node;
 		return node;
 	}
 
-	Node remove(Node node) {
-		if (node.Parent != this)
+	Node _remove(Node node) {
+		if (node.parent != this)
 			return node;
-		log.Info("DirectoryNode ", ID, " Remove: ", node.ID, "(", cast(void*)node, ")");
+		log.info("DirectoryNode ", id, " Remove: ", node.id, "(", cast(void*)node, ")");
 		ulong i = 0;
-		while (i < nodeCount && nodes[i] != node)
+		while (i < _nodeCount && _nodes[i] != node)
 			i++;
-		if (i >= nodeCount)
+		if (i >= _nodeCount)
 			return node;
 
-		for (; i < nodeCount; i++)
-			nodes[i] = nodes[i + 1];
-		nodeCount--;
+		for (; i < _nodeCount; i++)
+			_nodes[i] = _nodes[i + 1];
+		_nodeCount--;
 		return node;
 	}
 }

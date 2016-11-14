@@ -1,31 +1,31 @@
-module IO.FS.HardLinkNode;
+module io.fs.hardlinknode;
 
-import IO.FS;
+import io.fs;
 
 class HardLinkNode : Node {
 public:
 	this(NodePermissions permission, ulong target) {
 		super(permission);
-		this.target = target;
+		_target = target;
 	}
 
-	@property ref ulong TargetID() {
-		return target;
+	@property ref ulong targetID() {
+		return _target;
 	}
 
-	@property Node Target() {
-		return root.GetNode(target);
+	@property Node target() {
+		return root.getNode(_target);
 	}
 
-	@property Node Target(Node node) {
+	@property Node target(Node node) {
 		if (node)
-			target = node.ID;
+			_target = node.id;
 		else
-			target = ulong.max;
+			_target = ulong.max;
 
 		return node;
 	}
 
 private:
-	ulong target;
+	ulong _target;
 }

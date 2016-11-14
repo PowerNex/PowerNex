@@ -1,83 +1,91 @@
-module System.SyscallHandler;
+module system.syscallhandler;
 
-import CPU.IDT;
-import CPU.MSR;
-import Data.Register;
-import System.Syscall;
-import Data.Parameters;
-import Data.Address;
+import cpu.idt;
+import cpu.msr;
+import data.register;
+import system.syscall;
+import data.parameters;
+import data.address;
 
 extern (C) void onSyscall();
 
+// for syscallhelper.S
+extern (C) void _onSyscallHandler() {
+	asm {
+		naked;
+		jmp SyscallHandler._onSyscallHandler;
+	}
+}
+
 struct SyscallHandler {
 public:
-	static void Init() {
-		enum ulong USER_CS = 0x18 | 0x3;
-		enum ulong KERNEL_CS = 0x8;
-		enum ulong EFLAGS_INTERRUPT = 1 << 9;
+	static void init() {
+		enum ulong userCS = 0x18 | 0x3;
+		enum ulong kernelCS = 0x8;
+		enum ulong eflagsInterrupt = 1 << 9;
 
-		MSR.Star = (KERNEL_CS << 32UL | USER_CS << 48UL);
-		MSR.LStar = cast(ulong)&onSyscall;
-		MSR.SFMask = EFLAGS_INTERRUPT;
+		MSR.star = (kernelCS << 32UL | userCS << 48UL);
+		MSR.lStar = cast(ulong)&onSyscall;
+		MSR.sfMask = eflagsInterrupt;
 
-		IDT.Register(0x80, &onSyscallHandler);
+		IDT.register(0x80, &_onSyscallHandler);
 
-		import Task.Process;
+		import task.process;
 
 		//XXX: Make generation of this value
-		pragma(msg, "Don't forget to update KERNEL_STACK in SyscallHelper.S to this value: ",
+		pragma(msg, "Don't forget to update kernelStack in syscallhelper.S to this value: ",
 				Process.image.offsetof + ImageInformation.kernelStack.offsetof);
 	}
 
 private:
-	static void onSyscallHandler(Registers* regs) {
-		import Data.TextBuffer : scr = GetBootTTY;
-		import Task.Scheduler : GetScheduler;
+	static void _onSyscallHandler(Registers* regs) {
+		import data.textbuffer : scr = getBootTTY;
+		import task.scheduler : getScheduler;
 
-		auto process = GetScheduler.CurrentProcess;
+		auto process = getScheduler.currentProcess;
 
 		process.syscallRegisters = *regs;
 		with (regs)
-	outer : switch (cast(SyscallID)RAX) {
-			foreach (func; __traits(derivedMembers, System.Syscall)) {
-				static if (is(typeof(mixin("System.Syscall." ~ func)) == function))
-					foreach (attr; __traits(getAttributes, mixin("System.Syscall." ~ func))) {
+	outer : switch (cast(SyscallID)rax) {
+			foreach (func; __traits(derivedMembers, system.syscall)) {
+				static if (is(typeof(mixin("system.syscall." ~ func)) == function))
+					foreach (attr; __traits(getAttributes, mixin("system.syscall." ~ func))) {
 						static if (is(typeof(attr) == SyscallEntry)) {
 		case attr.id:
-							mixin(generateFunctionCall!func);
+							mixin(_generateFunctionCall!func);
 							break outer;
 						}
 					}
 			}
 		default:
-			scr.Writeln("UNKNOWN SYSCALL: ", cast(void*)RAX);
-			process.syscallRegisters.RAX = ulong.max;
+			scr.writeln("UNKNOWN SYSCALL: ", cast(void*)rax);
+			process.syscallRegisters.rax = ulong.max;
 			break;
 		}
 		*regs = process.syscallRegisters;
 	}
 
-	static string generateFunctionCall(alias func)() {
+	static string _generateFunctionCall(alias func)() {
 		if (!__ctfe) // Without this it tries to use _d_arrayappendT
 			return "";
-		import Data.Util : isArray;
+		import data.util : isArray;
 
-		enum ABI = ["RDI", "RSI", "RDX", "R8", "R9", "R10", "R12", "R13", "R14", "R15"];
+		enum abi = ["rdi", "rsi", "rdx", "r8", "r9", "r10", "r12", "r13", "r14", "r15"];
 
-		alias p = Parameters!(mixin(func));
-		string o = func ~ "(";
+		alias p = parameters!(mixin("system.syscall." ~ func));
+		string o = "system.syscall." ~ func ~ "(";
 
 		size_t abi_count;
 		foreach (idx, val; p) {
-			assert(abi_count < ABI.length);
+			assert(abi_count < abi.length);
 			static if (idx)
 				o ~= ", ";
 			static if (isArray!val) {
-				o ~= ABI[abi_count++];
-				assert(abi_count < ABI.length);
-				o ~= ".Array!(" ~ val.stringof ~ ")(" ~ ABI[abi_count++] ~ ")";
+				o ~= abi[abi_count++];
+				assert(abi_count < abi.length);
+				o ~= ".array!(" ~ val.stringof ~ ")(" ~ abi[abi_count++] ~ ")";
 			} else
-				o ~= "cast(" ~ val.stringof ~ ")" ~ ABI[abi_count++] ~ ".Int"; //!(" ~ val.stringof ~ ")";
+				o ~= "cast(" ~ val.stringof ~ ")" ~ abi[abi_count++] ~ ".num"; //!(" ~ val.stringof ~ ")";
 		}
 
 		o ~= ");";

@@ -1,33 +1,33 @@
-module IO.FS.IO.BoolNode;
+module io.fs.io.boolnode;
 
-import IO.FS;
-import IO.FS.IO;
+import io.fs;
+import io.fs.io;
 
 class BoolNode : FileNode {
 public:
 	this(bool val) {
-		super(NodePermissions.DefaultPermissions, 0);
-		this.val = val;
+		super(NodePermissions.defaultPermissions, 0);
+		this._val = _val;
 	}
 
-	override ulong Read(ubyte[] buffer, ulong offset) {
+	override ulong read(ubyte[] buffer, ulong offset) {
 		if (buffer.length == 0)
 			return 0;
-		buffer[1] = val;
+		buffer[1] = _val;
 		return 1;
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
+	override ulong write(ubyte[] buffer, ulong offset) {
 		return -1;
 	}
 
-	override bool Open() {
+	override bool open() {
 		return true;
 	}
 
-	override void Close() {
+	override void close() {
 	}
 
 private:
-	bool val;
+	bool _val;
 }

@@ -1,43 +1,43 @@
-module IO.FS.IO.Console.SerialConsole;
+module io.fs.io.console.serialconsole;
 
-import IO.FS;
-import IO.FS.IO.Console;
+import io.fs;
+import io.fs.io.console;
 
-import IO.COM;
-import CPU.IDT;
+import io.com;
+import cpu.idt;
 
 class SerialConsole : Console {
 public:
 	this(ref COM com) {
-		this.com = &com;
+		_com = &com;
 	}
 
-	override bool Open() {
-		if (inUse)
+	override bool open() {
+		if (_inUse)
 			return false;
-		return inUse = true;
+		return _inUse = true;
 	}
 
-	override void Close() {
-		inUse = false;
+	override void close() {
+		_inUse = false;
 	}
 
-	override ulong Read(ubyte[] buffer, ulong offset) {
+	override ulong read(ubyte[] buffer, ulong offset) {
 		size_t read;
 
-		while (read < buffer.length && com.CanRead)
-			buffer[read++] = com.Read();
+		while (read < buffer.length && _com.canRead)
+			buffer[read++] = _com.read();
 
 		return read;
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
+	override ulong write(ubyte[] buffer, ulong offset) {
 		foreach (ubyte b; buffer)
-			com.Write(b);
+			_com.write(b);
 		return buffer.length;
 	}
 
 private:
-	bool inUse;
-	COM* com;
+	bool _inUse;
+	COM* _com;
 }

@@ -1,89 +1,89 @@
-module PowerNex.Data.BMPImage;
+module powernex.data.bmpimage;
 
-import PowerNex.Data.Color;
-import PowerNex.Syscall;
+import powernex.data.color;
+import powernex.syscall;
 
 private align(1) struct FileHeader {
 align(1):
-	char[2] filetype; /* magic - always 'B' 'M' */
-	uint filesize;
+	char[2] fileType; /* magic - always 'B' 'M' */
+	uint fileSize;
 	short reserved1;
 	short reserved2;
-	uint dataoffset; /* offset in bytes to actual bitmap data */
+	uint dataOffset; /* offset in bytes to actual bitmap data */
 }
 
 private align(1) struct BitmapHeader {
 align(1):
-	FileHeader fileheader;
-	uint headersize;
+	FileHeader fileHeader;
+	uint headerSize;
 	int width;
 	int height;
 	short planes;
-	short bitsperpixel;
+	short bitsPerPixel;
 	uint compression;
-	uint bitmapsize;
-	int horizontalres;
-	int verticalres;
-	uint numcolors;
-	uint importantcolors;
-	uint redmask;
-	uint greenmask;
-	uint bluemask;
-	uint alphamask;
+	uint bitmapSize;
+	int horizontalRes;
+	int verticalRes;
+	uint numColors;
+	uint importantColors;
+	uint redMask;
+	uint greenMask;
+	uint blueMask;
+	uint alphaMask;
 }
 
 class BMPImage {
 public:
 	this(size_t file) {
-		Syscall.Read(file, (cast(ubyte*)&bitmap)[0 .. BitmapHeader.sizeof], 0);
-		data = new Color[bitmap.width * bitmap.height];
-		size_t offset = bitmap.fileheader.dataoffset;
-		int pad = bitmap.width % 4;
+		Syscall.read(file, (cast(ubyte*)&_bitmap)[0 .. BitmapHeader.sizeof], 0);
+		_data = new Color[_bitmap.width * _bitmap.height];
+		size_t offset = _bitmap.fileHeader.dataOffset;
+		int pad = _bitmap.width % 4;
 
-		switch (bitmap.bitsperpixel) {
+		switch (_bitmap.bitsPerPixel) {
 		case 32:
-			readData!32(file, offset, pad);
+			_readData!32(file, offset, pad);
 			break;
 		case 24:
-			readData!24(file, offset, pad);
+			_readData!24(file, offset, pad);
 			break;
 		default:
-			Syscall.Write(0, cast(ubyte[])"BMPIMAGE: Invalid bitsperpixel", 0);
-			//log.Error("Can't handle bpp = ", bitmap.bitsperpixel);
+			Syscall.write(0, cast(ubyte[])"BMPIMAGE: Invalid bitsperpixel", 0);
+			//log.Error("Can't handle bpp = ", _bitmap.bitsperpixel);
 			return;
 		}
 	}
 
 	/*this(BMPImage other) {
-		bitmap = other.bitmap;
-		data = other.Data.dup;
+		_bitmap = other._bitmap;
+		_data = other._data.dup;
 	}*/
 
 	~this() {
-		data.destroy;
+		_data.destroy;
 	}
 
-	@property BitmapHeader Header() {
-		return bitmap;
+	@property BitmapHeader header() {
+		return _bitmap;
 	}
 
-	@property Color[] Data() {
-		return data;
+	@property Color[] data() {
+		return _data;
 	}
 
-	@property int Width() {
-		return bitmap.width;
+	@property int width() {
+		return _bitmap.width;
 	}
 
-	@property int Height() {
-		return bitmap.height;
+	@property int height() {
+		return _bitmap.height;
 	}
 
 private:
-	BitmapHeader bitmap;
-	Color[] data;
+	BitmapHeader _bitmap;
+	Color[] _data;
 
-	void readData(int bpp)(size_t file, size_t offset, int pad) if (bpp == 24 || bpp == 32) {
+	void _readData(int bpp)(size_t file, size_t offset, int pad) if (bpp == 24 || bpp == 32) {
 		enum bytesPerPixel = bpp / 8;
 
 		ubyte toIdx(int bitmask) {
@@ -91,17 +91,17 @@ private:
 				: (bitmask & 0x00_00_00_01) ? 0 : ubyte.max;
 		}
 
-		immutable ubyte rid = toIdx(bitmap.redmask);
-		immutable ubyte gid = toIdx(bitmap.greenmask);
-		immutable ubyte bid = toIdx(bitmap.bluemask);
-		immutable ubyte aid = toIdx(bitmap.alphamask);
+		immutable ubyte rid = toIdx(_bitmap.redMask);
+		immutable ubyte gid = toIdx(_bitmap.greenMask);
+		immutable ubyte bid = toIdx(_bitmap.blueMask);
+		immutable ubyte aid = toIdx(_bitmap.alphaMask);
 
-		//log.Debug("rid: ", cast(int)rid, " gid: ", cast(int)gid, " bid: ", cast(int)bid, " aid: ", cast(int)aid);
+		//log.debug_("rid: ", cast(int)rid, " gid: ", cast(int)gid, " bid: ", cast(int)bid, " aid: ", cast(int)aid);
 
 		ubyte[bytesPerPixel] buf = void;
-		for (int y = bitmap.height - 1; y >= 0; y--) {
-			for (int x = 0; x < bitmap.width; x++) {
-				Syscall.Read(file, buf, offset += bytesPerPixel);
+		for (int y = _bitmap.height - 1; y >= 0; y--) {
+			for (int x = 0; x < _bitmap.width; x++) {
+				Syscall.read(file, buf, offset += bytesPerPixel);
 
 				immutable ubyte r = rid != ubyte.max ? buf[rid] : 0;
 				immutable ubyte g = gid != ubyte.max ? buf[gid] : 0;
@@ -112,7 +112,7 @@ private:
 				else
 					immutable ubyte a = 0;
 
-				data[y * bitmap.width + x] = Color(r, g, b, a);
+				_data[y * _bitmap.width + x] = Color(r, g, b, a);
 			}
 
 			if (pad)

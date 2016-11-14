@@ -1,76 +1,77 @@
-module IO.FS.IO.Console.VirtualConsole;
-import IO.FS;
-import IO.FS.IO.Console;
-import Task.Scheduler;
-import Task.Process;
+module io.fs.io.console.virtualconsole;
+import io.fs;
+import io.fs.io.console;
+import task.scheduler;
+import task.process;
 
 class VirtualConsole : Console {
 public:
-	this(VirtualConsoleScreen vcs) {
+	this(VirtualConsoleScreen _vcs) {
 		super();
-		this.vcs = vcs;
+		this._vcs = _vcs;
 	}
 
-	override bool Open() {
-		if (inUse)
+	override bool open() {
+		if (_inUse)
 			return false;
-		return inUse = true;
+		return _inUse = true;
 	}
 
-	override void Close() {
-		inUse = false;
+	override void close() {
+		_inUse = false;
 	}
 
-	override ulong Read(ubyte[] buffer, ulong offset) {
+	override ulong read(ubyte[] buffer, ulong offset) {
 		size_t read;
 
-		if (kbStart == kbEnd)
-			GetScheduler.WaitFor(WaitReason.Keyboard, cast(ulong)kbBuffer.ptr);
+		if (_kbStart == _kbEnd)
+			getScheduler.waitFor(WaitReason.keyboard, cast(ulong)_kbBuffer.ptr);
 
-		while (read < buffer.length && kbStart != kbEnd)
-			buffer[read++] = kbBuffer[kbStart++];
+		while (read < buffer.length && _kbStart != _kbEnd)
+			buffer[read++] = _kbBuffer[_kbStart++];
 
 		return read;
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
-		return vcs.Write(buffer, offset);
+	override ulong write(ubyte[] buffer, ulong offset) {
+		return _vcs.write(buffer, offset);
 	}
 
-	bool AddKeyboardInput(dchar ch) {
-		import Data.UTF;
+	bool addKeyboardInput(dchar ch) {
+		import data.utf;
 
-		if (kbEnd + 1 == kbStart)
+		if (_kbEnd + 1 == _kbStart)
 			return false;
 
 		size_t bytesUsed;
-		ubyte[4] utf8 = ToUTF8(ch, bytesUsed);
+		ubyte[4] utf8 = toUTF8(ch, bytesUsed);
 
 		//XXX: Make this prettier
-		if ((bytesUsed > 1 && kbEnd + 2 == kbStart) || (bytesUsed > 2 && kbEnd + 3 == kbStart) || (bytesUsed > 3 && kbEnd + 4 == kbStart))
+		if ((bytesUsed > 1 && _kbEnd + 2 == _kbStart) || (bytesUsed > 2 && _kbEnd + 3 == _kbStart) || (bytesUsed > 3 && _kbEnd
+				+ 4 == _kbStart))
 			return false;
 		foreach (b; utf8[0 .. bytesUsed])
-			kbBuffer[kbEnd++] = b;
+			_kbBuffer[_kbEnd++] = b;
 
-		GetScheduler.WakeUp(WaitReason.Keyboard, &wakeUpKeyboard, cast(void*)kbBuffer.ptr);
+		getScheduler.wakeUp(WaitReason.keyboard, &_wakeUpKeyboard, cast(void*)_kbBuffer.ptr);
 		return true;
 	}
 
-	@property bool Active() {
-		return vcs.Active;
+	@property bool active() {
+		return _vcs.active;
 	}
 
-	@property bool Active(bool active) {
-		return vcs.Active = active;
+	@property bool active(bool active) {
+		return _vcs.active = active;
 	}
 
 private:
-	bool inUse;
-	VirtualConsoleScreen vcs;
-	size_t kbStart;
-	size_t kbEnd;
-	ubyte[0x1000] kbBuffer;
-	static bool wakeUpKeyboard(Process* p, void* data) {
+	bool _inUse;
+	VirtualConsoleScreen _vcs;
+	size_t _kbStart;
+	size_t _kbEnd;
+	ubyte[0x1000] _kbBuffer;
+	static bool _wakeUpKeyboard(Process* p, void* data) {
 		return p.waitData == cast(ulong)data;
 	}
 }

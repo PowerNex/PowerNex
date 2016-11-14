@@ -1,47 +1,47 @@
-module IO.FS.Initrd.FileNode;
+module io.fs.initrd.filenode;
 
-import IO.FS.Initrd;
-import IO.FS;
+import io.fs.initrd;
+import io.fs;
 
 final class InitrdFileNode : FileNode {
 public:
 	this(ubyte* offset, ulong size) {
-		this.root = root;
-		this.data = offset[0 .. size];
-		super(NodePermissions.DefaultPermissions, size);
+		root = root;
+		_data = offset[0 .. size];
+		super(NodePermissions.defaultPermissions, size);
 	}
 
-	override ulong Read(ubyte[] buffer, ulong offset) {
-		if (offset >= data.length)
+	override ulong read(ubyte[] buffer, ulong offset) {
+		if (offset >= _data.length)
 			return 0;
 		ulong size = buffer.length;
 		ulong end = size + offset;
-		if (end > data.length) {
-			end = data.length;
+		if (end > _data.length) {
+			end = _data.length;
 			long tmp = end - offset;
 			size = (tmp < 0) ? 0 : tmp;
 		}
 
-		memcpy(buffer.ptr, &data[offset], size);
+		memcpy(buffer.ptr, &_data[offset], size);
 
 		return size;
 	}
 
-	override ulong Write(ubyte[] buffer, ulong offset) {
+	override ulong write(ubyte[] buffer, ulong offset) {
 		return -1;
 	}
 
-	override bool Open() {
+	override bool open() {
 		return true;
 	}
 
-	override void Close() {
+	override void close() {
 	}
 
-	@property ubyte[] RawAccess() {
-		return data;
+	@property ubyte[] rawAccess() {
+		return _data;
 	}
 
 private:
-	ubyte[] data;
+	ubyte[] _data;
 }

@@ -1,8 +1,8 @@
-module IO.FS.IO.Console.Screen;
+module io.fs.io.console.screen;
 
 public {
-	import IO.FS.IO.Console.Screen.VirtualConsoleScreen;
-	import IO.FS.IO.Console.Screen.FormattedChar;
-	import IO.FS.IO.Console.Screen.VirtualConsoleScreenTextMode;
-	import IO.FS.IO.Console.Screen.VirtualConsoleScreenFramebuffer;
+	import io.fs.io.console.screen.virtualconsolescreen;
+	import io.fs.io.console.screen.formattedchar;
+	import io.fs.io.console.screen.virtualconsolescreentextmode;
+	import io.fs.io.console.screen.virtualconsolescreenframebuffer;
 }

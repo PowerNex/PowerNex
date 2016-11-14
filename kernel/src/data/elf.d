@@ -1,20 +1,20 @@
-module Data.ELF;
+module data.elf;
 
-import Data.BitField;
-import Data.Address;
-import Data.String;
-import IO.FS.FileNode;
-import IO.Log;
-import Data.TextBuffer : scr = GetBootTTY;
-import Task.Process;
-import Memory.Heap;
+import data.bitfield;
+import data.address;
+import data.string_;
+import io.fs.filenode;
+import io.log;
+import data.textbuffer : scr = getBootTTY;
+import task.process;
+import memory.heap;
 
 struct ELF64Header {
 	struct Identification {
 		char[4] magic;
 
 		enum Class : ubyte {
-			None,
+			none,
 			_32,
 			_64
 		}
@@ -22,29 +22,29 @@ struct ELF64Header {
 		Class class_;
 
 		enum Data : ubyte {
-			None,
-			LeastSignificantBit,
-			MostSignificantBit
+			none,
+			leastSignificantBit,
+			mostSignificantBit
 		}
 
 		Data data;
 
 		enum ELFVersion : ubyte {
-			None,
-			Current
+			none,
+			current
 		}
 
 		ELFVersion elfVersion;
 
 		enum OSABI : ubyte {
-			None,
-			PowerNex = 16
+			none,
+			powerNex = 16
 		}
 
 		OSABI osABI;
 
 		enum ABIVersion : ubyte {
-			Current = 0
+			current = 0
 		}
 
 		ABIVersion abiVersion;
@@ -56,19 +56,19 @@ struct ELF64Header {
 	Identification identification;
 
 	enum ObjectType : ushort {
-		None,
-		Relocatable,
-		Executable,
-		Shared,
-		Core
+		none,
+		relocatable,
+		executable,
+		shared_,
+		core
 	}
 
 	ObjectType type;
 
 	enum Machine : ushort {
-		None,
-		I386 = 3,
-		AMD64 = 0x3E
+		none,
+		i386 = 3,
+		amd64 = 0x3E
 	}
 
 	Machine machine;
@@ -85,35 +85,35 @@ struct ELF64Header {
 	ushort sectionHeaderCount;
 	ushort sectionHeaderStringTableIndex;
 
-	@property bool Valid() {
-		immutable char[4] ELF64Magic = [0x7F, 'E', 'L', 'F'];
-		return identification.magic == ELF64Magic && programHeaderEntrySize == ELF64ProgramHeader.sizeof
+	@property bool valid() {
+		immutable char[4] elf64Magic = [0x7F, 'E', 'L', 'F'];
+		return identification.magic == elf64Magic && programHeaderEntrySize == ELF64ProgramHeader.sizeof
 			&& ELF64SectionHeader.sizeof == sectionHeaderEntrySize;
 	}
 }
 
 struct ELF64ProgramHeader {
 	enum Type : uint {
-		Null,
-		Load,
-		Dynamic,
-		Interpreter,
-		Note,
-		SHLIB, // Not use, Not allowed
-		ProgramHeader,
-		ThreadLocalStorage,
+		null_,
+		load,
+		dynamic,
+		interpreter,
+		note,
+		shlib, // Not use, Not allowed
+		programHeader,
+		threadLocalStorage,
 
-		GNUEHFrameHeader = 0x6474E550,
-		GNUStack = 0x6474E551,
+		gnuEHFrameHeader = 0x6474E550,
+		gnuStack = 0x6474E551,
 	}
 
 	Type type;
 
 	enum Flags : uint {
-		None,
-		X = 1 << 0,
-		W = 1 << 1,
-		R = 1 << 2
+		none,
+		x = 1 << 0,
+		w = 1 << 1,
+		r = 1 << 2
 	}
 
 	Flags flags;
@@ -129,46 +129,46 @@ struct ELF64SectionHeader {
 	uint nameIdx;
 
 	enum Type : uint {
-		Null,
-		ProgramBits,
-		SymbolTable,
-		StringTable,
-		RelocationEntries,
-		SymbolHashTable,
-		DynamicLinking,
-		Note,
-		NoBits,
-		RelocationOffsets,
-		SHLIB, // Not used, not allowed
-		DynamicLinkingSymbols,
-		ConstructorArray = 14,
-		DestructorArray,
-		PreConstructorArray,
-		GNUHashTable = 0x6FFFFFF6,
-		GNUVersionNeeds = 0x6FFFFFFE,
-		GNUVersionSymbolTable = 0x6FFFFFFF,
+		null_,
+		programBits,
+		symbolTable,
+		stringTable,
+		relocationEntries,
+		symbolHashTable,
+		dynamicLinking,
+		note,
+		noBits,
+		relocationOffsets,
+		shlib, // Not used, not allowed
+		dynamicLinkingSymbols,
+		constructorArray = 14,
+		destructorArray,
+		preConstructorArray,
+		gnuHashTable = 0x6FFFFFF6,
+		gnuVersionNeeds = 0x6FFFFFFE,
+		gnuVersionSymbolTable = 0x6FFFFFFF,
 	}
 
 	Type type;
 
 	enum Flags : ulong {
-		Null,
-		Write = 1 << 0,
-		Allocate = 1 << 1,
-		ExecutableInstructions = 1 << 2,
-		Merge = 1 << 4,
-		Strings = 1 << 5,
-		InfoLink = 1 << 6,
-		LinkOrder = 1 << 7,
-		Group = 1 << 9,
-		ThreadLocalData = 1 << 10,
-		Compressed = 1 << 11,
+		null_,
+		write = 1 << 0,
+		allocate = 1 << 1,
+		executableInstructions = 1 << 2,
+		merge = 1 << 4,
+		strings = 1 << 5,
+		infoLink = 1 << 6,
+		linkOrder = 1 << 7,
+		group = 1 << 9,
+		threadLocalData = 1 << 10,
+		compressed = 1 << 11,
 
-		Allocate_Write = Allocate | Write,
-		ExecutableInstructions_Allocate = ExecutableInstructions | Allocate,
-		Strings_Merge = Strings | Merge,
-		InfoLink_Allocate = InfoLink | Allocate,
-		ThreadLocalData_Allocate_Write = ThreadLocalData | Allocate | Write
+		allocateWrite = allocate | write,
+		executableInstructionsAllocate = executableInstructions | allocate,
+		stringsMerge = strings | merge,
+		infoLinkAllocate = infoLink | allocate,
+		threadLocalDataAllocateWrite = threadLocalData | allocate | write
 	}
 
 	Flags flags;
@@ -185,36 +185,36 @@ struct ELF64Symbol {
 	uint name;
 	struct Info {
 		enum InfoType : ubyte {
-			NoType,
-			Object,
-			Function,
-			Section,
-			File,
-			Common,
-			TLS
+			noType,
+			object,
+			function_,
+			section,
+			file,
+			common,
+			tls
 		}
 
 		enum InfoBinding : ubyte {
-			Local,
-			Global,
-			Weak
+			local,
+			global,
+			weak
 		}
 
 		private ubyte data;
-		@property InfoType Type() {
+		@property InfoType type() {
 			return cast(InfoType)(data & 0xF);
 		}
 
-		@property InfoType Type(InfoType type) {
+		@property InfoType type(InfoType type) {
 			data = data & 0xF0 | type & 0xF;
 			return type;
 		}
 
-		@property InfoBinding Binding() {
+		@property InfoBinding binding() {
 			return cast(InfoBinding)((data & 0xF0 >> 4) & 0x2);
 		}
 
-		@property InfoBinding Binding(InfoBinding binding) {
+		@property InfoBinding binding(InfoBinding binding) {
 			data = (binding << 4) & 0xF0 | data & 0xF;
 			return binding;
 		}
@@ -222,10 +222,10 @@ struct ELF64Symbol {
 
 	Info info;
 	enum Other : ubyte {
-		Default,
-		Internal,
-		Hidden,
-		Protected
+		default_,
+		internal,
+		hidden,
+		protected_
 	}
 
 	Other other;
@@ -257,32 +257,32 @@ struct ELF64RelocationAddend {
 
 struct ELF64Dynamic {
 	enum Tag : long {
-		Null,
-		Needed,
-		PLTRelocationEntries,
-		PLTGOT,
-		HashTable,
-		StringTable,
-		SymbolTable,
-		RelocationAddendTable,
-		RelocationAddendTableSize,
-		RelocationAddendTableEntrySize,
-		StringTableSize,
-		SymbolTableEntrySize,
-		Init,
-		Fini,
-		SOName,
-		RPath,
-		Symbolic,
-		RelocationTable,
-		RelocationTableSize,
-		RelocationTableEntrySize,
-		PLTRel,
-		Debug,
-		TextRel,
-		JumpRel,
-		BindNow,
-		RunPath
+		null_,
+		needed,
+		pltRelocationEntries,
+		pltgot,
+		hashTable,
+		stringTable,
+		symbolTable,
+		relocationAddendTable,
+		relocationAddendTableSize,
+		relocationAddendTableEntrySize,
+		stringTableSize,
+		symbolTableEntrySize,
+		init,
+		fini,
+		sOName,
+		rPath,
+		symbolic,
+		relocationTable,
+		relocationTableSize,
+		relocationTableEntrySize,
+		pLTRel,
+		debug_,
+		textRel,
+		jumpRel,
+		bindNow,
+		runPath
 	}
 
 	Tag tag;
@@ -292,29 +292,29 @@ struct ELF64Dynamic {
 class ELF {
 public:
 	this(FileNode file) {
-		this.file = file;
+		this._file = file;
 
-		if (file.Size <= ELF64Header.sizeof)
+		if (_file.size <= ELF64Header.sizeof)
 			return;
 
-		file.Read((cast(ubyte*)&header)[0 .. ELF64Header.sizeof], 0);
-		valid = header.Valid;
+		_file.read((cast(ubyte*)&_header)[0 .. ELF64Header.sizeof], 0);
+		_valid = _header.valid;
 
-		foreach (idx; 0 .. header.sectionHeaderCount) {
-			ELF64SectionHeader sectionHdr = GetSectionHeader(idx);
-			if (sectionHdr.type == ELF64SectionHeader.Type.SymbolTable)
-				symtabIdx = idx;
-			else if (sectionHdr.type == ELF64SectionHeader.Type.StringTable)
-				strtabIdx = idx;
+		foreach (idx; 0 .. _header.sectionHeaderCount) {
+			ELF64SectionHeader sectionHdr = getSectionHeader(idx);
+			if (sectionHdr.type == ELF64SectionHeader.type.symbolTable)
+				_symtabIdx = idx;
+			else if (sectionHdr.type == ELF64SectionHeader.type.stringTable)
+				_strtabIdx = idx;
 		}
 	}
 
-	void MapAndRun(string[] args) {
-		import Memory.Paging;
-		import Task.Scheduler;
+	void mapAndRun(string[] args) {
+		import memory.paging;
+		import task.scheduler;
 
-		Scheduler scheduler = GetScheduler;
-		Process* process = scheduler.CurrentProcess;
+		Scheduler scheduler = getScheduler;
+		Process* process = scheduler.currentProcess;
 		Paging paging = process.threadState.paging;
 
 		string[] tmpArgs;
@@ -322,52 +322,52 @@ public:
 		foreach (idx, arg; args)
 			tmpArgs[idx] = arg.dup;
 
-		if (process.heap && !(--process.heap.RefCounter))
+		if (process.heap && !(--process.heap.refCounter))
 			process.heap.destroy;
 
-		paging.RemoveUserspace(true);
+		paging.removeUserspace(true);
 
 		VirtAddress startHeap;
 
 		foreach (idx; 0 .. header.programHeaderCount) {
-			ELF64ProgramHeader program = GetProgramHeader(idx);
-			if (program.type == ELF64ProgramHeader.Type.Load) {
+			ELF64ProgramHeader program = getProgramHeader(idx);
+			if (program.type == ELF64ProgramHeader.type.load) {
 
-				MapMode mode = MapMode.User;
-				if (!(program.flags & ELF64ProgramHeader.Flags.X))
-					mode |= MapMode.NoExecute;
-				if (program.flags & ELF64ProgramHeader.Flags.W)
-					mode |= MapMode.Writable;
+				MapMode mode = MapMode.user;
+				if (!(program.flags & ELF64ProgramHeader.Flags.x))
+					mode |= MapMode.noExecute;
+				if (program.flags & ELF64ProgramHeader.Flags.w)
+					mode |= MapMode.writable;
 				// Page will always be readable
 
 				VirtAddress start = program.virtAddress & ~0xFFF;
 				VirtAddress end = program.virtAddress + program.memorySize;
 				VirtAddress cur = start;
 				while (cur < end) {
-					paging.MapFreeMemory(cur, MapMode.DefaultKernel);
+					paging.mapFreeMemory(cur, MapMode.defaultKernel);
 					cur += 0x1000;
 				}
 
-				log.Debug("Start: ", start, " End: ", end, " cur: ", cur, " Mode: R", (mode & MapMode.Writable) ? "W"
-						: "", (mode & MapMode.NoExecute) ? "" : "X", (mode & MapMode.User) ? "-User" : "");
+				log.debug_("Start: ", start, " End: ", end, " cur: ", cur, " Mode: R", (mode & MapMode.writable) ? "W"
+						: "", (mode & MapMode.noExecute) ? "" : "X", (mode & MapMode.user) ? "-User" : "");
 
-				memset(start.Ptr, 0, (program.virtAddress - start).Int);
+				memset(start.ptr, 0, (program.virtAddress - start).num);
 				cur = (program.virtAddress + program.fileSize);
-				memset(cur.Ptr, 0, (end - cur).Int);
-				file.Read(program.virtAddress.Ptr!ubyte[0 .. program.fileSize], program.offset.Int);
+				memset(cur.ptr, 0, (end - cur).num);
+				_file.read(program.virtAddress.ptr!ubyte[0 .. program.fileSize], program.offset.num);
 
 				cur = start;
 				while (cur < end) {
-					auto page = paging.GetPage(cur);
-					page.Mode = mode;
-					paging.FlushPage(cur);
+					auto page = paging.getPage(cur);
+					page.mode = mode;
+					paging.flushPage(cur);
 					cur += 0x1000;
 				}
 
 				if (end > startHeap)
 					startHeap = end;
-			} else if (program.type == ELF64ProgramHeader.Type.ThreadLocalStorage)
-				process.image.defaultTLS = program.virtAddress.Ptr!ubyte[0 .. program.memorySize];
+			} else if (program.type == ELF64ProgramHeader.Type.threadLocalStorage)
+				process.image.defaultTLS = program.virtAddress.ptr!ubyte[0 .. program.memorySize];
 		}
 
 		// Setup stack, setup heap
@@ -376,14 +376,14 @@ public:
 			cli;
 		}
 
-		startHeap = (startHeap.Int + 0xFFF) & ~0xFFF;
+		startHeap = (startHeap.num + 0xFFF) & ~0xFFF;
 
-		process.heap = new Heap(process.threadState.paging, MapMode.DefaultUser, startHeap, VirtAddress(0xFFFF_FFFF_0000_0000));
+		process.heap = new Heap(process.threadState.paging, MapMode.defaultUser, startHeap, VirtAddress(0xFFFF_FFFF_0000_0000));
 
-		enum StackSize = 0x1000;
-		VirtAddress userStack = VirtAddress(process.heap.Alloc(StackSize)) + StackSize;
+		enum stackSize = 0x1000;
+		VirtAddress userStack = VirtAddress(process.heap.alloc(stackSize)) + stackSize;
 		process.image.userStack = userStack;
-		process.threadState.tls = TLS.Init(process, false);
+		process.threadState.tls = TLS.init(process, false);
 
 		{
 			ubyte length = 0;
@@ -393,13 +393,13 @@ public:
 			const ulong endOfArgs = length;
 			length += ulong.sizeof * (tmpArgs.length + 1);
 
-			VirtAddress elfArgs = process.heap.Alloc(length).VirtAddress;
+			VirtAddress elfArgs = process.heap.alloc(length).VirtAddress;
 			VirtAddress cur = elfArgs;
-			char*[] entries = (elfArgs + endOfArgs).Ptr!(char*)[0 .. tmpArgs.length + 1];
+			char*[] entries = (elfArgs + endOfArgs).ptr!(char*)[0 .. tmpArgs.length + 1];
 			foreach (idx, arg; tmpArgs) {
-				entries[idx] = cur.Ptr!char;
-				cur.Ptr!char[0 .. arg.length] = arg[];
-				cur.Ptr!ubyte[arg.length] = 0;
+				entries[idx] = cur.ptr!char;
+				cur.ptr!char[0 .. arg.length] = arg[];
+				cur.ptr!ubyte[arg.length] = 0;
 				cur += arg.length + 1;
 			}
 			entries[$ - 1] = null;
@@ -407,73 +407,73 @@ public:
 			process.image.arguments = cast(char*[])entries;
 		}
 
-		process.name = file.Name.dup;
-		process.image.file = file;
+		process.name = _file.name.dup;
+		process.image.file = _file;
 		process.image.elf = this;
 
 		foreach (arg; tmpArgs)
 			arg.destroy;
 		tmpArgs.destroy;
 
-		switchToUserMode(header.entry.Int, userStack.Int);
+		switchToUserMode(header.entry.num, userStack.num);
 	}
 
-	ELF64ProgramHeader GetProgramHeader(size_t idx) {
+	ELF64ProgramHeader getProgramHeader(size_t idx) {
 		assert(idx < header.programHeaderCount);
 		ELF64ProgramHeader programHdr;
-		file.Read(&programHdr, header.programHeaderOffset + header.programHeaderEntrySize * idx);
+		_file.read(&programHdr, header.programHeaderOffset + header.programHeaderEntrySize * idx);
 		return programHdr;
 	}
 
-	ELF64SectionHeader GetSectionHeader(size_t idx) {
+	ELF64SectionHeader getSectionHeader(size_t idx) {
 		assert(idx < header.sectionHeaderCount);
 		ELF64SectionHeader sectionHdr;
-		file.Read(&sectionHdr, header.sectionHeaderOffset + header.sectionHeaderEntrySize * idx);
+		_file.read(&sectionHdr, header.sectionHeaderOffset + header.sectionHeaderEntrySize * idx);
 		return sectionHdr;
 	}
 
-	ELF64Symbol GetSymbol(size_t idx) {
-		assert(symtabIdx != ulong.max);
-		ELF64SectionHeader symtab = GetSectionHeader(symtabIdx);
+	ELF64Symbol getSymbol(size_t idx) {
+		assert(_symtabIdx != ulong.max);
+		ELF64SectionHeader symtab = getSectionHeader(_symtabIdx);
 		ELF64Symbol symbol;
-		file.Read(&symbol, symtab.offset + ELF64Symbol.sizeof * idx);
+		_file.read(&symbol, symtab.offset + ELF64Symbol.sizeof * idx);
 		return symbol;
 	}
 
-	/// Note that the output will only be valid until GetSectionName is called again
-	char[] GetSectionName(uint nameIdx) {
+	/// Note that the output will only be valid until getSectionName is called again
+	char[] getSectionName(uint nameIdx) {
 		__gshared char[255] buf;
 		if (!header.sectionHeaderStringTableIndex)
 			return cast(char[])"UNKNOWN";
 
-		file.Read(buf, GetSectionHeader(header.sectionHeaderStringTableIndex).offset + nameIdx);
+		_file.read(buf, getSectionHeader(header.sectionHeaderStringTableIndex).offset + nameIdx);
 
 		return buf[0 .. strlen(buf)];
 	}
 
-	/// Note that the output will only be valid until GetSymbolName is called again
-	char[] GetSymbolName(uint idx) {
+	/// Note that the output will only be valid until getSymbolName is called again
+	char[] getSymbolName(uint idx) {
 		__gshared char[255] buf;
-		if (!strtabIdx)
+		if (!_strtabIdx)
 			return cast(char[])"UNKNOWN";
 
-		file.Read(buf, GetSectionHeader(strtabIdx).offset + idx);
+		_file.read(buf, getSectionHeader(_strtabIdx).offset + idx);
 
 		return buf[0 .. strlen(buf)];
 	}
 
-	@property bool Valid() {
-		return valid;
+	@property bool valid() {
+		return _valid;
 	}
 
-	@property ELF64Header Header() {
-		return header;
+	@property ELF64Header header() {
+		return _header;
 	}
 
 private:
-	FileNode file;
-	bool valid;
-	ELF64Header header;
-	ulong strtabIdx = ulong.max;
-	ulong symtabIdx = ulong.max;
+	FileNode _file;
+	bool _valid;
+	ELF64Header _header;
+	ulong _strtabIdx = ulong.max;
+	ulong _symtabIdx = ulong.max;
 }

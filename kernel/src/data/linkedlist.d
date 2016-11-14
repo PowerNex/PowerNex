@@ -1,8 +1,8 @@
-module Data.LinkedList;
+module data.linkedlist;
 
 class LinkedList(T) {
 public:
-	void Add(T* obj) {
+	void add(T* obj) {
 		Node n = new Node(obj, null);
 		if (last)
 			last.next = n;
@@ -12,7 +12,7 @@ public:
 		len++;
 	}
 
-	T* Remove(T* obj) {
+	T* remove(T* obj) {
 		Node prev;
 		Node cur = first;
 		while (cur && cur.data != obj) {
@@ -35,7 +35,7 @@ public:
 		return obj;
 	}
 
-	T* Remove(size_t idx) {
+	T* remove(size_t idx) {
 		if (idx >= len)
 			return null;
 
@@ -62,7 +62,7 @@ public:
 		return data;
 	}
 
-	T* Get(size_t idx) {
+	T* get(size_t idx) {
 		if (idx >= len)
 			return null;
 
@@ -75,12 +75,12 @@ public:
 		return cur.data;
 	}
 
-	@property size_t Length() {
+	@property size_t length() {
 		return len;
 	}
 
 	T* opIndex(size_t i) {
-		return Get(i);
+		return get(i);
 	}
 
 	size_t opDollar() {
