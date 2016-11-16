@@ -325,6 +325,12 @@ void listDirectory(string path, void* listings_, size_t len) {
 		nodes = node.nodes;
 	}
 
+	if(listings_ is null)
+	{
+		process.syscallRegisters.rax = nodes.length;
+		return;
+	}
+
 	auto length = nodes.length;
 	if (listings.length < length)
 		length = listings.length;
