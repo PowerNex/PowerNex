@@ -22,6 +22,8 @@ template AllDFiles(string dir) {
 		enum files = "userspace/cat/src/app.d";
 	else static if (dir == "userspace/dlogo/src")
 		enum files = "userspace/dlogo/src/app.d";
+	else static if (dir == "userspace/pattern/src")
+		enum files = "userspace/pattern/src/app.d";
 	else
 		static assert(0);
 
@@ -102,14 +104,17 @@ static:
 	enum shell_obj = Target("userspace/shell/obj/dcode.o", CompileCommand.user_dc, AllDFiles!"userspace/shell/src", [UserspaceLibrary.librt, UserspaceLibrary.libpowernex]);
 	enum shell = Target("initrd/bin/shell", CompileCommand.user_ld, [UserspaceProgram.shell_obj, UserspaceLibrary.librt, UserspaceLibrary.libpowernex], [UserspaceLibrary.libpowernex]);
 
-	enum helloworld_obj = Target("userspace/helloWorld/obj/dcode.o", CompileCommand.user_dc, AllDFiles!"userspace/helloworld/src", [UserspaceLibrary.librt, UserspaceLibrary.libpowernex]);
-	enum helloworld = Target("initrd/bin/helloWorld", CompileCommand.user_ld, [UserspaceProgram.helloworld_obj, UserspaceLibrary.librt, UserspaceLibrary.libpowernex], [UserspaceLibrary.libpowernex]);
+	enum helloworld_obj = Target("userspace/helloworld/obj/dcode.o", CompileCommand.user_dc, AllDFiles!"userspace/helloworld/src", [UserspaceLibrary.librt, UserspaceLibrary.libpowernex]);
+	enum helloworld = Target("initrd/bin/helloworld", CompileCommand.user_ld, [UserspaceProgram.helloworld_obj, UserspaceLibrary.librt, UserspaceLibrary.libpowernex], [UserspaceLibrary.libpowernex]);
 
 	enum cat_obj = Target("userspace/cat/obj/dcode.o", CompileCommand.user_dc, AllDFiles!"userspace/cat/src", [UserspaceLibrary.librt, UserspaceLibrary.libpowernex]);
 	enum cat = Target("initrd/bin/cat", CompileCommand.user_ld, [UserspaceProgram.cat_obj, UserspaceLibrary.librt, UserspaceLibrary.libpowernex], [UserspaceLibrary.libpowernex]);
 
 	enum dlogo_obj = Target("userspace/dlogo/obj/dcode.o", CompileCommand.user_dc, AllDFiles!"userspace/dlogo/src", [UserspaceLibrary.librt, UserspaceLibrary.libpowernex]);
 	enum dlogo = Target("initrd/bin/dlogo", CompileCommand.user_ld, [UserspaceProgram.dlogo_obj, UserspaceLibrary.librt, UserspaceLibrary.libpowernex], [UserspaceLibrary.libpowernex]);
+
+	enum pattern_obj = Target("userspace/pattern/obj/dcode.o", CompileCommand.user_dc, AllDFiles!"userspace/pattern/src", [UserspaceLibrary.librt, UserspaceLibrary.libpowernex]);
+	enum pattern = Target("initrd/bin/pattern", CompileCommand.user_ld, [UserspaceProgram.pattern_obj, UserspaceLibrary.librt, UserspaceLibrary.libpowernex], [UserspaceLibrary.libpowernex]);
 }
 
 enum initrdFiles = Target("initrd/", CompileCommand.copy, [Target("initrd/")], [
@@ -122,7 +127,8 @@ enum initrd = Target("disk/boot/powernex.dsk", ToolCommand.makeInitrd, [initrdFi
 	UserspaceProgram.shell,
 	UserspaceProgram.helloworld,
 	UserspaceProgram.cat,
-	UserspaceProgram.dlogo
+	UserspaceProgram.dlogo,
+	UserspaceProgram.pattern
 ]);
 
 enum isoFiles = Target("disk/", CompileCommand.copy, [Target("disk/")], [
