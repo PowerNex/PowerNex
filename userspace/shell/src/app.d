@@ -181,7 +181,13 @@ private:
 			DirectoryListing[32] listings = void;
 			void* ptr = cast(void*)listings.ptr;
 			size_t len = listings.length;
-			size_t count = Syscall.listDirectory(ptr, len);
+			size_t count;
+
+			if(cmd.args.length == 1)
+				count = Syscall.listDirectory(null, ptr, len);
+			else
+				count = Syscall.listDirectory(cast(string)cmd.args[1], ptr, len);
+
 			println("ID\tName\t\tType");
 			foreach (list; listings[0 .. count]) {
 				char[ulong.sizeof * 8] buf;
