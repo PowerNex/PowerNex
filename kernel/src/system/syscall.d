@@ -303,14 +303,28 @@ struct DirectoryListing {
 }
 
 @SyscallEntry(SyscallID.listDirectory)
-void listDirectory(void* listings_, size_t len) {
+void listDirectory(string path, void* listings_, size_t len) {
 	import io.fs;
+	import kmain : rootFS;
 
 	DirectoryListing[] listings = (cast(DirectoryListing*)listings_)[0 .. len];
 
 	Process* process = getScheduler.currentProcess;
+	Node[] nodes;
 
-	Node[] nodes = process.currentDirectory.nodes;
+	if(path is null) {
+		nodes = process.currentDirectory.nodes;
+	}
+	else {
+		DirectoryNode node = cast(DirectoryNode)process.currentDirectory.findNode(path);
+		if (!node) {
+			process.syscallRegisters.rax = 0;
+			return;
+		}
+
+		nodes = node.nodes;
+	}
+
 	auto length = nodes.length;
 	if (listings.length < length)
 		length = listings.length;
