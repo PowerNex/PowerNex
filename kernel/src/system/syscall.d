@@ -303,7 +303,7 @@ struct DirectoryListing {
 }
 
 @SyscallEntry(SyscallID.listDirectory)
-void listDirectory(string path, void* listings_, size_t len) {
+void listDirectory(string path, void* listings_, size_t len, size_t start) {
 	import io.fs;
 	import kmain : rootFS;
 
@@ -325,16 +325,20 @@ void listDirectory(string path, void* listings_, size_t len) {
 		nodes = node.nodes;
 	}
 
-	if(listings_ is null)
-	{
+	if(listings_ is null) {
 		process.syscallRegisters.rax = nodes.length;
+		return;
+	}
+	if(start >= nodes.length) {
+		process.syscallRegisters.rax = 0;
 		return;
 	}
 
 	auto length = nodes.length;
-	if (listings.length < length)
+	if (listings.length <= length - start)
 		length = listings.length;
 	foreach (i, ref DirectoryListing listing; listings[0 .. length]) {
+		i += start;
 		listing.id = nodes[i].id;
 		auto nLen = nodes[i].name.length < 256 ? nodes[i].name.length : 256;
 		memcpy(listing.name.ptr, nodes[i].name.ptr, nLen);

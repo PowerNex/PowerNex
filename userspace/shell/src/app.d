@@ -178,25 +178,30 @@ private:
 			break;
 
 		case "ls":
-			DirectoryListing[32] listings = void;
+			DirectoryListing[16] listings = void;
 			void* ptr = cast(void*)listings.ptr;
-			size_t len = listings.length;
-			size_t count;
 
-			if(cmd.args.length == 1)
-				count = Syscall.listDirectory(null, ptr, len);
-			else
-				count = Syscall.listDirectory(cast(string)cmd.args[1], ptr, len);
+			size_t curr = 0;
+			size_t count = listings.length;
 
 			println("ID\tName\t\tType");
-			foreach (list; listings[0 .. count]) {
-				char[ulong.sizeof * 8] buf;
-				print(itoa(list.id, buf, 10));
-				print(":\t");
-				print(list.name.fromStringz);
-				print("\t\t");
-				print(list.type);
-				println();
+
+			while(count == listings.length) {
+				if(cmd.args.length == 1)
+					count = Syscall.listDirectory(null, ptr, listings.length, curr);
+				else
+					count = Syscall.listDirectory(cast(string)cmd.args[1], ptr, listings.length, curr);
+
+				curr += listings.length;
+				foreach (list; listings[0 .. count]) {
+					char[ulong.sizeof * 8] buf;
+					print(itoa(list.id, buf, 10));
+					print(":\t");
+					print(list.name.fromStringz);
+					print("\t\t");
+					print(list.type);
+					println();
+				}
 			}
 			break;
 
