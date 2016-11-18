@@ -76,7 +76,6 @@ public:
 					_screen[_curY * _width + _curX] = _clearChar;
 					if (active)
 						updateChar(_curX, _curY);
-					_curX++;
 				}
 				if (_curX >= _width) {
 					_curY++;
