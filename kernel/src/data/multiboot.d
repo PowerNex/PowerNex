@@ -208,8 +208,8 @@ struct Multiboot {
 				char* str = &tmp.string_;
 				modules[modulesCount++] = tmp;
 
-				log.info("Name: Module, Start: ", cast(void*)tmp.modStart, ", End: ", cast(void*)tmp.modEnd,
-						", CMD: ", cast(string)str[0 .. tmp.size - 17]);
+				log.info("Name: Module, Start: ", cast(void*)tmp.modStart, ", End: ", cast(void*)tmp.modEnd, ", CMD: ",
+						cast(string)str[0 .. tmp.size - 17]);
 				break;
 
 			case MultibootTagType.basicMemInfo:
@@ -274,6 +274,7 @@ struct Multiboot {
 	static VirtAddress[2] getModule(string name) {
 		foreach (mod; modules[0 .. modulesCount]) {
 			char* str = &mod.string_;
+			log.info("Testing '", str[0 .. mod.size - 17], "' == '", name, "'");
 			if (str[0 .. mod.size - 17] == name)
 				return [PhysAddress(mod.modStart).virtual, PhysAddress(mod.modEnd).virtual];
 		}

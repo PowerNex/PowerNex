@@ -36,6 +36,46 @@ private immutable uint _minor = __VERSION__ % 1000;
 
 __gshared FSRoot rootFS;
 
+void testNewFS() {
+	import fs;
+	import memory.ref_;
+
+	log.info("InitFS!");
+	scr.writeln("InitFS!");
+	initFS();
+
+	{
+		Ref!DirectoryEntryRange range;
+		log.info("directoryEntries!");
+		scr.writeln("directoryEntries!");
+		mountedFS.root.dirEntries(range);
+
+		foreach (idx, ref DirectoryEntry e; range.data) {
+			log.info(idx, ":\t", e.name);
+			scr.writeln(idx, ":\t", e.name);
+		}
+	}
+
+	{
+		string path = "PathA/../PathB/./PathC";
+
+		log.info("walking: '", path, "'");
+		scr.writeln("walking: '", path, "'");
+		Ref!VNode walkAll = findNode(mountedFS.root, path);
+		if (walkAll.data) {
+			log.info("Success!", walkAll.name);
+			scr.writeln("Success!", walkAll.name);
+		} else {
+			log.info("failure!");
+			scr.writeln("failure!");
+		}
+	}
+
+	while (true) {
+		getScheduler.uSleep(0);
+	}
+}
+
 extern (C) int kmain(uint magic, ulong info) {
 	preInit();
 	welcome();
@@ -43,6 +83,8 @@ extern (C) int kmain(uint magic, ulong info) {
 	asm {
 		sti;
 	}
+
+	testNewFS();
 
 	string initFile = "/bin/init";
 
@@ -166,9 +208,9 @@ void loadInitrd() {
 	import io.fs.io;
 
 	auto initrd = Multiboot.getModule("initrd");
-	if (initrd[0] == initrd[1]) {
+	if (!initrd[0]) {
 		scr.writeln("Initrd missing");
-		log.error("Initrd missing");
+		log.fatal("Initrd missing");
 		return;
 	}
 
