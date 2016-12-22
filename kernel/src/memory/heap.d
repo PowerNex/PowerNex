@@ -80,6 +80,7 @@ public:
 		if (!addr)
 			return;
 		MemoryHeader* hdr = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).ptr;
+		assert(hdr.magic == _magic);
 		hdr.isAllocated = false;
 
 		_combine(hdr);
@@ -92,6 +93,7 @@ public:
 		_mutex.lock;
 		if (addr) {
 			MemoryHeader* old = cast(MemoryHeader*)(VirtAddress(addr) - MemoryHeader.sizeof).ptr;
+			assert(old.magic == _magic);
 			ubyte* src = cast(ubyte*)addr;
 			ubyte* dest = cast(ubyte*)newMem;
 			for (ulong i = 0; i < old.size && i < size; i++)
