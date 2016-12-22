@@ -1176,8 +1176,8 @@ private string makeTypeInfo(T...)() {
 		void doit(t)() {
 			if (__ctfe) {
 				code ~= "class TypeInfo_" ~ t.mangleof ~ " : TypeInfo {
-					override string toString() const { return \""
-					~ t.stringof ~ "\"; }
+					override string toString() const { return \"" ~ t.stringof
+					~ "\"; }
 
 					override @property size_t tsize() nothrow pure const { return " ~ t.stringof ~ ".sizeof; }
 				}";
@@ -1634,11 +1634,24 @@ void destroy(void* memory) {
 	getKernelHeap.free(memory);
 }
 
-void destroy(T : Object)(T object) {
-	auto dtor = cast(void function(Object o))object.classinfo.destructor;
-	if (dtor)
-		dtor(object);
-	getKernelHeap.free(cast(void*)object);
+void destroy(T)(T object) if (is(T == interface)) {
+	destroy(cast(Object)object);
+}
+
+void destroy(T)(T obj) if (is(T == class)) {
+	ClassInfo ci = typeid(obj);
+	void* object = cast(void*)_d_dynamic_cast(cast(Object)obj, ci);
+
+	ClassInfo origCI = ci;
+
+	while (ci) {
+		if (ci.destructor) {
+			auto dtor = cast(void function(void*))ci.destructor;
+			dtor(object);
+		}
+		ci = ci.base;
+	}
+	getKernelHeap.free(object);
 }
 
 void destroy(T)(T[] array) {
