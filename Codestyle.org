@@ -28,6 +28,10 @@ Please use this as a reference when hacking on PowerNex
   - ~dchar utfLetter;~
 - Aliases should be written like ~alias Type = typeof(array[0]);~
 - Document all the modules, types and functions.
+- Use ~scope~, ~ref~, ~in~ and ~out~ to mark what the parameters do.
+ - Please note that ~in~ is a alias to ~const scope~
+ - ~out~ is like ~ref~ but you should only override its value, not read it.
+ - Use ~scope~ as much as possible, it guarantees that the instance won't get saved on the heap. Only stored on the stack
 
 The PowerNex kernel's code style is based on [[http://dlang.org/dstyle.html][DStyle]].
 If you have any questions about the style just open a issue or send a email to me@vild.io
