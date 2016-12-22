@@ -14,7 +14,13 @@ public:
 			log.error("/io/console/ missing");
 
 		auto nodes = csDir.nodes;
-		_vcs = new VirtualConsole[4]; //XXX:
+		size_t count;
+		foreach (node; nodes) {
+			if (auto _ = cast(VirtualConsole)node)
+				count++;
+		}
+
+		_vcs = new VirtualConsole[count];
 		size_t idx = 0;
 		foreach (node; nodes) {
 			if (auto _ = cast(VirtualConsole)node)
