@@ -6,6 +6,7 @@ version (PowerNex) {
 	static assert(0, "Please use the customized toolchain located here: http://wild.tk/PowerNex-Env.tar.xz");
 }
 
+import memory.allocator;
 import io.com;
 import io.log;
 import io.fs;
@@ -76,6 +77,8 @@ void bootTTYToTextmode(size_t start, size_t end) {
 void preInit() {
 	import io.textmode;
 
+	initEarlyStaticAllocator();
+
 	COM.init();
 	scr;
 	scr.onChangedCallback = &bootTTYToTextmode;
@@ -132,6 +135,12 @@ void init(uint magic, ulong info) {
 	scr.writeln("Heap initializing...");
 	log.info("Heap initializing...");
 	getKernelHeap;
+
+	{
+		import memory.allocator.heapallocator : HeapAllocator;
+
+		kernelAllocator = new HeapAllocator(getKernelHeap);
+	}
 
 	scr.writeln("PCI initializing...");
 	log.info("PCI initializing...");
