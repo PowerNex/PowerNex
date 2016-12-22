@@ -30,7 +30,27 @@ long indexOf(char[] str, char ch, long start = 0) {
 	return -1;
 }
 
+long indexOf(string str, char ch, long start = 0) {
+	long idx = start;
+	while (idx < str.length)
+		if (str[idx] == ch)
+			return idx;
+		else
+			idx++;
+	return -1;
+}
+
 long indexOfLast(char[] str, char ch, long start = 0) {
+	long idx = start ? start : str.length - 1;
+	while (idx > -1)
+		if (str[idx] == ch)
+			return idx;
+		else
+			idx--;
+	return -1;
+}
+
+long indexOfLast(string str, char ch, long start = 0) {
 	long idx = start ? start : str.length - 1;
 	while (idx > -1)
 		if (str[idx] == ch)
