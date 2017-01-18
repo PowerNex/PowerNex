@@ -29,14 +29,15 @@ enum CompileCommand : string {
 
 enum ToolCommand : string {
 	generateSymbols = objDir ~ "/utils/generatesymbols $in $out",
-	makeInitrd = objDir ~ "/utils/makeinitrd $in $out",
+	makeInitrdOld = objDir ~ "/utils/makeinitrdold $in $out",
+	makeInitrd = "tar -c --posix -f $out -C $in .",
 	removeImports = "sed -e 's/^import .*//g' -e 's/enum/import powernex.data.address;\\nenum/' -e 's/module system.syscall;/module powernex.internal.syscall;/' $in > $out",
 }
 
 struct UtilsProgram {
 static:
 	enum generatesymbols = Target("utils/generatesymbols", CompileCommand.ndc, [Target("utils/generatesymbols.d")]);
-	enum makeinitrd = Target("utils/makeinitrd", CompileCommand.ndc, [Target("utils/makeinitrd.d")]);
+	enum makeinitrdold = Target("utils/makeinitrdold", CompileCommand.ndc, [Target("utils/makeinitrd.d")]);
 }
 
 struct KernelDependency {
@@ -75,9 +76,13 @@ enum kernelDSources = mapKernelSources(
 	"data/textbuffer.d",
 	"data/utf.d",
 	"data/util.d",
+	"fs/iofs/package.d",
+	"fs/iofs/stdionode.d",
+	"fs/mountnode.d",
 	"fs/node.d",
 	"fs/nullfs.d",
 	"fs/package.d",
+	"fs/tarfs.d",
 	"hw/cmos/cmos.d",
 	"hw/pci/pci.d",
 	"hw/ps2/kbset.d",
@@ -87,37 +92,6 @@ enum kernelDSources = mapKernelSources(
 	"io/consolemanager.d",
 	"io/log.d",
 	"io/textmode.d",
-	"io/fs/node.d",
-	"io/fs/filenode.d",
-	"io/fs/directorynode.d",
-	"io/fs/package.d",
-	"io/fs/softlinknode.d",
-	"io/fs/hardlinknode.d",
-	"io/fs/mountpointnode.d",
-	"io/fs/nodepermission.d",
-	"io/fs/fsroot.d",
-	"io/fs/system/fsroot.d",
-	"io/fs/system/versionnode.d",
-	"io/fs/system/package.d",
-	"io/fs/initrd/package.d",
-	"io/fs/initrd/fsroot.d",
-	"io/fs/initrd/filenode.d",
-	"io/fs/io/package.d",
-	"io/fs/io/boolnode.d",
-	"io/fs/io/zeronode.d",
-	"io/fs/io/fsroot.d",
-	"io/fs/io/framebuffer/package.d",
-	"io/fs/io/framebuffer/framebuffer.d",
-	"io/fs/io/framebuffer/bgaframebuffer.d",
-	"io/fs/io/console/console.d",
-	"io/fs/io/console/package.d",
-	"io/fs/io/console/serialconsole.d",
-	"io/fs/io/console/virtualconsole.d",
-	"io/fs/io/console/screen/package.d",
-	"io/fs/io/console/screen/formattedchar.d",
-	"io/fs/io/console/screen/virtualconsolescreen.d",
-	"io/fs/io/console/screen/virtualconsolescreentextmode.d",
-	"io/fs/io/console/screen/virtualconsolescreenframebuffer.d",
 	"memory/allocator/heapallocator.d",
 	"memory/allocator/package.d",
 	"memory/allocator/staticallocator.d",
@@ -148,7 +122,7 @@ static:
 	enum kernel_aobj = Target("kernel/obj/acode.o", CompileCommand.ac, kernelASources);
 	enum kernel_dobj = Target("kernel/obj/dcode.o", CompileCommand.dc, kernelDSources, [KernelDependency.consolefont]);
 	enum kernel = Target("disk/boot/powernex.krl", CompileCommand.ld, [KernelTask.kernel_aobj, KernelTask.kernel_dobj]);
-	enum map = Target("initrd/data/powernex.map", ToolCommand.generateSymbols, [KernelTask.kernel], [UtilsProgram.generatesymbols]);
+	enum map = Target("disk/boot/powernex.map", ToolCommand.generateSymbols, [KernelTask.kernel], [UtilsProgram.generatesymbols]);
 }
 
 struct UserspaceLibrary {
@@ -168,20 +142,19 @@ static:
 	);
 }
 
-enum userPrograms = userspacePrograms!("init", "shell", "helloworld", "cat", "dlogo", "pattern");
+enum userPrograms = userspacePrograms!("init", "login", "shell", "helloworld", "cat");
 
 enum initrdFiles = Target("initrd/", CompileCommand.copy, [Target("initrd/")], [
 	Target("initrd/data/dlogo.bmp")
 ]);
-enum initrd = Target("disk/boot/powernex.dsk", ToolCommand.makeInitrd, [initrdFiles], [
-	UtilsProgram.makeinitrd,
-	KernelTask.map,
+
+enum initrd = Target("disk/boot/powernex-initrd.dsk", ToolCommand.makeInitrd, [initrdFiles], [
 	userPrograms
 ]);
 
 enum isoFiles = Target("disk/", CompileCommand.copy, [Target("disk/")], [
 	Target("disk/boot/grub/grub.cfg")
 ]);
-enum powernexIso = Target(powerNexIsoName, CompileCommand.iso, [isoFiles], [KernelTask.kernel, initrd]);
+enum powernexIso = Target(powerNexIsoName, CompileCommand.iso, [isoFiles], [KernelTask.kernel,/* initrdOld,*/ initrd, KernelTask.map]);
 
 mixin build!(powernexIso);
