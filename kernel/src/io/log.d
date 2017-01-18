@@ -179,9 +179,11 @@ struct Log {
 
 			import task.scheduler : getScheduler, TablePtr;
 
-			TablePtr!(void)* page = getScheduler.currentProcess.threadState.paging.getPage(rip);
-			if (!page || !page.present)
-				break;
+			if (getScheduler && getScheduler.currentProcess) {
+				TablePtr!(void)* page = getScheduler.currentProcess.threadState.paging.getPage(rip);
+				if (!page || !page.present)
+					break;
+			}
 
 			com1.write("\t[");
 
@@ -205,8 +207,7 @@ struct Log {
 				SymbolDef* symbolDef = &_symbols.symbols;
 				for (int i = 0; i < _symbols.count; i++) {
 					if (symbolDef.start <= addr && addr <= symbolDef.end)
-						return Func(cast(string)(VirtAddress(symbolDef) + SymbolDef.sizeof)
-								.ptr[0 .. symbolDef.nameLength], addr - symbolDef.start);
+						return Func(cast(string)(VirtAddress(symbolDef) + SymbolDef.sizeof).ptr[0 .. symbolDef.nameLength], addr - symbolDef.start);
 					symbolDef = cast(SymbolDef*)(VirtAddress(symbolDef) + SymbolDef.sizeof + symbolDef.nameLength).ptr;
 				}
 
