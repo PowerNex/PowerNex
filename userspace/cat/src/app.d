@@ -21,7 +21,7 @@ int main(string[] args) {
 		print("*");
 		print(file);
 		println("*");
-		size_t fd = Syscall.open(file);
+		size_t fd = Syscall.open(file, "r");
 		if (!fd) {
 			println("File not found!");
 			continue;

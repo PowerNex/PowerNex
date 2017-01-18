@@ -5,9 +5,11 @@ import data.linkedlist;
 import memory.paging;
 import memory.heap;
 import data.register;
-import io.fs.filenode;
-import io.fs.directorynode;
 import data.elf;
+import fs;
+import data.container;
+import memory.ref_;
+import memory.allocator;
 
 extern (C) void switchToUserMode(ulong loc, ulong stack);
 
@@ -54,7 +56,7 @@ struct ImageInformation {
 	VirtAddress kernelStack;
 	ubyte[] defaultTLS;
 	char*[] arguments;
-	FileNode file;
+	Ref!VNode file;
 	ELF elf;
 
 	//TODO: fill in
@@ -74,22 +76,6 @@ enum WaitReason {
 	join //more e.g. harddrive, networking, mutex...
 }
 
-struct FileDescriptor {
-	size_t id;
-	FileNode node;
-	this(FileDescriptor* fd) {
-		this.id = fd.id;
-		this.node = fd.node;
-		node.open();
-	}
-
-	this(size_t id, FileNode node) {
-		this.id = id;
-		this.node = node;
-		node.open();
-	}
-}
-
 struct Process {
 	PID pid;
 	string name;
@@ -103,7 +89,7 @@ struct Process {
 	bool kernelProcess;
 	Registers syscallRegisters;
 	Heap heap;
-	DirectoryNode currentDirectory;
+	Ref!VNode currentDirectory;
 
 	Process* parent;
 	LinkedList!Process children;
@@ -114,6 +100,7 @@ struct Process {
 	WaitReason wait;
 	ulong waitData;
 
-	LinkedList!FileDescriptor fileDescriptors;
-	size_t fdCounter;
+	Ref!(Map!(size_t, Ref!NodeContext)) fileDescriptors;
+
+	size_t fdIDCounter;
 }

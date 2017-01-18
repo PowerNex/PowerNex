@@ -1,8 +1,9 @@
 module data.bmpimage;
 
-import io.fs.filenode;
 import data.color;
 import io.log;
+import fs;
+import memory.ref_;
 
 private align(1) struct FileHeader {
 align(1):
@@ -35,18 +36,21 @@ align(1):
 
 class BMPImage {
 public:
-	this(FileNode file) {
-		file.read((cast(ubyte*)&_bitmap)[0 .. BitmapHeader.sizeof], 0);
+	this(Ref!VNode file) {
+		NodeContext nc;
+		if (file.open(nc, FileDescriptorMode.read))
+			return;
+		read(file, nc, _bitmap);
 		_data = new Color[_bitmap.width * _bitmap.height];
 		size_t offset = _bitmap.fileHeader.dataOffset;
 		int pad = _bitmap.width % 4;
 
 		switch (_bitmap.bitsPerPixel) {
 		case 32:
-			_readData!32(file, offset, pad);
+			_readData!32(file, nc, offset, pad);
 			break;
 		case 24:
-			_readData!24(file, offset, pad);
+			_readData!24(file, nc, offset, pad);
 			break;
 		default:
 			log.error("Can't handle bpp = ", _bitmap.bitsPerPixel);
@@ -83,7 +87,7 @@ private:
 	BitmapHeader _bitmap;
 	Color[] _data;
 
-	void _readData(int bpp)(FileNode file, size_t offset, int pad) if (bpp == 24 || bpp == 32) {
+	void _readData(int bpp)(ref Ref!VNode file, ref NodeContext nc, size_t offset, int pad) if (bpp == 24 || bpp == 32) {
 		enum bytesPerPixel = bpp / 8;
 
 		ubyte toIdx(int bitmask) {
@@ -91,7 +95,6 @@ private:
 				: (bitmask & 0x00_00_00_01) ? 0 : ubyte.max;
 		}
 
-		import io.fs.initrd.filenode : InitrdFileNode;
 
 		immutable ubyte rid = toIdx(_bitmap.redMask);
 		immutable ubyte gid = toIdx(_bitmap.greenMask);
@@ -103,8 +106,9 @@ private:
 		ubyte[bytesPerPixel] buf = void;
 		for (int y = _bitmap.height - 1; y >= 0; y--) {
 			for (int x = 0; x < _bitmap.width; x++) {
-				file.read(buf, offset);
+				nc.offset = offset;
 				offset += bytesPerPixel;
+				file.read(nc, buf);
 
 				immutable ubyte r = rid != ubyte.max ? buf[rid] : 0;
 				immutable ubyte g = gid != ubyte.max ? buf[gid] : 0;

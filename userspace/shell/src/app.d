@@ -40,28 +40,14 @@ void println(string str) {
 }
 
 int main(string[] args) {
-	while (true) {
-		println("Booting up shell...");
+	println("Booting up shell...");
 
-		BasicShell bs = new BasicShell();
-		bs.mainLoop();
-		bs.destroy;
-		println("\x1B[2J");
-	}
-
-	return 0;
-}
-
-struct DirectoryListing {
-	enum Type {
-		unknown,
-		file,
-		directory
-	}
-
-	size_t id;
-	char[256] name;
-	Type type;
+	BasicShell bs = new BasicShell();
+	bs.mainLoop();
+	bs.destroy;
+	println("\x1B[2J");
+	Syscall.exec("/bin/login", []);
+	return 1;
 }
 
 class BasicShell {
@@ -96,7 +82,9 @@ private:
 		size_t idx = 0;
 
 		while (idx < 1024) {
-			size_t r = Syscall.read(0, buf[idx .. $], 0);
+			ssize_t r = Syscall.read(0, buf[idx .. $], 0);
+			if (r < 0)
+				continue;
 			for (size_t i = 0; i < r; i++) {
 				char ch = cast(char)buf[idx + i];
 				if (ch == '\0')
@@ -179,26 +167,27 @@ private:
 
 		case "ls":
 			DirectoryListing[16] listings = void;
-			void* ptr = cast(void*)listings.ptr;
 
 			size_t curr = 0;
 			size_t count = listings.length;
 
-			println("ID\tName\t\tType");
+			println("Name\t\tType");
 
-			while(count == listings.length) {
-				if(cmd.args.length == 1)
-					count = Syscall.listDirectory(null, ptr, listings.length, curr);
+			while (count == listings.length) {
+				if (cmd.args.length == 1)
+					count = Syscall.listDirectory(null, listings[], curr);
 				else
-					count = Syscall.listDirectory(cast(string)cmd.args[1], ptr, listings.length, curr);
+					count = Syscall.listDirectory(cast(string)cmd.args[1], listings[], curr);
+				if (count == size_t.max) {
+					println("===ERROR while calling listDirectory==="); //TODO: print real error
+					break;
+				}
 
 				curr += listings.length;
 				foreach (list; listings[0 .. count]) {
 					char[ulong.sizeof * 8] buf;
-					print(itoa(list.id, buf, 10));
-					print(":\t");
 					print(list.name.fromStringz);
-					print("\t\t");
+					print(":\t");
 					print(list.type);
 					println();
 				}

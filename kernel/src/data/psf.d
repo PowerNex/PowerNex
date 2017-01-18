@@ -1,8 +1,9 @@
 module data.psf;
 
+import fs;
+import memory.ref_;
 import data.font;
 import data.utf;
-import io.fs.filenode;
 
 private enum {
 	psf2Magic0 = 0x72,
@@ -34,8 +35,12 @@ private struct PSF2Header {
 
 class PSF : Font {
 public:
-	this(FileNode file) {
-		_valid = file.read(_hdr, 0) == _hdr.sizeof;
+	this(Ref!VNode file) {
+		NodeContext nc;
+		if (file.open(nc, FileDescriptorMode.read))
+			return;
+
+		_valid = read(file, nc, _hdr) == IOStatus.success;
 		if (!_valid)
 			return;
 
@@ -44,12 +49,14 @@ public:
 			return;
 
 		_fontData = new ubyte[_hdr.charsize * _hdr.length];
-		_valid = file.read(_fontData, _hdr.headersize) == _fontData.length;
+		nc.offset = _hdr.headersize;
+		_valid = file.read(nc, _fontData) == IOStatus.success;
 		if (!_valid)
 			return;
 
 		_unicodeTable = new ubyte[file.size - _hdr.headersize - _fontData.length];
-		_valid = file.read(_unicodeTable, _hdr.headersize + _fontData.length) == _unicodeTable.length;
+		nc.offset = _hdr.headersize + _fontData.length;
+		_valid = file.read(nc, _unicodeTable) == IOStatus.success;
 		if (!_valid)
 			return;
 

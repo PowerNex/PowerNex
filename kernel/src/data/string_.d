@@ -20,7 +20,7 @@ size_t strlen(const(char)[] str) {
 	return len;
 }
 
-long indexOf(char[] str, char ch, long start = 0) {
+long indexOf(inout(char)[] str, char ch, long start = 0) {
 	long idx = start;
 	while (idx < str.length)
 		if (str[idx] == ch)
@@ -40,7 +40,7 @@ long indexOf(string str, char ch, long start = 0) {
 	return -1;
 }
 
-long indexOfLast(char[] str, char ch, long start = 0) {
+long indexOfLast(inout(char)[] str, char ch, long start = 0) {
 	long idx = start ? start : str.length - 1;
 	while (idx > -1)
 		if (str[idx] == ch)

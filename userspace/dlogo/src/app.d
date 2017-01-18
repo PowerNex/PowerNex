@@ -14,11 +14,11 @@ void println(string str) {
 }
 
 int main(string[] args) {
-	size_t fb = Syscall.open("/io/framebuffer/framebuffer1");
+	size_t fb = Syscall.open("/io/framebuffer/framebuffer1", "wb");
 	if (!fb)
 		return 1;
 
-	size_t fd = Syscall.open("/data/dlogo.bmp");
+	size_t fd = Syscall.open("/data/dlogo.bmp", "rb");
 	if (!fd)
 		return 2;
 

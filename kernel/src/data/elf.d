@@ -3,11 +3,13 @@ module data.elf;
 import data.bitfield;
 import data.address;
 import data.string_;
-import io.fs.filenode;
+import fs;
 import io.log;
 import data.textbuffer : scr = getBootTTY;
 import task.process;
 import memory.heap;
+import memory.allocator;
+import memory.ref_;
 
 struct ELF64Header {
 	struct Identification {
@@ -291,13 +293,16 @@ struct ELF64Dynamic {
 
 class ELF {
 public:
-	this(FileNode file) {
+	this(Ref!VNode file) {
 		this._file = file;
 
 		if (_file.size <= ELF64Header.sizeof)
 			return;
 
-		_file.read((cast(ubyte*)&_header)[0 .. ELF64Header.sizeof], 0);
+		if (_file.open(nc, FileDescriptorMode.read))
+			return;
+
+		read(_file, nc, _header);
 		_valid = _header.valid;
 
 		foreach (idx; 0 .. _header.sectionHeaderCount) {
@@ -348,13 +353,14 @@ public:
 					cur += 0x1000;
 				}
 
-				log.debug_("Start: ", start, " End: ", end, " cur: ", cur, " Mode: R", (mode & MapMode.writable) ? "W"
-						: "", (mode & MapMode.noExecute) ? "" : "X", (mode & MapMode.user) ? "-User" : "");
+				log.debug_("Start: ", start, " End: ", end, " cur: ", cur, " Mode: R", (mode & MapMode.writable) ? "W" : "",
+						(mode & MapMode.noExecute) ? "" : "X", (mode & MapMode.user) ? "-User" : "");
 
 				memset(start.ptr, 0, (program.virtAddress - start).num);
 				cur = (program.virtAddress + program.fileSize);
 				memset(cur.ptr, 0, (end - cur).num);
-				_file.read(program.virtAddress.ptr!ubyte[0 .. program.fileSize], program.offset.num);
+				nc.offset = program.offset.num; //XXX: Add seek to VNode
+				_file.read(nc, program.virtAddress.ptr!ubyte[0 .. program.fileSize]);
 
 				cur = start;
 				while (cur < end) {
@@ -421,14 +427,16 @@ public:
 	ELF64ProgramHeader getProgramHeader(size_t idx) {
 		assert(idx < header.programHeaderCount);
 		ELF64ProgramHeader programHdr;
-		_file.read(&programHdr, header.programHeaderOffset + header.programHeaderEntrySize * idx);
+		nc.offset = header.programHeaderOffset + header.programHeaderEntrySize * idx;
+		read(_file, nc, programHdr);
 		return programHdr;
 	}
 
 	ELF64SectionHeader getSectionHeader(size_t idx) {
 		assert(idx < header.sectionHeaderCount);
 		ELF64SectionHeader sectionHdr;
-		_file.read(&sectionHdr, header.sectionHeaderOffset + header.sectionHeaderEntrySize * idx);
+		nc.offset = header.sectionHeaderOffset + header.sectionHeaderEntrySize * idx;
+		read(_file, nc, sectionHdr);
 		return sectionHdr;
 	}
 
@@ -436,7 +444,8 @@ public:
 		assert(_symtabIdx != ulong.max);
 		ELF64SectionHeader symtab = getSectionHeader(_symtabIdx);
 		ELF64Symbol symbol;
-		_file.read(&symbol, symtab.offset + ELF64Symbol.sizeof * idx);
+		nc.offset = symtab.offset + ELF64Symbol.sizeof * idx;
+		read(_file, nc, symbol);
 		return symbol;
 	}
 
@@ -446,7 +455,8 @@ public:
 		if (!header.sectionHeaderStringTableIndex)
 			return cast(char[])"UNKNOWN";
 
-		_file.read(buf, getSectionHeader(header.sectionHeaderStringTableIndex).offset + nameIdx);
+		nc.offset = getSectionHeader(header.sectionHeaderStringTableIndex).offset + nameIdx;
+		_file.read(nc, cast(ubyte[])buf);
 
 		return buf[0 .. strlen(buf)];
 	}
@@ -456,8 +466,8 @@ public:
 		__gshared char[255] buf;
 		if (!_strtabIdx)
 			return cast(char[])"UNKNOWN";
-
-		_file.read(buf, getSectionHeader(_strtabIdx).offset + idx);
+		nc.offset = getSectionHeader(_strtabIdx).offset + idx;
+		_file.read(nc, cast(ubyte[])buf);
 
 		return buf[0 .. strlen(buf)];
 	}
@@ -471,7 +481,8 @@ public:
 	}
 
 private:
-	FileNode _file;
+	Ref!VNode _file;
+	NodeContext nc;
 	bool _valid;
 	ELF64Header _header;
 	ulong _strtabIdx = ulong.max;

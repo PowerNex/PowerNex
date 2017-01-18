@@ -3,6 +3,8 @@ module powernex.syscall;
 import powernex.internal.syscall;
 import powernex.data.address;
 
+mixin(Syscall._generateTypeImports());
+
 struct Syscall {
 public:
 	mixin(_generateFunctions());
@@ -20,10 +22,36 @@ private:
 		return o;
 	}
 
+	template isType(alias T) {
+		enum isType = is(T == struct) || is(T == class) || is(T == interface); //XXX: Somehow detect aliases
+	}
+
+	alias Alias(alias a) = a;
+
+	static string _generateTypeImports() {
+		if (!__ctfe) // Without this it tries to use _d_arrayappendT
+			return "";
+		string o;
+		foreach (type; __traits(derivedMembers, powernex.internal.syscall))
+			static if (__traits(compiles, mixin("powernex.internal.syscall." ~ type)))
+				static if (isType!(Alias!(mixin("powernex.internal.syscall." ~ type))))
+					o ~= "public import powernex.internal.syscall : " ~ typeOnly!(type) ~ ";\n";
+
+		return o;
+	}
+
+	template typeOnly(string typename) {
+		static if (typename[$ - 2 .. $] == "[]")
+			enum typeOnly = typeOnly!(typename[0 .. $ - 2]);
+		else static if (typename[$ - 2 .. $] == "*")
+			enum typeOnly = typeOnly!(typename[0 .. $ - 1]);
+		else
+			enum typeOnly = typename;
+	}
+
 	static string _generateFunctionDefinition(alias func, alias attr)() {
 		if (!__ctfe) // Without this it tries to use _d_arrayappendT
 			return "";
-
 		import powernex.data.parameters;
 		import powernex.data.string_ : itoa;
 		import powernex.data.util : isArray;
@@ -32,19 +60,15 @@ private:
 		string[] saveRegisters = ["R12", "R13", "R14", "R15"];
 		enum name = ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"];
 		enum abi = ["RDI", "RSI", "RDX", "R8", "R9", "R10", "R12", "R13", "R14", "R15"];
-
 		alias p = parameters!(mixin("powernex.internal.syscall." ~ func));
 		string o = "static VirtAddress " ~ func ~ "(";
-
 		foreach (idx, val; p) {
 			static if (idx)
 				o ~= ", ";
 			o ~= val.stringof ~ " " ~ name[idx];
 		}
 		o ~= ") {\n";
-
 		size_t registerCount;
-
 		foreach (idx, val; p) {
 			static if (!isArray!val) {
 				registerCount++;
@@ -55,17 +79,14 @@ private:
 			registerCount += 2;
 		}
 		assert(registerCount < abi.length);
-
 		char[ulong.sizeof * 8] buf;
 		o ~= "\tasm {\n";
 		o ~= "\t\tpush RCX;\n";
 		o ~= "\t\tpush R11;\n";
-
 		if (registerCount > 5)
 			foreach (save; saveRegisters[0 .. registerCount - 5])
 				o ~= "\t\tpush " ~ save ~ ";\n";
 		o ~= "\t\tmov RAX, " ~ itoa(cast(ulong)attr.id, buf) ~ ";\n";
-
 		size_t abi_count;
 		foreach (idx, val; p) {
 			static if (isArray!val) {
@@ -76,11 +97,9 @@ private:
 		}
 		//o ~= "\t\tint 0x80;\n";
 		o ~= "\t\tsyscall;\n";
-
 		if (registerCount > 5)
 			foreach_reverse (save; saveRegisters[0 .. registerCount - 5])
 				o ~= "\t\tpop " ~ save ~ ";\n";
-
 		o ~= "\t\tpop R11;\n";
 		o ~= "\t\tpop RCX;\n";
 		o ~= "\t}\n}";

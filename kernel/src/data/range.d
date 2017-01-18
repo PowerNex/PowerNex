@@ -1,13 +1,14 @@
 module data.range;
 
 interface InputRange(E) {
-	@property E front();
+	@property const(E) front() const;
+	@property ref E front();
 	E moveFront();
 	void popFront();
-	@property bool empty();
-	int opApply(scope int delegate(const E) cb) const;
+	@property bool empty() const;
+	int opApply(scope int delegate(const E) cb);
 	int opApply(scope int delegate(ref E) cb);
-	int opApply(scope int delegate(size_t, const E) cb) const;
+	int opApply(scope int delegate(size_t, const E) cb);
 	int opApply(scope int delegate(size_t, ref E) cb);
 }
 
@@ -50,5 +51,5 @@ interface RandomFiniteAssignable(E) : BidirectionalAssignable!E, RandomAccessFin
 }
 
 interface OutputRange(E) {
-	void put(E value);
+	ref E put(E value);
 }

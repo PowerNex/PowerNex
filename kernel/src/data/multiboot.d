@@ -208,7 +208,7 @@ struct Multiboot {
 				char* str = &tmp.string_;
 				modules[modulesCount++] = tmp;
 
-				log.info("Name: Module, Start: ", cast(void*)tmp.modStart, ", End: ", cast(void*)tmp.modEnd, ", CMD: ",
+				log.info("Name: Module (", cast(void*)tmp, "), Start: ", cast(void*)tmp.modStart, ", End: ", cast(void*)tmp.modEnd, ", CMD: ",
 						cast(string)str[0 .. tmp.size - 17]);
 				break;
 
@@ -273,9 +273,11 @@ struct Multiboot {
 
 	static VirtAddress[2] getModule(string name) {
 		foreach (mod; modules[0 .. modulesCount]) {
-			char* str = &mod.string_;
-			log.info("Testing '", str[0 .. mod.size - 17], "' == '", name, "'");
-			if (str[0 .. mod.size - 17] == name)
+				log.info("###\tName: Module (", cast(void*)mod, "), Start: ", cast(void*)mod.modStart, ", End: ", cast(void*)mod.modEnd, ", CMD: ",
+						cast(string)(&mod.string_)[0 .. mod.size - 17]);
+			char[] str = (&mod.string_)[0 .. mod.size - 17];
+			log.info("Testing '", str, "' == '", name, "'");
+			if (str == name)
 				return [PhysAddress(mod.modStart).virtual, PhysAddress(mod.modEnd).virtual];
 		}
 		return [VirtAddress(), VirtAddress()];

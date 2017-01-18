@@ -14,7 +14,7 @@ void println(string str) {
 }
 
 int main(string[] args) {
-	size_t fb = Syscall.open("/io/framebuffer/framebuffer1");
+	size_t fb = Syscall.open("/io/framebuffer/framebuffer1", "wr");
 	if (!fb)
 		return 1;
 

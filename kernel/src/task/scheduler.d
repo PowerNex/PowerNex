@@ -11,6 +11,11 @@ import memory.heap;
 import memory.paging;
 import kmain : rootFS;
 import io.consolemanager;
+import memory.ref_;
+import memory.allocator;
+import fs;
+import data.container;
+import io.log;
 
 private extern (C) {
 	extern __gshared ubyte KERNEL_STACK_START;
@@ -173,10 +178,18 @@ public:
 
 			currentDirectory = _currentProcess.currentDirectory;
 
-			fileDescriptors = new LinkedList!FileDescriptor;
-			for (size_t i = 0; i < _currentProcess.fileDescriptors.length; i++)
-				fileDescriptors.add(new FileDescriptor(_currentProcess.fileDescriptors.get(i)));
-			fdCounter = _currentProcess.fdCounter;
+			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
+			foreach (key, value; _currentProcess.fileDescriptors.data) {
+				log.info("FD: ", key, " name: ", value.node.name);
+				Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext();
+				if (value.duplicate(*nc.data) == IOStatus.success) {
+					log.info("success: ", nc.node == value.node);
+					fileDescriptors[key] = nc;
+				} else
+					log.fatal();
+			}
+
+			fdIDCounter = _currentProcess.fdIDCounter;
 
 			state = ProcessState.ready;
 		}
@@ -255,10 +268,17 @@ public:
 
 			currentDirectory = _currentProcess.currentDirectory;
 
-			fileDescriptors = new LinkedList!FileDescriptor;
-			for (size_t i = 0; i < _currentProcess.fileDescriptors.length; i++)
-				fileDescriptors.add(new FileDescriptor(_currentProcess.fileDescriptors.get(i)));
-			fdCounter = _currentProcess.fdCounter;
+			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
+			foreach (key, value; _currentProcess.fileDescriptors.data) {
+				log.info("FD: ", key, " name: ", value.node.name);
+				Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext();
+				if (value.duplicate(*nc.data) == IOStatus.success) {
+					log.info("success: ", nc.node == value.node);
+					fileDescriptors[key] = nc;
+				} else
+					log.fatal();
+			}
+			fdIDCounter = _currentProcess.fdIDCounter;
 
 			state = ProcessState.ready;
 		}
@@ -329,11 +349,7 @@ public:
 			log.fatal("init process exited. No more work to do.");
 		}
 
-		for (size_t i = 0; i < _currentProcess.fileDescriptors.length; i++) {
-			FileDescriptor* fd = _currentProcess.fileDescriptors.get(i);
-			fd.node.close();
-			fd.destroy;
-		}
+		_currentProcess.fileDescriptors = null;
 
 		if (_currentProcess.children) {
 			for (int i = 0; i < _currentProcess.children.length; i++) {
@@ -447,7 +463,7 @@ private:
 
 			currentDirectory = rootFS.root;
 
-			fileDescriptors = new LinkedList!FileDescriptor;
+			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
 
 			state = ProcessState.ready;
 		}
@@ -481,9 +497,12 @@ private:
 			kernelProcess = false;
 
 			currentDirectory = rootFS.root;
-			fileDescriptors = new LinkedList!FileDescriptor;
-			fileDescriptors.add(new FileDescriptor(fdCounter++, getConsoleManager.virtualConsoles[0]));
-
+			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
+			Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext();
+			Ref!VNode stdio = rootFS.root.findNode("/io/stdio");
+			if (stdio.open(*nc.data(), FileDescriptorMode.write) == IOStatus.success)
+				fileDescriptors[fdIDCounter++] = nc;
+			//TODO: fileDescriptors.add(new FileDescriptor(fdIDCounter++, getConsoleManager.virtualConsoles[0]));
 			state = ProcessState.running;
 
 			heap = null; // This will be _initialized when the init process is loaded
