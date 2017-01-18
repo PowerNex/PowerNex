@@ -1,57 +1,23 @@
 module io.consolemanager;
 
-import io.fs.io.console;
+import kmain : rootFS;
+import fs;
+import fs.iofs.stdionode;
+import memory.ref_;
 
 class ConsoleManager {
 public:
 	void init() {
-		import kmain : rootFS;
-		import io.fs;
-		import io.log;
-
-		DirectoryNode csDir = cast(DirectoryNode)rootFS.root.findNode("/io/console");
-		if (!csDir)
-			log.error("/io/console/ missing");
-
-		auto nodes = csDir.nodes;
-		size_t count;
-		foreach (node; nodes) {
-			if (auto _ = cast(VirtualConsole)node)
-				count++;
-		}
-
-		_vcs = new VirtualConsole[count];
-		size_t idx = 0;
-		foreach (node; nodes) {
-			if (auto _ = cast(VirtualConsole)node)
-				_vcs[idx++] = _;
-		}
-
-		_vcs[_active].active = true;
+		stdout = cast(Ref!StdIONode)rootFS.root.findNode("/io/stdio");
 	}
 
 	void addKeyboardInput(dchar ch, bool ctrl, bool alt, bool shift) {
-		if (!_vcs.length)
-			return;
-
-		if ((ch >= '1' || ch <= '9') && alt) {
-			size_t want = ch - '1';
-			if (want < _vcs.length && want != _active) {
-				_vcs[_active].active = false;
-				_active = want;
-				_vcs[_active].active = true;
-			}
-		} else
-			_vcs[_active].addKeyboardInput(ch);
-	}
-
-	@property VirtualConsole[] virtualConsoles() {
-		return _vcs;
+		stdout.addKeyboardInput(ch);
 	}
 
 private:
 	size_t _active;
-	VirtualConsole[] _vcs;
+	Ref!StdIONode stdout;
 }
 
 ConsoleManager getConsoleManager() {
