@@ -12,7 +12,7 @@ alias FSNodeID = ulong;
 /// Using VNodes ofc
 abstract class FileSystem { //TODO: make into a interface?
 public:
-	abstract Ref!VNode getNode(size_t id);
+	abstract Ref!VNode getNode(FSNodeID id);
 
 	abstract @property Ref!VNode root();
 	abstract @property string name() const;
@@ -23,7 +23,10 @@ enum NodeType {
 	directory,
 	fifo,
 	socket,
-	symlink //TODO: Add hardlink? Worth it?
+	symlink,
+	hardlink,
+	chardevice, // For example a TTY
+	blockdevice // HDD
 }
 
 //TODO: fill in errors from the posix standard
@@ -44,8 +47,12 @@ enum IOStatus : ssize_t {
 	isNotFIFO,
 	isNotSocket,
 	isNotSymlink,
+	isNotHardlink,
+	isNotCharDevice,
+	isNotBlockDevice,
 
-	notFound
+	notFound,
+	wrongFileSystem
 }
 
 ///
@@ -55,11 +62,36 @@ enum FileDescriptorMode {
 	append = 1 << 2,
 	create = 1 << 3,
 	direct = 1 << 4, /// Don't cache or try and speed up anything. Reads and writes will only happen when the calls are made
-	fifo = 1 << 5,
+	binary = 1 << 5
 }
 
 struct NodeContext { // TODO: Add array of in the process
-	uint offset;
+	VNode node; //TODO: refCounter later
+	size_t offset;
+
+	IOStatus close() {
+		return node.close(this);
+	}
+
+	IOStatus read(ubyte[] buffer) {
+		return node.read(this, buffer);
+	}
+
+	IOStatus write(in ubyte[] buffer) {
+		return node.write(this, buffer);
+	}
+
+	IOStatus duplicate(out NodeContext copy) {
+		return node.duplicate(this, copy);
+	}
+
+	IOStatus ioctl(size_t key, size_t value) {
+		return node.ioctl(this, key, value);
+	}
+
+	IOStatus accept(out NodeContext client) {
+		return node.accept(this, client);
+	}
 }
 
 ushort makeMode(ubyte user, ubyte group, ubyte other) {
@@ -68,9 +100,9 @@ ushort makeMode(ubyte user, ubyte group, ubyte other) {
 
 abstract class VNode {
 public:
+	FSNodeID id;
 	NodeType type;
 	FileSystem fs;
-	VNode parent;
 	// Attributes
 	ushort mode; // 110 110 100 - RW/RW/R
 	long uid; // Negative values are kernel space users, postives are for userspaces users.
@@ -83,17 +115,18 @@ public:
 
 	// Internal stuff
 	string name; // IsNeeded? Could be used for faster lookups of names
+	//__	VNode parent;
 	Ref!FileSystem mounted; /// What is mounted on this node
-	//ulong refCounter; // Count for each DirectoryEntry //TODO: Re-add if hardlink are added back
+	ulong refCounter; // Count for each DirectoryEntry
 
 	// No context needed (mostly used for folders)
 	abstract IOStatus chmod(ushort mode);
 	abstract IOStatus chown(long uid, long gid);
 
-	abstract IOStatus link(in string name, FSNodeID id); // Only used internally for now, aka add a node to a directory
+	abstract IOStatus link(in string name, Ref!VNode node); // Only used internally for now, aka add a node to a directory
 	abstract IOStatus unlink(in string name);
 
-	abstract IOStatus readLink(out string path) const; // Called on the VNode that is the symlink
+	abstract IOStatus readLink(out string path); // Called on the VNode that is the symlink
 
 	abstract IOStatus mount(in string name, Ref!FileSystem filesystem);
 	abstract IOStatus umount(in string name);
@@ -102,10 +135,10 @@ public:
 	abstract IOStatus open(out NodeContext fd, FileDescriptorMode mode);
 	abstract IOStatus close(in NodeContext fd);
 
-	abstract IOStatus read(ref NodeContext fd, out ubyte[] buffer, size_t offset) const;
-	abstract IOStatus write(ref NodeContext fd, in ubyte[] buffer, size_t offset);
+	abstract IOStatus read(ref NodeContext fd, ubyte[] buffer);
+	abstract IOStatus write(ref NodeContext fd, in ubyte[] buffer);
 
-	abstract IOStatus dup(in NodeContext fd, out NodeContext copy) const;
+	abstract IOStatus duplicate(ref NodeContext fd, out NodeContext copy);
 
 	abstract IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange);
 
@@ -114,13 +147,91 @@ public:
 
 	abstract IOStatus ioctl(in NodeContext fd, size_t key, size_t value);
 
-	abstract IOStatus accept(in NodeContext fd, out NodeContext client) const;
+	abstract IOStatus accept(in NodeContext fd, out NodeContext client);
 }
 
 struct DirectoryEntry {
+	FileSystem fileSystem;
 	FSNodeID id;
 	string name;
 }
 
 interface DirectoryEntryRange : InputRange!DirectoryEntry {
+}
+
+//TODO: (Re)move?
+static import data.container;
+
+alias DirectoryEntryList = data.container.Vector!DirectoryEntry;
+final class DefaultDirectoryEntryRange : DirectoryEntryRange {
+public:
+	this(Ref!DirectoryEntryList list) {
+		_list = list;
+	}
+
+	@property override const(DirectoryEntry) front() const {
+		return _list[_index];
+	}
+
+	@property override ref DirectoryEntry front() {
+		return _list[_index];
+	}
+
+	override DirectoryEntry moveFront() {
+		assert(0, "moveFront not implemented!");
+	}
+
+	override void popFront() {
+		_index++;
+	}
+
+	@property override bool empty() const {
+		return _index >= _list.length;
+	}
+
+	override int opApply(scope int delegate(const DirectoryEntry) cb) const {
+		int res;
+		for (size_t i = _index; i < _list.length; i++) {
+			res = cb(_list[i]);
+			if (res)
+				break;
+		}
+		return res;
+	}
+
+	override int opApply(scope int delegate(size_t, const DirectoryEntry) cb) const {
+		int res;
+		size_t j;
+		for (size_t i = _index; i < _list.length; i++) {
+			res = cb(j++, _list[i]);
+			if (res)
+				break;
+		}
+		return res;
+	}
+
+	override int opApply(scope int delegate(ref DirectoryEntry) cb) {
+		int res;
+		for (size_t i = _index; i < _list.length; i++) {
+			res = cb(_list[i]);
+			if (res)
+				break;
+		}
+		return res;
+	}
+
+	override int opApply(scope int delegate(size_t, ref DirectoryEntry) cb) {
+		int res;
+		size_t j;
+		for (size_t i = _index; i < _list.length; i++) {
+			res = cb(j++, _list[i]);
+			if (res)
+				break;
+		}
+		return res;
+	}
+
+private:
+	Ref!DirectoryEntryList _list;
+	size_t _index;
 }

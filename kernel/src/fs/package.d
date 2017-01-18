@@ -6,18 +6,13 @@ public {
 
 import memory.ref_;
 
-__gshared Ref!FileSystem mountedFS;
-
-void initFS() {
-	import fs.nullfs;
-	import memory.allocator;
-
-	mountedFS = cast(Ref!FileSystem)makeRef!NullFS(kernelAllocator);
-}
-
 Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
+	import kmain: rootFS; //TODO:
 	import data.string_ : indexOf;
 	import io.log : log;
+
+	if (path.length && path[0] == '/')
+		return findNode(rootFS.root, path[1 .. $]);
 
 	Ref!VNode currentNode = startNode;
 	string curPath = path;
@@ -44,7 +39,7 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 		bool foundit;
 		foreach (DirectoryEntry e; range.data)
 			if (e.name == part) {
-				currentNode = currentNode.fs.getNode(e.id);
+				currentNode = e.fileSystem.getNode(e.id);
 				foundit = true;
 				break;
 			}
@@ -62,4 +57,34 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 			return Ref!VNode();
 	}
 	return currentNode;
+}
+
+IOStatus read(T)(VNode node, ref NodeContext nc, T[] arr) {
+	IOStatus result = node.read(nc, (cast(ubyte*)arr.ptr)[0 .. T.sizeof * arr.length]);
+	return result;
+}
+
+IOStatus write(T)(VNode node, ref NodeContext nc, T[] obj) {
+	IOStatus result = node.write(nc, (cast(ubyte*)arr.ptr)[0 .. T.sizeof * arr.length]);
+	return result;
+}
+
+IOStatus read(T)(VNode node, ref NodeContext nc, T* obj) {
+	IOStatus result = node.read(nc, (cast(ubyte*)obj)[0 .. T.sizeof]);
+	//assert(result == T.sizeof);
+	return result;
+}
+
+IOStatus write(T)(VNode node, ref NodeContext nc, T* obj) {
+	IOStatus result = node.write(nc, (cast(ubyte*)obj)[0 .. T.sizeof]);
+	//assert(result == T.sizeof);
+	return result;
+}
+
+IOStatus read(T)(VNode node, ref NodeContext nc, ref T obj) {
+	return .read(node, nc, &obj);
+}
+
+IOStatus write(T)(VNode node, ref NodeContext nc, ref T obj) {
+	return .write(node, nc, &obj);
 }

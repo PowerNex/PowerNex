@@ -1,27 +1,25 @@
-module fs.nullfs;
+module fs.iofs;
 
 import fs;
-
 import data.container;
-import memory.ref_;
 import memory.allocator;
+import memory.ref_;
 
-//TODO: Check if you have permissions to change this stuff EVERYWHERE, Add that to VNode?
-final class NullRootNode : VNode {
+import fs.iofs.stdionode;
+
+final class IORootNode : VNode {
 public:
-	this(FileSystem fs, size_t id, size_t parent) {
+	this(FileSystem fs, FSNodeID id, FSNodeID parent) {
+		this.id = id;
 		this.type = NodeType.directory;
 		this.fs = fs;
-		this.mode = makeMode(6, 6, 4);
+		this.mode = makeMode(7, 7, 5);
 
-		this.name = "RootFS";
+		this.name = "IOFS";
 
-		_entries = makeRef!DirectoryEntryList(kernelAllocator, kernelAllocator);
+		_entries = kernelAllocator.makeRef!DirectoryEntryList(kernelAllocator);
 		_entries.put(DirectoryEntry(fs, id, "."));
 		_entries.put(DirectoryEntry(fs, parent, ".."));
-		_entries.put(DirectoryEntry(fs, id, "This is a NullFS!"));
-		_entries.put(DirectoryEntry(fs, id, "If you see this it probably mean"));
-		_entries.put(DirectoryEntry(fs, id, "that you encountered a bug!"));
 	}
 
 	override IOStatus chmod(ushort mode) {
@@ -106,12 +104,13 @@ private:
 	Ref!DirectoryEntryList _entries;
 }
 
-class NullFS : FileSystem {
+final class IOFS : FileSystem {
 public:
 	this() {
-		_nodes = kernelAllocator.makeRef!NodeList(kernelAllocator);
-		_nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!NullRootNode(this, _idCounter, _idCounter));
+		_nodes = kernelAllocator.makeRef!(Vector!(Ref!VNode))(kernelAllocator);
+		Ref!VNode root = _nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!IORootNode(this, _idCounter, _idCounter));
 		_idCounter++;
+		root.link("stdio", _nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!StdIONode(this, _idCounter++, 0)));
 	}
 
 	override Ref!VNode getNode(FSNodeID id) {
@@ -123,11 +122,10 @@ public:
 	}
 
 	override @property string name() const {
-		return "NullFS";
+		return "IOFS";
 	}
 
 private:
-	alias NodeList = Vector!(Ref!VNode);
-	Ref!NodeList _nodes;
-	size_t _idCounter;
+	Ref!(Vector!(Ref!VNode)) _nodes;
+	FSNodeID _idCounter;
 }
