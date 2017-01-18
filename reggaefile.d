@@ -46,17 +46,15 @@ static:
 	enum consolefont = Target("kernel/src/bin/consoleFont.psf", CompileCommand.ungzip, [KernelDependency.consolefontgz]);
 }
 
+//tree --dirsfirst --sort=name -i -f -Q | grep "\.d" | sed -e "s/\"\.\//     \"/g" -e "s/$/,/g"
 enum kernelDSources = mapKernelSources(
-	"invariant.d",
-	"object.d",
-	"kmain.d",
 	"acpi/rsdp.d",
 	"bin/consolefont.d",
 	"cpu/gdt.d",
 	"cpu/idt.d",
 	"cpu/msr.d",
-	"cpu/tss.d",
 	"cpu/pit.d",
+	"cpu/tss.d",
 	"data/address.d",
 	"data/bitfield.d",
 	"data/bmpimage.d",
@@ -88,9 +86,9 @@ enum kernelDSources = mapKernelSources(
 	"hw/ps2/kbset.d",
 	"hw/ps2/keyboard.d",
 	"io/com.d",
-	"io/port.d",
 	"io/consolemanager.d",
 	"io/log.d",
+	"io/port.d",
 	"io/textmode.d",
 	"memory/allocator/heapallocator.d",
 	"memory/allocator/package.d",
@@ -99,22 +97,26 @@ enum kernelDSources = mapKernelSources(
 	"memory/heap.d",
 	"memory/paging.d",
 	"memory/ref_.d",
-	"system/utils.d",
 	"system/syscall.d",
 	"system/syscallhandler.d",
+	"system/utils.d",
+	"task/mutex/schedulemutex.d",
+	"task/mutex/spinlockmutex.d",
 	"task/process.d",
 	"task/scheduler.d",
-	"task/mutex/spinlockmutex.d",
-	"task/mutex/schedulemutex.d"
+	"invariant.d",
+	"kmain.d",
+	"object.d",
 );
 
+//tree --dirsfirst --sort=name -i -f -Q | grep "\.S" | sed -e "s/\"\.\//     \"/g" -e "s/$/,/g"
 enum kernelASources = mapKernelSources(
 	"system/syscallhelper.S",
-	"task/task.S",
 	"task/mutex/assembly.S",
+	"task/task.S",
 	"boot.S",
 	"bootx64.S",
-	"extra.S"
+	"extra.S",
 );
 
 struct KernelTask {
