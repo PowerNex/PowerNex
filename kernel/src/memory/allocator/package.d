@@ -17,8 +17,8 @@ interface IAllocator {
 }
 
 auto make(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
-	static if (is(T == class)) {
-		static assert(!__traits(isAbstractClass, T), T.stringof ~ " is abstract and it can't be emplaced");
+	static if (is(T == class) || is(T == interface)) {
+		static assert(!is(T == interface) && !__traits(isAbstractClass, T), T.stringof ~ " is abstract and it can't be emplaced");
 		enum size = __traits(classInstanceSize, T);
 		alias ReturnType = T;
 	} else {
@@ -31,8 +31,8 @@ auto make(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
 
 	memset(chunk.ptr, 0, size);
 	auto init = typeid(T).init;
-
-	chunk[0 .. init.length] = init[];
+	if (init.ptr)
+		chunk[0 .. init.length] = init[];
 
 	static if (is(typeof(result.__ctor(args))))
 		result.__ctor(args);
@@ -77,7 +77,7 @@ bool expandArray(T, Allocator)(auto ref Allocator alloc, ref T[] arr, size_t del
 	return true;
 }
 
-void dispose(T, Allocator)(auto ref Allocator alloc, T* obj) {
+void dispose(T, Allocator)(auto ref Allocator alloc, T* obj) if (!is(T == struct)) {
 	alloc.deallocate((cast(void*)obj)[0 .. T.sizeof]);
 }
 

@@ -43,6 +43,11 @@ public:
 		_counter = null;
 	}
 
+	ref typeof(this) opAssign(typeof(null)) {
+		__dtor();
+		return this;
+	}
+
 	ref typeof(this) opAssign(typeof(this) other) {
 		__dtor();
 		_allocator = other._allocator;
@@ -58,19 +63,23 @@ public:
 		return !!_obj;
 	}
 
-	X opCast(X : Ref!T, T)() if (isClass && is(E : T)) {
+	X opCast(X : Ref!T, T)() if (isClass && (is(E : T) || is(T : E))) {
 		return X(cast(T)_obj, _counter, _allocator);
 	}
 
-	E opApply() {
-		return _obj;
+	auto opApply(Args...)(Args args) {
+		return _obj.opApply(args);
 	}
 
 	@property E data() {
 		return _obj;
 	}
 
-	alias _obj this;
+	@property const(E) data() const {
+		return _obj;
+	}
+
+	alias data this;
 private:
 	IAllocator _allocator;
 	public E _obj;

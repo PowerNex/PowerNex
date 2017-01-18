@@ -107,9 +107,8 @@ public:
 
 	void printLayout() {
 		for (MemoryHeader* start = _root; start; start = start.next) {
-			log.info("address: ", start, "\tmagic: ", cast(void*)start.magic, "\thasPrev: ", !!start.prev,
-					"\thasNext: ", !!start.next, "\tisAllocated: ", !!start.isAllocated, "\tsize: ", start.size,
-					"\tnext: ", start.next);
+			log.info("address: ", start, "\tmagic: ", cast(void*)start.magic, "\thasPrev: ", !!start.prev, "\thasNext: ",
+					!!start.next, "\tisAllocated: ", !!start.isAllocated, "\tsize: ", start.size, "\tnext: ", start.next);
 
 			if (start.magic != _magic)
 				log.fatal("====MAGIC IS WRONG====");
@@ -252,9 +251,17 @@ private void _onPageFault(Registers* regs) {
 		TablePtr!(Table!2)* tablePd;
 		TablePtr!(Table!1)* tablePt;
 		TablePtr!(void)* tablePage;
-		Paging _paging = getScheduler.currentProcess.threadState.paging;
-		if (_paging) {
-			auto _root = _paging.rootTable();
+		Paging paging;
+		{
+			auto s = getScheduler;
+			if (s) {
+				auto cp = s.currentProcess;
+				if (cp)
+					paging = cp.threadState.paging;
+			}
+		}
+		if (paging) {
+			auto _root = paging.rootTable();
 			tablePdp = _root.get(cast(ushort)(addr.num >> 39) & 0x1FF);
 			if (tablePdp && tablePdp.present)
 				tablePd = tablePdp.data.virtual.ptr!(Table!3).get(cast(ushort)(addr.num >> 30) & 0x1FF);

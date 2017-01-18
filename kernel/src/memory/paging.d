@@ -210,8 +210,8 @@ public:
 								present = true;
 							}
 
-							VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(
-									ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
+							VirtAddress addr = VirtAddress(
+									cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
 							flushPage(addr);
 
 							memcpy(phys.virtual.ptr, otherPTEntry.children[ptIdx].data.virtual.ptr, 0x1000); // TODO: Implement Copy-on-write, so we can skip this step!
@@ -227,6 +227,9 @@ public:
 	void map(VirtAddress virt, PhysAddress phys, MapMode pageMode, MapMode tablesMode = MapMode.defaultUser) {
 		if (phys.num == 0)
 			return;
+		if (virt.num > 0xFFFFFFFF81507000 - 0x1000 && virt.num < 0xFFFFFFFF81507000 + 0x1000)
+			log.error("Trying to map module page! ", virt);
+
 		const ulong virtAddr = virt.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pdpIdx = (virtAddr >> 30) & 0x1FF;
@@ -249,6 +252,9 @@ public:
 		if (!page)
 			return;
 
+		if (virt.num > 0xFFFFFFFF81507000 - 0x1000 && virt.num < 0xFFFFFFFF81507000 + 0x1000)
+			log.error("Trying to unmap module page! ", virt);
+
 		page.mode = MapMode.empty;
 		page.data = PhysAddress();
 		page.present = false;
@@ -259,6 +265,9 @@ public:
 		auto page = getPage(virt);
 		if (!page)
 			return;
+
+		if (virt.num > 0xFFFFFFFF81507000 - 0x1000 && virt.num < 0xFFFFFFFF81507000 + 0x1000)
+			log.error("Trying to unmapAndFree module page! ", virt);
 
 		FrameAllocator.free(page.data);
 
@@ -341,8 +350,11 @@ public:
 							for (ushort ptIdx = 0; ptIdx < 512; ptIdx++)
 								with (myPTEntry.get(ptIdx))
 									if (present) {
-										VirtAddress addr = VirtAddress(cast(ulong)pml4Idx << 39UL | cast(
-												ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
+										VirtAddress addr = VirtAddress(
+												cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
+
+										if (addr.num > 0xFFFFFFFF81507000 - 0x1000 && addr.num < 0xFFFFFFFF81507000 + 0x1000)
+											log.error("Trying to unmap(removeUserspace) module page! ", addr);
 										FrameAllocator.free(data);
 										present = false;
 										flushPage(addr);
