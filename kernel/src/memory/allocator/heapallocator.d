@@ -15,7 +15,7 @@ public:
 	}
 
 	bool expand(ref void[] data, size_t deltaSize) {
-		return false;
+		return reallocate(data, data.length + deltaSize);
 	}
 
 	bool reallocate(ref void[] data, size_t size) {

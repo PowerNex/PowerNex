@@ -18,7 +18,8 @@ public:
 		_allocator = allocator;
 		_obj = obj;
 		_counter = counter;
-		(*_counter)++;
+		if (_counter)
+			(*_counter)++;
 	}
 
 	this(this) {
@@ -30,26 +31,21 @@ public:
 		_allocator = other._allocator;
 		_obj = other._obj;
 		_counter = other._counter;
-		(*_counter)++;
+		if (_counter)
+			(*_counter)++;
 	}
 
 	~this() {
-		if (_allocator && _obj && _counter && --(*_counter) == 0) {
-			_allocator.dispose(_obj);
-			_allocator.dispose(_counter);
-		}
-		_allocator = null;
-		_obj = null;
-		_counter = null;
+		_free();
 	}
 
 	ref typeof(this) opAssign(typeof(null)) {
-		__dtor();
+		_free();
 		return this;
 	}
 
 	ref typeof(this) opAssign(typeof(this) other) {
-		__dtor();
+		_free();
 		_allocator = other._allocator;
 		_obj = other._obj;
 		_counter = other._counter;
@@ -79,9 +75,33 @@ public:
 		return _obj;
 	}
 
+	@property size_t counter() const {
+		if (_counter)
+			return *_counter;
+		else
+			return 0;
+	}
+
 	alias data this;
 private:
+	public E _obj; // Must be first
 	IAllocator _allocator;
-	public E _obj;
 	size_t* _counter;
+
+	void _free() {
+		import io.log;
+
+		/*
+		if (_obj && _counter)
+			log.info("Trying to free: ", cast(void*)_obj, " T: ", T.stringof, " counter: ", (*_counter) - 1);*/
+		if (_allocator && _obj && _counter && --(*_counter) == 0) {
+			_allocator.dispose(_obj);
+			_allocator.dispose(_counter);
+
+			//log.info("Freed: ", cast(void*)_obj, " T: ", T.stringof);
+		}
+		_allocator = null;
+		_obj = null;
+		_counter = null;
+	}
 }

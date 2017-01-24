@@ -31,6 +31,8 @@ private:
 
 interface IContainer(E) : OutputRange!E {
 	bool remove(size_t index);
+	bool remove(E obj);
+	void clear();
 	E get(size_t index);
 	ref E opIndex(size_t index);
 	const(E) opIndex(size_t index) const;
@@ -55,6 +57,11 @@ public:
 		_allocator = allocator;
 	}
 
+	~this() {
+		clear();
+		_allocator.deallocate(_list);
+	}
+
 	ref E put(E value) {
 		if (_length == _capacity)
 			_expand();
@@ -66,14 +73,61 @@ public:
 		if (index >= _length)
 			return false;
 
-		static if (is(typeof(_list[0].__dtor())))
-			_list[index].__dtor();
+		static if (is(E == struct))
+			typeid(E).destroy(&_list[index]);
+		else static if (is(E == class)) {
+			ClassInfo ci = typeid(obj);
+			void* object = cast(void*)_d_dynamic_cast(cast(Object)obj, ci);
 
-		for (; index < _length - 1; index++)
-			_list[index] = _list[index + 1];
-		_list[index] = E.init;
+			ClassInfo origCI = ci;
+
+			while (ci) {
+				if (ci.destructor) {
+					auto dtor = cast(void function(void*))ci.destructor;
+					dtor(object);
+				}
+
+				ci = ci.base;
+			}
+		}
+
+		memmove(&_list[index], &_list[index + 1], (_length - 1 - index) * E.sizeof);
 		_length--;
+
+		static if (is(E == struct)) {
+			auto initData = typeid(E).init;
+			if (initData.ptr)
+				(cast(void*)&_list[_length])[0 .. initData.length] = initData[];
+			else
+				memset(&_list[_length], 0, E.sizeof);
+		} else static if (is(E == class)) {
+			auto initData = origCI.init;
+			(cast(void*)&_list[_length])[0 .. initData.length] = initData[];
+		} else
+			_list[_length] = E.init;
+
 		return true;
+	}
+
+	bool remove(E obj) {
+		size_t index;
+		while (index < _length)
+			if (_list[index] == obj)
+				break;
+			else
+				index++;
+
+		return remove(index);
+	}
+
+	void clear() {
+		static if (is(typeof(_list[0].__dtor())))
+			foreach (ref obj; _list[0 .. _length]) {
+				obj.__dtor();
+				obj = E.init;
+			}
+
+		_length = 0;
 	}
 
 	E get(size_t index) {
@@ -298,3 +352,5 @@ private:
 		_capacity += _growFactor;
 	}
 }
+
+//TODO: Implement some sort of tree.

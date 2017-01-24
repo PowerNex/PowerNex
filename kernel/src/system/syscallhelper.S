@@ -4,13 +4,13 @@
 .SET kernelStack, 632//Process.image.offsetof + ImageInformation.kernelStack.offsetof
 
 .global _onSyscallHandler
-.global _currentProcess
+.global _currentProcess // It is of the type Ref!Process, we need to deref it to get the object
 
 .global onSyscall
 .type onSyscall, %function
 onSyscall:
 	mov %rsp, userStack
-	movq _currentProcess, %rsp
+	movq (_currentProcess), %rsp
 	movq kernelStack(%rsp), %rsp
 	push (userStack)
 

@@ -93,6 +93,8 @@ enum kernelDSources = mapKernelSources(
 	"memory/allocator/heapallocator.d",
 	"memory/allocator/package.d",
 	"memory/allocator/staticallocator.d",
+	"memory/allocator/userspaceallocator.d",
+	"memory/allocator/wrappedallocator.d",
 	"memory/frameallocator.d",
 	"memory/heap.d",
 	"memory/paging.d",

@@ -227,8 +227,6 @@ public:
 	void map(VirtAddress virt, PhysAddress phys, MapMode pageMode, MapMode tablesMode = MapMode.defaultUser) {
 		if (phys.num == 0)
 			return;
-		if (virt.num > 0xFFFFFFFF81507000 - 0x1000 && virt.num < 0xFFFFFFFF81507000 + 0x1000)
-			log.error("Trying to map module page! ", virt);
 
 		const ulong virtAddr = virt.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
@@ -252,9 +250,6 @@ public:
 		if (!page)
 			return;
 
-		if (virt.num > 0xFFFFFFFF81507000 - 0x1000 && virt.num < 0xFFFFFFFF81507000 + 0x1000)
-			log.error("Trying to unmap module page! ", virt);
-
 		page.mode = MapMode.empty;
 		page.data = PhysAddress();
 		page.present = false;
@@ -265,9 +260,6 @@ public:
 		auto page = getPage(virt);
 		if (!page)
 			return;
-
-		if (virt.num > 0xFFFFFFFF81507000 - 0x1000 && virt.num < 0xFFFFFFFF81507000 + 0x1000)
-			log.error("Trying to unmapAndFree module page! ", virt);
 
 		FrameAllocator.free(page.data);
 
@@ -317,6 +309,8 @@ public:
 	}
 
 	void removeUserspace(bool freePages) {
+		log.warning("removeUserspace for ", cast(void*)_rootPhys);
+
 		Table!4* myPML4 = _root;
 		for (ushort pml4Idx = 0; pml4Idx < 512 - 1 /* Kernel PDP */ ; pml4Idx++) {
 			if (pml4Idx == 256) // 512GiB Lower mapping
@@ -353,8 +347,8 @@ public:
 										VirtAddress addr = VirtAddress(
 												cast(ulong)pml4Idx << 39UL | cast(ulong)pdpIdx << 30UL | cast(ulong)pdIdx << 21UL | cast(ulong)ptIdx << 12UL);
 
-										if (addr.num > 0xFFFFFFFF81507000 - 0x1000 && addr.num < 0xFFFFFFFF81507000 + 0x1000)
-											log.error("Trying to unmap(removeUserspace) module page! ", addr);
+										/*if (addr.num > 0xFFFFFFFF81507000 - 0x1000 && addr.num < 0xFFFFFFFF81507000 + 0x1000)
+											log.error("Trying to unmap(removeUserspace) module page! ", addr);*/
 										FrameAllocator.free(data);
 										present = false;
 										flushPage(addr);

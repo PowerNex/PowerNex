@@ -30,7 +30,7 @@ struct TLS {
 	}
 
 	static TLS* init(Process* process, ubyte[] data) {
-		VirtAddress addr = VirtAddress(process.heap.alloc(data.length + TLS.sizeof));
+		VirtAddress addr = process.allocator.allocate(data.length + TLS.sizeof).VirtAddress;
 		memcpy(addr.ptr, data.ptr, data.length);
 		TLS* this_ = (addr + data.length).ptr!TLS;
 		this_.self = this_;
@@ -77,6 +77,15 @@ enum WaitReason {
 }
 
 struct Process {
+	~this() {
+		if (!pid)
+			return;
+		import io.log;
+
+		log.info("Freeing: ", name, "(", pid, ")");
+		log.printStackTrace();
+	}
+
 	PID pid;
 	string name;
 	string description;
@@ -88,14 +97,19 @@ struct Process {
 	ImageInformation image;
 	bool kernelProcess;
 	Registers syscallRegisters;
-	Heap heap;
+	Ref!IAllocator allocator;
 	Ref!VNode currentDirectory;
 
-	Process* parent;
-	LinkedList!Process children;
+	//--TODO: Add pointer to entry in tree, To make it faster to find it children if the scheduler want to switch to a child.
+	// Maybe isn't needed because it won't really care unless it needs to find the children.
+
+	//TODO: These should be two types of children, one which share the same memory space (These will have higher priority
+	// when the scheduler wants to switch) and one doesn't.
+	Ref!Process parent; // Is this even needed to be saved? Only used in two places currently.
+	Ref!(Vector!(Ref!Process)) children;
 
 	ProcessState state;
-	ulong returnCode;
+	ulong returnCode; //TODO: Change to ssize_t
 
 	WaitReason wait;
 	ulong waitData;

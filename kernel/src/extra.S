@@ -30,6 +30,13 @@ cpuInstallCR3:
 	ret
 .size cpuInstallCR3, .-cpuInstallCR3
 
+.global cpuRetCR3
+.type cpuRetCR3, %function
+cpuRetCR3:
+	mov %CR3, %RAX
+	ret
+.size cpuRetCR3, .-cpuRetCR3
+
 .global cpuRetCR2
 .type cpuRetCR2, %function
 cpuRetCR2:

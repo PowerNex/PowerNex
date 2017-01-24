@@ -158,13 +158,13 @@ extern (C) {
 
 	void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = Syscall.realloc(p.ptr, newlength * size).ptr[0 .. newlength];
+		*p = Syscall.realloc(*p, newlength * size).ptr[0 .. newlength];
 		return *p;
 	}
 
 	void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = Syscall.realloc(p.ptr, newlength * size).ptr[0 .. newlength];
+		*p = Syscall.realloc(*p, newlength * size).ptr[0 .. newlength];
 
 		return *p;
 	}
@@ -172,7 +172,7 @@ extern (C) {
 	byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) {
 		auto size = ti.next.tsize();
 		auto newlength = px.length + n;
-		void* newPtr = Syscall.realloc(px.ptr, newlength * size).ptr;
+		void* newPtr = Syscall.realloc(cast(void[])px, newlength * size).ptr;
 		*cast(size_t*)&px = newlength;
 		(cast(void**)(&px))[1] = newPtr;
 		return px;
@@ -436,7 +436,7 @@ class TypeInfo {
 	}
 	/// Run the destructor on the object and all its sub-objects
 	void destroy(void* p) const {
-		Syscall.free(p);
+		Syscall.free(p[0 .. 1]);
 	}
 	/// Run the postblit on the object and all its sub-objects
 	void postblit(void* p) const {
@@ -1124,8 +1124,8 @@ private string makeTypeInfo(T...)() {
 		void doit(t)() {
 			if (__ctfe) {
 				code ~= "class TypeInfo_" ~ t.mangleof ~ " : TypeInfo {
-					override string toString() const { return \""
-					~ t.stringof ~ "\"; }
+					override string toString() const { return \"" ~ t.stringof
+					~ "\"; }
 
 					override @property size_t tsize() nothrow pure const { return " ~ t.stringof ~ ".sizeof; }
 				}";
@@ -1577,14 +1577,14 @@ immutable(T)[] immutable_alloc(T)(scope void delegate(T[]) initalizer) {
 }
 
 void destroy(void* memory) {
-	Syscall.free(memory);
+	Syscall.free(memory[0 .. 1]);
 }
 
 void destroy(T : Object)(T object) {
 	auto dtor = cast(void function(Object o))object.classinfo.destructor;
 	if (dtor)
 		dtor(object);
-	Syscall.free(cast(void*)object);
+	Syscall.free((cast(void*)object)[0 .. __traits(classInstanceSize, T)]);
 }
 
 void destroy(T)(T[] array) {
@@ -1599,7 +1599,7 @@ void destroy(T)(T[] array) {
 		foreach (el; array)
 			destroy(cast(void*)el);
 	}
-	Syscall.free(cast(void*)array.ptr);
+	Syscall.free(cast(void[])array);
 }
 
 // this would be used for automatic heap closures, but there's no way to free it...

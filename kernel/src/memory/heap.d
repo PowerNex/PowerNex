@@ -237,6 +237,8 @@ Heap getKernelHeap() {
 	return kernelHeap;
 }
 
+private extern extern (C) ulong cpuRetCR3();
+
 private void _onPageFault(Registers* regs) {
 	import data.textbuffer : scr = getBootTTY;
 	import io.log;
@@ -284,6 +286,8 @@ private void _onPageFault(Registers* regs) {
 		if (tablePage)
 			modePage = tablePage.mode;
 
+		ulong cr3 = cpuRetCR3();
+
 		scr.foreground = Color(255, 0, 0);
 		scr.writeln("===> PAGE FAULT");
 		scr.writeln("IRQ = ", intNumber, " | RIP = ", cast(void*)rip);
@@ -296,7 +300,7 @@ private void _onPageFault(Registers* regs) {
 		scr.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
 		scr.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
 		scr.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
-		scr.writeln(" addr = ", cast(void*)addr);
+		scr.writeln(" addr = ", cast(void*)addr, " | CR3 = ", cast(void*)cr3);
 		scr.writeln("Flags: ", cast(void*)flags);
 		scr.writeln("Errorcode: ", cast(void*)errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
@@ -321,7 +325,7 @@ private void _onPageFault(Registers* regs) {
 			"R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13, "\n",
 			"R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15, "\n",
 			" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss, "\n",
-			" addr = ",	cast(void*)addr, "\n",
+			" addr = ",	cast(void*)addr, " | CR3 = ", cast(void*)cr3, "\n",
 			"Flags: ", cast(void*)flags, "\n",
 			"Errorcode: ", cast(void*)errorCode, " (",
 				(errorCode & (1 << 0) ? " Present" : " NotPresent"),

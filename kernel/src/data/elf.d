@@ -9,6 +9,7 @@ import data.textbuffer : scr = getBootTTY;
 import task.process;
 import memory.heap;
 import memory.allocator;
+import memory.allocator.userspaceallocator;
 import memory.ref_;
 
 struct ELF64Header {
@@ -319,16 +320,13 @@ public:
 		import task.scheduler;
 
 		Scheduler scheduler = getScheduler;
-		Process* process = scheduler.currentProcess;
+		Ref!Process process = scheduler.currentProcess;
 		Paging paging = process.threadState.paging;
 
 		string[] tmpArgs;
 		tmpArgs.length = args.length;
 		foreach (idx, arg; args)
 			tmpArgs[idx] = arg.dup;
-
-		if (process.heap && !(--process.heap.refCounter))
-			process.heap.destroy;
 
 		paging.removeUserspace(true);
 
@@ -384,10 +382,11 @@ public:
 
 		startHeap = (startHeap.num + 0xFFF) & ~0xFFF;
 
-		process.heap = new Heap(process.threadState.paging, MapMode.defaultUser, startHeap, VirtAddress(0xFFFF_FFFF_0000_0000));
+		process.allocator = cast(Ref!IAllocator)kernelAllocator.makeRef!UserSpaceAllocator(process, startHeap);
+		log.info("process: ", process.name, "(", process.pid, ")\tallocator: ", cast(void*)process.allocator.data);
 
 		enum stackSize = 0x1000;
-		VirtAddress userStack = VirtAddress(process.heap.alloc(stackSize)) + stackSize;
+		VirtAddress userStack = process.allocator.allocate(stackSize).VirtAddress + stackSize;
 		process.image.userStack = userStack;
 		process.threadState.tls = TLS.init(process, false);
 
@@ -399,7 +398,7 @@ public:
 			const ulong endOfArgs = length;
 			length += ulong.sizeof * (tmpArgs.length + 1);
 
-			VirtAddress elfArgs = process.heap.alloc(length).VirtAddress;
+			VirtAddress elfArgs = process.allocator.allocate(length).VirtAddress;
 			VirtAddress cur = elfArgs;
 			char*[] entries = (elfArgs + endOfArgs).ptr!(char*)[0 .. tmpArgs.length + 1];
 			foreach (idx, arg; tmpArgs) {

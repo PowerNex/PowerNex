@@ -82,8 +82,7 @@ void dispose(T, Allocator)(auto ref Allocator alloc, T* obj) if (!is(T == struct
 }
 
 void dispose(T, Allocator)(auto ref Allocator alloc, T* obj) if (is(T == struct)) {
-	static if (is(typeof(obj.__dtor())))
-		obj.__dtor();
+	typeid(T).destroy(obj);
 
 	alloc.deallocate((cast(void*)obj)[0 .. T.sizeof]);
 }
@@ -109,9 +108,24 @@ void dispose(T, Allocator)(auto ref Allocator alloc, T obj) if (is(T == class)) 
 }
 
 void dispose(T, Allocator)(auto ref Allocator alloc, T[] arr) {
-	static if (is(typeof(obj[0].__dtor())))
-		foreach (ref e; arr)
-			arr.__dtor();
+	foreach (ref obj; arr)
+		static if (is(T == struct))
+			typeid(T).destroy(obj);
+		else if (is(T == class)) {
+			ClassInfo ci = typeid(obj);
+			void* object = cast(void*)_d_dynamic_cast(cast(Object)obj, ci);
+
+			ClassInfo origCI = ci;
+
+			while (ci) {
+				if (ci.destructor) {
+					auto dtor = cast(void function(void*))ci.destructor;
+					dtor(object);
+				}
+				ci = ci.base;
+			}
+		} else if (is(T == E*, E))
+			alloc.deallocate(alloc, obj);
 
 	alloc.deallocate(cast(void[])arr);
 }

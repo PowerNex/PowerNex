@@ -172,7 +172,7 @@ struct Log {
 
 		while (rbp && //
 				rbp > 0xFFFF_FFFF_8000_0000 && rbp < 0xFFFF_FFFF_F000_0000 // XXX: Hax fix
-				 && *rip.ptr!ulong) {
+				) {
 			rip = rbp + ulong.sizeof;
 			if (!*rip.ptr!ulong)
 				break;

@@ -105,7 +105,7 @@ void sleep(ulong time) {
 void exec(string path, string[] args) {
 	import data.elf : ELF;
 
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 
 	Ref!VNode file = process.currentDirectory.findNode(path);
 	if (!file || file.type != NodeType.file) {
@@ -113,7 +113,7 @@ void exec(string path, string[] args) {
 		return;
 	}
 
-	ELF elf = new ELF(file);
+	ELF elf = kernelAllocator.make!ELF(file);
 	if (!elf.valid) {
 		process.syscallRegisters.rax = 2;
 		return;
@@ -125,26 +125,26 @@ void exec(string path, string[] args) {
 
 @SyscallEntry(SyscallID.alloc)
 void alloc(ulong size) {
-	Process* process = getScheduler.currentProcess;
-	process.syscallRegisters.rax = process.heap.alloc(size).VirtAddress;
+	Ref!Process process = getScheduler.currentProcess;
+	process.syscallRegisters.rax = process.allocator.allocate(size).VirtAddress;
 }
 
 @SyscallEntry(SyscallID.free)
-void free(void* addr) {
-	Process* process = getScheduler.currentProcess;
-	process.heap.free(addr);
+void free(void[] addr) {
+	Ref!Process process = getScheduler.currentProcess;
+	process.allocator.deallocate(addr); // Hack
 	process.syscallRegisters.rax = 0;
 }
 
 @SyscallEntry(SyscallID.realloc)
-void realloc(void* addr, ulong newSize) {
-	Process* process = getScheduler.currentProcess;
-	process.syscallRegisters.rax = process.heap.realloc(addr, newSize).VirtAddress;
+void realloc(void[] addr, ulong newSize) {
+	Ref!Process process = getScheduler.currentProcess;
+	process.syscallRegisters.rax = process.allocator.reallocate(addr, newSize).VirtAddress;
 }
 
 @SyscallEntry(SyscallID.getArguments)
 void getArguments(ulong* argc, char*** argv) { //TODO: add Check for userspace pointer
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 	if (!argc.VirtAddress.isValidToWrite(size_t.sizeof) || !argv.VirtAddress.isValidToWrite(const(char**).sizeof)) {
 		process.syscallRegisters.rax = 1;
 		return;
@@ -157,7 +157,7 @@ void getArguments(ulong* argc, char*** argv) { //TODO: add Check for userspace p
 
 @SyscallEntry(SyscallID.open)
 void open(string file, string modestr) {
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 	if (false && !(cast(void*)file.ptr).VirtAddress.isValidToRead(file.length)) {
 		process.syscallRegisters.rax = 0;
 		import io.log;
@@ -211,7 +211,7 @@ void open(string file, string modestr) {
 
 @SyscallEntry(SyscallID.close)
 void close(size_t id) {
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 
 	Nullable!(Ref!NodeContext) nc = process.fileDescriptors.get(id);
 
@@ -228,7 +228,7 @@ void close(size_t id) {
 void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
 	import kmain : rootFS;
 
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 
 	if (false && !data.ptr.VirtAddress.isValidToRead(data.length)) {
 		process.syscallRegisters.rax = 0;
@@ -250,7 +250,7 @@ void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
 void read(size_t id, ubyte[] data, size_t offset) {
 	import kmain : rootFS;
 
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 
 	if (false && !data.ptr.VirtAddress.isValidToWrite(data.length)) {
 		process.syscallRegisters.rax = 0;
@@ -273,7 +273,7 @@ void getTimestamp() {
 	import cpu.pit;
 	import hw.cmos.cmos;
 
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 	process.syscallRegisters.rax = getCMOS.timeStamp;
 }
 
@@ -295,7 +295,7 @@ struct DirectoryListing {
 
 @SyscallEntry(SyscallID.listDirectory)
 void listDirectory(string path, DirectoryListing[] listings, size_t start) {
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 
 	Ref!VNode cwd = process.currentDirectory;
 
@@ -361,7 +361,7 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 
 @SyscallEntry(SyscallID.getCurrentDirectory)
 void getCurrentDirectory(char[] str) {
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 	size_t currentOffset = 0;
 
 	void add(Ref!VNode node) {
@@ -404,7 +404,7 @@ void getCurrentDirectory(char[] str) {
 
 @SyscallEntry(SyscallID.changeCurrentDirectory)
 void changeCurrentDirectory(string path) {
-	Process* process = getScheduler.currentProcess;
+	Ref!Process process = getScheduler.currentProcess;
 	Ref!VNode newDir = process.currentDirectory.findNode(path);
 	if (newDir) {
 		process.currentDirectory = newDir;
@@ -418,6 +418,6 @@ void join(size_t pid) {
 	import task.scheduler;
 
 	Scheduler s = getScheduler;
-	Process* process = s.currentProcess;
+	Ref!Process process = s.currentProcess;
 	process.syscallRegisters.rax = s.join(pid);
 }
