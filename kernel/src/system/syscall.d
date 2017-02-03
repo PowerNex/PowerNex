@@ -78,44 +78,46 @@ void exit(long errorcode) {
 	auto scheduler = getScheduler;
 	scheduler.exit(errorcode);
 
-	scheduler.currentProcess.syscallRegisters.rax = 0;
+	(*scheduler.currentProcess).syscallRegisters.rax = 0;
 }
 
 @SyscallEntry(SyscallID.clone)
 void clone(ulong function(void*) func, VirtAddress stack, void* userdata, string name) {
 	auto scheduler = getScheduler;
-	getScheduler.currentProcess.syscallRegisters.rax = scheduler.clone(func, stack, userdata, name);
+	(*scheduler.currentProcess).syscallRegisters.rax = scheduler.clone(func, stack, userdata, name);
 }
 
 @SyscallEntry(SyscallID.fork)
 void fork() {
 	auto scheduler = getScheduler;
 
-	scheduler.currentProcess.syscallRegisters.rax = scheduler.fork();
+	(*scheduler.currentProcess).syscallRegisters.rax = scheduler.fork();
 }
 
 @SyscallEntry(SyscallID.sleep)
 void sleep(ulong time) {
 	auto scheduler = getScheduler;
 	scheduler.uSleep(time);
-	scheduler.currentProcess.syscallRegisters.rax = 0;
+	(*scheduler.currentProcess).syscallRegisters.rax = 0;
 }
 
 @SyscallEntry(SyscallID.exec)
 void exec(string path, string[] args) {
 	import data.elf : ELF;
 
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
 
-	Ref!VNode file = process.currentDirectory.findNode(path);
-	if (!file || file.type != NodeType.file) {
-		process.syscallRegisters.rax = 1;
+	Ref!Process process = scheduler.currentProcess;
+
+	Ref!VNode file = (*process).currentDirectory.findNode(path);
+	if (!file || (*file).type != NodeType.file) {
+		(*process).syscallRegisters.rax = 1;
 		return;
 	}
 
 	ELF elf = kernelAllocator.make!ELF(file);
 	if (!elf.valid) {
-		process.syscallRegisters.rax = 2;
+		(*process).syscallRegisters.rax = 2;
 		return;
 	}
 
@@ -125,50 +127,60 @@ void exec(string path, string[] args) {
 
 @SyscallEntry(SyscallID.alloc)
 void alloc(ulong size) {
-	Ref!Process process = getScheduler.currentProcess;
-	process.syscallRegisters.rax = process.allocator.allocate(size).VirtAddress;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
+	(*process).syscallRegisters.rax = (*(*process).allocator).allocate(size).VirtAddress;
 }
 
 @SyscallEntry(SyscallID.free)
 void free(void[] addr) {
-	Ref!Process process = getScheduler.currentProcess;
-	process.allocator.deallocate(addr); // Hack
-	process.syscallRegisters.rax = 0;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
+	(*(*process).allocator).deallocate(addr); // Hack
+	(*process).syscallRegisters.rax = 0;
 }
 
 @SyscallEntry(SyscallID.realloc)
 void realloc(void[] addr, ulong newSize) {
-	Ref!Process process = getScheduler.currentProcess;
-	process.syscallRegisters.rax = process.allocator.reallocate(addr, newSize).VirtAddress;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
+	(*process).syscallRegisters.rax = (*(*process).allocator).reallocate(addr, newSize).VirtAddress;
 }
 
 @SyscallEntry(SyscallID.getArguments)
 void getArguments(ulong* argc, char*** argv) { //TODO: add Check for userspace pointer
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
 	if (!argc.VirtAddress.isValidToWrite(size_t.sizeof) || !argv.VirtAddress.isValidToWrite(const(char**).sizeof)) {
-		process.syscallRegisters.rax = 1;
+		(*process).syscallRegisters.rax = 1;
 		return;
 	}
 
-	*argc = process.image.arguments.length - 1; // Don't count the null at the end
-	*argv = process.image.arguments.ptr;
-	process.syscallRegisters.rax = 0;
+	*argc = (*process).image.arguments.length - 1; // Don't count the null at the end
+	*argv = (*process).image.arguments.ptr;
+	(*process).syscallRegisters.rax = 0;
 }
 
 @SyscallEntry(SyscallID.open)
 void open(string file, string modestr) {
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
 	if (false && !(cast(void*)file.ptr).VirtAddress.isValidToRead(file.length)) {
-		process.syscallRegisters.rax = 0;
+		(*process).syscallRegisters.rax = 0;
 		import io.log;
 
 		log.warning("Failed to Read!");
 		return;
 	}
 
-	Ref!VNode node = process.currentDirectory.findNode(file);
+	Ref!VNode node = (*process).currentDirectory.findNode(file);
 	if (!node) {
-		process.syscallRegisters.rax = size_t.max;
+		(*process).syscallRegisters.rax = size_t.max;
 		return;
 	}
 	Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext;
@@ -199,73 +211,79 @@ void open(string file, string modestr) {
 		}
 	}
 
-	if (node.open(*nc, mode) != IOStatus.success) {
-		process.syscallRegisters.rax = size_t.max;
+	if ((*node).open(**nc, mode) != IOStatus.success) {
+		(*process).syscallRegisters.rax = size_t.max;
 		return;
 	}
 
-	auto id = process.fdIDCounter++;
-	process.fileDescriptors[id] = nc;
-	process.syscallRegisters.rax = id;
+	auto id = (*process).fdIDCounter++;
+	(*(*process).fileDescriptors)[id] = nc;
+	(*process).syscallRegisters.rax = id;
 }
 
 @SyscallEntry(SyscallID.close)
 void close(size_t id) {
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
 
-	Nullable!(Ref!NodeContext) nc = process.fileDescriptors.get(id);
+	Ref!Process process = scheduler.currentProcess;
+
+	Nullable!(Ref!NodeContext) nc = (*(*process).fileDescriptors).get(id);
 
 	if (nc.isNull) {
-		process.syscallRegisters.rax = ulong.max;
+		(*process).syscallRegisters.rax = ulong.max;
 		return;
 	}
 
-	nc.get().close();
-	process.syscallRegisters.rax = !process.fileDescriptors.remove(id);
+	(*nc.get).close();
+	(*process).syscallRegisters.rax = !(*(*process).fileDescriptors).remove(id);
 }
 
 @SyscallEntry(SyscallID.write)
 void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
 	import kmain : rootFS;
 
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
 
 	if (false && !data.ptr.VirtAddress.isValidToRead(data.length)) {
-		process.syscallRegisters.rax = 0;
+		(*process).syscallRegisters.rax = 0;
 		import io.log;
 
 		log.warning("Failed to Read!");
 		return;
 	}
 
-	Nullable!(Ref!NodeContext) node = process.fileDescriptors.get(id);
+	Nullable!(Ref!NodeContext) node = (*(*process).fileDescriptors).get(id);
 	if (!node.isNull) {
-		node.get().offset = offset;
-		process.syscallRegisters.rax = node.get.write(data);
+		(*node.get).offset = offset;
+		(*process).syscallRegisters.rax = (*node.get).write(data);
 	} else
-		process.syscallRegisters.rax = ulong.max;
+		(*process).syscallRegisters.rax = ulong.max;
 }
 
 @SyscallEntry(SyscallID.read)
 void read(size_t id, ubyte[] data, size_t offset) {
 	import kmain : rootFS;
 
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
 
 	if (false && !data.ptr.VirtAddress.isValidToWrite(data.length)) {
-		process.syscallRegisters.rax = 0;
+		(*process).syscallRegisters.rax = 0;
 		import io.log;
 
 		log.warning("Failed to Write!");
 		return;
 	}
 
-	Nullable!(Ref!NodeContext) node = process.fileDescriptors.get(id);
+	Nullable!(Ref!NodeContext) node = (*(*process).fileDescriptors).get(id);
 	if (!node.isNull) {
-		node.get().offset = offset;
-		process.syscallRegisters.rax = node.get.read(data);
+		(*node.get).offset = offset;
+		(*process).syscallRegisters.rax = (*node.get).read(data);
 	} else
-		process.syscallRegisters.rax = ulong.max;
+		(*process).syscallRegisters.rax = ulong.max;
 }
 
 @SyscallEntry(SyscallID.getTimestamp)
@@ -273,8 +291,10 @@ void getTimestamp() {
 	import cpu.pit;
 	import hw.cmos.cmos;
 
-	Ref!Process process = getScheduler.currentProcess;
-	process.syscallRegisters.rax = getCMOS.timeStamp;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
+	(*process).syscallRegisters.rax = getCMOS.timeStamp;
 }
 
 struct DirectoryListing {
@@ -295,50 +315,52 @@ struct DirectoryListing {
 
 @SyscallEntry(SyscallID.listDirectory)
 void listDirectory(string path, DirectoryListing[] listings, size_t start) {
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
 
-	Ref!VNode cwd = process.currentDirectory;
+	Ref!Process process = scheduler.currentProcess;
+
+	Ref!VNode cwd = (*process).currentDirectory;
 
 	if (path) {
 		Ref!VNode newDir = cwd.findNode(path);
-		if (!newDir || newDir.type != NodeType.directory) {
+		if (!newDir || (*newDir).type != NodeType.directory) {
 			log.error();
-			process.syscallRegisters.rax = size_t.max;
+			(*process).syscallRegisters.rax = size_t.max;
 			return;
 		}
 		cwd = newDir;
 	}
 
 	Ref!DirectoryEntryRange range;
-	if (cwd.dirEntries(range) != IOStatus.success) {
+	if ((*cwd).dirEntries(range) != IOStatus.success) {
 		log.error();
-		process.syscallRegisters.rax = size_t.max;
+		(*process).syscallRegisters.rax = size_t.max;
 		return;
 	}
 
 	if (!listings) {
 		size_t len;
-		while (!range.empty()) {
+		while (!(*range).empty()) {
 			len++;
-			range.popFront();
+			(*range).popFront();
 		}
 
 		log.warning();
-		process.syscallRegisters.rax = len;
+		(*process).syscallRegisters.rax = len;
 		return;
 	}
 
-	while (start && start-- && !range.empty)
-		range.popFront(); //TODO: optimize
+	while (start && start-- && !(*range).empty)
+		(*range).popFront(); //TODO: optimize
 
 	if (start) {
 		log.warning();
-		process.syscallRegisters.rax = 0;
+		(*process).syscallRegisters.rax = 0;
 		return;
 	}
 
 	size_t length = 0;
-	foreach (idx, DirectoryEntry entry; range.data) {
+	foreach (idx, DirectoryEntry entry; *range) {
 		if (idx >= listings.length)
 			break;
 		with (listings[idx]) {
@@ -349,23 +371,25 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 			name[len - 1] = '\0';
 
 			if (auto _ = entry.fileSystem.getNode(entry.id))
-				type = cast(Type)_.type; //TODO: make sure
+				type = cast(Type)(*_).type; //TODO: make sure
 			else
 				type = Type.file; //TODO: add error
 		}
 		length++;
 	}
 
-	process.syscallRegisters.rax = length;
+	(*process).syscallRegisters.rax = length;
 }
 
 @SyscallEntry(SyscallID.getCurrentDirectory)
 void getCurrentDirectory(char[] str) {
-	Ref!Process process = getScheduler.currentProcess;
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
 	size_t currentOffset = 0;
 
 	void add(Ref!VNode node) {
-		if (node.type != NodeType.directory) {
+		if ((*node).type != NodeType.directory) {
 			str[currentOffset .. currentOffset + 6] = "/<ERR0>"[];
 			return;
 		}
@@ -374,14 +398,14 @@ void getCurrentDirectory(char[] str) {
 			add(parent);
 
 			Ref!DirectoryEntryRange range;
-			if (parent.dirEntries(range) != IOStatus.success) {
+			if ((*parent).dirEntries(range) != IOStatus.success) {
 				str[currentOffset .. currentOffset + 6] = "/<ERR1>"[];
 				return;
 			}
 
 			string name = "<ERR2>";
-			foreach (DirectoryEntry de; range)
-				if (de.id == node.id) {
+			foreach (DirectoryEntry de; *range)
+				if (de.id == (*node).id) {
 					name = de.name;
 					break;
 				}
@@ -397,20 +421,22 @@ void getCurrentDirectory(char[] str) {
 		}
 	}
 
-	add(process.currentDirectory);
+	add((*process).currentDirectory);
 
-	process.syscallRegisters.rax = currentOffset;
+	(*process).syscallRegisters.rax = currentOffset;
 }
 
 @SyscallEntry(SyscallID.changeCurrentDirectory)
 void changeCurrentDirectory(string path) {
-	Ref!Process process = getScheduler.currentProcess;
-	Ref!VNode newDir = process.currentDirectory.findNode(path);
+	auto scheduler = getScheduler;
+
+	Ref!Process process = scheduler.currentProcess;
+	Ref!VNode newDir = (*process).currentDirectory.findNode(path);
 	if (newDir) {
-		process.currentDirectory = newDir;
-		process.syscallRegisters.rax = 0;
+		(*process).currentDirectory = newDir;
+		(*process).syscallRegisters.rax = 0;
 	} else
-		process.syscallRegisters.rax = 1;
+		(*process).syscallRegisters.rax = 1;
 }
 
 @SyscallEntry(SyscallID.join)
@@ -419,5 +445,5 @@ void join(size_t pid) {
 
 	Scheduler s = getScheduler;
 	Ref!Process process = s.currentProcess;
-	process.syscallRegisters.rax = s.join(pid);
+	(*process).syscallRegisters.rax = s.join(pid);
 }

@@ -18,8 +18,8 @@ public:
 		this.name = "IOFS";
 
 		_entries = kernelAllocator.makeRef!DirectoryEntryList(kernelAllocator);
-		_entries.put(DirectoryEntry(fs, id, "."));
-		_entries.put(DirectoryEntry(fs, parent, ".."));
+		(*_entries).put(DirectoryEntry(fs, id, "."));
+		(*_entries).put(DirectoryEntry(fs, parent, ".."));
 	}
 
 	override IOStatus chmod(ushort mode) {
@@ -34,14 +34,14 @@ public:
 	}
 
 	override IOStatus link(in string name, Ref!VNode node) {
-		_entries.put(DirectoryEntry(fs, node.id, name.dup));
+		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
 		return IOStatus.success;
 	}
 
 	override IOStatus unlink(in string name) {
-		foreach (DirectoryEntry e; _entries.data)
+		foreach (DirectoryEntry e; *_entries)
 			if (e.name == name) {
-				_entries.remove(e.id);
+				(*_entries).remove(e.id);
 				return IOStatus.success;
 			}
 		return -IOStatus.notFound;
@@ -108,17 +108,17 @@ final class IOFS : FileSystem {
 public:
 	this() {
 		_nodes = kernelAllocator.makeRef!(Vector!(Ref!VNode))(kernelAllocator);
-		Ref!VNode root = _nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!IORootNode(this, _idCounter, _idCounter));
+		Ref!VNode root = (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!IORootNode(this, _idCounter, _idCounter));
 		_idCounter++;
-		root.link("stdio", _nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!StdIONode(this, _idCounter++, 0)));
+		(*root).link("stdio", (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!StdIONode(this, _idCounter++, 0)));
 	}
 
 	override Ref!VNode getNode(FSNodeID id) {
-		return _nodes[id];
+		return (*_nodes)[id];
 	}
 
 	override @property Ref!VNode root() {
-		return _nodes[0];
+		return (*_nodes)[0];
 	}
 
 	override @property string name() const {

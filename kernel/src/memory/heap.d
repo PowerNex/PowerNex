@@ -259,7 +259,7 @@ private void _onPageFault(Registers* regs) {
 			if (s) {
 				auto cp = s.currentProcess;
 				if (cp)
-					paging = cp.threadState.paging;
+					paging = (*cp).threadState.paging;
 			}
 		}
 		if (paging) {

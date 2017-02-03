@@ -37,10 +37,10 @@ class PSF : Font {
 public:
 	this(Ref!VNode file) {
 		NodeContext nc;
-		if (file.open(nc, FileDescriptorMode.read))
+		if ((*file).open(nc, FileDescriptorMode.read))
 			return;
 
-		_valid = read(file, nc, _hdr) == IOStatus.success;
+		_valid = read(*file, nc, _hdr) == IOStatus.success;
 		if (!_valid)
 			return;
 
@@ -50,13 +50,13 @@ public:
 
 		_fontData = new ubyte[_hdr.charsize * _hdr.length];
 		nc.offset = _hdr.headersize;
-		_valid = file.read(nc, _fontData) == IOStatus.success;
+		_valid = (*file).read(nc, _fontData) == IOStatus.success;
 		if (!_valid)
 			return;
 
-		_unicodeTable = new ubyte[file.size - _hdr.headersize - _fontData.length];
+		_unicodeTable = new ubyte[(*file).size - _hdr.headersize - _fontData.length];
 		nc.offset = _hdr.headersize + _fontData.length;
-		_valid = file.read(nc, _unicodeTable) == IOStatus.success;
+		_valid = (*file).read(nc, _unicodeTable) == IOStatus.success;
 		if (!_valid)
 			return;
 

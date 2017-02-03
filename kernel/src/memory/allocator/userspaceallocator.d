@@ -11,7 +11,7 @@ import memory.paging;
 class UserSpaceAllocator : HeapAllocator {
 public:
 	this(Ref!Process process, VirtAddress startHeap) {
-		_heap = kernelAllocator.makeRef!Heap(process.threadState.paging, MapMode.defaultUser, startHeap, VirtAddress(0xFFFF_FFFF_0000_0000));
+		_heap = kernelAllocator.makeRef!Heap((*process).threadState.paging, MapMode.defaultUser, startHeap, VirtAddress(0xFFFF_FFFF_0000_0000));
 		super(_heap.data);
 	}
 

@@ -12,12 +12,12 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 	import io.log : log;
 
 	if (path.length && path[0] == '/')
-		return findNode(rootFS.root, path[1 .. $]);
+		return findNode((*rootFS).root, path[1 .. $]);
 
 	Ref!VNode currentNode = startNode;
 	string curPath = path;
 	while (curPath.length && currentNode) {
-		if (currentNode.type != NodeType.directory)
+		if ((*currentNode).type != NodeType.directory)
 			return Ref!VNode();
 
 		long partEnding = curPath.indexOf('/');
@@ -34,7 +34,7 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 		}
 
 		Ref!DirectoryEntryRange range;
-		currentNode.dirEntries(range);
+		(*currentNode).dirEntries(range);
 
 		bool foundit;
 		foreach (DirectoryEntry e; range.data)
@@ -46,10 +46,10 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 		if (!foundit)
 			return Ref!VNode();
 
-		while (currentNode && currentNode.type == NodeType.symlink) {
+		while (currentNode && (*currentNode).type == NodeType.symlink) {
 			//TODO: implement infinite check
 			string walkPath;
-			currentNode.readLink(walkPath);
+			(*currentNode).readLink(walkPath);
 			currentNode = findNode(currentNode, walkPath);
 		}
 

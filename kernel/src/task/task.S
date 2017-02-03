@@ -113,8 +113,9 @@ cloneHelper:
 .type exitHelper, %function
 exitHelper:
 	mov %rax, %rdi
-	mov $0, %rax
-	int $0x80
+	mov $0x1, %rax
+	syscall
+
 .size exitHelper, .-exitHelper
 
 .global getCS

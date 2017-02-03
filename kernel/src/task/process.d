@@ -24,13 +24,13 @@ struct TLS {
 
 	static TLS* init(Process* process, bool currentData = true) {
 		if (currentData && process.parent)
-			return init(process, process.parent.threadState.tls.startOfTLS);
+			return init(process, (*process.parent).threadState.tls.startOfTLS);
 		else
 			return init(process, process.image.defaultTLS);
 	}
 
 	static TLS* init(Process* process, ubyte[] data) {
-		VirtAddress addr = process.allocator.allocate(data.length + TLS.sizeof).VirtAddress;
+		VirtAddress addr = (*process.allocator).allocate(data.length + TLS.sizeof).VirtAddress;
 		memcpy(addr.ptr, data.ptr, data.length);
 		TLS* this_ = (addr + data.length).ptr!TLS;
 		this_.self = this_;

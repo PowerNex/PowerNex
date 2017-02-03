@@ -16,7 +16,7 @@ public:
 
 		this.mounted = mount;
 		_parent = parent;
-		_root = mount.root;
+		_root = (*mount).root;
 	}
 
 	// No context needed (mostly used for folders)
@@ -32,51 +32,51 @@ public:
 	}
 
 	override IOStatus link(in string name, Ref!VNode node) { // Only used internally for now, aka add a node to a director
-		if (node.fs != mounted)
+		if ((*node).fs != *mounted)
 			return -IOStatus.wrongFileSystem;
-		return _root.link(name, node);
+		return (*_root).link(name, node);
 	}
 
 	override IOStatus unlink(in string name) {
-		return _root.unlink(name);
+		return (*_root).unlink(name);
 	}
 
 	override IOStatus readLink(out string path) { // Called on the VNode that is the symlink
-		return _root.readLink(path);
+		return (*_root).readLink(path);
 	}
 
 	override IOStatus mount(in string name, Ref!FileSystem filesystem) {
-		return _root.mount(name, filesystem);
+		return (*_root).mount(name, filesystem);
 	}
 
 	override IOStatus umount(in string name) {
-		return _root.umount(name);
+		return (*_root).umount(name);
 	}
 
 	// Context related
 	override IOStatus open(out NodeContext fd, FileDescriptorMode mode) {
-		return _root.open(fd, mode);
+		return (*_root).open(fd, mode);
 	}
 
 	override IOStatus close(in NodeContext fd) {
-		return _root.close(fd);
+		return (*_root).close(fd);
 	}
 
 	override IOStatus read(ref NodeContext fd, ubyte[] buffer) {
-		return _root.read(fd, buffer);
+		return (*_root).read(fd, buffer);
 	}
 
 	override IOStatus write(ref NodeContext fd, in ubyte[] buffer) {
-		return _root.write(fd, buffer);
+		return (*_root).write(fd, buffer);
 	}
 
 	override IOStatus duplicate(ref NodeContext fd, out NodeContext copy) {
-		return _root.duplicate(fd, copy);
+		return (*_root).duplicate(fd, copy);
 	}
 
 	override IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange) {
 		Ref!DirectoryEntryRange range;
-		IOStatus ret = _root.dirEntries(range);
+		IOStatus ret = (*_root).dirEntries(range);
 
 		if (ret != IOStatus.success)
 			return ret;
@@ -86,19 +86,19 @@ public:
 	}
 
 	override IOStatus mkdir(in string name, ushort mode) {
-		return _root.mkdir(name, mode);
+		return (*_root).mkdir(name, mode);
 	}
 
 	override IOStatus rmdir(in string name) {
-		return _root.rmdir(name);
+		return (*_root).rmdir(name);
 	}
 
 	override IOStatus ioctl(in NodeContext fd, size_t key, size_t value) {
-		return _root.ioctl(fd, key, value);
+		return (*_root).ioctl(fd, key, value);
 	}
 
 	override IOStatus accept(in NodeContext fd, out NodeContext client) {
-		return _root.accept(fd, client);
+		return (*_root).accept(fd, client);
 	}
 
 private:
@@ -116,17 +116,17 @@ public:
 	}
 
 	@property override const(DirectoryEntry) front() const {
-		if (_range.front.name == "..")
+		if ((*_range).front.name == "..")
 			return _parentEntry;
 
-		return _range.front;
+		return (*_range).front;
 	}
 
 	@property override ref DirectoryEntry front() {
-		if (_range.front.name == "..")
+		if ((*_range).front.name == "..")
 			return _parentEntry;
 
-		return _range.front;
+		return (*_range).front;
 	}
 
 	override DirectoryEntry moveFront() {
@@ -134,11 +134,11 @@ public:
 	}
 
 	override void popFront() {
-		_range.popFront();
+		(*_range).popFront();
 	}
 
 	@property override bool empty() const {
-		return _range.empty;
+		return (*_range).empty;
 	}
 
 	override int opApply(scope int delegate(const DirectoryEntry) cb) {

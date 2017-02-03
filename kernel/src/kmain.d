@@ -45,7 +45,7 @@ extern (C) int kmain(uint magic, ulong info) {
 	}
 
 	string initFile = "/bin/init";
-	ELF init = new ELF(rootFS.root.findNode(initFile));
+	ELF init = new ELF((*rootFS).root.findNode(initFile));
 	if (init.valid) {
 		scr.writeln(initFile, " is valid! Loading...");
 		scr.writeln();
@@ -170,17 +170,17 @@ void loadInitrd() {
 
 	Ref!FileSystem iofs = cast(Ref!FileSystem)kernelAllocator.makeRef!IOFS();
 
-	rootFS.root.mount("io", iofs);
+	(*(*rootFS).root).mount("io", iofs);
 
 	char[8] levelStr = "||||||||";
 	void printData(Ref!VNode node, int level = 0) {
-		if (node.type == NodeType.directory) {
+		if ((*node).type == NodeType.directory) {
 			Ref!DirectoryEntryRange range;
 
-			IOStatus ret = node.dirEntries(range);
+			IOStatus ret = (*node).dirEntries(range);
 			if (ret) {
-				log.error("dirEntries: ", -ret, ", ", node.name, "(", node.id, ")", " node:", typeid(node.data).name, " fs:",
-						typeid(node.fs).name);
+				log.error("dirEntries: ", -ret, ", ", (*node).name, "(", (*node).id, ")", " node:", typeid((*node)).name, " fs:",
+						typeid((*node).fs).name);
 				return;
 			}
 			int nextLevel = level + 1;
@@ -192,12 +192,12 @@ void loadInitrd() {
 				Ref!VNode n = e.fileSystem.getNode(e.id);
 				if (!n)
 					continue;
-				log.info(levelStr[0 .. level], "»", e.name, " type: ", n.type, " id: ", n.id);
+				log.info(levelStr[0 .. level], "»", e.name, " type: ", (*n).type, " id: ", (*n).id);
 				printData(n, nextLevel);
 			}
 		}
 	}
 
 	log.info("directoryEntries for rootFS!\n---------------------");
-	printData(rootFS.root);
+	printData((*rootFS).root);
 }

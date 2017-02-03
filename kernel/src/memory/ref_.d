@@ -63,8 +63,12 @@ public:
 		return X(cast(T)_obj, _counter, _allocator);
 	}
 
-	auto opApply(Args...)(Args args) {
-		return _obj.opApply(args);
+	E opUnary(string op)() if (op == "*") {
+		return _obj;
+	}
+
+	const(E) opUnary(string op)() const if (op == "*") {
+		return _obj;
 	}
 
 	@property E data() {
@@ -82,7 +86,6 @@ public:
 			return 0;
 	}
 
-	alias data this;
 private:
 	public E _obj; // Must be first
 	IAllocator _allocator;

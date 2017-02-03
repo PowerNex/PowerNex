@@ -40,7 +40,7 @@ public:
 		_initKernel(); // PID 1
 		_pidCounter = 2;
 		_currentProcess = _initProcess;
-		log.info("PID ", _currentProcess.pid, ": ", _currentProcess.counter);
+		log.info("PID ", (*_currentProcess).pid, ": Counter ", _currentProcess.counter);
 	}
 
 	void switchProcess(bool reschedule = true) {
@@ -88,7 +88,7 @@ public:
 			pop RCX;
 		}
 
-		with (_currentProcess.threadState) {
+		with ((*_currentProcess).threadState) {
 			rbp = storeRBP;
 			rsp = storeRSP;
 			rip = storeRIP;
@@ -102,29 +102,29 @@ public:
 		}
 
 		if (reschedule && _currentProcess != _idleProcess) {
-			_currentProcess.state = ProcessState.ready;
-			_readyProcesses.put(_currentProcess);
+			(*_currentProcess).state = ProcessState.ready;
+			(*_readyProcesses).put(_currentProcess);
 		}
 
 		_doSwitching();
 	}
 
 	void waitFor(WaitReason reason, ulong data = 0) {
-		_currentProcess.state = ProcessState.waiting;
-		_currentProcess.wait = reason;
-		_currentProcess.waitData = data;
-		_waitingProcesses.put(_currentProcess);
+		(*_currentProcess).state = ProcessState.waiting;
+		(*_currentProcess).wait = reason;
+		(*_currentProcess).waitData = data;
+		(*_waitingProcesses).put(_currentProcess);
 		switchProcess(false);
 	}
 
 	void wakeUp(WaitReason reason, WakeUpFunc check = &_wakeUpDefault, void* data = cast(void*)0) {
 		bool wokeUp = false;
 
-		restartLoop: foreach (i, Ref!Process p; _waitingProcesses.data) {
-			if (p.wait == reason && check(p, data)) {
+		restartLoop: foreach (i, Ref!Process p; *_waitingProcesses) {
+			if ((*p).wait == reason && check(*p, data)) {
 				wokeUp = true;
-				_waitingProcesses.remove(i);
-				_readyProcesses.put(p);
+				(*_waitingProcesses).remove(i);
+				(*_readyProcesses).put(p);
 				goto restartLoop; //XXX:
 			}
 		}
@@ -146,8 +146,8 @@ public:
 		Ref!Process process = kernelAllocator.makeRef!Process();
 
 		VirtAddress kernelStack = kernelAllocator.allocate(_stackSize).VirtAddress + _stackSize;
-		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = _currentProcess.image.defaultTLS;
+		(*process).image.kernelStack = kernelStack;
+		(*process).image.defaultTLS = (*_currentProcess).image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
@@ -155,58 +155,58 @@ public:
 			stack -= size;
 		}
 
-		process.syscallRegisters = _currentProcess.syscallRegisters;
-		process.syscallRegisters.rax = 0;
+		(*process).syscallRegisters = (*_currentProcess).syscallRegisters;
+		(*process).syscallRegisters.rax = 0;
 
-		set(kernelStack, process.syscallRegisters);
+		set(kernelStack, (*process).syscallRegisters);
 
-		with (process.data) {
+		with (*process) {
 			pid = _getFreePid;
-			name = _currentProcess.name.dup;
+			name = (*_currentProcess).name.dup;
 
-			uid = _currentProcess.uid;
-			gid = _currentProcess.gid;
+			uid = (*_currentProcess).uid;
+			gid = (*_currentProcess).gid;
 
 			parent = _currentProcess;
 			children = kernelAllocator.makeRef!(Vector!(Ref!Process))(kernelAllocator);
 
-			Ref!UserSpaceAllocator curAllocator = cast(Ref!UserSpaceAllocator)_currentProcess.allocator;
-			allocator = cast(Ref!IAllocator)kernelAllocator.makeRef!UserSpaceAllocator(curAllocator);
+			Ref!UserSpaceAllocator curAllocator = cast(Ref!UserSpaceAllocator)(*_currentProcess).allocator;
+			allocator = cast(Ref!IAllocator)kernelAllocator.makeRef!UserSpaceAllocator(*curAllocator);
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = kernelStack;
 			threadState.rsp = kernelStack;
-			threadState.fpuEnabled = _currentProcess.threadState.fpuEnabled;
-			threadState.paging = new Paging(_currentProcess.threadState.paging);
-			log.warning("New Paging: ", threadState.paging.root(), " Cur Paging: ", _currentProcess.threadState.paging.root());
-			threadState.tls = TLS.init(process);
+			threadState.fpuEnabled = (*_currentProcess).threadState.fpuEnabled;
+			threadState.paging = new Paging((*_currentProcess).threadState.paging);
+			log.warning("New Paging: ", threadState.paging.root(), " Cur Paging: ", (*_currentProcess).threadState.paging.root());
+			threadState.tls = TLS.init(*process);
 
-			kernelProcess = _currentProcess.kernelProcess;
+			kernelProcess = (*_currentProcess).kernelProcess;
 
-			currentDirectory = _currentProcess.currentDirectory;
+			currentDirectory = (*_currentProcess).currentDirectory;
 
 			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
-			foreach (key, value; _currentProcess.fileDescriptors.data) {
-				log.info("FD: ", key, " name: ", value.node.name);
+			foreach (key, Ref!NodeContext value; *(*_currentProcess).fileDescriptors) {
+				log.info("FD: ", key, " name: ", (*value).node.name);
 				Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext();
-				if (value.duplicate(*nc.data) == IOStatus.success) {
-					log.info("success: ", nc.node == value.node);
-					fileDescriptors[key] = nc;
+				if ((*value).duplicate(**nc) == IOStatus.success) {
+					log.info("success: ", (*nc).node == (*value).node);
+					(*fileDescriptors)[key] = nc;
 				} else
 					log.fatal();
 			}
 
-			fdIDCounter = _currentProcess.fdIDCounter;
+			fdIDCounter = (*_currentProcess).fdIDCounter;
 
 			state = ProcessState.ready;
 		}
 
-		_currentProcess.children.put(process);
+		(*(*_currentProcess).children).put(process);
 
-		_allProcesses.put(process);
-		_readyProcesses.put(process);
+		(*_allProcesses).put(process);
+		(*_readyProcesses).put(process);
 
-		return process.pid;
+		return (*process).pid;
 	}
 
 	alias CloneFunc = ulong function(void*);
@@ -215,11 +215,11 @@ public:
 
 		log.debug_("userStack: ", userStack);
 		if (!userStack.num) // _currentProcess.heap will be new the new process heap
-			userStack = _currentProcess.allocator.allocate(_stackSize).VirtAddress + _stackSize;
+			userStack = (*(*_currentProcess).allocator).allocate(_stackSize).VirtAddress + _stackSize;
 		VirtAddress kernelStack = kernelAllocator.allocate(_stackSize).VirtAddress + _stackSize;
-		process.image.userStack = userStack;
-		process.image.kernelStack = kernelStack;
-		process.image.defaultTLS = _currentProcess.image.defaultTLS;
+		(*process).image.userStack = userStack;
+		(*process).image.kernelStack = kernelStack;
+		(*process).image.defaultTLS = (*_currentProcess).image.defaultTLS;
 
 		void set(T = ulong)(ref VirtAddress stack, T value) {
 			auto size = T.sizeof;
@@ -227,7 +227,7 @@ public:
 			stack -= size;
 		}
 
-		with (process.syscallRegisters) {
+		with ((*process).syscallRegisters) {
 			rbp = userStack;
 			rdi = VirtAddress(userdata);
 			rax = 0xDEAD_C0DE;
@@ -235,86 +235,87 @@ public:
 
 		set(userStack, 0); // Jump to null if it forgot to run exit.
 
-		with (process.syscallRegisters) {
+		with ((*process).syscallRegisters) {
 			rip = VirtAddress(func);
-			cs = _currentProcess.syscallRegisters.cs;
-			flags = _currentProcess.syscallRegisters.flags;
+			cs = (*_currentProcess).syscallRegisters.cs;
+			flags = (*_currentProcess).syscallRegisters.flags;
 			rsp = userStack;
-			ss = _currentProcess.syscallRegisters.ss;
+			ss = (*_currentProcess).syscallRegisters.ss;
 		}
 
-		set(kernelStack, process.syscallRegisters);
+		set(kernelStack, (*process).syscallRegisters);
 
-		with (process.data) {
+		with (*process) {
 			pid = _getFreePid;
 			name = processName.dup;
 
-			uid = _currentProcess.uid;
-			gid = _currentProcess.gid;
+			uid = (*_currentProcess).uid;
+			gid = (*_currentProcess).gid;
 
 			parent = _currentProcess;
 			children = kernelAllocator.makeRef!(Vector!(Ref!Process))(kernelAllocator);
-			allocator = _currentProcess.allocator;
-			log.fatal("process: ", process.name, "(", process.pid, ")\tallocator: ", cast(void*)process.allocator.data);
+			allocator = (*_currentProcess).allocator;
+			log.fatal("process: ", name, "(", pid, ")\tallocator: ", cast(void*)*allocator);
 
 			threadState.rip = VirtAddress(&cloneHelper);
 			threadState.rbp = kernelStack;
 			threadState.rsp = kernelStack;
-			threadState.fpuEnabled = _currentProcess.threadState.fpuEnabled;
-			threadState.paging = _currentProcess.threadState.paging;
+			threadState.fpuEnabled = (*_currentProcess).threadState.fpuEnabled;
+			threadState.paging = (*_currentProcess).threadState.paging;
 			threadState.paging.refCounter++;
-			threadState.tls = TLS.init(process, false);
+			threadState.tls = TLS.init(*process, false);
 
 			// image.stack is set above
 
-			kernelProcess = _currentProcess.kernelProcess;
+			kernelProcess = (*_currentProcess).kernelProcess;
 
-			currentDirectory = _currentProcess.currentDirectory;
+			currentDirectory = (*_currentProcess).currentDirectory;
 
 			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
-			foreach (key, value; _currentProcess.fileDescriptors.data) {
-				log.info("FD: ", key, " name: ", value.node.name);
+			foreach (key, Ref!NodeContext value; *(*_currentProcess).fileDescriptors) {
+				log.info("FD: ", key, " name: ", (*value).node.name);
 				Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext();
-				if (value.duplicate(*nc.data) == IOStatus.success) {
-					log.info("success: ", nc.node == value.node);
-					fileDescriptors[key] = nc;
+				if ((*value).duplicate(**nc) == IOStatus.success) {
+					log.info("success: ", (*nc).node == (*value).node);
+					(*fileDescriptors)[key] = nc;
 				} else
 					log.fatal();
 			}
-			fdIDCounter = _currentProcess.fdIDCounter;
+			fdIDCounter = (*_currentProcess).fdIDCounter;
 
 			state = ProcessState.ready;
 		}
 
-		_currentProcess.children.put(process);
+		(*(*_currentProcess).children).put(process);
 
-		_allProcesses.put(process);
-		_readyProcesses.put(process);
+		(*_allProcesses).put(process);
+		(*_readyProcesses).put(process);
 
-		return process.pid;
+		return (*process).pid;
 	}
 
 	ulong join(PID pid = 0) {
-		if (!_currentProcess.children)
+		if (!(*_currentProcess).children)
 			return 0x1000; //TODO:
 		while (true) {
 			bool foundit;
-			foreach (i, child; _currentProcess.children.data) {
-				if (pid == 0 || child.pid == pid) {
+			foreach (i, Ref!Process child; *(*_currentProcess).children) {
+				if (pid == 0 || (*child).pid == pid) {
 					foundit = true;
-					if (child.state == ProcessState.exited) {
-						ulong code = child.returnCode;
-						_currentProcess.children.remove(i);
-						_allProcesses.remove(child);
+					if ((*child).state == ProcessState.exited) {
+						ulong code = (*child).returnCode;
+						(*(*_currentProcess).children).remove(i);
+						(*_allProcesses).remove(child);
 
-						with (child.data) {
+						with (*child) {
 							name.destroy;
 							description.destroy;
 							//TODO free stack
 
 							//children was destroy'ed when calling Exit
 						}
-						child.destroy;
+						//child.dispose();
+						(*(*_currentProcess).children).remove(i);
 
 						return code;
 					}
@@ -330,10 +331,10 @@ public:
 	void exit(ulong returncode) {
 		import io.log : log;
 
-		_currentProcess.returnCode = returncode;
-		_currentProcess.state = ProcessState.exited;
+		(*_currentProcess).returnCode = returncode;
+		(*_currentProcess).state = ProcessState.exited;
 
-		log.info(_currentProcess.pid, "(", _currentProcess.name, ") is now dead! Returncode: ", cast(void*)returncode);
+		log.info((*_currentProcess).pid, "(", (*_currentProcess).name, ") is now dead! Returncode: ", cast(void*)returncode);
 
 		if (_currentProcess == _initProcess) {
 			auto fg = scr.foreground;
@@ -346,22 +347,20 @@ public:
 			log.fatal("init process exited. No more work to do.");
 		}
 
-		_currentProcess.fileDescriptors = null;
+		(*_currentProcess).fileDescriptors = null;
 
-		foreach (i, child; _currentProcess.children.data) {
-			if (child.state == ProcessState.exited) {
-				child.name.destroy;
-				child.description.destroy;
+		foreach (i, Ref!Process child; *(*_currentProcess).children) {
+			if ((*child).state == ProcessState.exited) {
+				(*child).name.destroy;
+				(*child).description.destroy;
 				//TODO free stack
-
-				child.destroy;
 			} else {
 				//TODO send SIGHUP etc.
-				_initProcess.children.put(child);
+				(*(*_initProcess).children).put(child);
 			}
 		}
 
-		wakeUp(WaitReason.join, cast(WakeUpFunc)&_wakeUpJoin, cast(void*)_currentProcess.data);
+		wakeUp(WaitReason.join, cast(WakeUpFunc)&_wakeUpJoin, cast(void*)*_currentProcess);
 		switchProcess(false);
 		assert(0);
 	}
@@ -400,7 +399,7 @@ private:
 	}
 
 	static bool _wakeUpJoin(Process* p, Process* child) {
-		if (p == child.parent && (p.waitData == 0 || p.waitData == child.pid))
+		if (p == (*child.parent) && (p.waitData == 0 || p.waitData == child.pid))
 			return true;
 		return false;
 	}
@@ -421,7 +420,7 @@ private:
 		VirtAddress kernelStack = kernelAllocator.allocate(_stackSize).VirtAddress + _stackSize;
 		_idleProcess = kernelAllocator.makeRef!Process();
 
-		with (_idleProcess.syscallRegisters) {
+		with ((*_idleProcess).syscallRegisters) {
 			rip = VirtAddress(&_idle);
 			cs = 0x8;
 			flags = 0x202;
@@ -429,7 +428,7 @@ private:
 			ss = cs + 8;
 		}
 
-		with (_idleProcess.data) {
+		with (*_idleProcess) {
 			pid = 0;
 			name = "[Idle]";
 			description = "Idle thread";
@@ -448,20 +447,20 @@ private:
 			threadState.fpuEnabled = false;
 			threadState.paging = getKernelPaging();
 			threadState.paging.refCounter++;
-			threadState.tls = TLS.init(_idleProcess); // image.defaultTLS is empty
+			threadState.tls = TLS.init(*_idleProcess); // image.defaultTLS is empty
 
 			image.userStack = userStack;
 			image.kernelStack = kernelStack;
 
 			kernelProcess = true;
 
-			currentDirectory = rootFS.root;
+			currentDirectory = (*rootFS).root;
 
 			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
 
 			state = ProcessState.ready;
 		}
-		_allProcesses.put(_idleProcess);
+		(*_allProcesses).put(_idleProcess);
 	}
 
 	void _initKernel() {
@@ -490,24 +489,24 @@ private:
 
 			kernelProcess = false;
 
-			currentDirectory = rootFS.root;
+			currentDirectory = (*rootFS).root;
 			fileDescriptors = kernelAllocator.makeRef!(Map!(size_t, Ref!NodeContext))(kernelAllocator);
 			Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext();
-			Ref!VNode stdio = rootFS.root.findNode("/io/stdio");
-			if (stdio.open(*nc.data(), FileDescriptorMode.write) == IOStatus.success)
-				fileDescriptors[fdIDCounter++] = nc;
+			Ref!VNode stdio = (*rootFS).root.findNode("/io/stdio");
+			if ((*stdio).open(**nc, FileDescriptorMode.write) == IOStatus.success)
+				(*fileDescriptors)[fdIDCounter++] = nc;
 			state = ProcessState.running;
 
 			children = kernelAllocator.makeRef!(Vector!(Ref!Process))(kernelAllocator);
 			// allocator will be _initialized when the init process is loaded
 		}
-		_allProcesses.put(_initProcess);
+		(*_allProcesses).put(_initProcess);
 	}
 
 	Ref!Process _nextProcess() {
-		if (_readyProcesses.length) {
-			Ref!Process next = _readyProcesses[0];
-			_readyProcesses.remove(0);
+		if ((*_readyProcesses).length) {
+			Ref!Process next = (*_readyProcesses)[0];
+			(*_readyProcesses).remove(0);
 			return next;
 		} else
 			return _idleProcess;
@@ -517,17 +516,17 @@ private:
 		import cpu.msr;
 
 		_currentProcess = _nextProcess();
-		_currentProcess.state = ProcessState.running;
+		(*_currentProcess).state = ProcessState.running;
 
-		ulong storeRIP = _currentProcess.threadState.rip;
-		ulong storeRBP = _currentProcess.threadState.rbp;
-		ulong storeRSP = _currentProcess.threadState.rsp;
+		ulong storeRIP = (*_currentProcess).threadState.rip;
+		ulong storeRBP = (*_currentProcess).threadState.rbp;
+		ulong storeRSP = (*_currentProcess).threadState.rsp;
 
-		_currentProcess.threadState.paging.install();
+		(*_currentProcess).threadState.paging.install();
 
-		MSR.fsBase = cast(ulong)_currentProcess.threadState.tls;
+		MSR.fsBase = cast(ulong)(*_currentProcess).threadState.tls;
 
-		GDT.tss.rsp0 = _currentProcess.image.kernelStack;
+		GDT.tss.rsp0 = (*_currentProcess).image.kernelStack;
 
 		asm {
 			mov RAX, RBP; // RBP will be overritten below

@@ -123,8 +123,8 @@ public:
 		this.name = "TarFS";
 
 		_entries = kernelAllocator.makeRef!DirectoryEntryList(kernelAllocator);
-		_entries.put(DirectoryEntry(fs, id, "."));
-		_entries.put(DirectoryEntry(fs, parent, ".."));
+		(*_entries).put(DirectoryEntry(fs, id, "."));
+		(*_entries).put(DirectoryEntry(fs, parent, ".."));
 	}
 
 	override IOStatus chmod(ushort mode) {
@@ -139,14 +139,14 @@ public:
 	}
 
 	override IOStatus link(in string name, Ref!VNode node) {
-		_entries.put(DirectoryEntry(fs, node.id, name.dup));
+		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
 		return IOStatus.success;
 	}
 
 	override IOStatus unlink(in string name) {
-		foreach (DirectoryEntry e; _entries.data)
+		foreach (DirectoryEntry e; (*_entries))
 			if (e.name == name) {
-				_entries.remove(e.id);
+				(*_entries).remove(e.id);
 				return IOStatus.success;
 			}
 		return -IOStatus.notFound;
@@ -176,10 +176,10 @@ public:
 		if (!tarfs)
 			return -IOStatus.wrongFileSystem;
 		FSNodeID id = 0; // Can't use unlink, because we need the ID of the entry
-		foreach (idx, entry; _entries.data)
+		foreach (idx, entry; (*_entries))
 			if (entry.name == name) {
 				id = entry.id;
-				_entries.remove(idx);
+				(*_entries).remove(idx);
 				goto done;
 			}
 
@@ -255,8 +255,8 @@ public:
 			_data = (header.VirtAddress + _tarHeaderSize).ptr!ubyte[0 .. size];
 		else if (type == NodeType.directory) {
 			_entries = makeRef!DirectoryEntryList(kernelAllocator, kernelAllocator);
-			_entries.put(DirectoryEntry(fs, id, "."));
-			_entries.put(DirectoryEntry(fs, parent, ".."));
+			(*_entries).put(DirectoryEntry(fs, id, "."));
+			(*_entries).put(DirectoryEntry(fs, parent, ".."));
 		} else
 			assert(0);
 	}
@@ -275,16 +275,16 @@ public:
 	override IOStatus link(in string name, Ref!VNode node) {
 		if (type == NodeType.file)
 			return -IOStatus.isNotDirectory;
-		_entries.put(DirectoryEntry(fs, node.id, name.dup));
+		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
 		return IOStatus.success;
 	}
 
 	override IOStatus unlink(in string name) {
 		if (type == NodeType.file)
 			return -IOStatus.isNotDirectory;
-		foreach (DirectoryEntry e; _entries.data)
+		foreach (DirectoryEntry e; (*_entries))
 			if (e.name == name) {
-				_entries.remove(e.id);
+				(*_entries).remove(e.id);
 				return IOStatus.success;
 			}
 		return -IOStatus.notFound;
@@ -314,10 +314,10 @@ public:
 		if (!tarfs)
 			return -IOStatus.wrongFileSystem;
 		FSNodeID id = 0; // Can't use unlink, because we need the ID of the entry
-		foreach (idx, entry; _entries.data)
+		foreach (idx, entry; (*_entries))
 			if (entry.name == name) {
 				id = entry.id;
-				_entries.remove(idx);
+				(*_entries).remove(idx);
 				goto done;
 			}
 
@@ -410,7 +410,7 @@ public:
 	this(ubyte[] data) {
 		_data = data;
 		_nodes = kernelAllocator.makeRef!NodeList(kernelAllocator);
-		_nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!TarRootNode(this, _idCounter, _idCounter));
+		(*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!TarRootNode(this, _idCounter, _idCounter));
 		_idCounter++;
 
 		_loadTar();
@@ -421,11 +421,11 @@ public:
 	}
 
 	override Ref!VNode getNode(size_t id) {
-		return _nodes[id];
+		return (*_nodes)[id];
 	}
 
 	override @property Ref!VNode root() {
-		return _nodes[0];
+		return (*_nodes)[0];
 	}
 
 	override @property string name() const {
@@ -443,7 +443,7 @@ private:
 		VirtAddress start = VirtAddress(_data.ptr);
 		VirtAddress end = start + _data.length;
 		VirtAddress curLoc = start;
-		Ref!VNode root = _nodes[0];
+		Ref!VNode root = (*_nodes)[0];
 		bool isEnd = false;
 
 		PaxHeader paxHeader;
@@ -535,7 +535,7 @@ private:
 				if (!name.length || name == ".")
 					break;
 
-				parent.link(name, _nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!TarVNode(this, _idCounter, parent.id, header, &paxHeader)));
+				(*parent).link(name, (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!TarVNode(this, _idCounter, (*parent).id, header, &paxHeader)));
 				_idCounter++;
 				break;
 			}
@@ -548,13 +548,13 @@ private:
 	Ref!VNode _mount(FSNodeID parent, Ref!FileSystem fs) {
 		import fs.mountnode : MountVNode;
 
-		return _nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!MountVNode(this, _idCounter++, parent, fs));
+		return (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!MountVNode(this, _idCounter++, parent, fs));
 	}
 
 	void _umount(Ref!VNode toRemove) {
-		foreach (idx, node; _nodes.data)
+		foreach (idx, node; (*_nodes))
 			if (node == toRemove) {
-				_nodes.remove(idx);
+				(*_nodes).remove(idx);
 				return;
 			}
 	}

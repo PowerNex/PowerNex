@@ -295,15 +295,15 @@ struct ELF64Dynamic {
 class ELF {
 public:
 	this(Ref!VNode file) {
-		this._file = file;
+		_file = file;
 
-		if (_file.size <= ELF64Header.sizeof)
+		if ((*_file).size <= ELF64Header.sizeof)
 			return;
 
-		if (_file.open(nc, FileDescriptorMode.read))
+		if ((*_file).open(nc, FileDescriptorMode.read))
 			return;
 
-		read(_file, nc, _header);
+		read(*_file, nc, _header);
 		_valid = _header.valid;
 
 		foreach (idx; 0 .. _header.sectionHeaderCount) {
@@ -321,7 +321,7 @@ public:
 
 		Scheduler scheduler = getScheduler;
 		Ref!Process process = scheduler.currentProcess;
-		Paging paging = process.threadState.paging;
+		Paging paging = (*process).threadState.paging;
 
 		string[] tmpArgs;
 		tmpArgs.length = args.length;
@@ -358,7 +358,7 @@ public:
 				cur = (program.virtAddress + program.fileSize);
 				memset(cur.ptr, 0, (end - cur).num);
 				nc.offset = program.offset.num; //XXX: Add seek to VNode
-				_file.read(nc, program.virtAddress.ptr!ubyte[0 .. program.fileSize]);
+				(*_file).read(nc, program.virtAddress.ptr!ubyte[0 .. program.fileSize]);
 
 				cur = start;
 				while (cur < end) {
@@ -371,7 +371,7 @@ public:
 				if (end > startHeap)
 					startHeap = end;
 			} else if (program.type == ELF64ProgramHeader.Type.threadLocalStorage)
-				process.image.defaultTLS = program.virtAddress.ptr!ubyte[0 .. program.memorySize];
+				(*process).image.defaultTLS = program.virtAddress.ptr!ubyte[0 .. program.memorySize];
 		}
 
 		// Setup stack, setup heap
@@ -381,14 +381,20 @@ public:
 		}
 
 		startHeap = (startHeap.num + 0xFFF) & ~0xFFF;
+		Ref!IAllocator oldAlloc = (*process).allocator;
 
-		process.allocator = cast(Ref!IAllocator)kernelAllocator.makeRef!UserSpaceAllocator(process, startHeap);
-		log.info("process: ", process.name, "(", process.pid, ")\tallocator: ", cast(void*)process.allocator.data);
+		(*process).allocator = cast(Ref!IAllocator)kernelAllocator.makeRef!UserSpaceAllocator(process, startHeap);
+		log.info("process: ", (*_file).name, "(", (*process).pid, ")\tallocator: ", cast(void*)(*process).allocator.data);
 
+		log.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 		enum stackSize = 0x1000;
-		VirtAddress userStack = process.allocator.allocate(stackSize).VirtAddress + stackSize;
-		process.image.userStack = userStack;
-		process.threadState.tls = TLS.init(process, false);
+		log.info("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+		VirtAddress userStack = (*(*process).allocator).allocate(stackSize).VirtAddress + stackSize;
+		log.info("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC");
+		(*process).image.userStack = userStack;
+		log.info("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
+		(*process).threadState.tls = TLS.init(*process, false);
+		log.info("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF: ", userStack);
 
 		{
 			ubyte length = 0;
@@ -398,7 +404,7 @@ public:
 			const ulong endOfArgs = length;
 			length += ulong.sizeof * (tmpArgs.length + 1);
 
-			VirtAddress elfArgs = process.allocator.allocate(length).VirtAddress;
+			VirtAddress elfArgs = (*(*process).allocator).allocate(length).VirtAddress;
 			VirtAddress cur = elfArgs;
 			char*[] entries = (elfArgs + endOfArgs).ptr!(char*)[0 .. tmpArgs.length + 1];
 			foreach (idx, arg; tmpArgs) {
@@ -409,12 +415,12 @@ public:
 			}
 			entries[$ - 1] = null;
 
-			process.image.arguments = cast(char*[])entries;
+			(*process).image.arguments = cast(char*[])entries;
 		}
 
-		process.name = _file.name.dup;
-		process.image.file = _file;
-		process.image.elf = this;
+		(*process).name = (*_file).name.dup;
+		(*process).image.file = _file;
+		(*process).image.elf = this;
 
 		foreach (arg; tmpArgs)
 			arg.destroy;
@@ -427,7 +433,7 @@ public:
 		assert(idx < header.programHeaderCount);
 		ELF64ProgramHeader programHdr;
 		nc.offset = header.programHeaderOffset + header.programHeaderEntrySize * idx;
-		read(_file, nc, programHdr);
+		read(*_file, nc, programHdr);
 		return programHdr;
 	}
 
@@ -435,7 +441,7 @@ public:
 		assert(idx < header.sectionHeaderCount);
 		ELF64SectionHeader sectionHdr;
 		nc.offset = header.sectionHeaderOffset + header.sectionHeaderEntrySize * idx;
-		read(_file, nc, sectionHdr);
+		read(*_file, nc, sectionHdr);
 		return sectionHdr;
 	}
 
@@ -444,7 +450,7 @@ public:
 		ELF64SectionHeader symtab = getSectionHeader(_symtabIdx);
 		ELF64Symbol symbol;
 		nc.offset = symtab.offset + ELF64Symbol.sizeof * idx;
-		read(_file, nc, symbol);
+		read(*_file, nc, symbol);
 		return symbol;
 	}
 
@@ -455,7 +461,7 @@ public:
 			return cast(char[])"UNKNOWN";
 
 		nc.offset = getSectionHeader(header.sectionHeaderStringTableIndex).offset + nameIdx;
-		_file.read(nc, cast(ubyte[])buf);
+		(*_file).read(nc, cast(ubyte[])buf);
 
 		return buf[0 .. strlen(buf)];
 	}
@@ -466,7 +472,7 @@ public:
 		if (!_strtabIdx)
 			return cast(char[])"UNKNOWN";
 		nc.offset = getSectionHeader(_strtabIdx).offset + idx;
-		_file.read(nc, cast(ubyte[])buf);
+		(*_file).read(nc, cast(ubyte[])buf);
 
 		return buf[0 .. strlen(buf)];
 	}

@@ -8,11 +8,11 @@ import memory.ref_;
 class ConsoleManager {
 public:
 	void init() {
-		stdout = cast(Ref!StdIONode)rootFS.root.findNode("/io/stdio");
+		stdout = cast(Ref!StdIONode)(*rootFS).root.findNode("/io/stdio");
 	}
 
 	void addKeyboardInput(dchar ch, bool ctrl, bool alt, bool shift) {
-		stdout.addKeyboardInput(ch);
+		(*stdout).addKeyboardInput(ch);
 	}
 
 private:

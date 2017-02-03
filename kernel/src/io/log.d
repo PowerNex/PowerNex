@@ -158,12 +158,28 @@ struct Log {
 	}
 
 	void printStackTrace(bool skipFirst = false) {
-		com1.write("\r\nSTACKTRACE:\r\n");
+		import memory.ref_ : Ref;
+		import task.scheduler : getScheduler;
+		import task.process : Process;
+
 		VirtAddress rbp;
-		VirtAddress rip;
 		asm {
 			mov rbp, RBP;
 		}
+		_printStackTrace(rbp, skipFirst);
+
+		if (Ref!Process p = getScheduler.currentProcess)
+			if (!(*p).kernelProcess) {
+				auto page = (*p).threadState.paging.getPage((*p).syscallRegisters.rbp);
+				if (!page || !page.present)
+					return;
+				_printStackTrace((*p).syscallRegisters.rbp, skipFirst);
+			}
+	}
+
+	private void _printStackTrace(VirtAddress rbp, bool skipFirst) {
+		com1.write("\r\nSTACKTRACE:\r\n");
+		VirtAddress rip;
 
 		if (skipFirst) {
 			rip = rbp + ulong.sizeof;
@@ -180,7 +196,7 @@ struct Log {
 			import task.scheduler : getScheduler, TablePtr;
 
 			if (getScheduler && getScheduler.currentProcess) {
-				TablePtr!(void)* page = getScheduler.currentProcess.threadState.paging.getPage(rip);
+				TablePtr!(void)* page = (*getScheduler.currentProcess).threadState.paging.getPage(rip);
 				if (!page || !page.present)
 					break;
 			}

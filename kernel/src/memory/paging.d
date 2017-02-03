@@ -250,6 +250,8 @@ public:
 		if (!page)
 			return;
 
+		log.verbose("[", cast(void*)_rootPhys, "] ", virt, "->unmap ", page.data);
+
 		page.mode = MapMode.empty;
 		page.data = PhysAddress();
 		page.present = false;
@@ -260,6 +262,9 @@ public:
 		auto page = getPage(virt);
 		if (!page)
 			return;
+
+		log.verbose("[", cast(void*)_rootPhys, "] ", virt, "->unmapAndFree ", page.data);
+		log.printStackTrace();
 
 		FrameAllocator.free(page.data);
 
@@ -274,6 +279,9 @@ public:
 		if (!phys.num)
 			return phys; // aka Null
 		map(virt, phys, pageMode, tablesMode);
+
+		log.verbose("[", cast(void*)_rootPhys, "] mapFreeMemory(", virt, ") = ", phys);
+		//log.printStackTrace();
 		return phys;
 	}
 
@@ -309,7 +317,7 @@ public:
 	}
 
 	void removeUserspace(bool freePages) {
-		log.warning("removeUserspace for ", cast(void*)_rootPhys);
+		log.warning("[", cast(void*)_rootPhys, "] removeUserspace");
 
 		Table!4* myPML4 = _root;
 		for (ushort pml4Idx = 0; pml4Idx < 512 - 1 /* Kernel PDP */ ; pml4Idx++) {
@@ -370,6 +378,7 @@ public:
 	}
 
 	void flushPage(VirtAddress virt) {
+		//TODO: Optimization: Only flush if this paging is active!
 		cpuFlushPage(virt.num);
 	}
 

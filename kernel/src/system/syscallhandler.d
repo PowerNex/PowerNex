@@ -44,7 +44,7 @@ private:
 
 		auto process = getScheduler.currentProcess;
 
-		process.syscallRegisters = *regs;
+		(*process).syscallRegisters = *regs;
 		with (regs)
 	outer : switch (cast(SyscallID)rax) {
 			foreach (func; __traits(derivedMembers, system.syscall)) {
@@ -59,10 +59,10 @@ private:
 			}
 		default:
 			scr.writeln("UNKNOWN SYSCALL: ", cast(void*)rax);
-			process.syscallRegisters.rax = ulong.max;
+			(*process).syscallRegisters.rax = ulong.max;
 			break;
 		}
-		*regs = process.syscallRegisters;
+		*regs = (*process).syscallRegisters;
 	}
 
 	static string _generateFunctionCall(alias func)() {

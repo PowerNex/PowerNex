@@ -170,11 +170,11 @@ public:
 	}
 
 	@property override const(DirectoryEntry) front() const {
-		return _list[_index];
+		return (*_list)[_index];
 	}
 
 	@property override ref DirectoryEntry front() {
-		return _list[_index];
+		return (*_list)[_index];
 	}
 
 	override DirectoryEntry moveFront() {
@@ -186,13 +186,13 @@ public:
 	}
 
 	@property override bool empty() const {
-		return _index >= _list.length;
+		return _index >= (*_list).length;
 	}
 
 	override int opApply(scope int delegate(const DirectoryEntry) cb) const {
 		int res;
-		for (size_t i = _index; i < _list.length; i++) {
-			res = cb(_list[i]);
+		for (size_t i = _index; i < (*_list).length; i++) {
+			res = cb((*_list)[i]);
 			if (res)
 				break;
 		}
@@ -202,8 +202,8 @@ public:
 	override int opApply(scope int delegate(size_t, const DirectoryEntry) cb) const {
 		int res;
 		size_t j;
-		for (size_t i = _index; i < _list.length; i++) {
-			res = cb(j++, _list[i]);
+		for (size_t i = _index; i < (*_list).length; i++) {
+			res = cb(j++, (*_list)[i]);
 			if (res)
 				break;
 		}
@@ -212,8 +212,8 @@ public:
 
 	override int opApply(scope int delegate(ref DirectoryEntry) cb) {
 		int res;
-		for (size_t i = _index; i < _list.length; i++) {
-			res = cb(_list[i]);
+		for (size_t i = _index; i < (*_list).length; i++) {
+			res = cb((*_list)[i]);
 			if (res)
 				break;
 		}
@@ -223,8 +223,8 @@ public:
 	override int opApply(scope int delegate(size_t, ref DirectoryEntry) cb) {
 		int res;
 		size_t j;
-		for (size_t i = _index; i < _list.length; i++) {
-			res = cb(j++, _list[i]);
+		for (size_t i = _index; i < (*_list).length; i++) {
+			res = cb(j++, (*_list)[i]);
 			if (res)
 				break;
 		}

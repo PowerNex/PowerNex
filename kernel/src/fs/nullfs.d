@@ -17,11 +17,11 @@ public:
 		this.name = "RootFS";
 
 		_entries = makeRef!DirectoryEntryList(kernelAllocator, kernelAllocator);
-		_entries.put(DirectoryEntry(fs, id, "."));
-		_entries.put(DirectoryEntry(fs, parent, ".."));
-		_entries.put(DirectoryEntry(fs, id, "This is a NullFS!"));
-		_entries.put(DirectoryEntry(fs, id, "If you see this it probably mean"));
-		_entries.put(DirectoryEntry(fs, id, "that you encountered a bug!"));
+		(*_entries).put(DirectoryEntry(fs, id, "."));
+		(*_entries).put(DirectoryEntry(fs, parent, ".."));
+		(*_entries).put(DirectoryEntry(fs, id, "This is a NullFS!"));
+		(*_entries).put(DirectoryEntry(fs, id, "If you see this it probably mean"));
+		(*_entries).put(DirectoryEntry(fs, id, "that you encountered a bug!"));
 	}
 
 	override IOStatus chmod(ushort mode) {
@@ -36,14 +36,14 @@ public:
 	}
 
 	override IOStatus link(in string name, Ref!VNode node) {
-		_entries.put(DirectoryEntry(fs, node.id, name.dup));
+		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
 		return IOStatus.success;
 	}
 
 	override IOStatus unlink(in string name) {
-		foreach (DirectoryEntry e; _entries.data)
+		foreach (DirectoryEntry e; (*_entries))
 			if (e.name == name) {
-				_entries.remove(e.id);
+				(*_entries).remove(e.id);
 				return IOStatus.success;
 			}
 		return -IOStatus.notFound;
@@ -110,16 +110,16 @@ class NullFS : FileSystem {
 public:
 	this() {
 		_nodes = kernelAllocator.makeRef!NodeList(kernelAllocator);
-		_nodes.put(cast(Ref!VNode)kernelAllocator.makeRef!NullRootNode(this, _idCounter, _idCounter));
+		(*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!NullRootNode(this, _idCounter, _idCounter));
 		_idCounter++;
 	}
 
 	override Ref!VNode getNode(FSNodeID id) {
-		return _nodes[id];
+		return (*_nodes)[id];
 	}
 
 	override @property Ref!VNode root() {
-		return _nodes[0];
+		return (*_nodes)[0];
 	}
 
 	override @property string name() const {
