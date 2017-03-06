@@ -49,7 +49,7 @@ public:
 			_paging.unmapAndFree(start);
 	}
 
-	void* alloc(ulong size) {
+	deprecated("Please use allocators instead") void* alloc(ulong size) {
 		_mutex.lock;
 		if (!size)
 			return null;
@@ -75,7 +75,7 @@ public:
 		return (VirtAddress(freeChunk) + MemoryHeader.sizeof).ptr;
 	}
 
-	void free(void* addr) {
+	deprecated("Please use allocators instead") void free(void* addr) {
 		_mutex.lock;
 		if (!addr)
 			return;
@@ -88,7 +88,7 @@ public:
 		_mutex.unlock;
 	}
 
-	void* realloc(void* addr, ulong size) {
+	deprecated("Please use allocators instead") void* realloc(void* addr, ulong size) {
 		void* newMem = alloc(size);
 		_mutex.lock;
 		if (addr) {
@@ -224,7 +224,7 @@ private:
 }
 
 /// Get the kernel heap object
-Heap getKernelHeap() {
+deprecated("Please use allocators instead") Heap getKernelHeap() {
 	import data.util : inplaceClass;
 
 	__gshared ubyte[__traits(classInstanceSize, Heap)] data;

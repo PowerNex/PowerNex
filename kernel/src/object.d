@@ -124,7 +124,7 @@ extern (C) {
 	}
 
 	// the compiler spits this out all the time
-	Object _d_newclass(const ClassInfo ci) {
+	deprecated("Please use allocators instead") Object _d_newclass(const ClassInfo ci) {
 		//log.debug_("Creating a new class of type: ", ci.name);
 		void* memory = getKernelHeap.alloc(ci.init.length);
 		if (memory is null) {
@@ -136,17 +136,17 @@ extern (C) {
 		return cast(Object)memory;
 	}
 
-	extern (C) void* _d_newitemU(in TypeInfo ti) {
+	deprecated("Please use allocators instead") extern (C) void* _d_newitemU(in TypeInfo ti) {
 		return getKernelHeap.alloc(ti.tsize);
 	}
 
-	extern (C) void* _d_newitemT(in TypeInfo ti) {
+	deprecated("Please use allocators instead") extern (C) void* _d_newitemT(in TypeInfo ti) {
 		auto p = _d_newitemU(ti);
 		memset(p, 0, ti.tsize);
 		return p;
 	}
 
-	extern (C) void* _d_newitemiT(in TypeInfo ti) {
+	deprecated("Please use allocators instead") extern (C) void* _d_newitemiT(in TypeInfo ti) {
 		auto p = _d_newitemU(ti);
 		auto init = ti.init;
 		assert(init.length <= ti.tsize);
@@ -154,7 +154,7 @@ extern (C) {
 		return p;
 	}
 
-	void[] _d_newarrayT(TypeInfo ti, size_t length) {
+	deprecated("Please use allocators instead") void[] _d_newarrayT(TypeInfo ti, size_t length) {
 		auto size = ti.next.tsize();
 
 		if (!length || !size)
@@ -163,7 +163,7 @@ extern (C) {
 			return getKernelHeap.alloc(length * size)[0 .. length];
 	}
 
-	extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length) {
+	deprecated("Please use allocators instead") extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length) {
 		void[] result = _d_newarrayT(ti, length);
 		auto tinext = unqualify(ti.next);
 		auto size = tinext.tsize;
@@ -196,7 +196,7 @@ extern (C) {
 		}
 	}
 
-	void* _d_arrayliteralTX(TypeInfo ti, size_t length) {
+	deprecated("Please use allocators instead") void* _d_arrayliteralTX(TypeInfo ti, size_t length) {
 		auto size = ti.next.tsize();
 
 		if (!length || !size)
@@ -205,7 +205,7 @@ extern (C) {
 			return getKernelHeap.alloc(length * size);
 	}
 
-	void[] _d_arraycatT(TypeInfo ti, void[] x, void[] y) {
+	deprecated("Please use allocators instead") void[] _d_arraycatT(TypeInfo ti, void[] x, void[] y) {
 		log.fatal(ti.toString);
 		auto size = ti.next.tsize();
 
@@ -218,20 +218,20 @@ extern (C) {
 		return (cast(void*)data)[0 .. x.length + y.length];
 	}
 
-	void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
+	deprecated("Please use allocators instead") void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
 		*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
 		return *p;
 	}
 
-	void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
+	deprecated("Please use allocators instead") void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
 		*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
 
 		return *p;
 	}
 
-	byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) {
+	deprecated("Please use allocators instead") byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) {
 		auto size = ti.next.tsize();
 		auto newlength = px.length + n;
 		void* newPtr = getKernelHeap.realloc(px.ptr, newlength * size);
@@ -253,7 +253,7 @@ extern (C) {
 		return arr;
 	}
 
-	extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs) {
+	deprecated("Please use allocators instead") extern (C) void[] _d_arraycatnTX(const TypeInfo ti, byte[][] arrs) {
 		size_t length;
 		auto size = unqualify(ti.next).tsize; // array element size
 
@@ -485,7 +485,7 @@ class TypeInfo {
 		return null;
 	}
 	/// Run the destructor on the object and all its sub-objects
-	void destroy(void* p) const {
+	deprecated("Please use allocators instead") void destroy(void* p) const {
 		import memory.heap;
 
 		getKernelHeap.free(p);
@@ -1630,15 +1630,15 @@ immutable(T)[] immutable_alloc(T)(scope void delegate(T[]) initalizer) {
 
 import memory.heap;
 
-void destroy(void* memory) {
+deprecated("Please use allocators instead") void destroy(void* memory) {
 	getKernelHeap.free(memory);
 }
 
-void destroy(T)(T object) if (is(T == interface)) {
+deprecated("Please use allocators instead") void destroy(T)(T object) if (is(T == interface)) {
 	destroy(cast(Object)object);
 }
 
-void destroy(T)(T obj) if (is(T == class)) {
+deprecated("Please use allocators instead") void destroy(T)(T obj) if (is(T == class)) {
 	ClassInfo ci = typeid(obj);
 	void* object = cast(void*)_d_dynamic_cast(cast(Object)obj, ci);
 
@@ -1654,7 +1654,7 @@ void destroy(T)(T obj) if (is(T == class)) {
 	getKernelHeap.free(object);
 }
 
-void destroy(T)(T[] array) {
+deprecated("Please use allocators instead") void destroy(T)(T[] array) {
 	static if (is(typeof(T) == Object)) {
 		foreach (ref el; array) {
 			auto dtor = cast(void function(Object o))T.classinfo.destructor;
@@ -1671,7 +1671,7 @@ void destroy(T)(T[] array) {
 
 // this would be used for automatic heap closures, but there's no way to free it...
 ///*
-extern (C) void* _d_allocmemory(size_t bytes) {
+deprecated("Please use allocators instead") extern (C) void* _d_allocmemory(size_t bytes) {
 	return getKernelHeap.alloc(bytes);
 }
 //*/
@@ -2435,7 +2435,7 @@ extern (C) int dstrcmp(char[] s1, char[] s2) {
 	return s1.length > s2.length ? 1 : s1.length == s2.length ? 0 : -1;
 }
 
-inout(T)[] dup(T)(inout(T)[] a) {
+deprecated("Please use allocators instead") inout(T)[] dup(T)(inout(T)[] a) {
 	import memory.heap : getKernelHeap;
 
 	void[] arr = getKernelHeap.alloc(T.sizeof * a.length)[0 .. a.length];

@@ -9,3 +9,5 @@ COM1.log
 *.reggae
 objs
 compile_commands.json
+docs/
+docs.json

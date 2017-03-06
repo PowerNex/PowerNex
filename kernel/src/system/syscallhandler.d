@@ -65,30 +65,33 @@ private:
 		*regs = (*process).syscallRegisters;
 	}
 
-	static string _generateFunctionCall(alias func)() {
-		if (!__ctfe) // Without this it tries to use _d_arrayappendT
+	private static string _generateFunctionCall(alias func)() {
+		if (!__ctfe) { // Without this it tries to use _d_arrayappendT
+			assert(0);
 			return "";
-		import data.util : isArray;
+		} else {
+			import data.util : isArray;
 
-		enum abi = ["rdi", "rsi", "rdx", "r8", "r9", "r10", "r12", "r13", "r14", "r15"];
+			enum abi = ["rdi", "rsi", "rdx", "r8", "r9", "r10", "r12", "r13", "r14", "r15"];
 
-		alias p = parameters!(mixin("system.syscall." ~ func));
-		string o = "system.syscall." ~ func ~ "(";
+			alias p = parameters!(mixin("system.syscall." ~ func));
+			string o = "system.syscall." ~ func ~ "(";
 
-		size_t abi_count;
-		foreach (idx, val; p) {
-			assert(abi_count < abi.length);
-			static if (idx)
-				o ~= ", ";
-			static if (isArray!val) {
-				o ~= abi[abi_count++];
+			size_t abi_count;
+			foreach (idx, val; p) {
 				assert(abi_count < abi.length);
-				o ~= ".array!(" ~ val.stringof ~ ")(" ~ abi[abi_count++] ~ ")";
-			} else
-				o ~= "cast(" ~ val.stringof ~ ")" ~ abi[abi_count++] ~ ".num"; //!(" ~ val.stringof ~ ")";
-		}
+				static if (idx)
+					o ~= ", ";
+				static if (isArray!val) {
+					o ~= abi[abi_count++];
+					assert(abi_count < abi.length);
+					o ~= ".array!(" ~ val.stringof ~ ")(" ~ abi[abi_count++] ~ ")";
+				} else
+					o ~= "cast(" ~ val.stringof ~ ")" ~ abi[abi_count++] ~ ".num"; //!(" ~ val.stringof ~ ")";
+			}
 
-		o ~= ");";
-		return o;
+			o ~= ");";
+			return o;
+		}
 	}
 }

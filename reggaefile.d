@@ -9,10 +9,12 @@ import std.range;
 //dfmt off
 enum powerNexIsoName = "powernex.iso";
 enum objDir = topLevelDirName(Target(powerNexIsoName));
+enum docsFolder = "docs";
+enum docsConfig = "docs.json";
 
-enum CompileCommand : string {
-	dc = "cc/bin/powernex-dmd -m64 -dip25 -de -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in",
-	dc_header = "cc/bin/powernex-dmd -m64 -dip25 -de -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
+enum CompileCommand : string { //TODO: change back -dw to -de, re-add -vgc?
+	dc = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dd" ~ docsFolder ~ " -X -Xf" ~ docsConfig ~ " -of$out $in",
+	dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
 	ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
 	ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T kernel/src/kernel.ld",
 	iso = "grub-mkrescue -d /usr/lib/grub/i386-pc -o $out $in",
@@ -32,6 +34,7 @@ enum ToolCommand : string {
 	makeInitrdOld = objDir ~ "/utils/makeinitrdold $in $out",
 	makeInitrd = "tar -c --posix -f $out -C $in .",
 	removeImports = "sed -e 's/^import .*//g' -e 's/enum/import powernex.data.address;\\nenum/' -e 's/module system.syscall;/module powernex.internal.syscall;/' $in > $out",
+	ddox = "dub run ddox -- generate-html $in $out"
 }
 
 struct UtilsProgram {
@@ -99,6 +102,7 @@ enum kernelDSources = mapKernelSources(
 	"memory/heap.d",
 	"memory/paging.d",
 	"memory/ref_.d",
+	"memory/vmm.d",
 	"system/syscall.d",
 	"system/syscallhandler.d",
 	"system/utils.d",
