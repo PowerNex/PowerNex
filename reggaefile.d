@@ -52,6 +52,7 @@ static:
 //tree --dirsfirst --sort=name -i -f -Q | grep "\.d" | sed -e "s/\"\.\//     \"/g" -e "s/$/,/g"
 enum kernelDSources = mapKernelSources(
 	"acpi/rsdp.d",
+	"arch/amd64/paging.d",
 	"bin/consolefont.d",
 	"cpu/gdt.d",
 	"cpu/idt.d",

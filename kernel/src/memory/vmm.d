@@ -4,19 +4,36 @@ import data.address;
 import data.container;
 import memory.ref_;
 import memory.allocator;
+import task.process;
 
 // https://www.freebsd.org/cgi/man.cgi?query=vm_map&sektion=9&apropos=0&manpath=FreeBSD+11-current
 // https://www.freebsd.org/doc/en/articles/vm-design/vm-objects.html
 // https://www.freebsd.org/doc/en/articles/vm-design/fig4.png
 
-/// Flags for controlling what properties the map should have
+/// Bitmap enum containing the flags for controlling what properties the map should have
 enum VMPageFlags {
+	none = 0, /// Empty flags
 	present = 1, /// The map is active
 	writable = 2, /// The map is writable
 	user = 4, /// User mode can access it
-	//TODO: implement? somehow. somewhere
-	//TODO: Change it to be positive, noExecute -> execute?
-	noExecute = 8 /// Disallow code from execution
+	execute = 8 /// Disallow code from execution
+}
+
+/// The different states that a VMObject can be in
+enum VMObjectState {
+	unlocked = 0, /// All the properties can be change
+	locked, /// The object shouldn't be changed! This happens when a object gains a child.
+	manual /// This object is used for manual memory mapping. Can't gain a child or be CoW'd. Fork will make a copy of it.
+}
+
+enum VMMappingError {
+	success,
+	unknownError,
+	outOfMemory,
+	noMemoryZoneAllocated,
+	mapNotFound,
+	notSupportedMap,
+	alreadyMapped
 }
 
 /**
@@ -33,7 +50,13 @@ struct VMPage {
 
 /// This represents a allocated memory region
 struct VMObject {
-	bool locked; /// If the object is a parent of another object, aka this object can't be changed!
+	VMObjectState state; /// If the object is a parent of another object, aka this object can't be changed!
+
+	//TODO: Be able to make a inlockable object for storeing map(vAddr, pAddr) maps. Maps that should never be CoW
+	// or have a parent
+
+	VirtAddress zoneStart; /// The start of the memory zone that this object controls
+	VirtAddress zoneEnd; /// The end of the memory zone that this object controls
 
 	Vector!(VMPage*) pages; /// All the mapped pages
 	VMObject* parent; /// The parent for the object
@@ -42,15 +65,13 @@ struct VMObject {
 
 /// This represents one or more process address spaces
 struct VMProcess {
+public:
 	Vector!(VMObject*) objects; /// All the object that is associated with the process
 	Ref!IHWPaging backend; /// The paging backend
-	// TODO: Maybe remove this refCounter, if Ref!VMProcess is used!
-	size_t refCounter; /// Reference counter, for when the VMProcess is used in cloned processes
 	@disable this();
 	this(Ref!IHWPaging backend) {
 		objects = kernelAllocator.make!(Vector!(VMObject*))(kernelAllocator);
 		backend = backend;
-		refCounter = 1;
 	}
 
 	~this() {
@@ -81,21 +102,59 @@ struct VMProcess {
 			kernelAllocator.dispose(o);
 		}
 
-		foreach (VMObject* o; objects)
-			freeObject(o);
+		foreach (obj; objects)
+			freeObject(obj);
+
 		kernelAllocator.dispose(objects);
+	}
+
+	void bind() {
+		(*backend).bind();
+	}
+
+	//TODO: Return better error
+	bool addMemoryZone(VirtAddress zoneStart, VirtAddress zoneEnd, bool isManual = false) {
+		// Verify that it won't be inside another zone or contain another zone
+		//dfmt off
+		foreach (ref VMObject* object; objects)
+			if ((object.zoneStart <= zoneStart && object.zoneEnd >= zoneStart) ||	// If zoneStart is inside a existing zone
+					(object.zoneStart <= zoneEnd && object.zoneEnd >= zoneEnd) ||			// If zoneEnd is inside a existing zone
+					(zoneStart <= object.zoneStart && zoneStart >= object.zoneEnd) ||	// If object.zoneStart is inside the new zone
+					(zoneEnd <= object.zoneStart && zoneEnd >= object.zoneEnd))				// If object.zoneEnd is inside the new zone
+				return false;
+		//dfmt on
+
+		VMObject* obj = kernelAllocator.make!VMObject();
+		obj.state = isManual ? VMObjectState.manual : VMObjectState.unlocked;
+		obj.zoneStart = zoneStart;
+		obj.zoneEnd = zoneEnd;
+		obj.pages = kernelAllocator.make!(Vector!(VMPage*))(kernelAllocator);
+		obj.parent = null;
+		obj.refCounter = 1;
+
+		objects.put(obj);
+		return true;
 	}
 
 	PageFaultStatus onPageFault(scope Process process, VirtAddress vAddr, bool present, bool write, bool user) {
 		auto backend = *this.backend;
 		vAddr &= ~0xFFF;
 
+		VMObject** rootObject = _getObjectForZone(vAddr);
+		if (!rootObject) {
+			process.signal(SignalType.kernelError, "Can't VMObject for address. SIGSEGV");
+			return PageFaultStatus.unknownError;
+		} else if ((*rootObject).state == VMObjectState.manual) {
+			process.signal(SignalType.kernelError, "Page fault on manual mapped memory");
+			return PageFaultStatus.unknownError;
+		}
+
 		if (present) {
 			if (!write) {
 				if (user)
 					process.signal(SignalType.accessDenied, "User is trying to read to kernel page");
 				else
-					process.signal(SignalType.kernelError, "Kernal is trying to read to kernel page");
+					process.signal(SignalType.kernelError, "Kernel is trying to read to kernel page");
 				return PageFaultStatus.unknownError;
 			} else if (user) {
 				process.signal(SignalType.accessDenied, "User is trying to write to kernel page");
@@ -103,38 +162,35 @@ struct VMProcess {
 			}
 
 			//CoW
-			VMObject* obj;
 			VMPage* page;
 
-			// If page is found in curObject && curObject.locked; then
+			// If page is found in rootObject && rootObject.state == VMObjectState.locked; then
 			//   Allocate new object on top
 			// Set obj to the object that should own the page
 			// Set page to the page
-			outer_1: foreach (ref VMObject* curObject; objects) {
-				VMObject* o = curObject;
-				if (!o.locked)
-					o = o.parent;
-				while (o) {
-					foreach (VMPage* p; o.pages)
-						if (p.vAddr == vAddr) {
-							if (curObject.locked) { // Replace curObject
-								VMObject* newCurrentObject = kernelAllocator.make!VMObject();
-								if (!newCurrentObject) { //TODO: Cleanup
-									process.signal(SignalType.noMemory, "Out of memory");
-									return PageFaultStatus.unknownError;
-								}
-								newCurrentObject.locked = false;
-								newCurrentObject.parent = curObject;
-								newCurrentObject.refCounter = 1;
 
-								curObject = newCurrentObject;
+			VMObject* o = *rootObject;
+			if (o.state == VMObjectState.unlocked)
+				o = o.parent;
+			while (o) {
+				foreach (VMPage* p; o.pages)
+					if (p.vAddr == vAddr && p.refCounter) {
+						if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
+							VMObject* newCurrentObject = kernelAllocator.make!VMObject();
+							if (!newCurrentObject) { //TODO: Cleanup
+								process.signal(SignalType.noMemory, "Out of memory");
+								return PageFaultStatus.unknownError;
 							}
-							obj = curObject;
-							page = p;
-							break outer_1;
+							newCurrentObject.state = VMObjectState.unlocked;
+							newCurrentObject.parent = (*rootObject);
+							newCurrentObject.refCounter = 1;
+
+							(*rootObject) = newCurrentObject;
 						}
-					o = o.parent;
-				}
+						page = p;
+						break;
+					}
+				o = o.parent;
 			}
 
 			if (!page) {
@@ -153,7 +209,7 @@ struct VMProcess {
 			newPage.refCounter = 1;
 			backend.map(newPage);
 
-			obj.pages.put(newPage);
+			(*rootObject).pages.put(newPage);
 		} else {
 			// Lazy allocation
 			VMPage* page;
@@ -161,40 +217,39 @@ struct VMProcess {
 			// Get the page that correspondence to the vAddr in a non-locked object
 			// If it is found in a locked object, allocated a new root unlocked object and
 			// allocate a vmpage in that object that will be used.
-			outer_2: foreach (ref VMObject* curObject; objects) {
-				VMObject* o = curObject;
-				while (o) {
-					foreach (VMPage* p; o.pages)
-						if (p.vAddr == vAddr) {
-							if (curObject.locked) { // Replace curObject
-								VMObject* newCurrentObject = kernelAllocator.make!VMObject();
-								if (!newCurrentObject) { //TODO: Cleanup
-									process.signal(SignalType.noMemory, "Out of memory");
-									return PageFaultStatus.unknownError;
-								}
-								newCurrentObject.locked = false;
-								newCurrentObject.parent = curObject;
-								newCurrentObject.refCounter = 1;
 
-								curObject = newCurrentObject;
+			VMObject* o = *rootObject;
+			while (o) {
+				foreach (VMPage* p; o.pages)
+					if (p.vAddr == vAddr && p.refCounter) {
+						if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
+							VMObject* newCurrentObject = kernelAllocator.make!VMObject();
+							if (!newCurrentObject) { //TODO: Cleanup
+								process.signal(SignalType.noMemory, "Out of memory");
+								return PageFaultStatus.unknownError;
+							}
+							newCurrentObject.state = VMObjectState.unlocked;
+							newCurrentObject.parent = (*rootObject);
+							newCurrentObject.refCounter = 1;
 
-								page = kernelAllocator.make!VMPage(); // TODO: Reuse old pages
-								if (!page) { //TODO: Cleanup
-									process.signal(SignalType.noMemory, "Out of memory");
-									return PageFaultStatus.unknownError;
-								}
-								page.vAddr = p.vAddr;
-								page.flags = p.flags;
-								page.pAddr = PhysAddress(0);
-								page.refCounter = 1;
+							(*rootObject) = newCurrentObject;
 
-								curObject.pages.put(page);
-							} else
-								page = p; // Will only happen if it is found in curObject && !curObject.locked
-							break outer_2;
-						}
-					o = o.parent;
-				}
+							page = kernelAllocator.make!VMPage(); // TODO: Reuse old pages
+							if (!page) { //TODO: Cleanup
+								process.signal(SignalType.noMemory, "Out of memory");
+								return PageFaultStatus.unknownError;
+							}
+							page.vAddr = p.vAddr;
+							page.flags = p.flags;
+							page.pAddr = PhysAddress(0);
+							page.refCounter = 1;
+
+							(*rootObject).pages.put(page);
+						} else
+							page = p; // Will only happen if it is found in (*rootObject) && (*rootObject).state == VMObjectState.unlocked
+						break;
+					}
+				o = o.parent;
 			}
 
 			if (!page) {
@@ -218,33 +273,212 @@ struct VMProcess {
 		return PageFaultStatus.success;
 	}
 
-	VMProcess* fork(scope Process process) {
-		VMProcess* newProcess = kernelAllocator.make!VMProcess(backend);
+	Ref!VMProcess fork(scope Process process) {
+		Ref!VMProcess newProcess = kernelAllocator.makeRef!VMProcess(backend);
 		if (!newProcess) {
 			process.signal(SignalType.noMemory, "Out of memory");
-			return null;
+			return Ref!VMProcess();
 		}
 
-		foreach (VMObject* curObject; objects) {
+		foreach (obj; objects) {
+			// VMObjectState.manual need special handling
+			if (obj.state == VMObjectState.manual) {
+				VMObject* newObj = kernelAllocator.make!VMObject();
+				newObj.state = obj.state;
+				newObj.zoneStart = obj.zoneStart;
+				newObj.zoneEnd = obj.zoneEnd;
+				newObj.pages = kernelAllocator.make!(Vector!(VMPage*))(kernelAllocator);
+				foreach (VMPage* p; obj.pages) {
+					VMPage* newP = kernelAllocator.make!VMPage();
 
-			// Remap all pages as R/O
-			if (!curObject.locked) { // Optimization
-				foreach (VMPage* page; curObject.pages)
-					if (page.flags & VMPageFlags.writable)
-						(*backend).remap(page.vAddr, PhysAddress(), page.flags & ~VMPageFlags.writable);
-				curObject.locked = true;
+					newP.vAddr = p.vAddr;
+					newP.pAddr = p.pAddr;
+					newP.flags = p.flags;
+					newP.refCounter = 1; // Because this is a new page, it should be one
+					newObj.pages.put(newP);
+				}
+				newObj.parent = null; // Will always be null
+				newObj.refCounter = obj.refCounter;
+
+				(*newProcess).objects.put(newObj);
+				continue;
 			}
 
-			curObject.refCounter++;
+			// Remap all pages as R/O
+			if (obj.state == VMObjectState.unlocked) { // Optimization
+				foreach (VMPage* page; obj.pages)
+					if (page.flags & VMPageFlags.writable)
+						(*backend).remap(page.vAddr, PhysAddress(), page.flags & ~VMPageFlags.writable);
+				obj.state = VMObjectState.locked;
+			}
 
-			newProcess.objects.put(curObject);
+			obj.refCounter++;
+
+			(*newProcess).objects.put(obj);
 		}
+
 		return newProcess;
 	}
 
-	// Clone does not exist
-	// Clone is only this.refCounter++;
-	//VMProcess* clone() {}
+	VMMappingError mapFreeMemory(scope Process process, VirtAddress vAddr, VMPageFlags flags) {
+		VMObject** rootObject = _getObjectForZone(vAddr);
+		if (!rootObject)
+			return VMMappingError.noMemoryZoneAllocated;
+		else if ((*rootObject).state == VMObjectState.manual)
+			return VMMappingError.notSupportedMap; // map(vAddr, pAddr) maps are only allowed in VMObjectState.manual
+
+		if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
+			VMObject* newCurrentObject = kernelAllocator.make!VMObject();
+			if (!newCurrentObject) { //TODO: Cleanup
+				process.signal(SignalType.noMemory, "Out of memory");
+				return VMMappingError.outOfMemory;
+			}
+			newCurrentObject.state = VMObjectState.unlocked;
+			newCurrentObject.parent = (*rootObject);
+			newCurrentObject.refCounter = 1;
+
+			(*rootObject) = newCurrentObject;
+		}
+
+		foreach (VMPage* p; (*rootObject).pages)
+			if (p.vAddr == vAddr && p.refCounter)
+				return VMMappingError.alreadyMapped;
+
+		VMPage* p = kernelAllocator.make!VMPage();
+		p.vAddr = vAddr;
+		p.pAddr = PhysAddress(0);
+		p.flags = flags;
+
+		(*rootObject).pages.put(p);
+		return VMMappingError.success;
+	}
+
+	VMMappingError mapManual(scope Process process, VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
+		VMObject** rootObject = _getObjectForZone(vAddr);
+		if (!rootObject)
+			return VMMappingError.noMemoryZoneAllocated;
+		else if ((*rootObject).state != VMObjectState.manual)
+			return VMMappingError.notSupportedMap; // map(vAddr, pAddr) maps are only allowed in VMObjectState.manual
+
+		foreach (VMPage* p; (*rootObject).pages)
+			if (p.vAddr == vAddr && p.refCounter)
+				return VMMappingError.alreadyMapped;
+
+		VMPage* p = kernelAllocator.make!VMPage();
+		p.vAddr = vAddr;
+		p.pAddr = pAddr;
+		p.flags = flags;
+
+		(*rootObject).pages.put(p);
+		return VMMappingError.success;
+	}
+
+	VMMappingError remap(scope Process process, VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
+		VMObject** rootObject = _getObjectForZone(vAddr);
+		if (!rootObject)
+			return VMMappingError.noMemoryZoneAllocated;
+
+		VMPage* page;
+		VMObject* o = *rootObject;
+
+		// Search for the VMPage
+		outer_loop: while (o) {
+			foreach (VMPage* p; o.pages)
+				if (p.vAddr == vAddr && p.refCounter) {
+					page = p;
+					p.flags = flags;
+					if (pAddr)
+						p.pAddr = pAddr;
+					if ((*rootObject) == o && (*rootObject).state != VMObjectState.locked) //if ((!(flags & VMPageFlags.writable) && (p.flags & VMPageFlags.writable)))
+						return (*backend).remap(p.vAddr, pAddr, p.flags) ? VMMappingError.success : VMMappingError.unknownError;
+					break outer_loop;
+				}
+			o = o.parent;
+		}
+
+		if (!page)
+			return VMMappingError.mapNotFound;
+
+		// If the code reaches here we know that the state is VMObjectState.locked or *rootObject != o
+
+		if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
+			VMObject* newCurrentObject = kernelAllocator.make!VMObject();
+			if (!newCurrentObject) { //TODO: Cleanup
+				process.signal(SignalType.noMemory, "Out of memory");
+				return VMMappingError.outOfMemory;
+			}
+			newCurrentObject.state = VMObjectState.unlocked;
+			newCurrentObject.parent = (*rootObject);
+			newCurrentObject.refCounter = 1;
+
+			(*rootObject) = newCurrentObject;
+		}
+
+		VMPage* p = kernelAllocator.make!VMPage();
+		p.vAddr = vAddr;
+		p.pAddr = page.pAddr;
+		p.flags = flags;
+
+		(*rootObject).pages.put(p);
+		return VMMappingError.success;
+	}
+
+	VMMappingError unmap(scope Process process, VirtAddress vAddr) {
+		VMObject** rootObject = _getObjectForZone(vAddr);
+		if (!rootObject)
+			return VMMappingError.noMemoryZoneAllocated;
+
+		VMPage* page;
+		VMObject* o = *rootObject;
+		outer_loop: while (o) {
+			foreach (VMPage* p; o.pages)
+				if (p.vAddr == vAddr && p.refCounter) {
+					page = p;
+					if ((*rootObject) == o && (*rootObject).state != VMObjectState.locked) {
+						if (p.pAddr) {
+							(*backend).freePage(p.pAddr); //TODO: check output?
+							p.pAddr = PhysAddress(0);
+						}
+						p.refCounter = 0; //TODO: Actually use refCounter
+						return VMMappingError.success;
+					}
+					break outer_loop;
+				}
+			o = o.parent;
+		}
+		if (!page)
+			return VMMappingError.mapNotFound;
+
+		if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
+			VMObject* newCurrentObject = kernelAllocator.make!VMObject();
+			if (!newCurrentObject) { //TODO: Cleanup
+				process.signal(SignalType.noMemory, "Out of memory");
+				return VMMappingError.outOfMemory;
+			}
+			newCurrentObject.state = VMObjectState.unlocked;
+			newCurrentObject.parent = (*rootObject);
+			newCurrentObject.refCounter = 1;
+
+			(*rootObject) = newCurrentObject;
+		}
+
+		VMPage* p = kernelAllocator.make!VMPage();
+		p.vAddr = vAddr;
+		p.pAddr = PhysAddress(0);
+		p.flags = VMPageFlags.none;
+		p.refCounter = 0;
+
+		(*rootObject).pages.put(p);
+		return VMMappingError.success;
+	}
+
+private:
+	VMObject** _getObjectForZone(VirtAddress addr) {
+		foreach (ref VMObject* object; objects)
+			if (object.zoneStart <= addr && object.zoneEnd >= addr)
+				return &object;
+		return null;
+	}
 }
 
 enum PageFaultStatus : ssize_t {
@@ -255,10 +489,10 @@ enum PageFaultStatus : ssize_t {
 interface IHWPaging { // Hardware implementation of paging
 	/// Map virtual address $(PARAM page.vAddr) to physical address $(PARAM page.pAddr) with the flags $(PARAM page.flags).
 	/// $(PARAM clear) specifies if the memory should be cleared.
-	void map(VMPage* page, bool clear = false);
+	bool map(VMPage* page, bool clear = false);
 	/// Map virtual address $(PARAM vAddr) to physical address $(PARAM pAddr) with the flags $(PARAM flags).
 	/// $(PARAM clear) specifies if the memory should be cleared.
-	void map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false);
+	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false);
 
 	/**
 		* Changes a mappings properties
@@ -270,9 +504,9 @@ interface IHWPaging { // Hardware implementation of paging
 		* 	map.flags = flags;
 		* --------------------
 		*/
-	void remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags);
+	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags);
 	/// Remove a mapping
-	void unmap(VirtAddress vAddr);
+	bool unmap(VirtAddress vAddr);
 
 	/// Clone a physical page with all it's data
 	PhysAddress clonePage(PhysAddress page);
@@ -284,23 +518,5 @@ interface IHWPaging { // Hardware implementation of paging
 	void freePage(PhysAddress page);
 
 	/// Bind the paging
-	void bind(IHWMapping mapping);
-}
-
-alias PML4Entry = PhysAddress;
-alias IHWMapping = VirtAddress; //Map!(ushort /*id*/ , PML4Entry /*entry*/ );
-
-//TODO: MOVE EVERYTHING BELOW!
-enum SignalType {
-	noMemory,
-	kernelError,
-	accessDenied,
-	corruptedMemory
-}
-
-struct Process {
-	VMProcess* process;
-
-	void signal(SignalType signal, string error) { //TODO: MOVE!
-	}
+	void bind();
 }

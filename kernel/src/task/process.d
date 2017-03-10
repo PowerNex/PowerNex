@@ -10,6 +10,7 @@ import fs;
 import data.container;
 import memory.ref_;
 import memory.allocator;
+import memory.vmm;
 
 extern (C) void switchToUserMode(ulong loc, ulong stack);
 
@@ -76,6 +77,13 @@ enum WaitReason {
 	join //more e.g. harddrive, networking, mutex...
 }
 
+enum SignalType {
+	noMemory,
+	kernelError,
+	accessDenied,
+	corruptedMemory
+}
+
 struct Process {
 	~this() {
 		if (!pid)
@@ -95,6 +103,7 @@ struct Process {
 
 	ThreadState threadState;
 	ImageInformation image;
+	Ref!VMProcess vmProcess;
 	bool kernelProcess;
 	Registers syscallRegisters;
 	Ref!IAllocator allocator;
@@ -117,4 +126,7 @@ struct Process {
 	Ref!(Map!(size_t, Ref!NodeContext)) fileDescriptors;
 
 	size_t fdIDCounter;
+
+	void signal(SignalType signal, string error) { //TODO: MOVE!
+	}
 }
