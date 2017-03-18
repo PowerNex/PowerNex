@@ -12,6 +12,8 @@ template bitfieldShim(const char[] typeStr, alias data, args...) {
 template bitfieldImpl(const char[] typeStr, const char[] nameStr, int offset, args...) {
 	static if (!args.length)
 		const char[] ret = "";
+	else static if (!args[0].length)
+		const char[] ret = bitfieldImpl!(typeStr, nameStr, offset + args[1], args[2 .. $]).ret;
 	else {
 		const name = args[0];
 		const size = args[1];

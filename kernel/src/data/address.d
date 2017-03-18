@@ -108,7 +108,7 @@ struct VirtAddress {
 struct PhysAddress {
 	mixin AddressBase;
 
-	@property VirtAddress virtual() const {
+	deprecated("PhysAddress -> VirtAddress must always go though the VMM") @property VirtAddress virtual() const {
 		return VirtAddress(addr + 0xFFFF_8000_0000_0000);
 	}
 }
@@ -116,7 +116,7 @@ struct PhysAddress {
 struct PhysAddress32 {
 	mixin AddressBase!uint;
 
-	@property VirtAddress virtual() const {
+	deprecated("PhysAddress -> VirtAddress must always go though the VMM") @property VirtAddress virtual() const {
 		return VirtAddress(addr + 0xFFFF_8000_0000_0000);
 	}
 }

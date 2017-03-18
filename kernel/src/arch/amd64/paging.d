@@ -3,49 +3,26 @@ module arch.amd64.paging;
 import data.address;
 import memory.vmm;
 import data.bitfield;
+import data.util;
 
-private {
-	struct Page {
+/// Page table level
+struct PTLevel(NextLevel) {
+	struct TableEntry {
+
+		private enum _isPage = is(NextLevel == PhysAddress);
+
 		private ulong _data;
 
+		this(TableEntry other) {
+			_data = other.data;
+		}
+
+		static if (_isPage)
+			alias specialOptions = TypeTuple!("dirty", 1, "pat", 1, "global", 1);
+		else
+			alias specialOptions = TypeTuple!("reserved", 1, "map4M", 1, "ignored", 1);
+
 		//dfmt off
-		mixin(bitfield!(_data,
-			"present", 1,
-			"readWrite", 1,
-			"user", 1,
-			"writeThrough", 1,
-			"cacheDisable", 1,
-			"accessed", 1,
-			"dirty", 1,
-			"pat", 1,
-			"global", 1,
-			"avl", 3,
-			"address", 40,
-			"available", 11,
-			"noExecute", 1
-		));
-		//dfmt on
-
-		@property VirtAddress data() {
-			return VirtAddress(address << 12);
-		}
-
-		@property void data(VirtAddress addr) {
-			address = addr.num >> 12;
-			return addr;
-		}
-	}
-
-	/// Page table level
-	struct PTLevel(nextLevel) {
-		struct TablePtr {
-			private ulong _data;
-
-			this(TablePtr other) {
-				_data = other.data;
-			}
-
-			//dfmt off
 			mixin(bitfield!(_data,
 				"present", 1,
 				"readWrite", 1,
@@ -53,9 +30,7 @@ private {
 				"writeThrough", 1,
 				"cacheDisable", 1,
 				"accessed", 1,
-				"reserved", 1,
-				"map4M", 1,
-				"ignored", 1,
+				specialOptions,
 				"avl", 3,
 				"address", 40,
 				"available", 11,
@@ -63,28 +38,32 @@ private {
 			));
 			//dfmt on
 
-			@property PhysAddress data() {
-				return PhysAddress(address << 12);
-			}
-
-			@property void data(PhysAddress addr) {
-				address = addr.num >> 12;
-				return addr;
-			}
-
-			@property nextLevel get() {
-				//TODO:
-			}
+		@property PhysAddress data() {
+			return PhysAddress(address << 12);
 		}
 
-		TablePtr[512] page;
+		@property PhysAddress data(PhysAddress addr) {
+			address = addr.num >> 12;
+			return addr;
+		}
+
+		static if (_isPage)
+			alias get = data;
+		else
+			@property NextLevel* get() {
+				VirtAddress addr = data().virtual; //TODO: Recursive map
+				return addr.ptr!NextLevel;
+			}
 	}
 
-	alias PT = PTLevel!Page;
-	alias PD = PTLevel!PT;
-	alias PDP = PTLevel!PD;
-	alias PML4 = PTLevel!PDP;
+	TableEntry[512] entries;
 }
+
+alias Page = PhysAddress;
+alias PT = PTLevel!Page;
+alias PD = PTLevel!PT;
+alias PDP = PTLevel!PD;
+alias PML4 = PTLevel!PDP;
 
 private extern (C) void cpuFlushPage(ulong addr);
 private extern (C) void cpuInstallCR3(PhysAddress addr);
@@ -100,20 +79,39 @@ public:
 
 	//TODO: maybe? void removeUserspace();
 
-	bool map(VMPage* page, bool clear = false);
-	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false);
+	bool map(VMPage* page, bool clear = false) {
+		assert(0);
+	}
 
-	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags);
-	bool unmap(VirtAddress vAddr);
+	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) {
+		assert(0);
+	}
 
-	PhysAddress clonePage(PhysAddress page);
-	PhysAddress getNextFreePage();
+	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
+		assert(0);
+	}
 
-	void freePage(PhysAddress page);
+	bool unmap(VirtAddress vAddr) {
+		assert(0);
+	}
+
+	PhysAddress clonePage(PhysAddress page) {
+		assert(0);
+	}
+
+	PhysAddress getNextFreePage() {
+		assert(0);
+	}
+
+	void freePage(PhysAddress page) {
+		assert(0);
+	}
+
 	void bind() {
-		cpuInstallCR3(pml4);
+		cpuInstallCR3(addr);
 	}
 
 private:
-	PhysAddress pml4;
+	PhysAddress addr;
+	PML4* pml4;
 }

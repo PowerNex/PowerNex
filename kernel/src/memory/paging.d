@@ -143,7 +143,7 @@ static assert(Table!4.sizeof == (ulong[512]).sizeof);
 
 private extern (C) void cpuInstallCR3(PhysAddress addr);
 
-class Paging {
+deprecated("Use VMM instead") class Paging {
 public:
 	private this() {
 		_rootPhys = PhysAddress(FrameAllocator.alloc());
