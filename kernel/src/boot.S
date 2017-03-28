@@ -68,6 +68,7 @@ start:
 	# Enable PAE
 	mov %cr4, %eax
 	bts $5, %eax # physical address extension
+	bts $7, %eax # paging global extensions
 	mov %eax, %cr4
 
 	# Set long mode bit in EFER MSR

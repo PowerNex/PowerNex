@@ -2,56 +2,118 @@ module arch.amd64.paging;
 
 import data.address;
 import memory.vmm;
-import data.bitfield;
 import data.util;
 
 /// Page table level
 struct PTLevel(NextLevel) {
 	struct TableEntry {
-
-		private enum _isPage = is(NextLevel == PhysAddress);
-
 		private ulong _data;
 
 		this(TableEntry other) {
 			_data = other.data;
 		}
 
-		static if (_isPage)
-			alias specialOptions = TypeTuple!("dirty", 1, "pat", 1, "global", 1);
-		else
-			alias specialOptions = TypeTuple!("reserved", 1, "map4M", 1, "ignored", 1);
+		/// If the map is active
+		@property bool present() { return cast(bool)((_data >> 0x0UL) & 0x1UL); }
+		/// ditto
+		@property void present(bool val) { _data = (_data & ~(0x1UL << 0x0UL)) | ((val & 0x1UL) << 0x0UL); }
 
-		//dfmt off
-			mixin(bitfield!(_data,
-				"present", 1,
-				"readWrite", 1,
-				"user", 1,
-				"writeThrough", 1,
-				"cacheDisable", 1,
-				"accessed", 1,
-				specialOptions,
-				"avl", 3,
-				"address", 40,
-				"available", 11,
-				"noExecute", 1
-			));
-			//dfmt on
+		// If the page is R/W instead of R/O
+		@property bool readWrite() { return cast(bool)((_data >> 0x1UL) & 0x1UL); }
+		/// ditto
+		@property void readWrite(bool val) { _data = (_data & ~(0x1UL << 0x1UL)) | ((val & 0x1UL) << 0x1UL); }
 
-		@property PhysAddress data() {
-			return PhysAddress(address << 12);
+		/// If userspace can access this page
+		@property bool user() { return cast(bool)((_data >> 0x2UL) & 0x1UL); }
+		/// ditto
+		@property void user(bool val) { _data = (_data & ~(0x1UL << 0x2UL)) | ((val & 0x1UL) << 0x2UL); }
+
+		/// If the map should bypass the cache and write directly to memory
+		@property bool writeThrough() { return cast(bool)((_data >> 0x3UL) & 0x1UL); }
+		/// ditto
+		@property void writeThrough(bool val) { _data = (_data & ~(0x1UL << 0x3UL)) | ((val & 0x1UL) << 0x3UL); }
+
+		/// If the map should bypass the read cache and read directly from memory
+		@property bool cacheDisable() { return cast(bool)((_data >> 0x4UL) & 0x1UL); }
+		/// ditto
+		@property void cacheDisable(bool val) { _data = (_data & ~(0x1UL << 0x4UL)) | ((val & 0x1UL) << 0x4UL); }
+
+		/// Is set when page has been accessed
+		@property bool accessed() { return cast(bool)((_data >> 0x5UL) & 0x1UL); }
+		/// ditto
+		@property void accessed(bool val) { _data = (_data & ~(0x1UL << 0x5UL)) | ((val & 0x1UL) << 0x5UL); }
+
+		/// Is set when page has been written to
+		/// NOTE: Only valid if hugeMap is 1, else this value should be zero
+		@property bool dirty() { return cast(bool)((_data >> 0x6UL) & 0x1UL); }
+		/// ditto
+		@property void dirty(bool val) { _data = (_data & ~(0x1UL << 0x6UL)) | ((val & 0x1UL) << 0x6UL); }
+
+		/**
+			Maps bigger pages
+			Note:
+				PML4: Must be zero,
+				PDP: Works like a Page, but maps 1GiB
+				PD: Works like a Page, but maps 4MiB
+				Page: Not valid function, pat overrides this property
+
+			See_Also:
+				hugeMap, pat
+		*/
+		@property bool hugeMap() { return cast(bool)((_data >> 0x7UL) & 0x1UL); }
+		/// ditto
+		@property void hugeMap(bool val) { _data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL); }
+
+		/**
+			Not implemented, Will probably be used in the future
+
+			Docs:
+				http://developer.amd.com/wordpress/media/2012/10/24593_APM_v21.pdf p.199
+
+			See_Also:
+				hugeMap
+		*/
+		@property bool pat() { return cast(bool)((_data >> 0x7UL) & 0x1UL); }
+		/// ditto
+		@property void pat(bool val) { _data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL); }
+
+		/// Is not cleared from the cache on a PML4 switch
+		@property bool global() { return cast(bool)((_data >> 0x8UL) & 0x1UL); }
+		/// ditto
+		@property void global(bool val) { _data = (_data & ~(0x1UL << 0x8UL)) | ((val & 0x1UL) << 0x8UL); }
+
+		/// For future PowerNex usage
+		@property ubyte osSpecific() { return cast(ubyte)((_data >> 0x9UL) & 0x7UL); }
+		/// ditto
+		@property void osSpecific(ubyte val) { _data = (_data & ~(0x7UL << 0x9UL)) | ((val & 0x7UL) << 0x9UL); }
+
+		/// The address to the next level in the page tables, or the final map address
+		@property ulong data() { return cast(ulong)((_data >> 0xCUL) & 0xFFFFFFFFFFUL); }
+		/// ditto
+		@property void data(ulong val) { _data = (_data & ~(0xFFFFFFFFFFUL << 0xCUL)) | ((val & 0xFFFFFFFFFFUL) << 0xCUL); }
+
+		/// For future PowerNex usage
+		@property ushort osSpecific2() { return cast(ushort)((_data >> 0x34UL) & 0x7FFUL); }
+		/// ditto
+		@property void osSpecific2(ushort val) { _data = (_data & ~(0x7FFUL << 0x34UL)) | ((val & 0x7FFUL) << 0x34UL); }
+
+		/// Forbids execution in the map
+		@property bool noExecute() { return cast(bool)((_data >> 0x3FUL) & 0x1UL); }
+		/// ditto
+		@property void noExecute(bool val) { _data = (_data & ~(0x1UL << 0x3FUL)) | ((val & 0x1UL) << 0x3FUL); }
+
+		@property PhysAddress address() {
+			return PhysAddress(data << 12);
 		}
 
-		@property PhysAddress data(PhysAddress addr) {
-			address = addr.num >> 12;
+		@property PhysAddress address(PhysAddress addr) {
+			data = addr.num >> 12;
 			return addr;
 		}
 
-		static if (_isPage)
-			alias get = data;
-		else
-			@property NextLevel* get() {
-				VirtAddress addr = data().virtual; //TODO: Recursive map
+		static if (is(NextLevel == PTLevel!X, X))
+			@property NextLevel* getNextLevel() {
+				VirtAddress addr = address.virtual; //TODO: Recursive map
 				return addr.ptr!NextLevel;
 			}
 	}
