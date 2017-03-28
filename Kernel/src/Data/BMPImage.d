@@ -104,7 +104,8 @@ private:
 		ubyte[bytesPerPixel] buf = void;
 		for (int y = bitmap.height - 1; y >= 0; y--) {
 			for (int x = 0; x < bitmap.width; x++) {
-				file.Read(buf, offset += bytesPerPixel);
+				file.Read(buf, offset);
+				offset += bytesPerPixel;
 
 				immutable ubyte r = rid != ubyte.max ? buf[rid] : 0;
 				immutable ubyte g = gid != ubyte.max ? buf[gid] : 0;
