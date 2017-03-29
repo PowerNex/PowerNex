@@ -57,13 +57,13 @@ start:
 	mov $0x80000000, %eax
 	cpuid
 	cmp $0x80000001, %eax
-		jb .notx64Capable
+		jb .not32bitsCapable
 
 	# Check so that x64 is supported
 	mov $0x80000001, %eax
 	cpuid
 	test $(1 << 29), %edx
-		jz .notx64Capable
+		jz .not32bitsCapable
 
 	# Enable PAE
 	mov %cr4, %eax
@@ -127,10 +127,10 @@ start:
 	# Jump into x64
 	ljmp $0x8, $(start64 - KERNEL_VMA)
 
-.notx64Capable:
+.not32bitsCapable:
 	mov $0x4A, %ah
 	mov $0xB8000, %edi
-	mov $(x64NotSupported_msg - KERNEL_VMA), %esi
+	mov $(32bitsNotSupported_msg - KERNEL_VMA), %esi
 
 .loop:
 	lodsb
@@ -169,7 +169,7 @@ multiboot_magic:
 multiboot_ptr:
 	.int 0
 
-x64NotSupported_msg:
+32bitsNotSupported_msg:
 	.ascii "                                                                                "
 	.ascii "                   _____                       _   _                            "
 	.ascii "                  |  __ \\                     | \\ | |                           "
@@ -179,7 +179,7 @@ x64NotSupported_msg:
 	.ascii "                  |_|   \\___/ \\_/\\_/ \\___|_|  |_| \\_|\\___/_/\\_\\                 "
 	.ascii "                                                                                "
 	.ascii "                                                                                "
-	.ascii "                   *The current setup can not run 64-bit code*                  "
+	.ascii "                   *The current setup can not run 32-bit code*                  "
 	.ascii "                                                                                "
 	.ascii "                                                                                "
 	.ascii "                  Please run PowerNex in a VM which supports it                 "
