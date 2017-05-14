@@ -1,0 +1,68 @@
+https://gitlab.com/sortix/sortix/blob/master/kernel/x64/boot.S#L128
+
+P_RW = 0x3;
+P_RW_FORK = P_RW + 0x200;
+P_RW_CACHEDISABLE_FORK = P_RW_FORK + 0x4;
+
+bootpml4 + 509 * 8 = $(physpml3 + P_RW)
+// 0x0000_FE80_0000_0000 --> fracpml3
+
+bootpml4 + 510 * 8 = $(fracpml3 + P_RW_FORK)
+// 0x0000_FF00_0000_0000 --> fracpml3
+
+bootpml4 + 511 * 8 = $(bootpml4 + P_RW)
+// 0x0000_FF80_0000_0000 --> bootpml4
+
+fracpml3 + 0 * 8 = $(forkpml2 + P_RW_FORK)
+// 0x0000_0000_0000_0000 --> forkpml2
+
+fracpml3 + 510 * 8 = $(fracpml2 + P_RW_FORK)
+// 0x0000_007F_8000_0000 --> fracpml2
+
+fracpml3 + 511 * 8 = $(bootpml4 + P_RW)
+// 0x0000_007F_C000_0000 --> bootpml4
+
+
+fracpml2 + 510 * 8 = $(fracpml1 + P_RW_FORK)
+// 0x0000_0000_3FC0_0000--> fracpml1
+
+fracpml2 + 511 * 8 = $(bootpml4 + P_RW)
+// 0x0000_0000_3FE0_0000 --> bootpml4
+
+
+fracpml1 + 511 * 8 = $(bootpml4 + P_RW)
+// 0x0000_0000_001F_F000--> bootpml4
+
+forkpml2 + 0   * 8 = $(forkpml1 + P_RW_FORK)
+// 0x0000_0000_0000_0000 --> forkpml1
+
+physpml3 + 0   * 8 = $(physpml2 + P_RW)
+// 0x0000_0000_0000_0000 --> physpml2
+
+physpml2 + 0   * 8 = $(physpml1 + P_RW)
+// 0x0000_0000_0000_0000 --> physpml1
+
+physpml1 + 0   * 8 = $(physpml0 + P_RW)
+// 0x0000_0000_0000_0000 --> physpml0
+
+
+0xFFFF_FF80_0000_0000 --> bootpml4[511] = bootpml4 as PML3 (PDP)
+0xFFFF_FF7F_C000_0000 --> bootpml4[510].fracpml3[511] = bootpml4 as PML2 (PD)
+0xFFFF_FF7F_BFE0_0000 --> bootpml4[510].fracpml3[510].fracpml2[511] = bootpml4 as PML1 (PT)
+0xFFFF_FF7F_BFDF_F000 --> bootpml4[510].fracpml3[510].fracpml2[510].fracpml1[511] = bootpml4 as PML0 (Page)
+
+
+
+
+
+forkpt (PT)
+forkpt[0] = Moving page data
+forkpt[1] = Moving PT data
+forkpt[2] = Moving PD data
+forkpt[3] = Moving PDP data
+forkpt[4] = Moving PML4 data
+
+
+
+0xFFFF_FE80_0000_1000 - 0xFFFF_FE80_0040_0000 = 0x40_0000 Physical mapping (4MiB)
+0xFFFF_FF00_0000_0000 - 0xFFFF_FF00_0020_0000 = 0x20_000 - Fork forkPT

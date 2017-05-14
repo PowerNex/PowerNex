@@ -159,6 +159,9 @@ private:
 	}
 }
 
+//XXX: IsCMOSInited
+__gshared bool isCMOSInited = false;
+
 CMOS getCMOS() {
 	import data.util : inplaceClass;
 
@@ -169,6 +172,7 @@ CMOS getCMOS() {
 		import acpi.rsdp : rsdp;
 
 		cmos = inplaceClass!CMOS(data, rsdp.fadtInstance.century);
+		isCMOSInited = true;
 	}
 	return cmos;
 }

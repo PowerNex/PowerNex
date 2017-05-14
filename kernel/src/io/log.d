@@ -45,9 +45,11 @@ struct Log {
 
 	// XXX: Page fault if this is not wrapped like this!
 	static ulong seconds() {
-		import hw.cmos.cmos : getCMOS;
+		import hw.cmos.cmos : getCMOS, isCMOSInited;
 
-		return getCMOS.timeStamp();
+		if (isCMOSInited)
+			return getCMOS.timeStamp();
+		return 0;
 	}
 
 	void init() {

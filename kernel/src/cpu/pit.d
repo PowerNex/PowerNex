@@ -38,10 +38,13 @@ private:
 	__gshared ulong _counter;
 	static void _onTick(Registers* regs) {
 		import memory.frameallocator;
-		import task.scheduler : getScheduler;
+		import task.scheduler : getScheduler, isSchedulerInited;
 		import data.textbuffer : scr = getBootTTY;
 
 		_counter++;
+
+		if (!isSchedulerInited)
+			return;
 
 		getScheduler.wakeUp(WaitReason.timer, &_wakeUpTimedSleep);
 		getScheduler.switchProcess(true);

@@ -81,12 +81,10 @@ void preInit() {
 	scr.onChangedCallback = &bootTTYToTextmode;
 	getScreen.clear();
 
-	scr.writeln("ACPI initializing...");
-	rsdp.init();
-	scr.writeln("CMOS initializing...");
-	getCMOS();
 	scr.writeln("Log initializing...");
 	log.init();
+	log.info("Log is now enabled!");
+
 	scr.writeln("GDT initializing...");
 	GDT.init();
 	scr.writeln("IDT initializing...");
@@ -96,8 +94,6 @@ void preInit() {
 
 	scr.writeln("PIT initializing...");
 	PIT.init();
-	scr.writeln("Keyboard initializing...");
-	PS2Keyboard.init();
 }
 
 void welcome() {
@@ -113,6 +109,28 @@ void init(uint magic, ulong info) {
 	log.info("Multiboot parsing...");
 	Multiboot.parseHeader(magic, info);
 
+	scr.writeln("FrameAllocator initializing...");
+	log.info("FrameAllocator initializing...");
+	FrameAllocator.init();
+
+	scr.writeln("Paging initializing...");
+	log.info("Paging initializing...");
+	getKernelPaging.removeUserspace(false); // Removes all mapping that are not needed for the kernel
+	getKernelPaging.install();
+
+	scr.writeln("ACPI initializing...");
+	rsdp.init();
+	asm {
+	loop:
+		hlt;
+		jmp loop;
+	}
+	scr.writeln("CMOS initializing...");
+	getCMOS();
+
+	scr.writeln("Keyboard initializing...");
+	PS2Keyboard.init();
+
 	{
 		VirtAddress[2] symmap = Multiboot.getModule("symmap");
 		if (symmap[0]) {
@@ -122,14 +140,6 @@ void init(uint magic, ulong info) {
 			log.fatal("No module called symmap!");
 	}
 
-	scr.writeln("FrameAllocator initializing...");
-	log.info("FrameAllocator initializing...");
-	FrameAllocator.init();
-
-	scr.writeln("Paging initializing...");
-	log.info("Paging initializing...");
-	getKernelPaging.removeUserspace(false); // Removes all mapping that are not needed for the kernel
-	getKernelPaging.install();
 	scr.writeln("Heap initializing...");
 	log.info("Heap initializing...");
 	getKernelHeap;
@@ -179,8 +189,8 @@ void loadInitrd() {
 
 			IOStatus ret = (*node).dirEntries(range);
 			if (ret) {
-				log.error("dirEntries: ", -ret, ", ", (*node).name, "(", (*node).id, ")", " node:", typeid((*node)).name, " fs:",
-						typeid((*node).fs).name);
+				log.error("dirEntries: ", -ret, ", ", (*node).name, "(", (*node).id, ")", " node:", typeid((*node)).name,
+						" fs:", typeid((*node).fs).name);
 				return;
 			}
 			int nextLevel = level + 1;

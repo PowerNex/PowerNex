@@ -40,6 +40,8 @@ struct RSDT {
 	ACPISDTHeader h;
 	PhysAddress32[] pointerToOtherSDT() {
 		auto ptr = VirtAddress(&h) + h.sizeof;
+		scr.writeln("Ptr: ", &h);
+		while(true) {}
 		return ptr.ptr!PhysAddress32[0 .. (h.length - h.sizeof) / 4];
 	}
 
@@ -118,19 +120,21 @@ align(1):
 
 struct RSDP {
 	void init() {
+		scr.writeln("RSDP");
 		VirtAddress addr = _getAddress();
 		if (!addr.num)
 			return scr.writeln("RSDP: Can't find!");
-
+		scr.writeln("\tAddr: ", addr);
 		RSDPDescriptor* rsdp = addr.ptr!RSDPDescriptor;
 		if (!rsdp || !_checksum(rsdp))
 			return scr.writeln("RSDPDescriptor: Invalid checksum");
-
+		scr.writeln("\tRSDP: ", rsdp);
 		rsdt = rsdp.rsdtAddress.virtual.ptr!RSDT;
 		if (!rsdt)
 			return scr.writeln("RSDTDesciptor: invalid");
-
+		scr.writeln("\tRSDT: ", rsdt, " || ", rsdp.rsdtAddress);
 		fadt = rsdt.getSDT!FADT("FACP");
+while (true) {}
 		if (!fadt || !_checksum(fadt, fadt.h.length))
 			return scr.writeln("FADT: Invalid checksum");
 

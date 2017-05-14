@@ -1,0 +1,64 @@
+digraph derp {
+	COM[style=filled,fillcolor=green];
+	ACPI;
+	CMOS;
+	Log[style=filled,fillcolor=green];
+	GDT[style=filled,fillcolor=green];
+	IDT[style=filled,fillcolor=green];
+	SyscallHandler[style=filled,fillcolor=green];
+	PIT[style=filled,fillcolor=green];
+	PS2;
+	Multiboot[style=filled,fillcolor=green];
+	FrameAllocator[style=filled,fillcolor=green];
+	Paging;
+	Heap;
+	PCI;
+	FS;
+	ConsoleManager;
+	Scheduler;
+
+	//(*) -> COM;
+
+	CMOS -> ACPI;
+
+	Log -> COM;
+
+	IDT -> GDT;
+	SyscallHandler -> IDT;
+	PIT -> IDT;
+	PS2 -> IDT;
+	FrameAllocator -> Multiboot;
+	Paging -> FrameAllocator;
+	//Heap -> Paging;
+	PS2 -> ConsoleManager;
+	SyscallHandler -> Scheduler;
+	Heap -> Scheduler;
+	PIT -> Scheduler;
+	FS -> Heap;
+
+	ACPI -> Paging;
+	PCI -> Paging;
+	ConsoleManager -> Paging;
+	Scheduler -> Paging;
+
+	CMOS -> PIT;
+
+
+	//ACPI -> Log;
+	//CMOS -> Log;
+	GDT -> Log;
+	//IDT -> Log;
+	//SyscallHandler -> Log;
+	//PIT -> Log;
+	//PS2 -> Log;
+	Multiboot -> Log;
+	//FrameAllocator -> Log;
+	//Paging -> Log;
+	//Heap -> Log;
+	//PCI -> Log;
+	//FS -> Log;
+	//ConsoleManager -> Log;
+	//Scheduler -> Log;
+
+
+}

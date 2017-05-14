@@ -65,6 +65,53 @@ start:
 	test $(1 << 29), %edx
 		jz notx64Capable
 
+setupPaging:
+	mov $(PML4 - KERNEL_VMA), %eax
+	mov %eax, %cr3
+
+	movl $(PML3_bootOnly - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 0 * 8
+	movl $(PML2_bootOnly - KERNEL_VMA + 0x003), PML3_bootOnly - KERNEL_VMA + 0 * 8
+	movl $(PML1_bootOnly1 - KERNEL_VMA + 0x003), PML2_bootOnly - KERNEL_VMA + 0 * 8
+	movl $(PML1_bootOnly2 - KERNEL_VMA + 0x003), PML2_bootOnly - KERNEL_VMA + 1 * 8
+
+	# Skip nullpage
+	movl $(PML1_bootOnly1 - KERNEL_VMA + 8), %edi
+	movl $(0x1000 + 0x003), %esi
+	movl $(512 * 2 - 1), %ecx
+	1:
+		movl %esi, (%edi)
+		addl $0x1000, %esi
+		addl $0x8, %edi
+		loop 1b
+
+	movl $(PML4 - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 509 * 8
+
+# movl $(PML3_special - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 510 * 8
+
+	movl $(PML3_kernel - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 511 * 8
+	movl $(PML2_kernel - KERNEL_VMA + 0x003), PML3_kernel - KERNEL_VMA + 510 * 8
+
+
+	movl $(PML2_kernel - KERNEL_VMA), %edi
+	movl $(PML1_kernel - KERNEL_VMA + 0x003), %esi
+	movl $32, %ecx
+	1:
+		movl %esi, (%edi)
+		addl $0x1000, %esi
+		addl $0x8, %edi
+		loop 1b
+
+
+	movl $(PML1_kernel - KERNEL_VMA + 8), %edi
+	movl $0x1003, %esi
+	movl $(1024 * 32 - 1), %ecx
+	1:
+		movl %esi, (%edi)
+		addl $0x1000, %esi
+		addl $0x8, %edi
+		loop 1b
+
+enablePaging:
 	# Enable PAE
 	mov %cr4, %eax
 	bts $5, %eax # physical address extension
@@ -78,9 +125,6 @@ start:
 	bts $0, %eax # SYSCALL/SYSRET
 	bts $8, %eax # Long mode enable
 	wrmsr
-
-	mov $(PML4 - KERNEL_VMA), %eax
-	mov %eax, %cr3
 
 	# Enable paging and write protected
 	mov %cr0, %eax
@@ -123,6 +167,7 @@ remapIRQ:
 	out %al, $SlaveData
 
 jumpToX64:
+	xchgw %bx, %bx
 	# Load x64 GDT
 	lgdt (gdtPointer - KERNEL_VMA)
 	# Jump into x64
@@ -170,6 +215,7 @@ multiboot_magic:
 multiboot_ptr:
 	.int 0
 
+.section .rodata
 x64NotSupported_msg:
 	.ascii "                                                                                "
 	.ascii "                   _____                       _   _                            "
@@ -198,210 +244,6 @@ x64NotSupported_msg:
 	.ascii "                                                                                "
 	.byte 0
 
-.section .padata
-.align 0x1000
-.SET PRESENT,     0x1
-.SET WRITEABLE,   0x2
-.SET USER,   			0x4
-.SET MAP4M,       0x80
-.SET MAP_MODE, PRESENT + WRITEABLE
-.SET ATTR, (- KERNEL_VMA + MAP_MODE)
-.SET ATTR_MAP, (MAP_MODE + MAP4M)
-.SET STACK_ATTR, (- KERNEL_VMA + MAP_MODE)
-
-.macro mapPage from, to
-	.int \from + MAP_MODE, 0
-	.if \to-\from
-		mapPage "(\from+0x1000)", \to
-	.endif
-.endm
-
-# Kinda stole this from https://github.com/Bloodmanovski/Trinix/blob/master/KernelLand/Kernel/Architectures/x86_64/Boot/Boot.s
-
- .global PML4
-PML4:
-	.int PDP + ATTR, 0 # Identity map for low 4MB
-	.space (255) * 8
-	.int PDP_MAP + ATTR, 0
-	.space (254) * 8
-	.int PDP_HIGH + ATTR, 0 # Map low 4MB to kernel base
-
-PDP:
-	.int PD + ATTR, 0
-	.space 511 * 8
-
-PDP_MAP:
-	.int PD_MAP0 + ATTR, 0
-	.int PD_MAP1 + ATTR, 0
-	.int PD_MAP2 + ATTR, 0
-	.int PD_MAP3 + ATTR, 0
-	.space 508 * 8
-
-PDP_HIGH:
-	.space 510*8
-	.int PD + ATTR, 0
-	.quad 0
-
-PD:
-	.int PT_1 + ATTR, 0
-	.int PT_2 + ATTR, 0
-	.int PT_3 + ATTR, 0
-	.int PT_4 + ATTR, 0
-	.int PT_5 + ATTR, 0
-	.int PT_6 + ATTR, 0
-	.int PT_7 + ATTR, 0
-	.int PT_8 + ATTR, 0
-	.int PT_9 + ATTR, 0
-	.int PT_10 + ATTR, 0
-	.int PT_11 + ATTR, 0
-	.int PT_12 + ATTR, 0
-	.int PT_13 + ATTR, 0
-	.int PT_14 + ATTR, 0
-	.int PT_15 + ATTR, 0
-	.int PT_16 + ATTR, 0
-	.int PT_17 + ATTR, 0
-	.int PT_18 + ATTR, 0
-	.int PT_19 + ATTR, 0
-	.int PT_20 + ATTR, 0
-	.int PT_21 + ATTR, 0
-	.int PT_22 + ATTR, 0
-	.int PT_23 + ATTR, 0
-	.int PT_24 + ATTR, 0
-	.int PT_25 + ATTR, 0
-	.int PT_26 + ATTR, 0
-	.int PT_27 + ATTR, 0
-	.int PT_28 + ATTR, 0
-	.int PT_29 + ATTR, 0
-	.int PT_30 + ATTR, 0
-	.int PT_31 + ATTR, 0
-	.int PT_32 + ATTR, 0
-	.space (512 - 32) * 8
-
-.macro mapPDMap from, to
-	.int \from + ATTR_MAP, 0
-	.if \to-\from
-		mapPDMap "(\from+0x200000)", \to
-	.endif
-.endm
-.macro map4MB offset
-	mapPDMap (0x200000 * (0   + \offset)), (0x200000 * (64  + \offset))
-	mapPDMap (0x200000 * (65  + \offset)), (0x200000 * (128 + \offset))
-	mapPDMap (0x200000 * (129 + \offset)), (0x200000 * (192 + \offset))
-	mapPDMap (0x200000 * (193 + \offset)), (0x200000 * (256 + \offset))
-	mapPDMap (0x200000 * (257 + \offset)), (0x200000 * (320 + \offset))
-	mapPDMap (0x200000 * (321 + \offset)), (0x200000 * (384 + \offset))
-	mapPDMap (0x200000 * (385 + \offset)), (0x200000 * (448 + \offset))
-	mapPDMap (0x200000 * (449 + \offset)), (0x200000 * (511 + \offset))
-.endm
-
-PD_MAP0:
-	map4MB 512*0
-PD_MAP1:
-	map4MB 512*1
-PD_MAP2:
-	map4MB 512*2
-PD_MAP3:
-	map4MB 512*3
-
-.macro map2MB offset
-	mapPage (0x1000 * (0   + \offset)), (0x1000 * (64  + \offset))
-	mapPage (0x1000 * (65  + \offset)), (0x1000 * (128 + \offset))
-	mapPage (0x1000 * (129 + \offset)), (0x1000 * (192 + \offset))
-	mapPage (0x1000 * (193 + \offset)), (0x1000 * (256 + \offset))
-	mapPage (0x1000 * (257 + \offset)), (0x1000 * (320 + \offset))
-	mapPage (0x1000 * (321 + \offset)), (0x1000 * (384 + \offset))
-	mapPage (0x1000 * (385 + \offset)), (0x1000 * (448 + \offset))
-	mapPage (0x1000 * (449 + \offset)), (0x1000 * (511 + \offset))
-.endm
-
-PT_1:
-	.int 0, 0
-	mapPage (0x1000 * 1  ), (0x1000 * 64 )
-	mapPage (0x1000 * 65 ), (0x1000 * 128)
-	mapPage (0x1000 * 129), (0x1000 * 192)
-	mapPage (0x1000 * 193), (0x1000 * 256)
-	mapPage (0x1000 * 257), (0x1000 * 320)
-	mapPage (0x1000 * 321), (0x1000 * 384)
-	mapPage (0x1000 * 385), (0x1000 * 448)
-	mapPage (0x1000 * 449), (0x1000 * 511)
-
-PT_2:
-	map2MB 512*1
-PT_3:
-	map2MB 512*2
-PT_4:
-	map2MB 512*3
-PT_5:
-	map2MB 512*4
-PT_6:
-	map2MB 512*5
-PT_7:
-	map2MB 512*6
-PT_8:
-	map2MB 512*7
-
-PT_9:
-	map2MB 512*8
-PT_10:
-	map2MB 512*9
-PT_11:
-	map2MB 512*10
-PT_12:
-	map2MB 512*11
-PT_13:
-	map2MB 512*12
-PT_14:
-	map2MB 512*13
-PT_15:
-	map2MB 512*14
-PT_16:
-	map2MB 512*15
-
-PT_17:
-	map2MB 512*16
-PT_18:
-	map2MB 512*17
-PT_19:
-	map2MB 512*18
-PT_20:
-	map2MB 512*19
-PT_21:
-	map2MB 512*20
-PT_22:
-	map2MB 512*21
-PT_23:
-	map2MB 512*22
-PT_24:
-	map2MB 512*23
-
-PT_25:
-	map2MB 512*24
-PT_26:
-	map2MB 512*25
-PT_27:
-	map2MB 512*26
-PT_28:
-	map2MB 512*27
-PT_29:
-	map2MB 512*28
-PT_30:
-	map2MB 512*29
-PT_31:
-	map2MB 512*30
-PT_32:
-	map2MB 512*31
-
-
-
-
-.section .padata
-.global KERNEL_STACK
-.global KERNEL_STACK_START
-KERNEL_STACK:
-	.space 0x1000 * (KERNEL_STACK_SIZE - 1)
-KERNEL_STACK_START:
-
-
 # TODO: Define name the constants
 .global gdt
 .align 16
@@ -411,17 +253,50 @@ gdt:
 	gdtCode64:
 		.int 0x0000FFFF
 		.int 0x000F0000 + 0xA09A00
+		# AF9A000000FFFF
 	gdtData64:
 		.int 0x0000FFFF
 		.int 0x000F0000 + 0xA09200
+		# AF92000000FFFF
 
 	gdtCode32:
 		.int 0x0000FFFF
 		.int 0x000F0000 + 0xC09A00
+		# CF9A000000FFFF
 	gdtData32:
 		.int 0x0000FFFF
 		.int 0x000F0000 + 0xC09200
+		# CF92000000FFFF
 
 gdtPointer:
 	.word . - gdt - 1
 	.int gdt - KERNEL_VMA, 0
+
+.section .bss
+.align 0x1000
+
+.global PML4
+
+PML4:
+	.space 0x1000
+PML3_bootOnly:
+	.space 0x1000
+PML2_bootOnly:
+	.space 0x1000
+PML1_bootOnly1:
+	.space 0x1000
+PML1_bootOnly2:
+	.space 0x1000
+PML3_kernel:
+	.space 0x1000
+PML2_kernel:
+	.space 0x1000
+PML1_kernel:
+	.space 32*0x1000
+
+# TODO: Move stack to better place
+.global KERNEL_STACK
+.global KERNEL_STACK_START
+KERNEL_STACK:
+	.space 0x1000 * (KERNEL_STACK_SIZE - 1)
+KERNEL_STACK_START:

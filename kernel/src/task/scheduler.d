@@ -540,12 +540,17 @@ private:
 	}
 }
 
+//XXX: IsSchedulerInited
+__gshared bool isSchedulerInited = false;
+
 Scheduler getScheduler() {
 	import data.util : inplaceClass;
 
 	__gshared Scheduler scheduler;
 	__gshared ubyte[__traits(classInstanceSize, Scheduler)] data;
-	if (!scheduler)
+	if (!scheduler) {
 		scheduler = inplaceClass!Scheduler(data);
+		isSchedulerInited = true;
+	}
 	return scheduler;
 }

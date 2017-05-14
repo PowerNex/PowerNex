@@ -46,12 +46,7 @@ SECTIONS {
 	}
 
 	.data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_VMA) {
-		*(.padata)
 		*(.data .data.*)
-
-		KERNEL_MODULES_START = .;
-		*(.KMODULES)
-		KERNEL_MODULES_END = .;
 	}
 
 	.symbols ALIGN(0x1000) : AT(ADDR(.symbols) - KERNEL_VMA) {

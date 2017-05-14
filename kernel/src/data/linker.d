@@ -12,8 +12,6 @@ private extern (C) extern __gshared {
 	ubyte KERNEL_END;
 	ubyte KERNEL_SYMBOLS_START;
 	ubyte KERNEL_SYMBOLS_END;
-	ubyte KERNEL_MODULES_START;
-	ubyte KERNEL_MODULES_END;
 }
 
 static struct Linker {
@@ -36,13 +34,5 @@ public:
 
 	@property static VirtAddress kernelSymbolsEnd() {
 		return VirtAddress(&KERNEL_SYMBOLS_END);
-	}
-
-	@property static VirtAddress kernelModulesStart() {
-		return VirtAddress(&KERNEL_MODULES_START);
-	}
-
-	@property static VirtAddress kernelModulesEnd() {
-		return VirtAddress(&KERNEL_MODULES_END);
 	}
 }

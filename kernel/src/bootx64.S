@@ -26,8 +26,8 @@ start64:
 
 	mov $KERNEL_STACK_START, %rsp
 
-	mov (multiboot_magic - KERNEL_VMA), %edi
-	mov (multiboot_ptr - KERNEL_VMA), %esi
+	mov multiboot_magic, %edi
+	mov multiboot_ptr, %esi
 
 	call _Dkmain_entry
 	cli

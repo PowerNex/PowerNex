@@ -4,6 +4,10 @@ import data.address;
 import memory.vmm;
 import data.util;
 
+/*
+	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
+*/
+
 /// Page table level
 struct PTLevel(NextLevel) {
 	struct TableEntry {
@@ -73,9 +77,9 @@ struct PTLevel(NextLevel) {
 			See_Also:
 				hugeMap
 		*/
-		@property bool pat() { return cast(bool)((_data >> 0x7UL) & 0x1UL); }
+		@disable @property bool pat() { return cast(bool)((_data >> 0x7UL) & 0x1UL); }
 		/// ditto
-		@property void pat(bool val) { _data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL); }
+		@disable @property void pat(bool val) { _data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL); }
 
 		/// Is not cleared from the cache on a PML4 switch
 		@property bool global() { return cast(bool)((_data >> 0x8UL) & 0x1UL); }
@@ -111,7 +115,7 @@ struct PTLevel(NextLevel) {
 			return addr;
 		}
 
-		static if (is(NextLevel == PTLevel!X, X))
+		static if (!is(NextLevel == Page))
 			@property NextLevel* getNextLevel() {
 				VirtAddress addr = address.virtual; //TODO: Recursive map
 				return addr.ptr!NextLevel;
