@@ -18,40 +18,68 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// If the map is active
-		@property bool present() { return cast(bool)((_data >> 0x0UL) & 0x1UL); }
+		@property bool present() {
+			return cast(bool)((_data >> 0x0UL) & 0x1UL);
+		}
 		/// ditto
-		@property void present(bool val) { _data = (_data & ~(0x1UL << 0x0UL)) | ((val & 0x1UL) << 0x0UL); }
+		@property void present(bool val) {
+			_data = (_data & ~(0x1UL << 0x0UL)) | ((val & 0x1UL) << 0x0UL);
+		}
 
 		// If the page is R/W instead of R/O
-		@property bool readWrite() { return cast(bool)((_data >> 0x1UL) & 0x1UL); }
+		@property bool readWrite() {
+			return cast(bool)((_data >> 0x1UL) & 0x1UL);
+		}
 		/// ditto
-		@property void readWrite(bool val) { _data = (_data & ~(0x1UL << 0x1UL)) | ((val & 0x1UL) << 0x1UL); }
+		@property void readWrite(bool val) {
+			_data = (_data & ~(0x1UL << 0x1UL)) | ((val & 0x1UL) << 0x1UL);
+		}
 
 		/// If userspace can access this page
-		@property bool user() { return cast(bool)((_data >> 0x2UL) & 0x1UL); }
+		@property bool user() {
+			return cast(bool)((_data >> 0x2UL) & 0x1UL);
+		}
 		/// ditto
-		@property void user(bool val) { _data = (_data & ~(0x1UL << 0x2UL)) | ((val & 0x1UL) << 0x2UL); }
+		@property void user(bool val) {
+			_data = (_data & ~(0x1UL << 0x2UL)) | ((val & 0x1UL) << 0x2UL);
+		}
 
 		/// If the map should bypass the cache and write directly to memory
-		@property bool writeThrough() { return cast(bool)((_data >> 0x3UL) & 0x1UL); }
+		@property bool writeThrough() {
+			return cast(bool)((_data >> 0x3UL) & 0x1UL);
+		}
 		/// ditto
-		@property void writeThrough(bool val) { _data = (_data & ~(0x1UL << 0x3UL)) | ((val & 0x1UL) << 0x3UL); }
+		@property void writeThrough(bool val) {
+			_data = (_data & ~(0x1UL << 0x3UL)) | ((val & 0x1UL) << 0x3UL);
+		}
 
 		/// If the map should bypass the read cache and read directly from memory
-		@property bool cacheDisable() { return cast(bool)((_data >> 0x4UL) & 0x1UL); }
+		@property bool cacheDisable() {
+			return cast(bool)((_data >> 0x4UL) & 0x1UL);
+		}
 		/// ditto
-		@property void cacheDisable(bool val) { _data = (_data & ~(0x1UL << 0x4UL)) | ((val & 0x1UL) << 0x4UL); }
+		@property void cacheDisable(bool val) {
+			_data = (_data & ~(0x1UL << 0x4UL)) | ((val & 0x1UL) << 0x4UL);
+		}
 
 		/// Is set when page has been accessed
-		@property bool accessed() { return cast(bool)((_data >> 0x5UL) & 0x1UL); }
+		@property bool accessed() {
+			return cast(bool)((_data >> 0x5UL) & 0x1UL);
+		}
 		/// ditto
-		@property void accessed(bool val) { _data = (_data & ~(0x1UL << 0x5UL)) | ((val & 0x1UL) << 0x5UL); }
+		@property void accessed(bool val) {
+			_data = (_data & ~(0x1UL << 0x5UL)) | ((val & 0x1UL) << 0x5UL);
+		}
 
 		/// Is set when page has been written to
 		/// NOTE: Only valid if hugeMap is 1, else this value should be zero
-		@property bool dirty() { return cast(bool)((_data >> 0x6UL) & 0x1UL); }
+		@property bool dirty() {
+			return cast(bool)((_data >> 0x6UL) & 0x1UL);
+		}
 		/// ditto
-		@property void dirty(bool val) { _data = (_data & ~(0x1UL << 0x6UL)) | ((val & 0x1UL) << 0x6UL); }
+		@property void dirty(bool val) {
+			_data = (_data & ~(0x1UL << 0x6UL)) | ((val & 0x1UL) << 0x6UL);
+		}
 
 		/**
 			Maps bigger pages
@@ -64,9 +92,13 @@ struct PTLevel(NextLevel) {
 			See_Also:
 				hugeMap, pat
 		*/
-		@property bool hugeMap() { return cast(bool)((_data >> 0x7UL) & 0x1UL); }
+		@property bool hugeMap() {
+			return cast(bool)((_data >> 0x7UL) & 0x1UL);
+		}
 		/// ditto
-		@property void hugeMap(bool val) { _data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL); }
+		@property void hugeMap(bool val) {
+			_data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL);
+		}
 
 		/**
 			Not implemented, Will probably be used in the future
@@ -77,34 +109,58 @@ struct PTLevel(NextLevel) {
 			See_Also:
 				hugeMap
 		*/
-		@disable @property bool pat() { return cast(bool)((_data >> 0x7UL) & 0x1UL); }
+		@disable @property bool pat() {
+			return cast(bool)((_data >> 0x7UL) & 0x1UL);
+		}
 		/// ditto
-		@disable @property void pat(bool val) { _data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL); }
+		@disable @property void pat(bool val) {
+			_data = (_data & ~(0x1UL << 0x7UL)) | ((val & 0x1UL) << 0x7UL);
+		}
 
 		/// Is not cleared from the cache on a PML4 switch
-		@property bool global() { return cast(bool)((_data >> 0x8UL) & 0x1UL); }
+		@property bool global() {
+			return cast(bool)((_data >> 0x8UL) & 0x1UL);
+		}
 		/// ditto
-		@property void global(bool val) { _data = (_data & ~(0x1UL << 0x8UL)) | ((val & 0x1UL) << 0x8UL); }
+		@property void global(bool val) {
+			_data = (_data & ~(0x1UL << 0x8UL)) | ((val & 0x1UL) << 0x8UL);
+		}
 
 		/// For future PowerNex usage
-		@property ubyte osSpecific() { return cast(ubyte)((_data >> 0x9UL) & 0x7UL); }
+		@property ubyte osSpecific() {
+			return cast(ubyte)((_data >> 0x9UL) & 0x7UL);
+		}
 		/// ditto
-		@property void osSpecific(ubyte val) { _data = (_data & ~(0x7UL << 0x9UL)) | ((val & 0x7UL) << 0x9UL); }
+		@property void osSpecific(ubyte val) {
+			_data = (_data & ~(0x7UL << 0x9UL)) | ((val & 0x7UL) << 0x9UL);
+		}
 
 		/// The address to the next level in the page tables, or the final map address
-		@property ulong data() { return cast(ulong)((_data >> 0xCUL) & 0xFFFFFFFFFFUL); }
+		@property ulong data() {
+			return cast(ulong)((_data >> 0xCUL) & 0xFFFFFFFFFFUL);
+		}
 		/// ditto
-		@property void data(ulong val) { _data = (_data & ~(0xFFFFFFFFFFUL << 0xCUL)) | ((val & 0xFFFFFFFFFFUL) << 0xCUL); }
+		@property void data(ulong val) {
+			_data = (_data & ~(0xFFFFFFFFFFUL << 0xCUL)) | ((val & 0xFFFFFFFFFFUL) << 0xCUL);
+		}
 
 		/// For future PowerNex usage
-		@property ushort osSpecific2() { return cast(ushort)((_data >> 0x34UL) & 0x7FFUL); }
+		@property ushort osSpecific2() {
+			return cast(ushort)((_data >> 0x34UL) & 0x7FFUL);
+		}
 		/// ditto
-		@property void osSpecific2(ushort val) { _data = (_data & ~(0x7FFUL << 0x34UL)) | ((val & 0x7FFUL) << 0x34UL); }
+		@property void osSpecific2(ushort val) {
+			_data = (_data & ~(0x7FFUL << 0x34UL)) | ((val & 0x7FFUL) << 0x34UL);
+		}
 
 		/// Forbids execution in the map
-		@property bool noExecute() { return cast(bool)((_data >> 0x3FUL) & 0x1UL); }
+		@property bool noExecute() {
+			return cast(bool)((_data >> 0x3FUL) & 0x1UL);
+		}
 		/// ditto
-		@property void noExecute(bool val) { _data = (_data & ~(0x1UL << 0x3FUL)) | ((val & 0x1UL) << 0x3FUL); }
+		@property void noExecute(bool val) {
+			_data = (_data & ~(0x1UL << 0x3FUL)) | ((val & 0x1UL) << 0x3FUL);
+		}
 
 		@property PhysAddress address() {
 			return PhysAddress(data << 12);
@@ -116,13 +172,20 @@ struct PTLevel(NextLevel) {
 		}
 
 		static if (!is(NextLevel == Page))
-			@property NextLevel* getNextLevel() {
-				VirtAddress addr = address.virtual; //TODO: Recursive map
-				return addr.ptr!NextLevel;
+			@property NextLevel* getPageTable() {
+				ushort id = cast(ushort)((VirtAddress(&this) & 0xFFF).num / ulong.sizeof);
+				return (((VirtAddress(&this) & ~0xFFF) << 9) | (id << 12)).ptr!NextLevel;
 			}
 	}
 
+	static assert(TableEntry.sizeof == ulong.sizeof);
+
 	TableEntry[512] entries;
+	static if (!is(NextLevel == Page))
+		@property NextLevel* getPageTable(ushort id) {
+			assert(id < 512);
+			return ((VirtAddress(&this) << 9) | (id << 12)).ptr!NextLevel;
+		}
 }
 
 alias Page = PhysAddress;
@@ -130,6 +193,11 @@ alias PT = PTLevel!Page;
 alias PD = PTLevel!PT;
 alias PDP = PTLevel!PD;
 alias PML4 = PTLevel!PDP;
+
+PML4* getPML4() {
+	const ulong pml4FractalID = 0x1FD;
+	return VirtAddress((pml4FractalID << 39UL) + (pml4FractalID << 30UL) + (pml4FractalID << 21UL) + (pml4FractalID << 12UL)).ptr!PML4;
+}
 
 private extern (C) void cpuFlushPage(ulong addr);
 private extern (C) void cpuInstallCR3(PhysAddress addr);
@@ -178,6 +246,10 @@ public:
 	}
 
 private:
-	PhysAddress addr;
-	PML4* pml4;
+	PhysAddress _addr;
+	PML4* _pml4;
+
+	void _flush(VirtAddress vAddr) {
+		cpuFlushPage(vAddr.num);
+	}
 }

@@ -10,7 +10,7 @@ digraph derp {
 	PS2;
 	Multiboot[style=filled,fillcolor=green];
 	FrameAllocator[style=filled,fillcolor=green];
-	Paging;
+	Paging[style=filled,fillcolor=yellow];
 	Heap;
 	PCI;
 	FS;

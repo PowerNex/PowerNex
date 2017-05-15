@@ -1,5 +1,6 @@
 module data.address;
 
+pragma(inline, true):
 private mixin template AddressBase(Type = size_t) {
 	alias Func = void function();
 	Type addr;
