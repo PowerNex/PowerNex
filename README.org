@@ -2,7 +2,7 @@
 #+AUTHOR: Dan Printzell
 #+EMAIL: me@vild.io
 
-*Please note that the current code will have a major overhaul soon*
+* *Please note that the current code is undergoing a major overhaul!*
 
 PowerNex is a kernel written in the [[https://dlang.org][D Programming Language]].
 The goal is to have a whole OS written in D, where PowerNex powers the core.
@@ -20,17 +20,16 @@ You can support the project in many ways.
  - One time donations: [[https://www.paypal.me/Vild][https://www.paypal.me/Vild]]
 * Building
 It requires a crosscompiler, see link below for download.
-It uses my build system called [[https://github.com/Vild/Wild][Wild]].
-It expects the wild binary to be located in the root directory of PowerNex, then
-you just need to run `./build` to build.
+It uses a build system called [[https://github.com/atilaneves/reggae][reggae]].
 
-*Please note that Wild is under development and the compiled result may not work!*
-*This means that it is recommended to use the prebuilt executable below*
+To enter the development environment run `source env.sh`.
+This adds shortcuts for building and running.
+- 'c' :: Removes the build files
+- 'v' :: Compiles PowerNex
+- 'b' :: Compiles and runs PowerNex in qemu
+- 'a' :: Runs ~addr2line~ on the kernel
 
 [[https://definewild.se/PowerNex-Toolchain-03-10-2016.tar.xz][Prebuild toolchain (wild and compilers) for (Arch)Linux x64]]
-
-One tip is to run `source env.sh`, this adds shortcuts for building and running.
-	`b` compiles and runs PowerNex in qemu, `v` just builds PowerNex.
 * System requirements
 - A 64bit processor
 - At least 128 MiB of ram (Probably work on less)
