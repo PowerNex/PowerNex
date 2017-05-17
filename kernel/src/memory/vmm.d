@@ -483,8 +483,10 @@ private:
 
 enum PageFaultStatus : ssize_t {
 	success = 0,
-	unknownError
+	unknownError = -1
 }
+
+// TODO: Change bool -> void/PagingError?
 
 interface IHWPaging { // Hardware implementation of paging
 	/// Map virtual address $(PARAM page.vAddr) to physical address $(PARAM page.pAddr) with the flags $(PARAM page.flags).
@@ -500,13 +502,13 @@ interface IHWPaging { // Hardware implementation of paging
 		* --------------------
 		* if (pAddr)
 		* 	map.pAddr = pAddr;
-		* if (flags)
+		* if (flags) // TODO: What if you want to clear the flags?
 		* 	map.flags = flags;
 		* --------------------
 		*/
 	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags);
 	/// Remove a mapping
-	bool unmap(VirtAddress vAddr);
+	bool unmap(VirtAddress vAddr, bool freePage = false);
 
 	/// Clone a physical page with all it's data
 	PhysAddress clonePage(PhysAddress page);

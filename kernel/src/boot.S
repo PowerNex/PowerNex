@@ -86,7 +86,9 @@ setupPaging:
 
 	movl $(PML4 - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 509 * 8
 
-# movl $(PML3_special - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 510 * 8
+	movl $(PML3_special - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 510 * 8
+	movl $(PML2_special - KERNEL_VMA + 0x003), PML3_special - KERNEL_VMA + 0 * 8
+	movl $(PML1_special - KERNEL_VMA + 0x003), PML2_special - KERNEL_VMA + 0 * 8
 
 	movl $(PML3_kernel - KERNEL_VMA + 0x003), PML4 - KERNEL_VMA + 511 * 8
 	movl $(PML2_kernel - KERNEL_VMA + 0x003), PML3_kernel - KERNEL_VMA + 510 * 8
@@ -279,6 +281,7 @@ gdtPointer:
 
 PML4:
 	.space 0x1000
+
 PML3_bootOnly:
 	.space 0x1000
 PML2_bootOnly:
@@ -287,6 +290,14 @@ PML1_bootOnly1:
 	.space 0x1000
 PML1_bootOnly2:
 	.space 0x1000
+
+PML3_special:
+	.space 0x1000
+PML2_special:
+	.space 0x1000
+PML1_special:
+	.space 0x1000
+
 PML3_kernel:
 	.space 0x1000
 PML2_kernel:

@@ -8,6 +8,8 @@ import data.util;
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
 */
 
+private const _pageSize = 0x1000; //TODO: Is needed?
+
 /// Page table level
 struct PTLevel(NextLevel) {
 	struct TableEntry {
@@ -126,7 +128,7 @@ struct PTLevel(NextLevel) {
 			_data = (_data & ~(0x1UL << 0x8UL)) | ((val & 0x1UL) << 0x8UL);
 		}
 
-		/// For future PowerNex usage
+		/// For future PowerNex usage (3bits)
 		@property ubyte osSpecific() {
 			return cast(ubyte)((_data >> 0x9UL) & 0x7UL);
 		}
@@ -144,7 +146,7 @@ struct PTLevel(NextLevel) {
 			_data = (_data & ~(0xFFFFFFFFFFUL << 0xCUL)) | ((val & 0xFFFFFFFFFFUL) << 0xCUL);
 		}
 
-		/// For future PowerNex usage
+		/// For future PowerNex usage (10bits)
 		@property ushort osSpecific2() {
 			return cast(ushort)((_data >> 0x34UL) & 0x7FFUL);
 		}
@@ -176,6 +178,13 @@ struct PTLevel(NextLevel) {
 				ushort id = cast(ushort)((VirtAddress(&this) & 0xFFF).num / ulong.sizeof);
 				return (((VirtAddress(&this) & ~0xFFF) << 9) | (id << 12)).ptr!NextLevel;
 			}
+
+		void setVMFlags(VMPageFlags flags) {
+			present = !!(flags & flags.present);
+			readWrite = !!(flags & flags.writable);
+			user = !!(flags & flags.user);
+			noExecute = !(flags & flags.execute); //NOTE! Just one '!'
+		}
 	}
 
 	static assert(TableEntry.sizeof == ulong.sizeof);
@@ -189,14 +198,39 @@ struct PTLevel(NextLevel) {
 }
 
 alias Page = PhysAddress;
-alias PT = PTLevel!Page;
-alias PD = PTLevel!PT;
-alias PDP = PTLevel!PD;
-alias PML4 = PTLevel!PDP;
+alias PML1 = PTLevel!Page;
+alias PML2 = PTLevel!PML1;
+alias PML3 = PTLevel!PML2;
+alias PML4 = PTLevel!PML3;
 
-PML4* getPML4() {
-	const ulong pml4FractalID = 0x1FD;
-	return VirtAddress((pml4FractalID << 39UL) + (pml4FractalID << 30UL) + (pml4FractalID << 21UL) + (pml4FractalID << 12UL)).ptr!PML4;
+private VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) {
+	return VirtAddress((pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
+}
+
+private PML4* getPML4() {
+	const ulong fractalID = 509;
+	return _makeAddress(fractalID, fractalID, fractalID, fractalID).ptr!PML4;
+}
+
+private PML3* getPML3(ushort pml4) {
+	const ulong fractalID = 509;
+	return _makeAddress(fractalID, fractalID, fractalID, pml4).ptr!PML3;
+}
+
+private PML2* getPML2(ushort pml4, ushort pml3) {
+	const ulong fractalID = 509;
+	return _makeAddress(fractalID, fractalID, pml4, pml3).ptr!PML2;
+}
+
+private PML1* getPML1(ushort pml4, ushort pml3, ushort pml2) {
+	const ulong fractalID = 509;
+	return _makeAddress(fractalID, pml4, pml3, pml2).ptr!PML1;
+}
+
+private PML1* getSpecial() {
+	const ulong fractalID = 509;
+	const ulong specialID = 510;
+	return getPML1(fractalID, 0, 0);
 }
 
 private extern (C) void cpuFlushPage(ulong addr);
@@ -214,35 +248,110 @@ public:
 	//TODO: maybe? void removeUserspace();
 
 	bool map(VMPage* page, bool clear = false) {
-		assert(0);
+		return map(page.vAddr, page.pAddr, page.flags, clear);
 	}
 
 	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) {
-		assert(0);
+		PML1.TableEntry* entry = getTableEntry(vAddr);
+		entry.address = pAddr ? pAddr : getNextFreePage();
+		entry.setVMFlags(flags | (clear ? VMPageFlags.writable : VMPageFlags.none));
+		_flush(vAddr);
+
+		if (clear) {
+			memset(vAddr.ptr, 0, _pageSize);
+			entry.readWrite = !!(flags & flags.writable);
+			_flush(vAddr);
+		}
+		return true;
 	}
+
+	/**
+		* Changes a mappings properties
+		* Pseudocode:
+		* --------------------
+		* if (pAddr)
+		* 	map.pAddr = pAddr;
+		* if (flags)
+		* 	map.flags = flags;
+		* --------------------
+		*/
 
 	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
-		assert(0);
+		if (!pAddr || !flags)
+			return true;
+
+		//TODO: Check if alread mapped, else return false!
+		PML1.TableEntry* entry = getTableEntry(vAddr);
+		if (pAddr)
+			entry.address = pAddr;
+		if (flags)
+			entry.setVMFlags(flags);
+		_flush(vAddr);
+		return true;
 	}
 
-	bool unmap(VirtAddress vAddr) {
-		assert(0);
+	bool unmap(VirtAddress vAddr, bool freePage = false) {
+		PML1.TableEntry* entry = getTableEntry(vAddr);
+		if (freePage) {
+			import memory.frameallocator : FrameAllocator;
+
+			FrameAllocator.free(entry.address);
+		}
+
+		entry.address = PhysAddress();
+		entry.setVMFlags(VMPageFlags.none);
+		_flush(vAddr);
+		return true;
 	}
 
 	PhysAddress clonePage(PhysAddress page) {
-		assert(0);
+		const ulong specialID = 510;
+		//TODO: This probably needs fixing for the multicore update!
+		enum Position : ushort {
+			from = 0,
+			to = 1
+		}
+
+		//TODO: Maybe check permissions if it is allowed to read `page`
+
+		PML1.TableEntry* from = &getSpecial().entries[Position.from];
+		PML1.TableEntry* to = &getSpecial().entries[Position.to];
+		VirtAddress vFrom = _makeAddress(specialID, 0, 0, Position.from);
+		VirtAddress vTo = _makeAddress(specialID, 0, 0, Position.to);
+
+		from.address = page;
+		from.present = true;
+
+		to.address = getNextFreePage();
+		to.readWrite = true;
+		to.present = true;
+
+		_flush(vFrom);
+		_flush(vTo);
+
+		memcpy(vTo.ptr, vFrom.ptr, _pageSize);
+
+		from.present = false;
+		to.present = false;
+		_flush(vFrom);
+		_flush(vTo);
+		return to.address;
 	}
 
 	PhysAddress getNextFreePage() {
-		assert(0);
+		import memory.frameallocator : FrameAllocator;
+
+		return FrameAllocator.alloc();
 	}
 
 	void freePage(PhysAddress page) {
-		assert(0);
+		import memory.frameallocator : FrameAllocator;
+
+		return FrameAllocator.free(page);
 	}
 
 	void bind() {
-		cpuInstallCR3(addr);
+		cpuInstallCR3(_addr);
 	}
 
 private:
@@ -251,5 +360,56 @@ private:
 
 	void _flush(VirtAddress vAddr) {
 		cpuFlushPage(vAddr.num);
+	}
+
+	/// Will allocate PML{3,2,1} if missing
+	private PML1.TableEntry* getTableEntry(VirtAddress vAddr) {
+		const ulong virtAddr = vAddr.num;
+		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
+		const ushort pml3Idx = (virtAddr >> 30) & 0x1FF;
+		const ushort pml2Idx = (virtAddr >> 21) & 0x1FF;
+		const ushort pml1Idx = (virtAddr >> 12) & 0x1FF;
+
+		PML4* pml4 = getPML4();
+
+		// This address can be unallocated, the 'if' will allocate it in that case
+		PML3* pml3 = getPML3(pml4Idx);
+		{
+			PML4.TableEntry* pml4Entry = &pml4.entries[pml4Idx];
+
+			if (!pml4Entry.present)
+				_allocateTable(pml4Entry, pml3.VirtAddress); //TODO: Is it allowed to allocate a PML4 entry? Permissions!
+		}
+
+		PML2* pml2 = getPML2(pml4Idx, pml3Idx);
+		{
+			PML3.TableEntry* pml3Entry = &pml3.entries[pml3Idx];
+			if (!pml3Entry.present)
+				_allocateTable(pml3Entry, pml2.VirtAddress);
+
+		}
+
+		PML1* pml1 = getPML1(pml4Idx, pml3Idx, pml2Idx);
+		{
+			PML2.TableEntry* pml2Entry = &pml2.entries[pml2Idx];
+			if (!pml2Entry.present)
+				_allocateTable(pml2Entry, pml1.VirtAddress);
+		}
+
+		return &pml1.entries[pml1Idx];
+	}
+
+	/**
+		Allocate a new empty page.
+		Params:
+			entry = The entry that should be allocated.
+			vAddr = The address the entry will have in ram.
+	*/
+	void _allocateTable(T)(PTLevel!(T).TableEntry* entry, VirtAddress vAddr) if (!is(T == Page)) {
+		entry.present = true;
+		entry.address = getNextFreePage();
+		entry.readWrite = true;
+		_flush(vAddr);
+		memset(vAddr.ptr, 0, _pageSize);
 	}
 }

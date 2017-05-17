@@ -30,6 +30,7 @@ import data.elf;
 import io.consolemanager;
 import memory.ref_;
 import fs;
+import arch.paging;
 
 private immutable uint _major = __VERSION__ / 1000;
 private immutable uint _minor = __VERSION__ % 1000;
@@ -113,6 +114,16 @@ void init(uint magic, ulong info) {
 	log.info("FrameAllocator initializing...");
 	FrameAllocator.init();
 
+	scr.writeln("IHWPaging initializing...");
+	log.info("IHWPaging initializing...");
+
+	hwPaging = kernelAllocator.makeRef!HWPaging();
+
+	scr.writeln("IHWPaging WORKED");
+	log.info("IHWPaging WORKED");
+	while (true) {
+	}
+
 	scr.writeln("Paging initializing...");
 	log.info("Paging initializing...");
 	getKernelPaging.removeUserspace(false); // Removes all mapping that are not needed for the kernel
@@ -120,11 +131,7 @@ void init(uint magic, ulong info) {
 
 	scr.writeln("ACPI initializing...");
 	rsdp.init();
-	asm {
-	loop:
-		hlt;
-		jmp loop;
-	}
+
 	scr.writeln("CMOS initializing...");
 	getCMOS();
 

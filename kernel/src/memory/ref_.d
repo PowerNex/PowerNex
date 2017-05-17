@@ -94,9 +94,11 @@ private:
 	void _free() {
 		import io.log;
 
-		/*
-		if (_obj && _counter)
-			log.info("Trying to free: ", cast(void*)_obj, " T: ", T.stringof, " counter: ", (*_counter) - 1);*/
+		if (_obj && _counter) {
+			log.info("Trying to free: ", cast(void*)_obj);
+			log.info("\tT: ", T.stringof);
+			log.info("\tcounter: ", _counter ? (*_counter) - 1 : ulong.max);
+		}
 		if (_allocator && _obj && _counter && --(*_counter) == 0) {
 			_allocator.dispose(_obj);
 			_allocator.dispose(_counter);
