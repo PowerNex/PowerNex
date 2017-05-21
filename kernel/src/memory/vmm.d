@@ -5,6 +5,7 @@ import data.container;
 import memory.ref_;
 import memory.allocator;
 import task.process;
+import arch.paging;
 
 // https://www.freebsd.org/cgi/man.cgi?query=vm_map&sektion=9&apropos=0&manpath=FreeBSD+11-current
 // https://www.freebsd.org/doc/en/articles/vm-design/vm-objects.html
@@ -57,6 +58,7 @@ struct VMObject {
 
 	VirtAddress zoneStart; /// The start of the memory zone that this object controls
 	VirtAddress zoneEnd; /// The end of the memory zone that this object controls
+	HWZone hwZone;
 
 	Vector!(VMPage*) pages; /// All the mapped pages
 	VMObject* parent; /// The parent for the object
@@ -67,9 +69,9 @@ struct VMObject {
 struct VMProcess {
 public:
 	Vector!(VMObject*) objects; /// All the object that is associated with the process
-	Ref!IHWPaging backend; /// The paging backend
+	IHWPaging backend; /// The paging backend
 	@disable this();
-	this(Ref!IHWPaging backend) {
+	this(IHWPaging backend) {
 		objects = kernelAllocator.make!(Vector!(VMObject*))(kernelAllocator);
 		backend = backend;
 	}
@@ -90,7 +92,7 @@ public:
 					continue;
 
 				if (p.pAddr)
-					(*backend).freePage(p.pAddr);
+					backend.freePage(p.pAddr);
 
 				kernelAllocator.dispose(p);
 			}
@@ -109,7 +111,7 @@ public:
 	}
 
 	void bind() {
-		(*backend).bind();
+		backend.bind();
 	}
 
 	//TODO: Return better error
@@ -137,7 +139,7 @@ public:
 	}
 
 	PageFaultStatus onPageFault(scope Process process, VirtAddress vAddr, bool present, bool write, bool user) {
-		auto backend = *this.backend;
+		auto backend = this.backend;
 		vAddr &= ~0xFFF;
 
 		VMObject** rootObject = _getObjectForZone(vAddr);
@@ -308,7 +310,7 @@ public:
 			if (obj.state == VMObjectState.unlocked) { // Optimization
 				foreach (VMPage* page; obj.pages)
 					if (page.flags & VMPageFlags.writable)
-						(*backend).remap(page.vAddr, PhysAddress(), page.flags & ~VMPageFlags.writable);
+						backend.remap(page.vAddr, PhysAddress(), page.flags & ~VMPageFlags.writable);
 				obj.state = VMObjectState.locked;
 			}
 
@@ -390,7 +392,7 @@ public:
 					if (pAddr)
 						p.pAddr = pAddr;
 					if ((*rootObject) == o && (*rootObject).state != VMObjectState.locked) //if ((!(flags & VMPageFlags.writable) && (p.flags & VMPageFlags.writable)))
-						return (*backend).remap(p.vAddr, pAddr, p.flags) ? VMMappingError.success : VMMappingError.unknownError;
+						return backend.remap(p.vAddr, pAddr, p.flags) ? VMMappingError.success : VMMappingError.unknownError;
 					break outer_loop;
 				}
 			o = o.parent;
@@ -436,7 +438,7 @@ public:
 					page = p;
 					if ((*rootObject) == o && (*rootObject).state != VMObjectState.locked) {
 						if (p.pAddr) {
-							(*backend).freePage(p.pAddr); //TODO: check output?
+							backend.freePage(p.pAddr); //TODO: check output?
 							p.pAddr = PhysAddress(0);
 						}
 						p.refCounter = 0; //TODO: Actually use refCounter
@@ -487,38 +489,3 @@ enum PageFaultStatus : ssize_t {
 }
 
 // TODO: Change bool -> void/PagingError?
-
-interface IHWPaging { // Hardware implementation of paging
-	/// Map virtual address $(PARAM page.vAddr) to physical address $(PARAM page.pAddr) with the flags $(PARAM page.flags).
-	/// $(PARAM clear) specifies if the memory should be cleared.
-	bool map(VMPage* page, bool clear = false);
-	/// Map virtual address $(PARAM vAddr) to physical address $(PARAM pAddr) with the flags $(PARAM flags).
-	/// $(PARAM clear) specifies if the memory should be cleared.
-	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false);
-
-	/**
-		* Changes a mappings properties
-		* Pseudocode:
-		* --------------------
-		* if (pAddr)
-		* 	map.pAddr = pAddr;
-		* if (flags) // TODO: What if you want to clear the flags?
-		* 	map.flags = flags;
-		* --------------------
-		*/
-	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags);
-	/// Remove a mapping
-	bool unmap(VirtAddress vAddr, bool freePage = false);
-
-	/// Clone a physical page with all it's data
-	PhysAddress clonePage(PhysAddress page);
-
-	/// Get the next free page
-	PhysAddress getNextFreePage();
-
-	/// Free the page $(PARAM page)
-	void freePage(PhysAddress page);
-
-	/// Bind the paging
-	void bind();
-}

@@ -31,6 +31,7 @@ import io.consolemanager;
 import memory.ref_;
 import fs;
 import arch.paging;
+import memory.vmm;
 
 private immutable uint _major = __VERSION__ / 1000;
 private immutable uint _minor = __VERSION__ % 1000;
@@ -114,13 +115,14 @@ void init(uint magic, ulong info) {
 	log.info("FrameAllocator initializing...");
 	FrameAllocator.init();
 
-	scr.writeln("IHWPaging initializing...");
-	log.info("IHWPaging initializing...");
+	scr.writeln("KernelHWPaging initializing...");
+	log.info("KernelHWPaging initializing...");
 
-	hwPaging = kernelAllocator.makeRef!HWPaging();
+	initKernelHWPaging();
 
-	scr.writeln("IHWPaging WORKED");
-	log.info("IHWPaging WORKED");
+	scr.writeln("KernelHWPaging WORKED");
+	log.info("KernelHWPaging WORKED");
+
 	while (true) {
 	}
 

@@ -12,6 +12,7 @@ private extern (C) extern __gshared {
 	ubyte KERNEL_END;
 	ubyte KERNEL_SYMBOLS_START;
 	ubyte KERNEL_SYMBOLS_END;
+	ubyte PML4;
 }
 
 static struct Linker {
@@ -34,5 +35,9 @@ public:
 
 	@property static VirtAddress kernelSymbolsEnd() {
 		return VirtAddress(&KERNEL_SYMBOLS_END);
+	}
+
+	@property static VirtAddress pml4() {
+		return VirtAddress(&PML4);
 	}
 }

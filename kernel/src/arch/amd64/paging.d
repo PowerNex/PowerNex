@@ -1,8 +1,9 @@
 module arch.amd64.paging;
 
+import arch.paging;
 import data.address;
-import memory.vmm;
 import data.util;
+import memory.vmm;
 
 /*
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
@@ -203,8 +204,10 @@ alias PML2 = PTLevel!PML1;
 alias PML3 = PTLevel!PML2;
 alias PML4 = PTLevel!PML3;
 
+alias HWZone = PML3;
+
 private VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) {
-	return VirtAddress((pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
+	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
 }
 
 private PML4* getPML4() {
@@ -238,8 +241,8 @@ private extern (C) void cpuInstallCR3(PhysAddress addr);
 
 class HWPaging : IHWPaging {
 public:
-	this() {
-
+	this(PhysAddress pml4Address) {
+		_addr = pml4Address;
 	}
 
 	~this() {
@@ -252,7 +255,10 @@ public:
 	}
 
 	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) {
-		PML1.TableEntry* entry = getTableEntry(vAddr);
+		PML1.TableEntry* entry = _getTableEntry(vAddr);
+		if (!entry)
+			return false;
+
 		entry.address = pAddr ? pAddr : getNextFreePage();
 		entry.setVMFlags(flags | (clear ? VMPageFlags.writable : VMPageFlags.none));
 		_flush(vAddr);
@@ -280,8 +286,10 @@ public:
 		if (!pAddr || !flags)
 			return true;
 
-		//TODO: Check if alread mapped, else return false!
-		PML1.TableEntry* entry = getTableEntry(vAddr);
+		PML1.TableEntry* entry = _getTableEntry(vAddr);
+		if (!entry)
+			return false;
+
 		if (pAddr)
 			entry.address = pAddr;
 		if (flags)
@@ -291,7 +299,10 @@ public:
 	}
 
 	bool unmap(VirtAddress vAddr, bool freePage = false) {
-		PML1.TableEntry* entry = getTableEntry(vAddr);
+		PML1.TableEntry* entry = _getTableEntry(vAddr);
+		if (!entry)
+			return false;
+
 		if (freePage) {
 			import memory.frameallocator : FrameAllocator;
 
@@ -356,14 +367,13 @@ public:
 
 private:
 	PhysAddress _addr;
-	PML4* _pml4;
 
 	void _flush(VirtAddress vAddr) {
 		cpuFlushPage(vAddr.num);
 	}
 
 	/// Will allocate PML{3,2,1} if missing
-	private PML1.TableEntry* getTableEntry(VirtAddress vAddr) {
+	private PML1.TableEntry* _getTableEntry(VirtAddress vAddr, bool allocateWay = true) {
 		const ulong virtAddr = vAddr.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pml3Idx = (virtAddr >> 30) & 0x1FF;
@@ -378,14 +388,20 @@ private:
 			PML4.TableEntry* pml4Entry = &pml4.entries[pml4Idx];
 
 			if (!pml4Entry.present)
-				_allocateTable(pml4Entry, pml3.VirtAddress); //TODO: Is it allowed to allocate a PML4 entry? Permissions!
+				if (allocateWay)
+					_allocateTable(pml4Entry, pml3.VirtAddress); //TODO: Is it allowed to allocate a PML4 entry? Permissions!
+				else
+					return null;
 		}
 
 		PML2* pml2 = getPML2(pml4Idx, pml3Idx);
 		{
 			PML3.TableEntry* pml3Entry = &pml3.entries[pml3Idx];
 			if (!pml3Entry.present)
-				_allocateTable(pml3Entry, pml2.VirtAddress);
+				if (allocateWay)
+					_allocateTable(pml3Entry, pml2.VirtAddress);
+				else
+					return null;
 
 		}
 
@@ -393,7 +409,10 @@ private:
 		{
 			PML2.TableEntry* pml2Entry = &pml2.entries[pml2Idx];
 			if (!pml2Entry.present)
-				_allocateTable(pml2Entry, pml1.VirtAddress);
+				if (allocateWay)
+					_allocateTable(pml2Entry, pml1.VirtAddress);
+				else
+					return null;
 		}
 
 		return &pml1.entries[pml1Idx];
