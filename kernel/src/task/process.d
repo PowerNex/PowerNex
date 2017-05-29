@@ -2,8 +2,7 @@ module task.process;
 
 import data.address;
 import data.linkedlist;
-import memory.paging;
-import memory.heap;
+import memory.kheap;
 import data.register;
 import data.elf;
 import fs;
@@ -49,7 +48,7 @@ struct ThreadState {
 	align(16) ubyte[512] fpuStorage;
 	TLS* tls;
 
-	Paging paging;
+	//XXX: Paging paging;
 }
 
 struct ImageInformation {
@@ -58,7 +57,7 @@ struct ImageInformation {
 	ubyte[] defaultTLS;
 	char*[] arguments;
 	Ref!VNode file;
-	ELF elf;
+	//XXX: ELF elf;
 
 	//TODO: fill in
 }

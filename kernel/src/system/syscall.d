@@ -4,7 +4,6 @@ import data.address;
 import data.string_;
 import data.register;
 import system.utils;
-import task.scheduler : getScheduler;
 import task.process;
 import data.container;
 import memory.ref_;
@@ -75,35 +74,40 @@ struct SyscallEntry {
 
 @SyscallEntry(SyscallID.exit)
 void exit(long errorcode) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 	scheduler.exit(errorcode);
 
-	(*scheduler.currentProcess).syscallRegisters.rax = 0;
+	(*scheduler.currentProcess).syscallRegisters.rax = 0;*/
 }
 
 @SyscallEntry(SyscallID.clone)
 void clone(ulong function(void*) func, VirtAddress stack, void* userdata, string name) {
-	auto scheduler = getScheduler;
-	(*scheduler.currentProcess).syscallRegisters.rax = scheduler.clone(func, stack, userdata, name);
+	assert(0);
+	/*auto scheduler = getScheduler;
+	(*scheduler.currentProcess).syscallRegisters.rax = scheduler.clone(func, stack, userdata, name);*/
 }
 
 @SyscallEntry(SyscallID.fork)
 void fork() {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
-	(*scheduler.currentProcess).syscallRegisters.rax = scheduler.fork();
+	(*scheduler.currentProcess).syscallRegisters.rax = scheduler.fork();*/
 }
 
 @SyscallEntry(SyscallID.sleep)
 void sleep(ulong time) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 	scheduler.uSleep(time);
-	(*scheduler.currentProcess).syscallRegisters.rax = 0;
+	(*scheduler.currentProcess).syscallRegisters.rax = 0;*/
 }
 
 @SyscallEntry(SyscallID.exec)
 void exec(string path, string[] args) {
-	import data.elf : ELF;
+	assert(0);
+	/*import data.elf : ELF;
 
 	auto scheduler = getScheduler;
 
@@ -122,37 +126,40 @@ void exec(string path, string[] args) {
 	}
 
 	elf.mapAndRun(args);
-	log.fatal();
+	log.fatal();*/
 }
 
 @SyscallEntry(SyscallID.alloc)
 void alloc(ulong size) {
-	auto scheduler = getScheduler;
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
-	(*process).syscallRegisters.rax = (*(*process).allocator).allocate(size).VirtAddress;
+	(*process).syscallRegisters.rax = (*(*process).allocator).allocate(size).VirtAddress;*/
 }
 
 @SyscallEntry(SyscallID.free)
 void free(void[] addr) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
 	(*(*process).allocator).deallocate(addr); // Hack
-	(*process).syscallRegisters.rax = 0;
+	(*process).syscallRegisters.rax = 0;*/
 }
 
 @SyscallEntry(SyscallID.realloc)
 void realloc(void[] addr, ulong newSize) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
-	(*process).syscallRegisters.rax = (*(*process).allocator).reallocate(addr, newSize).VirtAddress;
+	(*process).syscallRegisters.rax = (*(*process).allocator).reallocate(addr, newSize).VirtAddress;*/
 }
 
 @SyscallEntry(SyscallID.getArguments)
 void getArguments(ulong* argc, char*** argv) { //TODO: add Check for userspace pointer
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
 	if (!argc.VirtAddress.isValidToWrite(size_t.sizeof) || !argv.VirtAddress.isValidToWrite(const(char**).sizeof)) {
@@ -162,12 +169,13 @@ void getArguments(ulong* argc, char*** argv) { //TODO: add Check for userspace p
 
 	*argc = (*process).image.arguments.length - 1; // Don't count the null at the end
 	*argv = (*process).image.arguments.ptr;
-	(*process).syscallRegisters.rax = 0;
+	(*process).syscallRegisters.rax = 0;*/
 }
 
 @SyscallEntry(SyscallID.open)
 void open(string file, string modestr) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
 	if (false && !(cast(void*)file.ptr).VirtAddress.isValidToRead(file.length)) {
@@ -218,12 +226,13 @@ void open(string file, string modestr) {
 
 	auto id = (*process).fdIDCounter++;
 	(*(*process).fileDescriptors)[id] = nc;
-	(*process).syscallRegisters.rax = id;
+	(*process).syscallRegisters.rax = id;*/
 }
 
 @SyscallEntry(SyscallID.close)
 void close(size_t id) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
 
@@ -235,12 +244,13 @@ void close(size_t id) {
 	}
 
 	(*nc.get).close();
-	(*process).syscallRegisters.rax = !(*(*process).fileDescriptors).remove(id);
+	(*process).syscallRegisters.rax = !(*(*process).fileDescriptors).remove(id);*/
 }
 
 @SyscallEntry(SyscallID.write)
 void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
-	import kmain : rootFS;
+	assert(0);
+	/*import kmain : rootFS;
 
 	auto scheduler = getScheduler;
 
@@ -259,12 +269,13 @@ void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
 		(*node.get).offset = offset;
 		(*process).syscallRegisters.rax = (*node.get).write(data);
 	} else
-		(*process).syscallRegisters.rax = ulong.max;
+		(*process).syscallRegisters.rax = ulong.max;*/
 }
 
 @SyscallEntry(SyscallID.read)
 void read(size_t id, ubyte[] data, size_t offset) {
-	import kmain : rootFS;
+	assert(0);
+	/*import kmain : rootFS;
 
 	auto scheduler = getScheduler;
 
@@ -283,18 +294,19 @@ void read(size_t id, ubyte[] data, size_t offset) {
 		(*node.get).offset = offset;
 		(*process).syscallRegisters.rax = (*node.get).read(data);
 	} else
-		(*process).syscallRegisters.rax = ulong.max;
+		(*process).syscallRegisters.rax = ulong.max;*/
 }
 
 @SyscallEntry(SyscallID.getTimestamp)
 void getTimestamp() {
-	import cpu.pit;
+	assert(0);
+	/*import cpu.pit;
 	import hw.cmos.cmos;
 
 	auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
-	(*process).syscallRegisters.rax = getCMOS.timeStamp;
+	(*process).syscallRegisters.rax = getCMOS.timeStamp;*/
 }
 
 struct DirectoryListing {
@@ -315,7 +327,8 @@ struct DirectoryListing {
 
 @SyscallEntry(SyscallID.listDirectory)
 void listDirectory(string path, DirectoryListing[] listings, size_t start) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
 
@@ -378,12 +391,13 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 		length++;
 	}
 
-	(*process).syscallRegisters.rax = length;
+	(*process).syscallRegisters.rax = length;*/
 }
 
 @SyscallEntry(SyscallID.getCurrentDirectory)
 void getCurrentDirectory(char[] str) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
 	size_t currentOffset = 0;
@@ -423,12 +437,13 @@ void getCurrentDirectory(char[] str) {
 
 	add((*process).currentDirectory);
 
-	(*process).syscallRegisters.rax = currentOffset;
+	(*process).syscallRegisters.rax = currentOffset;*/
 }
 
 @SyscallEntry(SyscallID.changeCurrentDirectory)
 void changeCurrentDirectory(string path) {
-	auto scheduler = getScheduler;
+	assert(0);
+	/*auto scheduler = getScheduler;
 
 	Ref!Process process = scheduler.currentProcess;
 	Ref!VNode newDir = (*process).currentDirectory.findNode(path);
@@ -436,14 +451,15 @@ void changeCurrentDirectory(string path) {
 		(*process).currentDirectory = newDir;
 		(*process).syscallRegisters.rax = 0;
 	} else
-		(*process).syscallRegisters.rax = 1;
+		(*process).syscallRegisters.rax = 1;*/
 }
 
 @SyscallEntry(SyscallID.join)
 void join(size_t pid) {
-	import task.scheduler;
+	assert(0);
+	/*import task.scheduler;
 
 	Scheduler s = getScheduler;
 	Ref!Process process = s.currentProcess;
-	(*process).syscallRegisters.rax = s.join(pid);
+	(*process).syscallRegisters.rax = s.join(pid);*/
 }

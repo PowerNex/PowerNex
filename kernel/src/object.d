@@ -48,6 +48,12 @@ with an empty main:
 
 		without_custom_runtime_reflection: runtime reflection will be bare minimum, don't use typeinfo except as like an opaque pointer. You also won't need the special linker script if you go without libc with this option.
 */
+
+// https://dlang.org/blog/2017/02/13/a-new-import-idiom/
+template from(string moduleName) {
+	mixin("import from = " ~ moduleName ~ ";");
+}
+
 import data.string_ : strlen;
 
 void main() {
@@ -126,18 +132,18 @@ extern (C) {
 	// the compiler spits this out all the time
 	deprecated("Please use allocators instead") Object _d_newclass(const ClassInfo ci) {
 		//log.debug_("Creating a new class of type: ", ci.name);
-		void* memory = getKernelHeap.alloc(ci.init.length);
-		if (memory is null) {
+		assert(0, "NO KERNEL HEAP");//void* memory = getKernelHeap.alloc(ci.init.length);
+		/*if (memory is null) {
 			log.fatal("\n\n_d_newclass malloc failure\n\n");
 			exit();
 		}
 
 		(cast(ubyte*)memory)[0 .. ci.init.length] = cast(ubyte[])ci.init[];
-		return cast(Object)memory;
+		return cast(Object)memory;*/
 	}
 
 	deprecated("Please use allocators instead") extern (C) void* _d_newitemU(in TypeInfo ti) {
-		return getKernelHeap.alloc(ti.tsize);
+		assert(0, "NO KERNEL HEAP");//return getKernelHeap.alloc(ti.tsize);
 	}
 
 	deprecated("Please use allocators instead") extern (C) void* _d_newitemT(in TypeInfo ti) {
@@ -160,7 +166,7 @@ extern (C) {
 		if (!length || !size)
 			return null;
 		else
-			return getKernelHeap.alloc(length * size)[0 .. length];
+			assert(0, "NO KERNEL HEAP");//return getKernelHeap.alloc(length * size)[0 .. length];
 	}
 
 	deprecated("Please use allocators instead") extern (C) void[] _d_newarrayiT(TypeInfo ti, size_t length) {
@@ -202,7 +208,7 @@ extern (C) {
 		if (!length || !size)
 			return null;
 		else
-			return getKernelHeap.alloc(length * size);
+			assert(0, "NO KERNEL HEAP");//return getKernelHeap.alloc(length * size);
 	}
 
 	deprecated("Please use allocators instead") void[] _d_arraycatT(TypeInfo ti, void[] x, void[] y) {
@@ -212,32 +218,32 @@ extern (C) {
 		if (!(x.length + y.length) || !size)
 			return null;
 
-		ubyte* data = cast(ubyte*)getKernelHeap.alloc((x.length + y.length) * size);
-		memcpy(data, x.ptr, x.length * size);
+		assert(0, "NO KERNEL HEAP");//ubyte* data = cast(ubyte*)getKernelHeap.alloc((x.length + y.length) * size);
+		/*memcpy(data, x.ptr, x.length * size);
 		memcpy(data + (x.length * size), y.ptr, y.length * size);
-		return (cast(void*)data)[0 .. x.length + y.length];
+		return (cast(void*)data)[0 .. x.length + y.length];*/
 	}
 
 	deprecated("Please use allocators instead") void[] _d_arraysetlengthT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
-		return *p;
+		assert(0, "NO KERNEL HEAP");//*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
+		//return *p;
 	}
 
 	deprecated("Please use allocators instead") void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
 		auto size = ti.next.tsize();
-		*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
+		assert(0, "NO KERNEL HEAP");//*p = getKernelHeap.realloc(p.ptr, newlength * size)[0 .. newlength];
 
-		return *p;
+		//return *p;
 	}
 
 	deprecated("Please use allocators instead") byte[] _d_arrayappendcTX(const TypeInfo ti, ref byte[] px, size_t n) {
 		auto size = ti.next.tsize();
 		auto newlength = px.length + n;
-		void* newPtr = getKernelHeap.realloc(px.ptr, newlength * size);
-		*cast(size_t*)&px = newlength;
+		assert(0, "NO KERNEL HEAP");//void* newPtr = getKernelHeap.realloc(px.ptr, newlength * size);
+		/**cast(size_t*)&px = newlength;
 		(cast(void**)(&px))[1] = newPtr;
-		return px;
+		return px;*/
 	}
 
 	void[] _d_arraycast(size_t newTypeSize, size_t curTypeSize, void[] arr) nothrow {
@@ -263,8 +269,8 @@ extern (C) {
 		if (!length)
 			return null;
 
-		void* a = getKernelHeap.alloc(length * size);
-
+		assert(0, "NO KERNEL HEAP");//void* a = getKernelHeap.alloc(length * size);
+/*
 		size_t j = 0;
 		foreach (b; arrs) {
 			if (b.length) {
@@ -273,7 +279,7 @@ extern (C) {
 			}
 		}
 
-		return a[0 .. length];
+		return a[0 .. length];*/
 	}
 
 	// and these came when I started using foreach
@@ -486,9 +492,9 @@ class TypeInfo {
 	}
 	/// Run the destructor on the object and all its sub-objects
 	deprecated("Please use allocators instead") void destroy(void* p) const {
-		import memory.heap;
+		import memory.kheap;
 
-		getKernelHeap.free(p);
+		assert(0, "NO KERNEL HEAP");//getKernelHeap.free(p);
 	}
 	/// Run the postblit on the object and all its sub-objects
 	void postblit(void* p) const {
@@ -1628,10 +1634,10 @@ immutable(T)[] immutable_alloc(T)(scope void delegate(T[]) initalizer) {
 	return null;
 }
 
-import memory.heap;
+import memory.kheap;
 
 deprecated("Please use allocators instead") void destroy(void* memory) {
-	getKernelHeap.free(memory);
+	assert(0, "NO KERNEL HEAP");//getKernelHeap.free(memory);
 }
 
 deprecated("Please use allocators instead") void destroy(T)(T object) if (is(T == interface)) {
@@ -1651,7 +1657,7 @@ deprecated("Please use allocators instead") void destroy(T)(T obj) if (is(T == c
 		}
 		ci = ci.base;
 	}
-	getKernelHeap.free(object);
+	assert(0, "NO KERNEL HEAP");//getKernelHeap.free(object);
 }
 
 deprecated("Please use allocators instead") void destroy(T)(T[] array) {
@@ -1666,13 +1672,13 @@ deprecated("Please use allocators instead") void destroy(T)(T[] array) {
 		foreach (el; array)
 			destroy(cast(void*)el);
 	}
-	getKernelHeap.free(cast(void*)array.ptr);
+	assert(0, "NO KERNEL HEAP");//getKernelHeap.free(cast(void*)array.ptr);
 }
 
 // this would be used for automatic heap closures, but there's no way to free it...
 ///*
 deprecated("Please use allocators instead") extern (C) void* _d_allocmemory(size_t bytes) {
-	return getKernelHeap.alloc(bytes);
+	assert(0, "NO KERNEL HEAP");//return getKernelHeap.alloc(bytes);
 }
 //*/
 
@@ -2436,11 +2442,11 @@ extern (C) int dstrcmp(char[] s1, char[] s2) {
 }
 
 deprecated("Please use allocators instead") inout(T)[] dup(T)(inout(T)[] a) {
-	import memory.heap : getKernelHeap;
+	assert(0, "NO KERNEL HEAP");//import memory.kheap : getKernelHeap;
 
-	void[] arr = getKernelHeap.alloc(T.sizeof * a.length)[0 .. a.length];
-	memcpy(arr.ptr, a.ptr, T.sizeof * a.length);
-	return *cast(inout(T)[]*)&arr;
+	assert(0, "NO KERNEL HEAP");//void[] arr = getKernelHeap.alloc(T.sizeof * a.length)[0 .. a.length];
+	/*memcpy(arr.ptr, a.ptr, T.sizeof * a.length);
+	return *cast(inout(T)[]*)&arr;*/
 }
 
 extern (C) Throwable __dmd_begin_catch(_Unwind_Exception* exceptionObject) {

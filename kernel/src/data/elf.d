@@ -1,5 +1,7 @@
 module data.elf;
 
+__EOF__
+
 import data.bitfield;
 import data.address;
 import data.string_;
@@ -7,7 +9,7 @@ import fs;
 import io.log;
 import data.textbuffer : scr = getBootTTY;
 import task.process;
-import memory.heap;
+import memory.kheap;
 import memory.allocator;
 import memory.allocator.userspaceallocator;
 import memory.ref_;

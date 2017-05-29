@@ -10,12 +10,13 @@ digraph derp {
 	PS2;
 	Multiboot[style=filled,fillcolor=green];
 	FrameAllocator[style=filled,fillcolor=green];
-	Paging[style=filled,fillcolor=yellow];
-	Heap;
+	Paging[style=filled,fillcolor=green];
+	Heap[style=filled,fillcolor=yellow];
 	PCI;
 	FS;
 	ConsoleManager;
 	Scheduler;
+	VMM;
 
 	//(*) -> COM;
 
@@ -29,11 +30,13 @@ digraph derp {
 	PS2 -> IDT;
 	FrameAllocator -> Multiboot;
 	Paging -> FrameAllocator;
-	//Heap -> Paging;
+	Heap -> Paging;
 	PS2 -> ConsoleManager;
 	SyscallHandler -> Scheduler;
-	Heap -> Scheduler;
+	//Heap -> Scheduler;
 	PIT -> Scheduler;
+	Scheduler -> VMM;
+	VMM -> Heap;
 	FS -> Heap;
 
 	ACPI -> Paging;

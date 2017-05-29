@@ -63,7 +63,7 @@ struct Screen(int w, int h) {
 	this(Colors fg, Colors bg, long videoMemory) {
 		_screen = cast(VideoSlot[w * h]*)videoMemory;
 		_x = 0;
-		_y = 1;
+		_y = 0;
 		_color = Color(fg, bg);
 		_enabled = true;
 	}
@@ -77,7 +77,7 @@ struct Screen(int w, int h) {
 			slot.color = _color;
 		}
 		_x = 0;
-		_y = 1;
+		_y = 0;
 	}
 
 	void write(Slot[] slots) {
@@ -86,28 +86,6 @@ struct Screen(int w, int h) {
 		foreach (slot; slots)
 			_write(cast(char)slot.ch);
 		_moveCursor();
-	}
-
-	void writeStatus(Args...)(Args args) {
-		if (!_enabled)
-			return;
-		_blockCursor++;
-		ubyte oldX = _x;
-		ubyte oldY = _y;
-		Color oldColor = _color;
-
-		_x = _y = 0;
-		_color = Color(Colors.white, Colors.red);
-		_write(args);
-
-		while (_x < w - 1)
-			_write(' ');
-		_write(' ');
-
-		_x = oldX;
-		_y = oldY;
-		_color = oldColor;
-		_blockCursor--;
 	}
 
 	void _moveCursor() {
@@ -166,7 +144,7 @@ private:
 		}
 
 		if (_y >= h) {
-			for (int yy = 1; yy < h - 1; yy++)
+			for (int yy = 0; yy < h - 1; yy++)
 				for (int xx = 0; xx < w; xx++)
 					(*_screen)[yy * w + xx] = (*_screen)[(yy + 1) * w + xx];
 

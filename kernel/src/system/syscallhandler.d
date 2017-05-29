@@ -40,12 +40,12 @@ public:
 private:
 	static void _onSyscallHandler(Registers* regs) {
 		import data.textbuffer : scr = getBootTTY;
-		import task.scheduler : getScheduler;
+		/*import task.scheduler : getScheduler;
 
 		auto process = getScheduler.currentProcess;
 
-		(*process).syscallRegisters = *regs;
-		with (regs)
+		(*process).syscallRegisters = *regs;*/
+		with (regs)/*
 	outer : switch (cast(SyscallID)rax) {
 			foreach (func; __traits(derivedMembers, system.syscall)) {
 				static if (is(typeof(mixin("system.syscall." ~ func)) == function))
@@ -57,12 +57,12 @@ private:
 						}
 					}
 			}
-		default:
+		default:*/
 			scr.writeln("UNKNOWN SYSCALL: ", cast(void*)rax);
-			(*process).syscallRegisters.rax = ulong.max;
+			/*(*process).syscallRegisters.rax = ulong.max;
 			break;
 		}
-		*regs = (*process).syscallRegisters;
+		*regs = (*process).syscallRegisters;*/
 	}
 
 	private static string _generateFunctionCall(alias func)() {

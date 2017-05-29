@@ -1,7 +1,7 @@
 module data.string_;
 
 import data.util;
-import memory.heap;
+import memory.kheap;
 
 nothrow pure size_t strlen(const(char)* str) {
 	if (!str)

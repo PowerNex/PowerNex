@@ -1,5 +1,5 @@
 module system.utils;
-
+__EOF__
 import data.address;
 import task.scheduler;
 import memory.paging;

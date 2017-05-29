@@ -58,7 +58,7 @@ struct VMObject {
 
 	VirtAddress zoneStart; /// The start of the memory zone that this object controls
 	VirtAddress zoneEnd; /// The end of the memory zone that this object controls
-	HWZone hwZone;
+	HWZoneIdentifier hwZoneID; /// The identification the HWPaging used to identify this zone
 
 	Vector!(VMPage*) pages; /// All the mapped pages
 	VMObject* parent; /// The parent for the object

@@ -151,7 +151,7 @@ struct Log {
 		printStackTrace(true);
 		import io.textmode : getScreen;
 
-		getScreen.writeStatus("\t\tFATAL ERROR, READ COM.LOG!");
+		//getScreen.writeStatus("\t\tFATAL ERROR, READ COM.LOG!");
 		asm {
 		forever:
 			hlt;
@@ -161,8 +161,8 @@ struct Log {
 
 	void printStackTrace(bool skipFirst = false) {
 		import memory.ref_ : Ref;
-		import task.scheduler : getScheduler;
-		import task.process : Process;
+		/*import task.scheduler : getScheduler;
+		import task.process : Process;*/
 
 		VirtAddress rbp;
 		asm {
@@ -170,13 +170,13 @@ struct Log {
 		}
 		_printStackTrace(rbp, skipFirst);
 
-		if (Ref!Process p = getScheduler.currentProcess)
+		/*if (Ref!Process p = getScheduler.currentProcess)
 			if (!(*p).kernelProcess) {
 				auto page = (*p).threadState.paging.getPage((*p).syscallRegisters.rbp);
 				if (!page || !page.present)
 					return;
 				_printStackTrace((*p).syscallRegisters.rbp, skipFirst);
-			}
+			}*/
 	}
 
 	private void _printStackTrace(VirtAddress rbp, bool skipFirst) {
@@ -195,13 +195,13 @@ struct Log {
 			if (!*rip.ptr!ulong)
 				break;
 
-			import task.scheduler : getScheduler, TablePtr;
+			//import task.scheduler : getScheduler, TablePtr;
 
-			if (getScheduler && getScheduler.currentProcess) {
+			/*if (getScheduler && getScheduler.currentProcess) {
 				TablePtr!(void)* page = (*getScheduler.currentProcess).threadState.paging.getPage(rip);
 				if (!page || !page.present)
 					break;
-			}
+			}*/
 
 			com1.write("\t[");
 

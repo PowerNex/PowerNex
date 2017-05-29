@@ -15,12 +15,10 @@ import cpu.pit;
 import data.color;
 import data.multiboot;
 import hw.ps2.keyboard;
-import memory.paging;
 import memory.frameallocator;
 import data.linker;
 import data.address;
-import memory.heap;
-import task.scheduler;
+import memory.kheap;
 import acpi.rsdp;
 import hw.pci.pci;
 import hw.cmos.cmos;
@@ -46,7 +44,7 @@ extern (C) int kmain(uint magic, ulong info) {
 		sti;
 	}
 
-	string initFile = "/bin/init";
+	/*string initFile = "/bin/init";
 	ELF init = new ELF((*rootFS).root.findNode(initFile));
 	if (init.valid) {
 		scr.writeln(initFile, " is valid! Loading...");
@@ -56,7 +54,7 @@ extern (C) int kmain(uint magic, ulong info) {
 	} else {
 		scr.writeln("Invalid ELF64 file");
 		log.fatal("Invalid ELF64 file!");
-	}
+	}*/
 
 	scr.foreground = Color(255, 0, 255);
 	scr.background = Color(255, 255, 0);
@@ -126,11 +124,6 @@ void init(uint magic, ulong info) {
 	while (true) {
 	}
 
-	scr.writeln("Paging initializing...");
-	log.info("Paging initializing...");
-	getKernelPaging.removeUserspace(false); // Removes all mapping that are not needed for the kernel
-	getKernelPaging.install();
-
 	scr.writeln("ACPI initializing...");
 	rsdp.init();
 
@@ -148,7 +141,7 @@ void init(uint magic, ulong info) {
 		} else
 			log.fatal("No module called symmap!");
 	}
-
+/*
 	scr.writeln("Heap initializing...");
 	log.info("Heap initializing...");
 	getKernelHeap;
@@ -157,7 +150,7 @@ void init(uint magic, ulong info) {
 		import memory.allocator.heapallocator : HeapAllocator;
 
 		kernelAllocator = new HeapAllocator(getKernelHeap);
-	}
+	}*/
 
 	scr.writeln("PCI initializing...");
 	log.info("PCI initializing...");
@@ -168,9 +161,9 @@ void init(uint magic, ulong info) {
 	scr.writeln("Starting ConsoleManager...");
 	log.info("Starting ConsoleManager...");
 	getConsoleManager.init();
-	scr.writeln("Scheduler initializing...");
+	/*scr.writeln("Scheduler initializing...");
 	log.info("Scheduler initializing...");
-	getScheduler.init();
+	getScheduler.init();*/
 }
 
 void loadInitrd() {

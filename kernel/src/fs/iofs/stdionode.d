@@ -30,7 +30,7 @@ public:
 		foreach (b; utf8[0 .. bytesUsed])
 			kbBuffer[kbEnd++] = b;
 
-		getScheduler.wakeUp(WaitReason.keyboard, &wakeUpKeyboard, cast(void*)kbBuffer.ptr);
+		//getScheduler.wakeUp(WaitReason.keyboard, &wakeUpKeyboard, cast(void*)kbBuffer.ptr);
 		return true;
 	}
 
@@ -80,7 +80,7 @@ public:
 		ssize_t read;
 
 		if (kbStart == kbEnd)
-			getScheduler.waitFor(WaitReason.keyboard, cast(ulong)kbBuffer.ptr);
+			return -IOStatus.notFound;//getScheduler.waitFor(WaitReason.keyboard, cast(ulong)kbBuffer.ptr);
 
 		while (read < buffer.length && kbStart != kbEnd)
 			buffer[read++] = kbBuffer[kbStart++];

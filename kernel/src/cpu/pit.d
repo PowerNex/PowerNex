@@ -1,15 +1,11 @@
 module cpu.pit;
 
-import cpu.idt;
-import io.port;
-import io.log;
-import data.register;
-import task.process;
-import task.scheduler;
-
 struct PIT {
 public:
 	static void init(uint hz = 1000) {
+		import cpu.idt : IDT, irq;
+		import io.port : outp;
+
 		IDT.register(irq(0), &_onTick);
 		_hz = hz;
 		uint divisor = 1193180 / hz;
@@ -36,24 +32,7 @@ private:
 	__gshared bool _enabled;
 	__gshared uint _hz;
 	__gshared ulong _counter;
-	static void _onTick(Registers* regs) {
-		import memory.frameallocator;
-		import task.scheduler : getScheduler, isSchedulerInited;
-		import data.textbuffer : scr = getBootTTY;
-
+	static void _onTick(from!"data.register".Registers* regs) {
 		_counter++;
-
-		if (!isSchedulerInited)
-			return;
-
-		getScheduler.wakeUp(WaitReason.timer, &_wakeUpTimedSleep);
-		getScheduler.switchProcess(true);
-	}
-
-	static bool _wakeUpTimedSleep(Process* p, void* data) {
-		p.waitData--;
-		if (p.waitData == 0)
-			return true;
-		return false;
 	}
 }

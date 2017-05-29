@@ -10,7 +10,7 @@ struct ScheduleMutex {
 public:
 	void lock() {
 		while (!mutexTrylock(&_value))
-			getScheduler.waitFor(WaitReason.mutex, cast(ulong)&this);
+			{}//getScheduler.waitFor(WaitReason.mutex, cast(ulong)&this);
 	}
 
 	bool tryLock() {
@@ -19,7 +19,7 @@ public:
 
 	void unlock() {
 		mutexUnlock(&_value);
-		getScheduler.wakeUp(WaitReason.mutex, cast(WakeUpFunc)&_mutexWakeUp, &this);
+		//getScheduler.wakeUp(WaitReason.mutex, cast(WakeUpFunc)&_mutexWakeUp, &this);
 	}
 
 private:

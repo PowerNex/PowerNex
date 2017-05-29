@@ -204,7 +204,13 @@ alias PML2 = PTLevel!PML1;
 alias PML3 = PTLevel!PML2;
 alias PML4 = PTLevel!PML3;
 
-alias HWZone = PML3;
+/**
+	* Each VMObject will be have a 4GiB zone, aka one PML3 each.
+	*
+	* Note:
+	*  Only the lowest 9 bits will be used, because each PML4 only contains 512 entries.
+	*/
+alias HWZoneIdentifier = ushort;
 
 private VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) {
 	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
@@ -363,6 +369,15 @@ public:
 
 	void bind() {
 		cpuInstallCR3(_addr);
+	}
+
+	/// Get information about a zone where $(PARAM address) exists.
+	VMZoneInformation getZoneInfo(VirtAddress address) {
+		const HWZoneIdentifier hwZoneID = (address.num >> 39) & 0x1FF; // Aka pml4Idx
+		const VirtAddress zoneStart = _makeAddress(hwZoneID, 0, 0, 0);
+		const VirtAddress zoneEnd = _makeAddress(hwZoneID + 1, 0, 0, 0) - 1;
+
+		return VMZoneInformation(zoneStart, zoneEnd, hwZoneID);
 	}
 
 private:

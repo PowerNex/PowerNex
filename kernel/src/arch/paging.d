@@ -8,6 +8,7 @@ version (X86_64) {
 
 import data.address;
 import memory.vmm;
+import data.util : TypeTuple;
 
 //TODO: Change to HWPaging, using hack to allocator class!
 __gshared IHWPaging kernelHWPaging;
@@ -45,6 +46,16 @@ interface IHWPaging { // Hardware implementation of paging
 
 	/// Bind the paging
 	void bind();
+
+	/// Information for the VMObject for a specified address
+	struct VMZoneInformation {
+		VirtAddress zoneStart; /// See VMObject.zoneStart
+		VirtAddress zoneEnd; /// See VMObject.zoneEnd
+		HWZoneIdentifier hwZoneID; /// See VMObject.hwZoneID
+	}
+
+	/// Get information about a zone where $(PARAM address) exists.
+	VMZoneInformation getZoneInfo(VirtAddress address);
 }
 
 void initKernelHWPaging() {
