@@ -1,11 +1,73 @@
 module memory.kheap;
 
+struct BuddyHeader {
+	BuddyHeader* next;
+	ubyte factor;
+	char[3] magic;
+}
 
+static assert(BuddyHeader.sizeof == 2 * ulong.sizeof);
 
+struct KHeap {
+	import data.address;
 
+static:
+public:
+	void init() {
+		import data.linker : Linker;
 
+		_nextFreeAddress = Linker.kernelEnd.roundUp(0x1000);
+		_extend();
+	}
 
+	void[] allocate(size_t size) {
+		import data.util : log2;
 
+		size = (size + BuddyHeader.sizeof + 0x1F) & ~(0x1F);
+		int factor = log2(size);
+		BuddyHeader* buddy = _getFreeFactors(factor);
+		if (!buddy) {
+			//TODO: Split
+		}
+		_getFreeFactors(factor) = buddy.next;
+
+		return (buddy.VirtAddress + BuddyHeader.sizeof).ptr[0 .. size - BuddyHeader.sizeof];
+	}
+
+	void free(void[] address) {
+		BuddyHeader* buddy = (address.VirtAddress - BuddyHeader.sizeof).ptr!BuddyHeader;
+		assert(buddy.magic == _magic, "Buddy magic invalid");
+
+		buddy.next = _getFreeFactors(buddy.factor);
+		_getFreeFactors(buddy.factor) = buddy;
+
+		//TODO: combine?
+	}
+
+private:
+	enum _lowerFactor = 5; // 32bytes
+	enum _upperFactor = 12; // 4Kibi
+	enum char[3] _magic = ['B', 'D', 'Y'];
+
+	__gshared VirtAddress _nextFreeAddress;
+	__gshared BuddyHeader*[_upperFactor - _lowerFactor + 1] _freeFactors;
+
+	ref BuddyHeader* _getFreeFactors(ushort factor) {
+		return _freeFactors[factor - _lowerFactor];
+	}
+
+	void _extend() {
+		import arch.paging;
+
+		kernelHWPaging.map(_nextFreeAddress, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false);
+		BuddyHeader* newBuddy = _nextFreeAddress.ptr!BuddyHeader;
+		newBuddy.next = _getFreeFactors(_upperFactor);
+		newBuddy.factor = _upperFactor;
+		newBuddy.magic[] = _magic;
+		_getFreeFactors(_upperFactor) = newBuddy;
+	}
+
+}
 
 // IDT.register(InterruptType.pageFault, &_onPageFault);
 /+private void _onPageFault(from!"data.register".Registers* regs) {

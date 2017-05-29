@@ -41,8 +41,8 @@ template enumMembers(E) if (is(E == enum)) {
 
 	template enumSpecificMembers(names...) {
 		static if (names.length > 0) {
-			alias enumSpecificMembers = TypeTuple!(withIdentifier!(names[0]).Symbolize!(__traits(getMember, E,
-					names[0])), enumSpecificMembers!(names[1 .. $]));
+			alias enumSpecificMembers = TypeTuple!(withIdentifier!(names[0]).Symbolize!(__traits(getMember, E, names[0])),
+					enumSpecificMembers!(names[1 .. $]));
 		} else {
 			alias enumSpecificMembers = TypeTuple!();
 		}
@@ -83,4 +83,28 @@ T abs(T)(T i) {
 	if (i < 0)
 		return -i;
 	return i;
+}
+
+// https://stackoverflow.com/a/11398748
+// dfmt off
+immutable int[64] tab64 = [
+	63,  0, 58,  1, 59, 47, 53,  2,
+	60, 39, 48, 27, 54, 33, 42,  3,
+	61, 51, 37, 40, 49, 18, 28, 20,
+	55, 30, 34, 11, 43, 14, 22,  4,
+	62, 57, 46, 52, 38, 26, 32, 41,
+	50, 36, 17, 19, 29, 10, 13, 21,
+	56, 45, 25, 31, 35, 16,  9, 12,
+	44, 24, 15,  8, 23,  7,  6,  5
+];
+//dfmt on
+
+int log2(ulong value) {
+	value |= value >> 1;
+	value |= value >> 2;
+	value |= value >> 4;
+	value |= value >> 8;
+	value |= value >> 16;
+	value |= value >> 32;
+	return tab64[((ulong)((value - (value >> 1)) * 0x07EDD5E59A4E28C2)) >> 58];
 }

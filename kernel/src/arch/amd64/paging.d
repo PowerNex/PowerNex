@@ -265,6 +265,9 @@ public:
 		if (!entry)
 			return false;
 
+		if (entry.present)
+			return false;
+
 		entry.address = pAddr ? pAddr : getNextFreePage();
 		entry.setVMFlags(flags | (clear ? VMPageFlags.writable : VMPageFlags.none));
 		_flush(vAddr);
@@ -294,6 +297,9 @@ public:
 
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry)
+			return false;
+
+		if (!entry.present)
 			return false;
 
 		if (pAddr)
