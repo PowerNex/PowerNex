@@ -378,7 +378,7 @@ public:
 
 		// Setup stack, setup heap
 
-		asm {
+		asm pure nothrow {
 			cli;
 		}
 

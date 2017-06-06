@@ -4,22 +4,22 @@ import data.util;
 
 T inp(T)(ushort port) {
 	T ret;
-	asm {
+	asm pure nothrow {
 		mov DX, port;
 	}
 
 	static if (isByte!T) {
-		asm {
+		asm pure nothrow {
 			 in AL, DX;
 			mov ret, AL;
 		}
 	} else static if (isShort!T) {
-		asm {
+		asm pure nothrow {
 			 in AX, DX;
 			mov ret, AX;
 		}
 	} else static if (isInt!T) {
-		asm {
+		asm pure nothrow {
 			 in EAX, DX;
 			mov ret, EAX;
 		}
@@ -31,21 +31,21 @@ T inp(T)(ushort port) {
 
 void outp(T)(ushort port, T d) {
 	uint data = d;
-	asm {
+	asm pure nothrow {
 		mov EAX, data;
 		mov DX, port;
 	}
 
 	static if (isByte!T) {
-		asm {
+		asm pure nothrow {
 			out DX, AL;
 		}
 	} else static if (isShort!T) {
-		asm {
+		asm pure nothrow {
 			out DX, AX;
 		}
 	} else static if (isInt!T) {
-		asm {
+		asm pure nothrow {
 			out DX, EAX;
 		}
 	} else

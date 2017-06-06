@@ -202,7 +202,7 @@ while (true) {}
 		if (!slpTypA) {
 			outp!ushort(0xB004, 0x0 | 0x2000);
 
-			asm {
+			asm pure nothrow {
 				mov RAX, 0x1000; // Because page zero is not mapped
 				mov RBX, 0x1337;
 				lidt [RAX]; // and this will cause a Page fault before it changes the IDT

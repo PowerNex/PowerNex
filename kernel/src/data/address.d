@@ -24,10 +24,11 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	/// Only for power of two
-	typeof(this) roundUp(size_t multiplier) {
-		assert(multiplier && (multiplier & (multiplier - 1)) == 0, "Not power of two!");
-		return typeof(this)((addr + multiplier - 1) & ~(multiplier - 1));
-	}
+	static if (is(Type == size_t))
+		typeof(this) roundUp(size_t multiplier) {
+			assert(multiplier && (multiplier & (multiplier - 1)) == 0, "Not power of two!");
+			return typeof(this)((addr + multiplier - 1) & ~(multiplier - 1));
+		}
 
 	typeof(this) opBinary(string op)(void* other) const {
 		return typeof(this)(mixin("addr" ~ op ~ "cast(Type)other"));

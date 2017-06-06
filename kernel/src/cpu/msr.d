@@ -14,7 +14,7 @@ struct MSR {
 	static void write(MSRIdentifiers ident, ulong value) {
 		uint low = cast(uint)value;
 		uint high = cast(uint)(value >> 32);
-		asm {
+		asm pure nothrow {
 			mov EAX, low;
 			mov EDX, high;
 			mov ECX, ident;
@@ -24,7 +24,7 @@ struct MSR {
 
 	static ulong read(MSRIdentifiers ident) {
 		uint low, high;
-		asm {
+		asm pure nothrow {
 			mov ECX, ident;
 			wrmsr;
 			mov high, EDX;

@@ -11,7 +11,7 @@ extern (C) void onSyscall();
 
 // for syscallhelper.S
 extern (C) void _onSyscallHandler() {
-	asm {
+	asm pure nothrow {
 		naked;
 		jmp SyscallHandler._onSyscallHandler;
 	}

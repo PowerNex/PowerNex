@@ -91,7 +91,7 @@ public:
 
 	static void flush() {
 		void* baseAddr = cast(void*)(&base);
-		asm {
+		asm pure nothrow {
 			mov RAX, baseAddr;
 			lidt [RAX];
 		}
@@ -127,7 +127,7 @@ private:
 	static template _generateJump(ulong id, bool hasError = false) {
 		const char[] _generateJump = `
 			static void isr` ~ id.stringof[0 .. $ - 2] ~ `() {
-				asm {
+				asm pure nothrow {
 					naked;
 					` ~ (hasError ? ""
 				: "push 0UL;") ~ `
@@ -166,7 +166,7 @@ private:
 	mixin(_generateJumps!(15, 255));
 
 	static void isrIgnore() {
-		asm {
+		asm pure nothrow {
 			naked;
 			cli;
 			nop;
@@ -178,7 +178,7 @@ private:
 	}
 
 	extern (C) static void isrCommon() {
-		asm {
+		asm pure nothrow {
 			naked;
 			cli;
 			push RAX;

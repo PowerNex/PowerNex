@@ -85,26 +85,17 @@ T abs(T)(T i) {
 	return i;
 }
 
-// https://stackoverflow.com/a/11398748
-// dfmt off
-immutable int[64] tab64 = [
-	63,  0, 58,  1, 59, 47, 53,  2,
-	60, 39, 48, 27, 54, 33, 42,  3,
-	61, 51, 37, 40, 49, 18, 28, 20,
-	55, 30, 34, 11, 43, 14, 22,  4,
-	62, 57, 46, 52, 38, 26, 32, 41,
-	50, 36, 17, 19, 29, 10, 13, 21,
-	56, 45, 25, 31, 35, 16,  9, 12,
-	44, 24, 15,  8, 23,  7,  6,  5
-];
-//dfmt on
+// https://github.com/Vild/PowerNex/commit/9db5276c34a11d86213fe7b19878762a9461f615#commitcomment-22324396
+ulong log2(ulong value) {
+	ulong result;
+	asm pure nothrow {
+		bsr RAX, value;
+		mov result, RAX;
+	}
 
-int log2(ulong value) {
-	value |= value >> 1;
-	value |= value >> 2;
-	value |= value >> 4;
-	value |= value >> 8;
-	value |= value >> 16;
-	value |= value >> 32;
-	return tab64[((ulong)((value - (value >> 1)) * 0x07EDD5E59A4E28C2)) >> 58];
+	//2 ^ result == value means value is a power of 2 and we dont need to round up
+	if (1 << result != value)
+		result++;
+
+	return result;
 }

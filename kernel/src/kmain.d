@@ -40,7 +40,7 @@ extern (C) int kmain(uint magic, ulong info) {
 	preInit();
 	welcome();
 	init(magic, info);
-	asm {
+	asm pure nothrow {
 		sti;
 	}
 
@@ -121,6 +121,14 @@ void init(uint magic, ulong info) {
 	scr.writeln("KernelHWPaging WORKED");
 	log.info("KernelHWPaging WORKED");
 
+	scr.writeln("KHeap initializing...");
+	log.info("KHeap initializing...");
+
+	KHeap.init();
+
+	scr.writeln("KHeap allocating...");
+	log.info("KHeap allocating...");
+
 	while (true) {
 	}
 
@@ -141,16 +149,6 @@ void init(uint magic, ulong info) {
 		} else
 			log.fatal("No module called symmap!");
 	}
-/*
-	scr.writeln("Heap initializing...");
-	log.info("Heap initializing...");
-	getKernelHeap;
-
-	{
-		import memory.allocator.heapallocator : HeapAllocator;
-
-		kernelAllocator = new HeapAllocator(getKernelHeap);
-	}*/
 
 	scr.writeln("PCI initializing...");
 	log.info("PCI initializing...");

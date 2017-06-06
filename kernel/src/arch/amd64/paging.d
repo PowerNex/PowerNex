@@ -180,7 +180,22 @@ struct PTLevel(NextLevel) {
 				return (((VirtAddress(&this) & ~0xFFF) << 9) | (id << 12)).ptr!NextLevel;
 			}
 
-		void setVMFlags(VMPageFlags flags) {
+		@property VMPageFlags vmFlags() {
+			VMPageFlags flags;
+			if (!present)
+				return VMPageFlags.none;
+
+			flags |= VMPageFlags.present;
+			if (readWrite)
+				flags |= VMPageFlags.writable;
+			if (user)
+				flags |= VMPageFlags.user;
+			if (!noExecute) //NOTE '!'
+				flags |= VMPageFlags.execute;
+			return flags;
+		}
+
+		@property void vmFlags(VMPageFlags flags) {
 			present = !!(flags & flags.present);
 			readWrite = !!(flags & flags.writable);
 			user = !!(flags & flags.user);
@@ -249,6 +264,9 @@ class HWPaging : IHWPaging {
 public:
 	this(PhysAddress pml4Address) {
 		_addr = pml4Address;
+		import cpu.idt : IDT, InterruptType;
+
+		IDT.register(InterruptType.pageFault, &_onPageFault);
 	}
 
 	~this() {
@@ -269,7 +287,7 @@ public:
 			return false;
 
 		entry.address = pAddr ? pAddr : getNextFreePage();
-		entry.setVMFlags(flags | (clear ? VMPageFlags.writable : VMPageFlags.none));
+		entry.vmFlags(flags | (clear ? VMPageFlags.writable : VMPageFlags.none));
 		_flush(vAddr);
 
 		if (clear) {
@@ -305,7 +323,7 @@ public:
 		if (pAddr)
 			entry.address = pAddr;
 		if (flags)
-			entry.setVMFlags(flags);
+			entry.vmFlags(flags);
 		_flush(vAddr);
 		return true;
 	}
@@ -322,7 +340,7 @@ public:
 		}
 
 		entry.address = PhysAddress();
-		entry.setVMFlags(VMPageFlags.none);
+		entry.vmFlags(VMPageFlags.none);
 		_flush(vAddr);
 		return true;
 	}
@@ -451,5 +469,158 @@ private:
 		entry.readWrite = true;
 		_flush(vAddr);
 		memset(vAddr.ptr, 0, _pageSize);
+	}
+}
+
+private extern (C) ulong cpuRetCR3();
+
+private void _onPageFault(from!"data.register".Registers* regs) {
+	import data.textbuffer : scr = getBootTTY;
+	import io.log;
+
+	HWPaging paging = cast(HWPaging)kernelHWPaging;
+
+	with (regs) {
+		import data.color;
+
+		auto addr = cr2;
+
+		const ulong virtAddr = addr.num;
+		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
+		const ushort pml3Idx = (virtAddr >> 30) & 0x1FF;
+		const ushort pml2Idx = (virtAddr >> 21) & 0x1FF;
+		const ushort pml1Idx = (virtAddr >> 12) & 0x1FF;
+
+		PML4.TableEntry* pml4Entry;
+		PML3* pml3;
+
+		PML3.TableEntry* pml3Entry;
+		PML2* pml2;
+
+		PML2.TableEntry* pml2Entry;
+		PML1* pml1;
+
+		PML1.TableEntry* pml1Entry;
+
+		PML4* pml4 = getPML4();
+		{
+			pml4Entry = &pml4.entries[pml4Idx];
+			if (!pml4Entry.present)
+				goto tableEntriesDone;
+			pml3 = getPML3(pml4Idx);
+		}
+
+		{
+			pml3Entry = &pml3.entries[pml3Idx];
+			if (!pml3Entry.present)
+				goto tableEntriesDone;
+			pml2 = getPML2(pml4Idx, pml3Idx);
+		}
+
+		{
+			pml2Entry = &pml2.entries[pml2Idx];
+			if (!pml2Entry.present)
+				goto tableEntriesDone;
+			pml1 = getPML1(pml4Idx, pml3Idx, pml2Idx);
+		}
+
+		{
+			pml1Entry = &pml1.entries[pml1Idx];
+			if (!pml1Entry.present)
+				goto tableEntriesDone;
+		}
+
+	tableEntriesDone:
+		VMPageFlags pml3Flags;
+		VMPageFlags pml2Flags;
+		VMPageFlags pml1Flags;
+		VMPageFlags pageFlags;
+
+		if (!pml4Entry)
+			goto flagsDone;
+		pml3Flags = pml4Entry.vmFlags;
+
+		if (!pml3Entry)
+			goto flagsDone;
+		pml2Flags = pml3Entry.vmFlags;
+
+		if (!pml2Entry)
+			goto flagsDone;
+		pml1Flags = pml2Entry.vmFlags;
+
+		if (!pml1Entry)
+			goto flagsDone;
+		pageFlags = pml1Entry.vmFlags;
+
+	flagsDone:
+		ulong cr3 = cpuRetCR3();
+
+		scr.foreground = Color(255, 0, 0);
+		scr.writeln("===> PAGE FAULT");
+		scr.writeln("IRQ = ", intNumber, " | RIP = ", cast(void*)rip);
+		scr.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
+		scr.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
+		scr.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
+		scr.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
+		scr.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
+		scr.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
+		scr.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
+		scr.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
+		scr.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
+		scr.writeln(" addr = ", cast(void*)addr, " | CR3 = ", cast(void*)cr3);
+		scr.writeln("Flags: ", cast(void*)flags);
+		scr.writeln("Errorcode: ", cast(void*)errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
+				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
+				(errorCode & (1 << 3) ? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
+		scr.writeln("PDP Mode: ", (pml3Flags & VMPageFlags.present) ? "R" : "", (pml3Flags & VMPageFlags.writable) ? "W" : "",
+				(pml3Flags & VMPageFlags.execute) ? "X" : "", (pml3Flags & VMPageFlags.user) ? "-User" : "");
+		scr.writeln("PD Mode: ", (pml2Flags & VMPageFlags.present) ? "R" : "", (pml2Flags & VMPageFlags.writable) ? "W" : "",
+				(pml2Flags & VMPageFlags.execute) ? "X" : "", (pml2Flags & VMPageFlags.user) ? "-User" : "");
+		scr.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
+				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
+		scr.writeln("Page Mode: ", (pageFlags & VMPageFlags.present) ? "R" : "", (pageFlags & VMPageFlags.writable) ? "W" : "",
+				(pageFlags & VMPageFlags.execute) ? "X" : "", (pageFlags & VMPageFlags.user) ? "-User" : "");
+
+		//dfmt off
+		log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", cast(void*)rip, "\n",
+			"RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n",
+			"RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n",
+			"RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi, "\n",
+			"RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n",
+			" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9, "\n",
+			"R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11, "\n",
+			"R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13, "\n",
+			"R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15, "\n",
+			" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss, "\n",
+			" addr = ",	cast(void*)addr, " | CR3 = ", cast(void*)cr3, "\n",
+			"Flags: ", cast(void*)flags, "\n",
+			"Errorcode: ", cast(void*)errorCode, " (",
+				(errorCode & (1 << 0) ? " Present" : " NotPresent"),
+				(errorCode & (1 << 1) ? " Write" : " Read"),
+				(errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
+				(errorCode & (1 << 3) ? " ReservedWrite" : ""),
+				(errorCode & (1 << 4) ? " InstructionFetch" : ""),
+			" )", "\n",
+			"PDP Mode: ",
+				(pml3Flags & VMPageFlags.present) ? "R" : "",
+				(pml3Flags & VMPageFlags.writable) ? "W" : "",
+				(pml3Flags & VMPageFlags.execute) ? "X" : "",
+				(pml3Flags & VMPageFlags.user) ? "-User" : "", "\n",
+			"PD Mode: ",
+				(pml2Flags & VMPageFlags.present) ? "R" : "",
+				(pml2Flags & VMPageFlags.writable) ? "W" : "",
+				(pml2Flags & VMPageFlags.execute) ? "X" : "",
+				(pml2Flags & VMPageFlags.user) ? "-User" : "", "\n",
+			"PT Mode: ",
+				(pml1Flags & VMPageFlags.present) ? "R" : "",
+				(pml1Flags & VMPageFlags.writable) ? "W" : "",
+				(pml1Flags & VMPageFlags.execute) ? "X" : "",
+				(pml1Flags & VMPageFlags.user) ? "-User" : "", "\n",
+			"Page Mode: ",
+				(pageFlags & VMPageFlags.present) ? "R" : "",
+				(pageFlags & VMPageFlags.writable) ? "W" : "",
+				(pageFlags & VMPageFlags.execute) ? "X" : "",
+				(pageFlags & VMPageFlags.user) ? "-User" : "");
+		//dfmt on
 	}
 }

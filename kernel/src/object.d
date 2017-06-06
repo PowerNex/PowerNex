@@ -79,7 +79,7 @@ extern (C) void _Dkmain_entry(uint magic, ulong info) {
 }
 
 void exit(ssize_t code = 0) {
-	asm {
+	asm pure nothrow {
 		cli;
 	stay_dead:
 		hlt;
@@ -1937,7 +1937,7 @@ size_t __eh_find_caller(size_t regbp, size_t* pretaddr) {
 extern (C) void _d_throwc(Object* h) {
 	size_t regebp;
 
-	asm {
+	asm pure nothrow {
 		mov regebp, RBP;
 	}
 
@@ -2033,7 +2033,7 @@ extern (C) void _d_throwc(Object* h) {
 
 							catch_addr = cast(fp_t)(funcoffset + pcb.codeoffset);
 							catch_esp = regebp - handler_table.espoffset - fp_t.sizeof;
-							asm {
+							asm pure nothrow {
 								mov RAX, catch_esp;
 								mov RCX, catch_esp;
 								mov RCX, catch_addr;
@@ -2058,7 +2058,7 @@ extern (C) void _d_throwc(Object* h) {
 				inflight.t = cast(Throwable)h;
 				__inflight = &inflight;
 
-				asm {
+				asm pure nothrow {
 					sub RSP, 8;
 					push RBX;
 					mov RBX, blockaddr;

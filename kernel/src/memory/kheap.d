@@ -16,18 +16,55 @@ public:
 	void init() {
 		import data.linker : Linker;
 
-		_nextFreeAddress = Linker.kernelEnd.roundUp(0x1000);
-		_extend();
+		_startAddress = _nextFreeAddress = Linker.kernelEnd.roundUp(_maxSize);
+		// TODO: Preallocate? _extend();
 	}
 
 	void[] allocate(size_t size) {
 		import data.util : log2;
 
-		size = (size + BuddyHeader.sizeof + 0x1F) & ~(0x1F);
-		int factor = log2(size);
+		size = (size + BuddyHeader.sizeof + _minSize - 1) & ~(_minSize - 1);
+		if (size > _maxSize)
+			return null; //TODO: Solve somehow
+
+		ubyte factor = cast(ubyte)log2(size);
 		BuddyHeader* buddy = _getFreeFactors(factor);
+
 		if (!buddy) {
-			//TODO: Split
+			ubyte f = factor;
+
+			// Find hunk that is bigger than 'factor'
+			while (f <= _upperFactor && !_getFreeFactors(f))
+				f++;
+
+			if (f > _upperFactor) { // Couldn't find one
+				_extend();
+				f--;
+			}
+
+			// Split the selected factor down to correct size
+
+			while (f != factor) {
+				BuddyHeader* oldBuddy = _getFreeFactors(f);
+				_getFreeFactors(f) = oldBuddy.next;
+
+				f--;
+
+				oldBuddy.next = _getFreeFactors(f);
+				oldBuddy.factor = f;
+				//oldBuddy.magic = _magic;
+				_getFreeFactors(f) = oldBuddy;
+
+				BuddyHeader* newBuddy = (oldBuddy.VirtAddress + (1 << f)).ptr!BuddyHeader;
+
+				newBuddy.next = _getFreeFactors(f);
+				newBuddy.factor = f;
+				newBuddy.magic = _magic;
+				_getFreeFactors(f) = newBuddy;
+			}
+
+			// Aquire the newly created buddy
+			buddy = _getFreeFactors(factor);
 		}
 		_getFreeFactors(factor) = buddy.next;
 
@@ -35,157 +72,103 @@ public:
 	}
 
 	void free(void[] address) {
+		import io.log : log;
+
+		if (address.VirtAddress < _startAddress) // Can't free memory that hasn't been allocated with KHeap, or invalid memory
+			return;
+
 		BuddyHeader* buddy = (address.VirtAddress - BuddyHeader.sizeof).ptr!BuddyHeader;
-		assert(buddy.magic == _magic, "Buddy magic invalid");
+		assert(buddy.magic == _magic, "Buddy magic invalid"); // TODO: Change to a return instead of crash
+
+		// Try and combine
+		VirtAddress vBuddy = buddy;
+		BuddyHeader** ptrWalker = &_getFreeFactors(buddy.factor);
+
+		while (*ptrWalker) {
+			VirtAddress vWalker = VirtAddress(*ptrWalker);
+			auto familyB = (vBuddy >> buddy.factor) & ~1;
+			auto familyW = (vWalker >> buddy.factor) & ~1;
+
+			if (familyB == familyW) {
+				// Found free neighbor, need to remove it from the free list
+				BuddyHeader* walker = vWalker.ptr!BuddyHeader;
+				*ptrWalker = walker.next;
+
+				BuddyHeader* oldBuddy = ((vBuddy < vWalker) ? vWalker : vBuddy).ptr!BuddyHeader;
+				oldBuddy.magic = [0, 0, 0]; // Invalidate old buddy
+
+				BuddyHeader* parent = ((vBuddy < vWalker) ? vBuddy : vWalker).ptr!BuddyHeader;
+				parent.factor++;
+
+				// Restart the walk, but with the new object
+				buddy = parent;
+				vBuddy = buddy.VirtAddress;
+				ptrWalker = &_getFreeFactors(buddy.factor);
+				continue;
+			}
+
+			ptrWalker = &(*ptrWalker).next;
+		}
 
 		buddy.next = _getFreeFactors(buddy.factor);
 		_getFreeFactors(buddy.factor) = buddy;
+	}
 
-		//TODO: combine?
+	void gc() {
+		// TODO: Free pages that are not longer in use, and don't have any pages that are in use after it
+		// Should probably add a field to the BuddyHeader, to mark if something is free'd
+		assert(0);
+	}
+
+	void print() {
+		import io.log : log;
+
+		log.info("Printing KHeap!");
+		foreach (ubyte factor; _lowerFactor .. _upperFactor + 1) {
+			BuddyHeader* buddy = _getFreeFactors(factor);
+			if (!buddy)
+				continue;
+
+			log.info("\tFactor: ", cast(ulong)factor, " Size: ", 1 << factor);
+
+			size_t counter;
+			while (buddy) {
+				log.info("\tBuddy[", counter++, "]: ", buddy);
+				buddy = buddy.next;
+			}
+		}
+		// TODO: Print out all the memory blocks
 	}
 
 private:
-	enum _lowerFactor = 5; // 32bytes
-	enum _upperFactor = 12; // 4Kibi
+	enum ubyte _lowerFactor = 5; // 32B
+	enum ubyte _upperFactor = 12; // 4KiB
+	enum ulong _minSize = 2 ^^ _lowerFactor;
+	enum ulong _maxSize = 2 ^^ _upperFactor;
 	enum char[3] _magic = ['B', 'D', 'Y'];
 
+	__gshared VirtAddress _startAddress;
 	__gshared VirtAddress _nextFreeAddress;
 	__gshared BuddyHeader*[_upperFactor - _lowerFactor + 1] _freeFactors;
 
-	ref BuddyHeader* _getFreeFactors(ushort factor) {
+	ref BuddyHeader* _getFreeFactors(ubyte factor) {
 		return _freeFactors[factor - _lowerFactor];
 	}
 
 	void _extend() {
 		import arch.paging;
+		import memory.vmm : VMPageFlags;
+
+		import io.log;
 
 		kernelHWPaging.map(_nextFreeAddress, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false);
 		BuddyHeader* newBuddy = _nextFreeAddress.ptr!BuddyHeader;
 		newBuddy.next = _getFreeFactors(_upperFactor);
 		newBuddy.factor = _upperFactor;
-		newBuddy.magic[] = _magic;
+		newBuddy.magic = _magic;
 		_getFreeFactors(_upperFactor) = newBuddy;
+
+		_nextFreeAddress += 0x1000;
 	}
 
 }
-
-// IDT.register(InterruptType.pageFault, &_onPageFault);
-/+private void _onPageFault(from!"data.register".Registers* regs) {
-	import data.textbuffer : scr = getBootTTY;
-	import io.log;
-
-	with (regs) {
-		import data.color;
-
-		auto addr = cr2;
-
-		/*ablePtr!(Table!3)* tablePdp;
-		TablePtr!(Table!2)* tablePd;
-		TablePtr!(Table!1)* tablePt;
-		TablePtr!(void)* tablePage;
-		//Paging paging;
-		{
-			import task.scheduler : getScheduler;
-			auto s = getScheduler;
-			if (s) {
-				auto cp = s.currentProcess;
-				if (cp)
-					paging = (*cp).threadState.paging;
-			}
-		}
-		if (paging) {
-			auto _root = paging.rootTable();
-			tablePdp = _root.get(cast(ushort)(addr.num >> 39) & 0x1FF);
-			if (tablePdp && tablePdp.present)
-				tablePd = tablePdp.data.virtual.ptr!(Table!3).get(cast(ushort)(addr.num >> 30) & 0x1FF);
-			if (tablePd && tablePd.present)
-				tablePt = tablePd.data.virtual.ptr!(Table!2).get(cast(ushort)(addr.num >> 21) & 0x1FF);
-			if (tablePt && tablePt.present)
-				tablePage = tablePt.data.virtual.ptr!(Table!1).get(cast(ushort)(addr.num >> 12) & 0x1FF);
-		}*/
-
-		MapMode modePdp;
-		MapMode modePd;
-		MapMode modePt;
-		MapMode modePage;
-		if (tablePdp)
-			modePdp = tablePdp.mode;
-		if (tablePd)
-			modePd = tablePd.mode;
-		if (tablePt)
-			modePt = tablePt.mode;
-		if (tablePage)
-			modePage = tablePage.mode;
-
-		ulong cr3 = cpuRetCR3();
-
-		scr.foreground = Color(255, 0, 0);
-		scr.writeln("===> PAGE FAULT");
-		scr.writeln("IRQ = ", intNumber, " | RIP = ", cast(void*)rip);
-		scr.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
-		scr.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
-		scr.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
-		scr.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
-		scr.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
-		scr.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
-		scr.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
-		scr.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
-		scr.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
-		scr.writeln(" addr = ", cast(void*)addr, " | CR3 = ", cast(void*)cr3);
-		scr.writeln("Flags: ", cast(void*)flags);
-		scr.writeln("Errorcode: ", cast(void*)errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
-				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
-				(errorCode & (1 << 3) ? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		scr.writeln("PDP Mode: ", (tablePdp && tablePdp.present) ? "R" : "", (modePdp & MapMode.writable) ? "W" : "",
-				(modePdp & MapMode.noExecute) ? "" : "X", (modePdp & MapMode.user) ? "-User" : "");
-		scr.writeln("PD Mode: ", (tablePd && tablePd.present) ? "R" : "", (modePd & MapMode.writable) ? "W" : "",
-				(modePd & MapMode.noExecute) ? "" : "X", (modePd & MapMode.user) ? "-User" : "");
-		scr.writeln("PT Mode: ", (tablePt && tablePt.present) ? "R" : "", (modePt & MapMode.writable) ? "W" : "",
-				(modePt & MapMode.noExecute) ? "" : "X", (modePt & MapMode.user) ? "-User" : "");
-		scr.writeln("Page Mode: ", (tablePage && tablePage.present) ? "R" : "", (modePage & MapMode.writable) ? "W" : "",
-				(modePage & MapMode.noExecute) ? "" : "X", (modePage & MapMode.user) ? "-User" : "");
-
-		//dfmt off
-		log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", cast(void*)rip, "\n",
-			"RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n",
-			"RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n",
-			"RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi, "\n",
-			"RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n",
-			" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9, "\n",
-			"R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11, "\n",
-			"R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13, "\n",
-			"R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15, "\n",
-			" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss, "\n",
-			" addr = ",	cast(void*)addr, " | CR3 = ", cast(void*)cr3, "\n",
-			"Flags: ", cast(void*)flags, "\n",
-			"Errorcode: ", cast(void*)errorCode, " (",
-				(errorCode & (1 << 0) ? " Present" : " NotPresent"),
-				(errorCode & (1 << 1) ? " Write" : " Read"),
-				(errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
-				(errorCode & (1 << 3) ? " ReservedWrite" : ""),
-				(errorCode & (1 << 4) ? " InstructionFetch" : ""),
-			" )", "\n",
-			"PDP Mode: ",
-				(tablePdp && tablePdp.present) ? "R" : "",
-				(modePdp & MapMode.writable) ? "W" : "",
-				(modePdp & MapMode.noExecute) ? "" : "X",
-				(modePdp & MapMode.user) ? "-User" : "", "\n",
-			"PD Mode: ",
-				(tablePd && tablePd.present) ? "R" : "",
-				(modePd & MapMode.writable) ? "W" : "",
-				(modePd & MapMode.noExecute) ? "" : "X",
-				(modePd & MapMode.user) ? "-User" : "", "\n",
-			"PT Mode: ",
-				(tablePt && tablePt.present) ? "R" : "",
-				(modePt & MapMode.writable) ? "W" : "",
-				(modePt & MapMode.noExecute) ? "" : "X",
-				(modePt & MapMode.user) ? "-User" : "", "\n",
-			"Page Mode: ",
-				(tablePage && tablePage.present) ? "R" : "",
-				(modePage & MapMode.writable) ? "W" : "",
-				(modePage & MapMode.noExecute) ? "" : "X",
-				(modePage & MapMode.user) ? "-User" : "");
-		//dfmt on
-	}
-}
-+/

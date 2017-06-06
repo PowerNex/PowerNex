@@ -95,7 +95,7 @@ public:
 	static void flush() {
 		void* baseAddr = cast(void*)(&base);
 		ushort id = cast(ushort)(tssID * GDTDescriptor.sizeof);
-		asm {
+		asm pure nothrow {
 			mov RAX, baseAddr;
 			lgdt [RAX];
 			call cpuRefreshIREQ;

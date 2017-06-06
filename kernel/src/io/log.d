@@ -152,7 +152,7 @@ struct Log {
 		import io.textmode : getScreen;
 
 		//getScreen.writeStatus("\t\tFATAL ERROR, READ COM.LOG!");
-		asm {
+		asm pure nothrow {
 		forever:
 			hlt;
 			jmp forever;
@@ -165,7 +165,7 @@ struct Log {
 		import task.process : Process;*/
 
 		VirtAddress rbp;
-		asm {
+		asm pure nothrow {
 			mov rbp, RBP;
 		}
 		_printStackTrace(rbp, skipFirst);
