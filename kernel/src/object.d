@@ -312,7 +312,15 @@ extern (C) {
 	}
 
 	private void onAssert(string msg, string file, uint line) {
-		throw new AssertError(msg, file, line);
+		import io.log : log;
+		log.log(LogLevel.fatal, file, "UNKNOWN", line, msg);
+		log.printStackTrace(true);
+
+		asm pure nothrow {
+		forever:
+			hlt;
+			jmp forever;
+		}
 	}
 }
 

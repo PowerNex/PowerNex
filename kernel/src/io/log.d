@@ -69,6 +69,10 @@ struct Log {
 	}
 
 	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(LogLevel level, Arg args) {
+		log(level, file, func, line, args);
+	}
+
+	void log(Arg...)(LogLevel level, string file, string func, int line, Arg args) {
 		char[ulong.sizeof * 8] buf;
 		if (!_enabled)
 			return;
@@ -127,31 +131,29 @@ struct Log {
 	}
 
 	void verbose(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.verbose, args);
+		log(LogLevel.verbose, file, func, line, args);
 	}
 
 	void debug_(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.debug_, args);
+		log(LogLevel.debug_, file, func, line, args);
 	}
 
 	void info(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.info, args);
+		log(LogLevel.info, file, func, line, args);
 	}
 
 	void warning(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.warning, args);
+		log(LogLevel.warning, file, func, line, args);
 	}
 
 	void error(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.error, args);
+		log(LogLevel.error, file, func, line, args);
 	}
 
 	void fatal(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		this.opCall!(file, func, line)(LogLevel.fatal, args);
+		log(LogLevel.fatal, file, func, line, args);
 		printStackTrace(true);
-		import io.textmode : getScreen;
 
-		//getScreen.writeStatus("\t\tFATAL ERROR, READ COM.LOG!");
 		asm pure nothrow {
 		forever:
 			hlt;
