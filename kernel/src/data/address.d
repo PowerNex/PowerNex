@@ -115,18 +115,10 @@ struct VirtAddress {
 
 struct PhysAddress {
 	mixin AddressBase;
-
-	deprecated("PhysAddress -> VirtAddress must always go though the VMM") @property VirtAddress virtual() const {
-		return VirtAddress(addr + 0xFFFF_8000_0000_0000);
-	}
 }
 
 struct PhysAddress32 {
 	mixin AddressBase!uint;
-
-	deprecated("PhysAddress -> VirtAddress must always go though the VMM") @property VirtAddress virtual() const {
-		return VirtAddress(addr + 0xFFFF_8000_0000_0000);
-	}
 
 	@property PhysAddress toX64() {
 		return addr.PhysAddress;

@@ -67,7 +67,10 @@ struct MultibootTagString {
 align(1):
 	uint type;
 	uint size;
-	char string_;
+
+	@property string string_() {
+		return (VirtAddress(&size) + size.sizeof).ptr!char[0 .. size - MultibootTagString.sizeof - 1];
+	}
 }
 
 struct MultibootTagModule {
@@ -76,7 +79,10 @@ align(1):
 	uint size;
 	uint modStart;
 	uint modEnd;
-	char string_;
+
+	@property string string_() {
+		return (VirtAddress(&modEnd) + modEnd.sizeof).ptr!char[0 .. size - MultibootTagModule.sizeof - 1];
+	}
 }
 
 struct MultibootTagBasicMemInfo {
@@ -199,7 +205,7 @@ struct Multiboot {
 			switch (mbt.type) {
 			case MultibootTagType.cmdLine:
 				auto tmp = cast(MultibootTagString*)mbt;
-				string str = cast(string)(&tmp.string_)[0 .. tmp.size - 9];
+				string str = tmp.string_;
 				log.debug_("CmdLine: ", str);
 				if (!str.length)
 					break;
@@ -230,11 +236,10 @@ struct Multiboot {
 			case MultibootTagType.module_:
 				auto tmp = cast(MultibootTagModule*)mbt;
 
-				char* str = &tmp.string_;
 				modules[modulesCount++] = tmp;
 
 				log.info("Name: Module (", cast(void*)tmp, "), Start: ", cast(void*)tmp.modStart, ", End: ",
-						cast(void*)tmp.modEnd, ", CMD: ", cast(string)str[0 .. tmp.size - 17]);
+						cast(void*)tmp.modEnd, ", Name: '", tmp.string_, "'");
 				break;
 
 			case MultibootTagType.basicMemInfo:
@@ -302,14 +307,40 @@ struct Multiboot {
 		}
 	}
 
+	import arch.paging : _makeAddress;
+
+	private __gshared VirtAddress _moduleMapping = _makeAddress(510, 0, 2, 0);
+
 	static VirtAddress[2] getModule(string name) {
+		import arch.paging : kernelHWPaging;
+		import memory.vmm : VMPageFlags;
+
 		foreach (mod; modules[0 .. modulesCount]) {
-			log.info("###\tName: Module (", cast(void*)mod, "), Start: ", cast(void*)mod.modStart, ", End: ",
-					cast(void*)mod.modEnd, ", CMD: ", cast(string)(&mod.string_)[0 .. mod.size - 17]);
-			char[] str = (&mod.string_)[0 .. mod.size - 17];
-			log.info("Testing '", str, "' == '", name, "'");
-			if (str == name)
-				return [PhysAddress(mod.modStart).virtual, PhysAddress(mod.modEnd).virtual];
+			if (mod.string_ != name)
+				continue;
+
+			auto startPage = _moduleMapping;
+
+			auto vAddr = startPage;
+			auto pAddr = mod.modStart.PhysAddress & ~0xFFF;
+			auto pAddrEnd = mod.modEnd.PhysAddress;
+
+			size_t pagesUsed;
+			do {
+				pagesUsed++;
+				kernelHWPaging.map(vAddr, pAddr, VMPageFlags.present | VMPageFlags.writable /* Is needed ? */ );
+
+				vAddr += 0x1000;
+				pAddr += 0x1000;
+			}
+			while (pAddr < pAddrEnd);
+
+			_moduleMapping += 0x1000 * pagesUsed;
+
+			VirtAddress startMod = startPage + (mod.modStart & 0xFFF);
+			VirtAddress endMod = startMod + (mod.modEnd - mod.modStart);
+			return [startMod, endMod];
+
 		}
 		return [VirtAddress(), VirtAddress()];
 	}

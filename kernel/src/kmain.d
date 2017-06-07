@@ -135,9 +135,6 @@ void init(uint magic, ulong info) {
 	scr.writeln("CMOS initializing...");
 	getCMOS();
 
-	while (true) {
-	}
-
 	scr.writeln("Keyboard initializing...");
 	PS2Keyboard.init();
 
@@ -150,15 +147,21 @@ void init(uint magic, ulong info) {
 			log.fatal("No module called symmap!");
 	}
 
+	while (true) {
+	}
+
 	scr.writeln("PCI initializing...");
 	log.info("PCI initializing...");
 	getPCI;
+
 	scr.writeln("Initrd initializing...");
 	log.info("Initrd initializing...");
 	loadInitrd();
+
 	scr.writeln("Starting ConsoleManager...");
 	log.info("Starting ConsoleManager...");
 	getConsoleManager.init();
+
 	/*scr.writeln("Scheduler initializing...");
 	log.info("Scheduler initializing...");
 	getScheduler.init();*/

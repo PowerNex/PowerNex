@@ -145,8 +145,6 @@ align(1):
 	ubyte minorVersion;
 }
 
-pragma(msg, "FADT.sizeof: ", FADT.sizeof);
-
 struct GenericAddressStructure {
 align(1):
 	ubyte addressSpace;
