@@ -132,11 +132,10 @@ void dispose(T, Allocator)(auto ref Allocator alloc, T[] arr) {
 
 __gshared IAllocator kernelAllocator = null;
 
-void initEarlyStaticAllocator() {
-	import memory.allocator.staticallocator;
+void initKernelAllocator() {
+	import memory.allocator.kheapallocator;
 	import data.util : inplaceClass;
 
-	align(16) __gshared ubyte[0x1000] staticAllocationSpace; // 4KiB should be enought.
-	__gshared ubyte[__traits(classInstanceSize, StaticAllocator)] data;
-	kernelAllocator = inplaceClass!StaticAllocator(data, staticAllocationSpace);
+	__gshared ubyte[__traits(classInstanceSize, KHeapAllocator)] data;
+	kernelAllocator = inplaceClass!KHeapAllocator(data);
 }

@@ -3,6 +3,7 @@ module hw.pci.pci;
 import data.address;
 import io.port;
 import io.log;
+import memory.allocator;
 import data.textbuffer : scr = getBootTTY;
 
 private enum {
@@ -42,7 +43,7 @@ static assert(PCIDevice.sizeof == 64);
 class PCI {
 public:
 	this() {
-		_devices.length = 16;
+		_devices = makeArray!PCIDevice(kernelAllocator, 16);
 		_scanForDevices();
 	}
 
@@ -73,18 +74,19 @@ private:
 					continue;
 
 				if (_deviceCount == _devices.length)
-					_devices.length += 16;
+					if (!expandArray!PCIDevice(kernelAllocator, _devices, 16))
+						log.fatal("Can't expand PCIDevices array!");
 
 				PCIDevice* device = &_devices[_deviceCount];
 
 				*device = PCIDevice(this, bus, slot);
 
 				log.info("Found device at ", cast(void*)bus, ":", cast(void*)slot);
-				log.info("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID,
-						" type: ", device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
+				log.info("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
+						device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
 				scr.writeln("Found device at ", cast(void*)bus, ":", cast(void*)slot);
-				scr.writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID,
-						" type: ", device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
+				scr.writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
+						device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
 
 				_deviceCount++;
 			}

@@ -75,7 +75,6 @@ void bootTTYToTextmode(size_t start, size_t end) {
 void preInit() {
 	import io.textmode;
 
-	initEarlyStaticAllocator();
 	COM.init();
 	scr;
 	scr.onChangedCallback = &bootTTYToTextmode;
@@ -125,9 +124,7 @@ void init(uint magic, ulong info) {
 	log.info("KHeap initializing...");
 
 	KHeap.init();
-
-	scr.writeln("KHeap allocating...");
-	log.info("KHeap allocating...");
+	initKernelAllocator();
 
 	scr.writeln("ACPI initializing...");
 	rsdp.init();
@@ -147,13 +144,12 @@ void init(uint magic, ulong info) {
 			log.fatal("No module called symmap!");
 	}
 
-	while (true) {
-	}
-
 	scr.writeln("PCI initializing...");
 	log.info("PCI initializing...");
 	getPCI;
 
+	while (true) {
+	}
 	scr.writeln("Initrd initializing...");
 	log.info("Initrd initializing...");
 	loadInitrd();
