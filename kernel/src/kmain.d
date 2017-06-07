@@ -129,14 +129,14 @@ void init(uint magic, ulong info) {
 	scr.writeln("KHeap allocating...");
 	log.info("KHeap allocating...");
 
-	while (true) {
-	}
-
 	scr.writeln("ACPI initializing...");
 	rsdp.init();
 
 	scr.writeln("CMOS initializing...");
 	getCMOS();
+
+	while (true) {
+	}
 
 	scr.writeln("Keyboard initializing...");
 	PS2Keyboard.init();

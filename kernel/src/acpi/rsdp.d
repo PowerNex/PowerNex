@@ -38,20 +38,54 @@ align(1):
 
 struct RSDT {
 	ACPISDTHeader h;
+	alias h this;
+
 	PhysAddress32[] pointerToOtherSDT() {
 		auto ptr = VirtAddress(&h) + h.sizeof;
-		scr.writeln("Ptr: ", &h);
-		while(true) {}
 		return ptr.ptr!PhysAddress32[0 .. (h.length - h.sizeof) / 4];
 	}
 
 	T* getSDT(T)(char[4] sig) {
-		foreach (PhysAddress32 addr; pointerToOtherSDT) {
-			ACPISDTHeader* hdr = addr.virtual.ptr!ACPISDTHeader;
-			if (hdr && hdr.signature == sig)
-				return cast(T*)hdr;
+		import arch.paging : kernelHWPaging;
+		import memory.vmm : VMPageFlags;
+
+		auto vAddr = _acpiMapping;
+
+		ACPISDTHeader* hdr;
+		foreach (PhysAddress32 phys; pointerToOtherSDT) {
+			if (!phys)
+				continue;
+			auto pAddr = phys.toX64 & ~0xFFF;
+
+			kernelHWPaging.map(vAddr, pAddr, VMPageFlags.present | VMPageFlags.writable /* Is needed ? */ );
+
+			hdr = (vAddr + (phys.num & 0xFFF)).ptr!ACPISDTHeader;
+			if (hdr.signature != sig) {
+				import io.log : log;
+
+				scr.writeln("hdr.signature (", hdr.signature, ") != sig (", sig, ")");
+				continue;
+			}
+
+			vAddr += 0x1000;
+			pAddr += 0x1000;
+
+			size_t pagesUsed = 1;
+			while (vAddr < hdr.VirtAddress + hdr.length) {
+				pagesUsed++;
+				kernelHWPaging.map(vAddr, pAddr, VMPageFlags.present | VMPageFlags.writable /* Is needed ? */ );
+
+				vAddr += 0x1000;
+				pAddr += 0x1000;
+			}
+
+			_acpiMapping += 0x1000 * pagesUsed;
+
+			return cast(T*)hdr;
 		}
 
+		if (hdr)
+			kernelHWPaging.unmap(vAddr);
 		return null;
 	}
 }
@@ -59,8 +93,10 @@ struct RSDT {
 struct FADT {
 align(1):
 	ACPISDTHeader h;
+	alias h this;
+
 	uint firmwareCtrl;
-	uint dsdt;
+	PhysAddress32 dsdt;
 
 	ubyte reserved;
 
@@ -109,6 +145,8 @@ align(1):
 	ubyte minorVersion;
 }
 
+pragma(msg, "FADT.sizeof: ", FADT.sizeof);
+
 struct GenericAddressStructure {
 align(1):
 	ubyte addressSpace;
@@ -118,23 +156,71 @@ align(1):
 	ulong address;
 }
 
+import arch.paging : _makeAddress;
+
+private __gshared VirtAddress _acpiMapping = _makeAddress(510, 0, 1, 0);
+
+private T* _mapSDT(T : ACPISDTHeader = ACPISDTHeader)(PhysAddress phys) {
+	import arch.paging : kernelHWPaging;
+	import memory.vmm : VMPageFlags;
+
+	if (!phys)
+		return null;
+
+	auto vAddr = _acpiMapping;
+	auto pAddr = phys & ~0xFFF;
+
+	T* result = (vAddr + (phys.num & 0xFFF)).ptr!T;
+
+	size_t pagesUsed;
+	do {
+		pagesUsed++;
+		kernelHWPaging.map(vAddr, pAddr, VMPageFlags.present | VMPageFlags.writable /* Is needed ? */ );
+
+		vAddr += 0x1000;
+		pAddr += 0x1000;
+	}
+	while (vAddr < result.VirtAddress + result.length);
+
+	_acpiMapping += 0x1000 * pagesUsed;
+
+	return result;
+}
+
 struct RSDP {
 	void init() {
-		scr.writeln("RSDP");
-		VirtAddress addr = _getAddress();
-		if (!addr.num)
-			return scr.writeln("RSDP: Can't find!");
-		scr.writeln("\tAddr: ", addr);
+		import io.log : log;
+		import data.multiboot : Multiboot;
+
+		if (auto _ = Multiboot.acpiRSDPV20)
+			initV20(_);
+		else if (auto _ = Multiboot.acpiRSDPV10)
+			initV10(_);
+		else {
+			scr.writeln("RSDP missing!");
+			log.fatal("RSDP missing!");
+		}
+	}
+
+	void initV20(VirtAddress addr) {
+		// TODO:
+		assert(0);
+	}
+
+	void initV10(VirtAddress addr) {
 		RSDPDescriptor* rsdp = addr.ptr!RSDPDescriptor;
 		if (!rsdp || !_checksum(rsdp))
-			return scr.writeln("RSDPDescriptor: Invalid checksum");
-		scr.writeln("\tRSDP: ", rsdp);
-		rsdt = rsdp.rsdtAddress.virtual.ptr!RSDT;
-		if (!rsdt)
-			return scr.writeln("RSDTDesciptor: invalid");
-		scr.writeln("\tRSDT: ", rsdt, " || ", rsdp.rsdtAddress);
+			return scr.writeln("RSDP: Invalid checksum");
+
+		if (!rsdp.rsdtAddress)
+			return scr.writeln("RSDT: invalid");
+
+		rsdt = _mapSDT!RSDT(rsdp.rsdtAddress.toX64);
+		if (!rsdt || !_checksum(rsdt, rsdt.h.length))
+			return scr.writeln("RSDT: Invalid checksum");
+
 		fadt = rsdt.getSDT!FADT("FACP");
-while (true) {}
+
 		if (!fadt || !_checksum(fadt, fadt.h.length))
 			return scr.writeln("FADT: Invalid checksum");
 
@@ -148,14 +234,9 @@ while (true) {}
 			}
 		}
 
-		ACPISDTHeader* dsdt = PhysAddress32(fadt.dsdt).virtual.ptr!ACPISDTHeader;
+		ACPISDTHeader* dsdt = _mapSDT!ACPISDTHeader(fadt.dsdt.toX64);
 		if (!dsdt || dsdt.signature != "DSDT" || !_checksum(dsdt, dsdt.length))
 			return scr.writeln("DSDT: Invalid checksum");
-
-		ACPISDTHeader* ssdt = rsdt.getSDT!ACPISDTHeader("SSDT");
-
-		if (!ssdt || !_checksum(ssdt, ssdt.length))
-			return scr.writeln("SSDT: Invalid checksum");
 
 		ubyte* s5Addr = (VirtAddress(dsdt) + ACPISDTHeader.sizeof).ptr!ubyte;
 		size_t len = dsdt.length - dsdt.sizeof;
@@ -163,7 +244,7 @@ while (true) {}
 
 		for (i = 0; i < len; i++) {
 			if (s5Addr[0 .. 4] == "_S5_") {
-				scr.writeln("FOUND IT!");
+				//scr.writeln("FOUND IT!");
 				break;
 			}
 			s5Addr++;
@@ -172,9 +253,9 @@ while (true) {}
 		if (i == len)
 			return scr.writeln("DSDT: Can't find _S5_");
 
-		scr.writeln("_S5_ Bytes -2 to 4: ", cast(void*)s5Addr[-2], ", ", cast(void*)s5Addr[-1], ", ",
-				cast(void*)s5Addr[0], ", ", cast(void*)s5Addr[1], ", ", cast(void*)s5Addr[2], ", ",
-				cast(void*)s5Addr[3], ", ", cast(void*)s5Addr[4]);
+		/*scr.writeln("_S5_ Bytes -2 to 4: ", cast(void*)s5Addr[-2], ", ", cast(void*)s5Addr[-1], ", ",
+				cast(void*)s5Addr[0], ", ", cast(void*)s5Addr[1], ", ", cast(void*)s5Addr[2], ", ", cast(void*)s5Addr[3],
+				", ", cast(void*)s5Addr[4]);*/
 
 		if (!((s5Addr[-1] == 0x08 || (s5Addr[-2] == 0x08 && s5Addr[-1] == '\\')) && s5Addr[4] == 0x12))
 			return scr.writeln("_S5_: Parse error");
@@ -195,11 +276,11 @@ while (true) {}
 		sciEn = 1;
 
 		valid = true;
-		scr.writeln("#########RSDP VALID!########");
+		//scr.writeln("#########RSDP VALID!########");
 	}
 
 	void shutdown() {
-		if (!slpTypA) {
+		if (!valid) {
 			outp!ushort(0xB004, 0x0 | 0x2000);
 
 			asm pure nothrow {
@@ -234,15 +315,6 @@ private:
 	ushort slpTypB;
 	ushort slpEn;
 	ushort sciEn;
-
-	VirtAddress _getAddress() {
-		VirtAddress ptr;
-		for (ptr = VirtAddress(0xFFFF_FFFF_800E_0000); ptr < 0xFFFF_FFFF_800F_FFFF; ptr += 16)
-			if (ptr.ptr!char[0 .. 8] == "RSD PTR ")
-				return ptr;
-
-		return VirtAddress(null);
-	}
 
 	bool _checksum(T)(T* obj, size_t size = T.sizeof) {
 		if (!obj)

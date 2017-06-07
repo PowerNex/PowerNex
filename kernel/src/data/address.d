@@ -127,6 +127,10 @@ struct PhysAddress32 {
 	deprecated("PhysAddress -> VirtAddress must always go though the VMM") @property VirtAddress virtual() const {
 		return VirtAddress(addr + 0xFFFF_8000_0000_0000);
 	}
+
+	@property PhysAddress toX64() {
+		return addr.PhysAddress;
+	}
 }
 
 static assert(VirtAddress.sizeof == size_t.sizeof);

@@ -105,6 +105,26 @@ align(1):
 	MultibootMemoryMap entry;
 }
 
+struct MultibootTagOldACPI {
+align(1):
+	uint type;
+	uint size;
+
+	@property VirtAddress rsdp() {
+		return VirtAddress(&size) + size.sizeof;
+	}
+}
+
+struct MultibootTagNewACPI {
+align(1):
+	uint type;
+	uint size;
+
+	@property VirtAddress rsdp() {
+		return VirtAddress(&size) + size.sizeof;
+	}
+}
+
 struct MultibootTagFramebufferCommon {
 align(1):
 	uint type;
@@ -146,15 +166,20 @@ struct Multiboot {
 		bootloaderMagic = 0x36D76289
 	}
 
-	__gshared MultibootTagModule*[256] modules;
-	__gshared MultibootMemoryMap*[256] memoryMap;
-	__gshared int modulesCount;
-	__gshared int memoryMapCount;
-	__gshared ulong memorySize;
+	__gshared {
+		MultibootTagModule*[256] modules;
+		MultibootMemoryMap*[256] memoryMap;
+		int modulesCount;
+		int memoryMapCount;
+		ulong memorySize;
 
-	__gshared string[256] cmdKey;
-	__gshared string[256] cmdValue;
-	__gshared size_t cmdLength;
+		VirtAddress acpiRSDPV10;
+		VirtAddress acpiRSDPV20;
+
+		string[256] cmdKey;
+		string[256] cmdValue;
+		size_t cmdLength;
+	}
 
 	static void parseHeader(uint magic, ulong info) {
 		if (magic != bootloaderMagic) {
@@ -208,8 +233,8 @@ struct Multiboot {
 				char* str = &tmp.string_;
 				modules[modulesCount++] = tmp;
 
-				log.info("Name: Module (", cast(void*)tmp, "), Start: ", cast(void*)tmp.modStart, ", End: ", cast(void*)tmp.modEnd, ", CMD: ",
-						cast(string)str[0 .. tmp.size - 17]);
+				log.info("Name: Module (", cast(void*)tmp, "), Start: ", cast(void*)tmp.modStart, ", End: ",
+						cast(void*)tmp.modEnd, ", CMD: ", cast(string)str[0 .. tmp.size - 17]);
 				break;
 
 			case MultibootTagType.basicMemInfo:
@@ -250,9 +275,15 @@ struct Multiboot {
 				break;
 
 			case MultibootTagType.acpiOld:
+				auto tmp = cast(MultibootTagOldACPI*)mbt;
+				log.info("acpiOld: ", tmp.rsdp, " size: ", tmp.size - MultibootTagOldACPI.sizeof);
+				acpiRSDPV10 = tmp.rsdp;
 				break;
 
 			case MultibootTagType.acpiNew:
+				auto tmp = cast(MultibootTagNewACPI*)mbt;
+				log.info("acpiNew: ", tmp.rsdp, " size: ", tmp.size - MultibootTagNewACPI.sizeof);
+				acpiRSDPV20 = tmp.rsdp;
 				break;
 
 			case MultibootTagType.network:
@@ -273,8 +304,8 @@ struct Multiboot {
 
 	static VirtAddress[2] getModule(string name) {
 		foreach (mod; modules[0 .. modulesCount]) {
-				log.info("###\tName: Module (", cast(void*)mod, "), Start: ", cast(void*)mod.modStart, ", End: ", cast(void*)mod.modEnd, ", CMD: ",
-						cast(string)(&mod.string_)[0 .. mod.size - 17]);
+			log.info("###\tName: Module (", cast(void*)mod, "), Start: ", cast(void*)mod.modStart, ", End: ",
+					cast(void*)mod.modEnd, ", CMD: ", cast(string)(&mod.string_)[0 .. mod.size - 17]);
 			char[] str = (&mod.string_)[0 .. mod.size - 17];
 			log.info("Testing '", str, "' == '", name, "'");
 			if (str == name)
