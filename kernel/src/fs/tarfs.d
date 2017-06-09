@@ -58,7 +58,6 @@ struct TarHeader {
 			foreach (b; (cast(ubyte*)&this)[checksum.offsetof + checksum.length .. _tarHeaderSize])
 				chksum += b;
 
-			log.error("Tar checksum is: ", cast(void*)chksum, " Old: ", cast(void*)oldChecksum);
 			if (oldChecksum == chksum)
 				return true;
 		}
@@ -70,11 +69,6 @@ struct TarHeader {
 				chksum += cast(byte)' ';
 			foreach (b; (cast(byte*)&this)[checksum.offsetof + checksum.length .. _tarHeaderSize])
 				chksum += b;
-
-			if (oldChecksum != chksum)
-				log.fatal("Tar checksum is: ", cast(void*)chksum, " Old: ", cast(void*)oldChecksum);
-			else
-				log.error("Tar checksum is: ", cast(void*)chksum, " Old: ", cast(void*)oldChecksum);
 
 			return oldChecksum == chksum;
 		}

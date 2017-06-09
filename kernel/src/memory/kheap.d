@@ -14,9 +14,10 @@ struct KHeap {
 static:
 public:
 	void init() {
-		import data.linker : Linker;
+		import arch.paging : _makeAddress;
 
-		_startAddress = _nextFreeAddress = Linker.kernelEnd.roundUp(_maxSize);
+		_startAddress = _nextFreeAddress = _makeAddress(511, 511, 0, 0);
+
 		// TODO: Preallocate? _extend();
 	}
 
@@ -161,7 +162,7 @@ private:
 
 		import io.log;
 
-		kernelHWPaging.map(_nextFreeAddress, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false);
+		assert(kernelHWPaging.map(_nextFreeAddress, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false), "Map failed!");
 		BuddyHeader* newBuddy = _nextFreeAddress.ptr!BuddyHeader;
 		newBuddy.next = _getFreeFactors(_upperFactor);
 		newBuddy.factor = _upperFactor;

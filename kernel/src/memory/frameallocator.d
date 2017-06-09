@@ -31,16 +31,6 @@ public:
 			}
 		}
 
-		auto modules = Multiboot.modules;
-		for (size_t i = 0; i < Multiboot.modulesCount; i++) {
-			MultibootTagModule* m = modules[i];
-			uint cur = m.modStart;
-			while (cur < m.modEnd) {
-				markFrame(cur / 0x1000);
-				cur += 0x1000;
-			}
-		}
-
 		// Mark ACPI frames
 		for (ulong i = 0xE0000; i < 0x100000; i += 0x1000)
 			markFrame(i / 0x1000);
