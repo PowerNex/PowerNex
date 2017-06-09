@@ -3,6 +3,7 @@ module data.textbuffer;
 import data.color;
 import data.string_;
 import data.util;
+import memory.allocator;
 
 enum SlotFlags : ushort {
 	nothing,
@@ -40,7 +41,7 @@ public:
 	}
 
 	this(size_t size) {
-		_buffer = new Slot[size];
+		_buffer = kernelAllocator.makeArray!Slot(size);
 		_otherBuffer = false;
 
 		_defaultFG = Color(0, 255, 255);
@@ -49,7 +50,7 @@ public:
 
 	~this() {
 		if (!_otherBuffer)
-			_buffer.destroy;
+			kernelAllocator.dispose(_buffer);
 	}
 
 	void write(Args...)(Args args) {

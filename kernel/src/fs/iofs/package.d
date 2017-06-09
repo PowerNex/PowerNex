@@ -34,7 +34,8 @@ public:
 	}
 
 	override IOStatus link(in string name, Ref!VNode node) {
-		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
+		import memory.allocator : kernelAllocator, dupArray;
+		(*_entries).put(DirectoryEntry(fs, (*node).id, kernelAllocator.dupArray(name)));
 		return IOStatus.success;
 	}
 

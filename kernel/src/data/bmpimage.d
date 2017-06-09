@@ -4,6 +4,7 @@ import data.color;
 import io.log;
 import fs;
 import memory.ref_;
+import memory.allocator;
 
 private align(1) struct FileHeader {
 align(1):
@@ -41,7 +42,7 @@ public:
 		if ((*file).open(nc, FileDescriptorMode.read))
 			return;
 		read(*file, nc, _bitmap);
-		_data = new Color[_bitmap.width * _bitmap.height];
+		_data = kernelAllocator.makeArray!Color(_bitmap.width * _bitmap.height);
 		size_t offset = _bitmap.fileHeader.dataOffset;
 		int pad = _bitmap.width % 4;
 
@@ -60,11 +61,11 @@ public:
 
 	this(BMPImage other) {
 		_bitmap = other._bitmap;
-		_data = other._data.dup;
+		_data = kernelAllocator.dupArray(other._data);
 	}
 
 	~this() {
-		_data.destroy;
+		kernelAllocator.dispose(_data);
 	}
 
 	@property BitmapHeader header() {

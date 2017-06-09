@@ -85,13 +85,19 @@ void preInit() {
 	log.info("Log is now enabled!");
 
 	scr.writeln("GDT initializing...");
+	log.info("GDT initializing...");
 	GDT.init();
+
 	scr.writeln("IDT initializing...");
+	log.info("IDT initializing...");
 	IDT.init();
+
 	scr.writeln("Syscall Handler initializing...");
+	log.info("Syscall Handler initializing...");
 	SyscallHandler.init();
 
 	scr.writeln("PIT initializing...");
+	log.info("PIT initializing...");
 	PIT.init();
 }
 
@@ -127,12 +133,15 @@ void init(uint magic, ulong info) {
 	initKernelAllocator();
 
 	scr.writeln("ACPI initializing...");
+	log.info("ACPI initializing...");
 	rsdp.init();
 
 	scr.writeln("CMOS initializing...");
+	log.info("CMOS initializing...");
 	getCMOS();
 
 	scr.writeln("Keyboard initializing...");
+	log.info("Keyboard initializing...");
 	PS2Keyboard.init();
 
 	{
@@ -148,11 +157,11 @@ void init(uint magic, ulong info) {
 	log.info("PCI initializing...");
 	getPCI;
 
-	while (true) {
-	}
 	scr.writeln("Initrd initializing...");
 	log.info("Initrd initializing...");
 	loadInitrd();
+	while (true) {
+	}
 
 	scr.writeln("Starting ConsoleManager...");
 	log.info("Starting ConsoleManager...");

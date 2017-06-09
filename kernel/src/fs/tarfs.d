@@ -45,6 +45,8 @@ struct TarHeader {
 	private char[12] pad; /// Padding
 
 	@property bool checksumValid() {
+		import io.log : log;
+
 		ssize_t oldChecksum = checksum.toNumber;
 
 		{
@@ -56,6 +58,7 @@ struct TarHeader {
 			foreach (b; (cast(ubyte*)&this)[checksum.offsetof + checksum.length .. _tarHeaderSize])
 				chksum += b;
 
+			log.error("Tar checksum is: ", cast(void*)chksum, " Old: ", cast(void*)oldChecksum);
 			if (oldChecksum == chksum)
 				return true;
 		}
@@ -67,6 +70,11 @@ struct TarHeader {
 				chksum += cast(byte)' ';
 			foreach (b; (cast(byte*)&this)[checksum.offsetof + checksum.length .. _tarHeaderSize])
 				chksum += b;
+
+			if (oldChecksum != chksum)
+				log.fatal("Tar checksum is: ", cast(void*)chksum, " Old: ", cast(void*)oldChecksum);
+			else
+				log.error("Tar checksum is: ", cast(void*)chksum, " Old: ", cast(void*)oldChecksum);
 
 			return oldChecksum == chksum;
 		}
@@ -139,7 +147,7 @@ public:
 	}
 
 	override IOStatus link(in string name, Ref!VNode node) {
-		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
+		(*_entries).put(DirectoryEntry(fs, (*node).id, name));
 		return IOStatus.success;
 	}
 
@@ -275,7 +283,7 @@ public:
 	override IOStatus link(in string name, Ref!VNode node) {
 		if (type == NodeType.file)
 			return -IOStatus.isNotDirectory;
-		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
+		(*_entries).put(DirectoryEntry(fs, (*node).id, name));
 		return IOStatus.success;
 	}
 
@@ -535,7 +543,8 @@ private:
 				if (!name.length || name == ".")
 					break;
 
-				(*parent).link(name, (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!TarVNode(this, _idCounter, (*parent).id, header, &paxHeader)));
+				(*parent).link(name, (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!TarVNode(this, _idCounter,
+						(*parent).id, header, &paxHeader)));
 				_idCounter++;
 				break;
 			}

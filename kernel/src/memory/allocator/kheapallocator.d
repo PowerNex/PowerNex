@@ -7,7 +7,10 @@ import memory.kheap;
 class KHeapAllocator : IAllocator {
 public:
 	void[] allocate(size_t size) {
-		return KHeap.allocate(size)[0 .. size];
+		void[] mem = KHeap.allocate(size);
+		if (mem)
+			mem = mem[0 .. size];
+		return mem;
 	}
 
 	bool expand(ref void[] data, size_t deltaSize) {

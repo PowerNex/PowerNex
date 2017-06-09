@@ -27,6 +27,11 @@ auto make(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
 	}
 
 	void[] chunk = alloc.allocate(size);
+	if (!chunk) {
+		import io.log : log;
+
+		log.fatal("Failed to allocate size: ", size);
+	}
 	auto result = cast(ReturnType)chunk.ptr;
 
 	memset(chunk.ptr, 0, size);
@@ -52,7 +57,7 @@ auto makeRef(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
 
 //TODO: support ranges?
 T[] makeArray(T, Allocator)(auto ref Allocator alloc, size_t length) {
-	return makeArray!T(alloc, length, T());
+	return makeArray!T(alloc, length, T.init);
 }
 
 T[] makeArray(T, Allocator)(auto ref Allocator alloc, size_t length, auto ref T init) {
@@ -62,36 +67,62 @@ T[] makeArray(T, Allocator)(auto ref Allocator alloc, size_t length, auto ref T 
 	return arr;
 }
 
-bool expandArray(T, Allocator)(auto ref Allocator alloc, ref T[] arr, size_t deltaSize) {
-	return expandArray!T(alloc, arr, deltaSize, T());
+T[] dupArray(T, Allocator)(auto ref Allocator alloc, in T[] otherArray) {
+	if (!otherArray)
+		return null;
+	T[] arr = makeArray!T(alloc, otherArray.length);
+	if (!arr)
+		return null;
+	arr[] = otherArray[];
+	return arr;
 }
 
-bool expandArray(T, Allocator)(auto ref Allocator alloc, ref T[] arr, size_t deltaSize, auto ref T init) {
+bool expandArray(T, Allocator)(auto ref Allocator alloc, ref T[] arr, size_t deltaSize) {
 	void[] buf = arr;
 	if (!alloc.expand(buf, deltaSize * T.sizeof))
 		if (!alloc.reallocate(buf, (arr.length + deltaSize) * T.sizeof))
 			return false;
+
+	void[] newData = buf[$ - (deltaSize * T.sizeof) .. $];
+
+	memset(newData.ptr, 0, newData.length);
+	//memset((VirtAddress(buf) + (arr.length - deltaSize) * T.sizeof).ptr, 0, deltaSize * T.sizeof);
+
 	arr = cast(T[])buf;
-	foreach (ref e; arr[$ - deltaSize .. $])
-		e = init;
+
+	auto init = typeid(T).init;
+	if (init.ptr)
+		for (size_t i = 0; i < deltaSize; i++) {
+			size_t loc = i * T.sizeof;
+			newData[loc .. loc + init.length] = init[];
+		}
+
 	return true;
 }
 
 void dispose(T, Allocator)(auto ref Allocator alloc, T* obj) if (!is(T == struct)) {
+	if (!obj)
+		return;
 	alloc.deallocate((cast(void*)obj)[0 .. T.sizeof]);
 }
 
 void dispose(T, Allocator)(auto ref Allocator alloc, T* obj) if (is(T == struct)) {
+	if (!obj)
+		return;
 	typeid(T).destroy(obj);
 
 	alloc.deallocate((cast(void*)obj)[0 .. T.sizeof]);
 }
 
 void dispose(T, Allocator)(auto ref Allocator alloc, T obj) if (is(T == interface)) {
+	if (!obj)
+		return;
 	dispose(alloc, cast(Object)obj);
 }
 
 void dispose(T, Allocator)(auto ref Allocator alloc, T obj) if (is(T == class)) {
+	if (!obj)
+		return;
 	ClassInfo ci = typeid(obj);
 	void* object = cast(void*)_d_dynamic_cast(cast(Object)obj, ci);
 
@@ -108,10 +139,13 @@ void dispose(T, Allocator)(auto ref Allocator alloc, T obj) if (is(T == class)) 
 }
 
 void dispose(T, Allocator)(auto ref Allocator alloc, T[] arr) {
+	if (!arr)
+		return;
+
 	foreach (ref obj; arr)
 		static if (is(T == struct))
-			typeid(T).destroy(obj);
-		else if (is(T == class)) {
+			typeid(T).destroy(cast(void*)&obj);
+		else static if (is(T == class)) {
 			ClassInfo ci = typeid(obj);
 			void* object = cast(void*)_d_dynamic_cast(cast(Object)obj, ci);
 
@@ -124,7 +158,7 @@ void dispose(T, Allocator)(auto ref Allocator alloc, T[] arr) {
 				}
 				ci = ci.base;
 			}
-		} else if (is(T == E*, E))
+		} else static if (is(T == E*, E))
 			alloc.deallocate(alloc, obj);
 
 	alloc.deallocate(cast(void[])arr);

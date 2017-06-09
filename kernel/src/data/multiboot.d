@@ -301,7 +301,7 @@ struct Multiboot {
 				break;
 
 			default:
-				scr.writeln("Multiboot2 Error tag type");
+				scr.writeln("Multiboot2 Error tag type: ", mbt.type);
 				break;
 			}
 		}

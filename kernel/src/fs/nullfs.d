@@ -36,7 +36,7 @@ public:
 	}
 
 	override IOStatus link(in string name, Ref!VNode node) {
-		(*_entries).put(DirectoryEntry(fs, (*node).id, name.dup));
+		(*_entries).put(DirectoryEntry(fs, (*node).id, name));
 		return IOStatus.success;
 	}
 

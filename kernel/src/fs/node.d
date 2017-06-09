@@ -153,7 +153,54 @@ public:
 struct DirectoryEntry {
 	FileSystem fileSystem;
 	FSNodeID id;
-	string name;
+	char[32] name; //TODO: change back to string
+
+	@disable this();
+
+	this(FileSystem fileSystem, FSNodeID id, char[] name) {
+		//import memory.allocator : kernelAllocator, dupArray;
+		import data.util : strcpy;
+
+		this.fileSystem = fileSystem;
+		this.id = id;
+		//this.name = kernelAllocator.dupArray(name);
+		strcpy(this.name[], name);
+	}
+
+	this(FileSystem fileSystem, FSNodeID id, string name) {
+		//import memory.allocator : kernelAllocator, dupArray;
+		import data.util : strcpy;
+
+		this.fileSystem = fileSystem;
+		this.id = id;
+		//this.name = kernelAllocator.dupArray(name);
+		strcpy(this.name[], name);
+	}
+
+	this(DirectoryEntry other) {
+		//import memory.allocator : kernelAllocator, dupArray;
+		import data.util : strcpy;
+
+		fileSystem = other.fileSystem;
+		id = other.id;
+		//name = kernelAllocator.dupArray(other.name);
+		strcpy(this.name[], name[]);
+	}
+
+	~this() {
+		//import memory.allocator : kernelAllocator, dispose;
+
+		//kernelAllocator.dispose(cast(char[])name);
+		//name = null;
+	}
+
+	void opAssign(DirectoryEntry other) {
+		import memory.allocator : kernelAllocator, dupArray;
+
+		fileSystem = other.fileSystem;
+		id = other.id;
+		name = kernelAllocator.dupArray(other.name);
+	}
 }
 
 interface DirectoryEntryRange : InputRange!DirectoryEntry {

@@ -99,3 +99,19 @@ ulong log2(ulong value) {
 
 	return result;
 }
+
+
+size_t strcpy(char[] dest, const char[] src) {
+	char* pD = dest.ptr;
+	const(char)* pS = src.ptr;
+
+	size_t counter;
+	while (pD && pS && *pS && counter++ < dest.length)
+		*pD++ = *pS++;
+
+	size_t ret = counter;
+	while (counter++ < dest.length)
+		*pD++ = '0';
+
+	return ret;
+}

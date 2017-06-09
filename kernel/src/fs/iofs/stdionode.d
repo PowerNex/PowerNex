@@ -126,7 +126,7 @@ private:
 
 	size_t kbStart;
 	size_t kbEnd;
-	ubyte[0x1000] kbBuffer;
+	ubyte[128] kbBuffer;
 	static bool wakeUpKeyboard(Process* p, void* data) {
 		return p.waitData == cast(ulong)data;
 	}
