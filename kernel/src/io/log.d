@@ -73,6 +73,7 @@ struct Log {
 	}
 
 	void log(Arg...)(LogLevel level, string file, string func, int line, Arg args) {
+		import memory.ptr : SharedPtr;
 		char[ulong.sizeof * 8] buf;
 		if (!_enabled)
 			return;
@@ -107,6 +108,9 @@ struct Log {
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
 				com1.write("0x");
 				com1.write(itoa(cast(ulong)arg.num, buf, 16));
+			} else static if (is(T == SharedPtr!X, X)) {
+				com1.write("0x");
+				com1.write(itoa(cast(ulong)cast(void*)arg.get(), buf, 16));
 			} else static if (is(T == bool))
 				com1.write((arg) ? "true" : "false");
 			else static if (is(T : char))
@@ -162,7 +166,6 @@ struct Log {
 	}
 
 	void printStackTrace(bool skipFirst = false) {
-		import memory.ref_ : Ref;
 		/*import task.scheduler : getScheduler;
 		import task.process : Process;*/
 
@@ -172,7 +175,7 @@ struct Log {
 		}
 		_printStackTrace(rbp, skipFirst);
 
-		/*if (Ref!Process p = getScheduler.currentProcess)
+		/*if (SharedPtr!Process p = getScheduler.currentProcess)
 			if (!(*p).kernelProcess) {
 				auto page = (*p).threadState.paging.getPage((*p).syscallRegisters.rbp);
 				if (!page || !page.present)

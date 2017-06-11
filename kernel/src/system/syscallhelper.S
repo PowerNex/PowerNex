@@ -4,7 +4,7 @@
 .SET kernelStack, 632//Process.image.offsetof + ImageInformation.kernelStack.offsetof
 
 .global _onSyscallHandler
-.global _currentProcess // It is of the type Ref!Process, we need to deref it to get the object
+.global _currentProcess // It is of the type SharedPtr!Process, we need to deref it to get the object
 
 .global onSyscall
 .type onSyscall, %function

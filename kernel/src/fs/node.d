@@ -2,7 +2,7 @@ module fs.node;
 
 import data.bitfield;
 import data.range;
-import memory.ref_;
+import memory.ptr;
 
 alias FSNodeID = ulong;
 
@@ -12,9 +12,9 @@ alias FSNodeID = ulong;
 /// Using VNodes ofc
 abstract class FileSystem { //TODO: make into a interface?
 public:
-	abstract Ref!VNode getNode(FSNodeID id);
+	abstract SharedPtr!VNode getNode(FSNodeID id);
 
-	abstract @property Ref!VNode root();
+	abstract @property SharedPtr!VNode root();
 	abstract @property string name() const;
 }
 
@@ -116,19 +116,19 @@ public:
 	// Internal stuff
 	string name; // IsNeeded? Could be used for faster lookups of names
 	//__	VNode parent;
-	Ref!FileSystem mounted; /// What is mounted on this node
+	SharedPtr!FileSystem mounted; /// What is mounted on this node
 	ulong refCounter; // Count for each DirectoryEntry
 
 	// No context needed (mostly used for folders)
 	abstract IOStatus chmod(ushort mode);
 	abstract IOStatus chown(long uid, long gid);
 
-	abstract IOStatus link(in string name, Ref!VNode node); // Only used internally for now, aka add a node to a directory
+	abstract IOStatus link(in string name, SharedPtr!VNode node); // Only used internally for now, aka add a node to a directory
 	abstract IOStatus unlink(in string name);
 
 	abstract IOStatus readLink(out string path); // Called on the VNode that is the symlink
 
-	abstract IOStatus mount(in string name, Ref!FileSystem filesystem);
+	abstract IOStatus mount(in string name, SharedPtr!FileSystem filesystem);
 	abstract IOStatus umount(in string name);
 
 	// Context related
@@ -140,7 +140,7 @@ public:
 
 	abstract IOStatus duplicate(ref NodeContext fd, out NodeContext copy);
 
-	abstract IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange);
+	abstract IOStatus dirEntries(out SharedPtr!DirectoryEntryRange entriesRange);
 
 	abstract IOStatus mkdir(in string name, ushort mode);
 	abstract IOStatus rmdir(in string name);
@@ -153,45 +153,47 @@ public:
 struct DirectoryEntry {
 	FileSystem fileSystem;
 	FSNodeID id;
-	char[32] name; //TODO: change back to string
+	char[] name; //TODO: change back to string
 
 	@disable this();
 
+	this(this) {
+		import memory.allocator : kernelAllocator, dupArray;
+
+		name = kernelAllocator.dupArray(name);
+	}
+
 	this(FileSystem fileSystem, FSNodeID id, char[] name) {
-		//import memory.allocator : kernelAllocator, dupArray;
-		import data.util : strcpy;
+		import memory.allocator : kernelAllocator, dupArray;
 
 		this.fileSystem = fileSystem;
 		this.id = id;
-		//this.name = kernelAllocator.dupArray(name);
-		strcpy(this.name[], name);
+		this.name = kernelAllocator.dupArray(name);
 	}
 
 	this(FileSystem fileSystem, FSNodeID id, string name) {
-		//import memory.allocator : kernelAllocator, dupArray;
-		import data.util : strcpy;
+		import memory.allocator : kernelAllocator, dupArray;
 
 		this.fileSystem = fileSystem;
 		this.id = id;
-		//this.name = kernelAllocator.dupArray(name);
-		strcpy(this.name[], name);
+		this.name = kernelAllocator.dupArray(name);
 	}
 
 	this(DirectoryEntry other) {
-		//import memory.allocator : kernelAllocator, dupArray;
-		import data.util : strcpy;
+		import memory.allocator : kernelAllocator, dupArray;
 
 		fileSystem = other.fileSystem;
 		id = other.id;
-		//name = kernelAllocator.dupArray(other.name);
-		strcpy(this.name[], name[]);
+		name = kernelAllocator.dupArray(other.name);
 	}
 
 	~this() {
-		//import memory.allocator : kernelAllocator, dispose;
+		import memory.allocator : kernelAllocator, dispose;
 
-		//kernelAllocator.dispose(cast(char[])name);
-		//name = null;
+		if (!name)
+			return;
+		kernelAllocator.dispose(cast(char[])name);
+		name = null;
 	}
 
 	void opAssign(DirectoryEntry other) {
@@ -212,12 +214,12 @@ static import data.container;
 alias DirectoryEntryList = data.container.Vector!DirectoryEntry;
 final class DefaultDirectoryEntryRange : DirectoryEntryRange {
 public:
-	this(Ref!DirectoryEntryList list) {
+	this(SharedPtr!DirectoryEntryList list) {
 		_list = list;
 	}
 
-	@property override const(DirectoryEntry) front() const {
-		return (*_list)[_index];
+	@property override ref const(DirectoryEntry) front() const {
+		return *cast(const(DirectoryEntry)*)&(*_list)[_index];
 	}
 
 	@property override ref DirectoryEntry front() {
@@ -279,6 +281,6 @@ public:
 	}
 
 private:
-	Ref!DirectoryEntryList _list;
+	SharedPtr!DirectoryEntryList _list;
 	size_t _index;
 }

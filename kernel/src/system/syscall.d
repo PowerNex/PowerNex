@@ -6,7 +6,7 @@ import data.register;
 import system.utils;
 import task.process;
 import data.container;
-import memory.ref_;
+import memory.ptr;
 import fs;
 import io.log;
 import memory.allocator;
@@ -111,9 +111,9 @@ void exec(string path, string[] args) {
 
 	auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 
-	Ref!VNode file = (*process).currentDirectory.findNode(path);
+	SharedPtr!VNode file = (*process).currentDirectory.findNode(path);
 	if (!file || (*file).type != NodeType.file) {
 		(*process).syscallRegisters.rax = 1;
 		return;
@@ -133,7 +133,7 @@ void exec(string path, string[] args) {
 void alloc(ulong size) {
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 	(*process).syscallRegisters.rax = (*(*process).allocator).allocate(size).VirtAddress;*/
 }
 
@@ -142,7 +142,7 @@ void free(void[] addr) {
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 	(*(*process).allocator).deallocate(addr); // Hack
 	(*process).syscallRegisters.rax = 0;*/
 }
@@ -152,7 +152,7 @@ void realloc(void[] addr, ulong newSize) {
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 	(*process).syscallRegisters.rax = (*(*process).allocator).reallocate(addr, newSize).VirtAddress;*/
 }
 
@@ -161,7 +161,7 @@ void getArguments(ulong* argc, char*** argv) { //TODO: add Check for userspace p
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 	if (!argc.VirtAddress.isValidToWrite(size_t.sizeof) || !argv.VirtAddress.isValidToWrite(const(char**).sizeof)) {
 		(*process).syscallRegisters.rax = 1;
 		return;
@@ -177,7 +177,7 @@ void open(string file, string modestr) {
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 	if (false && !(cast(void*)file.ptr).VirtAddress.isValidToRead(file.length)) {
 		(*process).syscallRegisters.rax = 0;
 		import io.log;
@@ -186,12 +186,12 @@ void open(string file, string modestr) {
 		return;
 	}
 
-	Ref!VNode node = (*process).currentDirectory.findNode(file);
+	SharedPtr!VNode node = (*process).currentDirectory.findNode(file);
 	if (!node) {
 		(*process).syscallRegisters.rax = size_t.max;
 		return;
 	}
-	Ref!NodeContext nc = kernelAllocator.makeRef!NodeContext;
+	SharedPtr!NodeContext nc = kernelAllocator.makeSharedPtr!NodeContext;
 
 	FileDescriptorMode mode;
 	foreach (char c; modestr) {
@@ -234,9 +234,9 @@ void close(size_t id) {
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 
-	Nullable!(Ref!NodeContext) nc = (*(*process).fileDescriptors).get(id);
+	Nullable!(SharedPtr!NodeContext) nc = (*(*process).fileDescriptors).get(id);
 
 	if (nc.isNull) {
 		(*process).syscallRegisters.rax = ulong.max;
@@ -254,7 +254,7 @@ void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
 
 	auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 
 	if (false && !data.ptr.VirtAddress.isValidToRead(data.length)) {
 		(*process).syscallRegisters.rax = 0;
@@ -264,7 +264,7 @@ void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
 		return;
 	}
 
-	Nullable!(Ref!NodeContext) node = (*(*process).fileDescriptors).get(id);
+	Nullable!(SharedPtr!NodeContext) node = (*(*process).fileDescriptors).get(id);
 	if (!node.isNull) {
 		(*node.get).offset = offset;
 		(*process).syscallRegisters.rax = (*node.get).write(data);
@@ -279,7 +279,7 @@ void read(size_t id, ubyte[] data, size_t offset) {
 
 	auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 
 	if (false && !data.ptr.VirtAddress.isValidToWrite(data.length)) {
 		(*process).syscallRegisters.rax = 0;
@@ -289,7 +289,7 @@ void read(size_t id, ubyte[] data, size_t offset) {
 		return;
 	}
 
-	Nullable!(Ref!NodeContext) node = (*(*process).fileDescriptors).get(id);
+	Nullable!(SharedPtr!NodeContext) node = (*(*process).fileDescriptors).get(id);
 	if (!node.isNull) {
 		(*node.get).offset = offset;
 		(*process).syscallRegisters.rax = (*node.get).read(data);
@@ -305,7 +305,7 @@ void getTimestamp() {
 
 	auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 	(*process).syscallRegisters.rax = getCMOS.timeStamp;*/
 }
 
@@ -330,12 +330,12 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 
-	Ref!VNode cwd = (*process).currentDirectory;
+	SharedPtr!VNode cwd = (*process).currentDirectory;
 
 	if (path) {
-		Ref!VNode newDir = cwd.findNode(path);
+		SharedPtr!VNode newDir = cwd.findNode(path);
 		if (!newDir || (*newDir).type != NodeType.directory) {
 			log.error();
 			(*process).syscallRegisters.rax = size_t.max;
@@ -344,7 +344,7 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 		cwd = newDir;
 	}
 
-	Ref!DirectoryEntryRange range;
+	SharedPtr!DirectoryEntryRange range;
 	if ((*cwd).dirEntries(range) != IOStatus.success) {
 		log.error();
 		(*process).syscallRegisters.rax = size_t.max;
@@ -399,19 +399,19 @@ void getCurrentDirectory(char[] str) {
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
+	SharedPtr!Process process = scheduler.currentProcess;
 	size_t currentOffset = 0;
 
-	void add(Ref!VNode node) {
+	void add(SharedPtr!VNode node) {
 		if ((*node).type != NodeType.directory) {
 			str[currentOffset .. currentOffset + 6] = "/<ERR0>"[];
 			return;
 		}
-		Ref!VNode parent = node.findNode("..");
+		SharedPtr!VNode parent = node.findNode("..");
 		if (parent && node != parent) {
 			add(parent);
 
-			Ref!DirectoryEntryRange range;
+			SharedPtr!DirectoryEntryRange range;
 			if ((*parent).dirEntries(range) != IOStatus.success) {
 				str[currentOffset .. currentOffset + 6] = "/<ERR1>"[];
 				return;
@@ -445,8 +445,8 @@ void changeCurrentDirectory(string path) {
 	assert(0);
 	/*auto scheduler = getScheduler;
 
-	Ref!Process process = scheduler.currentProcess;
-	Ref!VNode newDir = (*process).currentDirectory.findNode(path);
+	SharedPtr!Process process = scheduler.currentProcess;
+	SharedPtr!VNode newDir = (*process).currentDirectory.findNode(path);
 	if (newDir) {
 		(*process).currentDirectory = newDir;
 		(*process).syscallRegisters.rax = 0;
@@ -460,6 +460,6 @@ void join(size_t pid) {
 	/*import task.scheduler;
 
 	Scheduler s = getScheduler;
-	Ref!Process process = s.currentProcess;
+	SharedPtr!Process process = s.currentProcess;
 	(*process).syscallRegisters.rax = s.join(pid);*/
 }

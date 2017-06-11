@@ -1,6 +1,6 @@
 module memory.allocator;
 
-import memory.ref_;
+import memory.ptr;
 
 // Based on https://github.com/dlang/phobos/blob/master/std/experimental/allocator/package.d#L259
 interface IAllocator {
@@ -51,8 +51,8 @@ auto make(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
 	return result;
 }
 
-auto makeRef(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
-	return Ref!T(alloc.make!T(args), alloc);
+auto makeSharedPtr(T, X = T, Allocator, A...)(auto ref Allocator allocator, auto ref A args) {
+	return SharedPtr!(T)(allocator, args);
 }
 
 //TODO: support ranges?

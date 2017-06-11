@@ -1,7 +1,7 @@
 module fs.iofs.stdionode;
 
 import fs;
-import memory.ref_;
+import memory.ptr;
 
 final class StdIONode : VNode {
 public:
@@ -45,7 +45,7 @@ public:
 		return IOStatus.success;
 	}
 
-	override IOStatus link(in string name, Ref!VNode node) {
+	override IOStatus link(in string name, SharedPtr!VNode node) {
 		return -IOStatus.isNotDirectory;
 	}
 
@@ -57,7 +57,7 @@ public:
 		return -IOStatus.isNotSymlink;
 	}
 
-	override IOStatus mount(in string name, Ref!FileSystem filesystem) {
+	override IOStatus mount(in string name, SharedPtr!FileSystem filesystem) {
 		return -IOStatus.isNotDirectory;
 	}
 
@@ -101,7 +101,7 @@ public:
 		return IOStatus.success;
 	}
 
-	override IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange) {
+	override IOStatus dirEntries(out SharedPtr!DirectoryEntryRange entriesRange) {
 		return -IOStatus.isNotDirectory;
 	}
 

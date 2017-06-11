@@ -1,7 +1,7 @@
 module data.psf;
 
 import fs;
-import memory.ref_;
+import memory.ptr;
 import data.font;
 import data.utf;
 
@@ -35,7 +35,7 @@ private struct PSF2Header {
 
 class PSF : Font {
 public:
-	this(Ref!VNode file) {
+	this(SharedPtr!VNode file) {
 		NodeContext nc;
 		if ((*file).open(nc, FileDescriptorMode.read))
 			return;

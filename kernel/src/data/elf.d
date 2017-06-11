@@ -12,7 +12,7 @@ import task.process;
 import memory.kheap;
 import memory.allocator;
 import memory.allocator.userspaceallocator;
-import memory.ref_;
+import memory.ptr;
 
 struct ELF64Header {
 	struct Identification {
@@ -296,7 +296,7 @@ struct ELF64Dynamic {
 
 class ELF {
 public:
-	this(Ref!VNode file) {
+	this(SharedPtr!VNode file) {
 		_file = file;
 
 		if ((*_file).size <= ELF64Header.sizeof)
@@ -322,7 +322,7 @@ public:
 		import task.scheduler;
 
 		Scheduler scheduler = getScheduler;
-		Ref!Process process = scheduler.currentProcess;
+		SharedPtr!Process process = scheduler.currentProcess;
 		Paging paging = (*process).threadState.paging;
 
 		string[] tmpArgs;
@@ -383,9 +383,9 @@ public:
 		}
 
 		startHeap = (startHeap.num + 0xFFF) & ~0xFFF;
-		Ref!IAllocator oldAlloc = (*process).allocator;
+		SharedPtr!IAllocator oldAlloc = (*process).allocator;
 
-		(*process).allocator = cast(Ref!IAllocator)kernelAllocator.makeRef!UserSpaceAllocator(process, startHeap);
+		(*process).allocator = cast(SharedPtr!IAllocator)kernelAllocator.makeSharedPtr!UserSpaceAllocator(process, startHeap);
 		log.info("process: ", (*_file).name, "(", (*process).pid, ")\tallocator: ", cast(void*)(*process).allocator.data);
 
 		log.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
@@ -488,7 +488,7 @@ public:
 	}
 
 private:
-	Ref!VNode _file;
+	SharedPtr!VNode _file;
 	NodeContext nc;
 	bool _valid;
 	ELF64Header _header;

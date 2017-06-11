@@ -3,7 +3,7 @@ module fs.nullfs;
 import fs;
 
 import data.container;
-import memory.ref_;
+import memory.ptr;
 import memory.allocator;
 
 //TODO: Check if you have permissions to change this stuff EVERYWHERE, Add that to VNode?
@@ -16,7 +16,8 @@ public:
 
 		this.name = "RootFS";
 
-		_entries = makeRef!DirectoryEntryList(kernelAllocator, kernelAllocator);
+		_entries = makeSharedPtr!DirectoryEntryList(kernelAllocator, kernelAllocator);
+
 		(*_entries).put(DirectoryEntry(fs, id, "."));
 		(*_entries).put(DirectoryEntry(fs, parent, ".."));
 		(*_entries).put(DirectoryEntry(fs, id, "This is a NullFS!"));
@@ -35,7 +36,7 @@ public:
 		return IOStatus.success;
 	}
 
-	override IOStatus link(in string name, Ref!VNode node) {
+	override IOStatus link(in string name, SharedPtr!VNode node) {
 		(*_entries).put(DirectoryEntry(fs, (*node).id, name));
 		return IOStatus.success;
 	}
@@ -53,7 +54,7 @@ public:
 		return -IOStatus.isNotSymlink;
 	}
 
-	override IOStatus mount(in string name, Ref!FileSystem filesystem) {
+	override IOStatus mount(in string name, SharedPtr!FileSystem filesystem) {
 		return -IOStatus.notImplemented;
 	}
 
@@ -81,9 +82,9 @@ public:
 		return -IOStatus.isNotFile;
 	}
 
-	override IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange) {
-		entriesRange = cast(Ref!DirectoryEntryRange)kernelAllocator.makeRef!DefaultDirectoryEntryRange(_entries);
-		return IOStatus.success;
+	override IOStatus dirEntries(out SharedPtr!DirectoryEntryRange entriesRange) {
+		entriesRange = cast(SharedPtr!DirectoryEntryRange)kernelAllocator.makeSharedPtr!DefaultDirectoryEntryRange(_entries);
+		return entriesRange ? IOStatus.success : -IOStatus.unknownError;
 	}
 
 	override IOStatus mkdir(in string name, ushort mode) {
@@ -103,22 +104,22 @@ public:
 	}
 
 private:
-	Ref!DirectoryEntryList _entries;
+	SharedPtr!DirectoryEntryList _entries;
 }
 
 class NullFS : FileSystem {
 public:
 	this() {
-		_nodes = kernelAllocator.makeRef!NodeList(kernelAllocator);
-		(*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!NullRootNode(this, _idCounter, _idCounter));
+		_nodes = kernelAllocator.makeSharedPtr!NodeList(kernelAllocator);
+		(*_nodes).put(cast(SharedPtr!VNode)kernelAllocator.makeSharedPtr!NullRootNode(this, _idCounter, _idCounter));
 		_idCounter++;
 	}
 
-	override Ref!VNode getNode(FSNodeID id) {
+	override SharedPtr!VNode getNode(FSNodeID id) {
 		return (*_nodes)[id];
 	}
 
-	override @property Ref!VNode root() {
+	override @property SharedPtr!VNode root() {
 		return (*_nodes)[0];
 	}
 
@@ -127,7 +128,7 @@ public:
 	}
 
 private:
-	alias NodeList = Vector!(Ref!VNode);
-	Ref!NodeList _nodes;
+	alias NodeList = Vector!(SharedPtr!VNode);
+	SharedPtr!NodeList _nodes;
 	size_t _idCounter;
 }

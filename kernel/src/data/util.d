@@ -24,6 +24,9 @@ enum isArray(T) = isDynamicArray!T || isStaticArray!T;
 enum isDynamicArray(T) = is(Unqual!T : E[], E);
 enum isStaticArray(T) = is(Unqual!T : E[n], E, size_t n);
 
+enum isClass(T) = is(Unqual!T == class) || isInterface!T;
+enum isInterface(T) = is(Unqual!T == interface);
+
 template TypeTuple(T...) {
 	alias TypeTuple = T;
 }

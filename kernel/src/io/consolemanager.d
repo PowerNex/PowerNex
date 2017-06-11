@@ -3,12 +3,12 @@ module io.consolemanager;
 import kmain : rootFS;
 import fs;
 import fs.iofs.stdionode;
-import memory.ref_;
+import memory.ptr;
 
 class ConsoleManager {
 public:
 	void init() {
-		stdout = cast(Ref!StdIONode)(*rootFS).root.findNode("/io/stdio");
+		stdout = cast(SharedPtr!StdIONode)(*rootFS).root.findNode("/io/stdio");
 	}
 
 	void addKeyboardInput(dchar ch, bool ctrl, bool alt, bool shift) {
@@ -17,7 +17,7 @@ public:
 
 private:
 	size_t _active;
-	Ref!StdIONode stdout;
+	SharedPtr!StdIONode stdout;
 }
 
 ConsoleManager getConsoleManager() {

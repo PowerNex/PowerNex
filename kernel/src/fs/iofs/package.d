@@ -3,7 +3,7 @@ module fs.iofs;
 import fs;
 import data.container;
 import memory.allocator;
-import memory.ref_;
+import memory.ptr;
 
 import fs.iofs.stdionode;
 
@@ -17,7 +17,7 @@ public:
 
 		this.name = "IOFS";
 
-		_entries = kernelAllocator.makeRef!DirectoryEntryList(kernelAllocator);
+		_entries = kernelAllocator.makeSharedPtr!DirectoryEntryList(kernelAllocator);
 		(*_entries).put(DirectoryEntry(fs, id, "."));
 		(*_entries).put(DirectoryEntry(fs, parent, ".."));
 	}
@@ -33,7 +33,7 @@ public:
 		return IOStatus.success;
 	}
 
-	override IOStatus link(in string name, Ref!VNode node) {
+	override IOStatus link(in string name, SharedPtr!VNode node) {
 		import memory.allocator : kernelAllocator, dupArray;
 		(*_entries).put(DirectoryEntry(fs, (*node).id, kernelAllocator.dupArray(name)));
 		return IOStatus.success;
@@ -52,7 +52,7 @@ public:
 		return -IOStatus.isNotSymlink;
 	}
 
-	override IOStatus mount(in string name, Ref!FileSystem filesystem) {
+	override IOStatus mount(in string name, SharedPtr!FileSystem filesystem) {
 		return -IOStatus.notImplemented;
 	}
 
@@ -80,9 +80,9 @@ public:
 		return -IOStatus.isNotFile;
 	}
 
-	override IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange) {
-		entriesRange = cast(Ref!DirectoryEntryRange)kernelAllocator.makeRef!DefaultDirectoryEntryRange(_entries);
-		return IOStatus.success;
+	override IOStatus dirEntries(out SharedPtr!DirectoryEntryRange entriesRange) {
+		entriesRange = cast(SharedPtr!DirectoryEntryRange)kernelAllocator.makeSharedPtr!DefaultDirectoryEntryRange(_entries);
+		return entriesRange ? IOStatus.success : -IOStatus.unknownError;
 	}
 
 	override IOStatus mkdir(in string name, ushort mode) {
@@ -102,23 +102,23 @@ public:
 	}
 
 private:
-	Ref!DirectoryEntryList _entries;
+	SharedPtr!DirectoryEntryList _entries;
 }
 
 final class IOFS : FileSystem {
 public:
 	this() {
-		_nodes = kernelAllocator.makeRef!(Vector!(Ref!VNode))(kernelAllocator);
-		Ref!VNode root = (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!IORootNode(this, _idCounter, _idCounter));
+		_nodes = kernelAllocator.makeSharedPtr!(Vector!(SharedPtr!VNode))(kernelAllocator);
+		SharedPtr!VNode root = (*_nodes).put(cast(SharedPtr!VNode)kernelAllocator.makeSharedPtr!IORootNode(this, _idCounter, _idCounter));
 		_idCounter++;
-		(*root).link("stdio", (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!StdIONode(this, _idCounter++, 0)));
+		(*root).link("stdio", (*_nodes).put(cast(SharedPtr!VNode)kernelAllocator.makeSharedPtr!StdIONode(this, _idCounter++, 0)));
 	}
 
-	override Ref!VNode getNode(FSNodeID id) {
+	override SharedPtr!VNode getNode(FSNodeID id) {
 		return (*_nodes)[id];
 	}
 
-	override @property Ref!VNode root() {
+	override @property SharedPtr!VNode root() {
 		return (*_nodes)[0];
 	}
 
@@ -127,6 +127,6 @@ public:
 	}
 
 private:
-	Ref!(Vector!(Ref!VNode)) _nodes;
+	SharedPtr!(Vector!(SharedPtr!VNode)) _nodes;
 	FSNodeID _idCounter;
 }

@@ -79,7 +79,11 @@ public:
 			return;
 
 		BuddyHeader* buddy = (address.VirtAddress - BuddyHeader.sizeof).ptr!BuddyHeader;
-		assert(buddy.magic == _magic, "Buddy magic invalid"); // TODO: Change to a return instead of crash
+		if (buddy.magic != _magic) {
+			log.error("Buddy magic invalid for: ", address.ptr.VirtAddress, " Magic: ", cast(ubyte[])buddy.magic[0 .. 3]);
+			log.printStackTrace();
+			return;
+		}
 
 		// Try and combine
 		VirtAddress vBuddy = buddy;

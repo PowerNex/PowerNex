@@ -5,7 +5,7 @@ import fs;
 import data.address;
 import data.container;
 import data.string_;
-import memory.ref_;
+import memory.ptr;
 import memory.allocator;
 
 import io.log : log;
@@ -124,7 +124,7 @@ public:
 
 		this.name = "TarFS";
 
-		_entries = kernelAllocator.makeRef!DirectoryEntryList(kernelAllocator);
+		_entries = kernelAllocator.makeSharedPtr!DirectoryEntryList(kernelAllocator);
 		(*_entries).put(DirectoryEntry(fs, id, "."));
 		(*_entries).put(DirectoryEntry(fs, parent, ".."));
 	}
@@ -140,7 +140,7 @@ public:
 		return IOStatus.success;
 	}
 
-	override IOStatus link(in string name, Ref!VNode node) {
+	override IOStatus link(in string name, SharedPtr!VNode node) {
 		(*_entries).put(DirectoryEntry(fs, (*node).id, name));
 		return IOStatus.success;
 	}
@@ -158,11 +158,11 @@ public:
 		return -IOStatus.isNotSymlink;
 	}
 
-	override IOStatus mount(in string name, Ref!FileSystem filesystem) {
+	override IOStatus mount(in string name, SharedPtr!FileSystem filesystem) {
 		TarFS tarfs = cast(TarFS)fs;
 		if (!tarfs)
 			return -IOStatus.wrongFileSystem;
-		Ref!VNode node = tarfs._mount(id, filesystem);
+		SharedPtr!VNode node = tarfs._mount(id, filesystem);
 		if (!node)
 			return -IOStatus.unknownError; //TODO:
 
@@ -188,7 +188,7 @@ public:
 		return -IOStatus.notFound;
 
 	done:
-		Ref!VNode node = fs.getNode(id);
+		SharedPtr!VNode node = fs.getNode(id);
 		if (!node)
 			return -IOStatus.notFound;
 
@@ -216,9 +216,9 @@ public:
 		return -IOStatus.isNotFile;
 	}
 
-	override IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange) {
-		entriesRange = cast(Ref!DirectoryEntryRange)kernelAllocator.makeRef!DefaultDirectoryEntryRange(_entries);
-		return IOStatus.success;
+	override IOStatus dirEntries(out SharedPtr!DirectoryEntryRange entriesRange) {
+		entriesRange = cast(SharedPtr!DirectoryEntryRange)kernelAllocator.makeSharedPtr!DefaultDirectoryEntryRange(_entries);
+		return entriesRange ? IOStatus.success : -IOStatus.unknownError;
 	}
 
 	override IOStatus mkdir(in string name, ushort mode) {
@@ -238,7 +238,7 @@ public:
 	}
 
 private:
-	Ref!DirectoryEntryList _entries;
+	SharedPtr!DirectoryEntryList _entries;
 }
 
 class TarVNode : VNode {
@@ -256,7 +256,7 @@ public:
 		if (type == NodeType.file)
 			_data = (header.VirtAddress + _tarHeaderSize).ptr!ubyte[0 .. size];
 		else if (type == NodeType.directory) {
-			_entries = makeRef!DirectoryEntryList(kernelAllocator, kernelAllocator);
+			_entries = makeSharedPtr!DirectoryEntryList(kernelAllocator, kernelAllocator);
 			(*_entries).put(DirectoryEntry(fs, id, "."));
 			(*_entries).put(DirectoryEntry(fs, parent, ".."));
 		} else
@@ -274,7 +274,7 @@ public:
 		return IOStatus.success;
 	}
 
-	override IOStatus link(in string name, Ref!VNode node) {
+	override IOStatus link(in string name, SharedPtr!VNode node) {
 		if (type == NodeType.file)
 			return -IOStatus.isNotDirectory;
 		(*_entries).put(DirectoryEntry(fs, (*node).id, name));
@@ -296,11 +296,11 @@ public:
 		return -IOStatus.isNotSymlink;
 	}
 
-	override IOStatus mount(in string name, Ref!FileSystem filesystem) {
+	override IOStatus mount(in string name, SharedPtr!FileSystem filesystem) {
 		TarFS tarfs = cast(TarFS)fs;
 		if (!tarfs)
 			return -IOStatus.wrongFileSystem;
-		Ref!VNode node = tarfs._mount(id, filesystem);
+		SharedPtr!VNode node = tarfs._mount(id, filesystem);
 		if (!node)
 			return -IOStatus.unknownError; //TODO:
 
@@ -326,7 +326,7 @@ public:
 		return -IOStatus.notFound;
 
 	done:
-		Ref!VNode node = fs.getNode(id);
+		SharedPtr!VNode node = fs.getNode(id);
 		if (!node)
 			return -IOStatus.notFound;
 
@@ -377,12 +377,12 @@ public:
 			return -IOStatus.isNotFile;
 	}
 
-	override IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange) {
+	override IOStatus dirEntries(out SharedPtr!DirectoryEntryRange entriesRange) {
 		if (type != NodeType.directory)
 			return -IOStatus.isNotDirectory;
 
-		entriesRange = cast(Ref!DirectoryEntryRange)kernelAllocator.makeRef!DefaultDirectoryEntryRange(_entries);
-		return IOStatus.success;
+		entriesRange = cast(SharedPtr!DirectoryEntryRange)kernelAllocator.makeSharedPtr!DefaultDirectoryEntryRange(_entries);
+		return entriesRange ? IOStatus.success : -IOStatus.unknownError;
 	}
 
 	override IOStatus mkdir(in string name, ushort mode) {
@@ -404,15 +404,15 @@ public:
 private:
 	ubyte[] _data;
 
-	Ref!DirectoryEntryList _entries;
+	SharedPtr!DirectoryEntryList _entries;
 }
 
 class TarFS : FileSystem {
 public:
 	this(ubyte[] data) {
 		_data = data;
-		_nodes = kernelAllocator.makeRef!NodeList(kernelAllocator);
-		(*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!TarRootNode(this, _idCounter, _idCounter));
+		_nodes = kernelAllocator.makeSharedPtr!NodeList(kernelAllocator);
+		(*_nodes).put(cast(SharedPtr!VNode)kernelAllocator.makeSharedPtr!TarRootNode(this, _idCounter, _idCounter));
 		_idCounter++;
 
 		_loadTar();
@@ -422,11 +422,11 @@ public:
 		//TODO: mark pages as free
 	}
 
-	override Ref!VNode getNode(size_t id) {
+	override SharedPtr!VNode getNode(size_t id) {
 		return (*_nodes)[id];
 	}
 
-	override @property Ref!VNode root() {
+	override @property SharedPtr!VNode root() {
 		return (*_nodes)[0];
 	}
 
@@ -437,15 +437,15 @@ public:
 private:
 	ubyte[] _data;
 
-	alias NodeList = Vector!(Ref!VNode);
-	Ref!NodeList _nodes;
+	alias NodeList = Vector!(SharedPtr!VNode);
+	SharedPtr!NodeList _nodes;
 	size_t _idCounter;
 
 	void _loadTar() {
 		VirtAddress start = VirtAddress(_data.ptr);
 		VirtAddress end = start + _data.length;
 		VirtAddress curLoc = start;
-		Ref!VNode root = (*_nodes)[0];
+		SharedPtr!VNode root = (*_nodes)[0];
 		bool isEnd = false;
 
 		PaxHeader paxHeader;
@@ -518,7 +518,7 @@ private:
 				break;
 
 			default:
-				Ref!VNode parent = root;
+				SharedPtr!VNode parent = root;
 				string name = header.name.fromStringz;
 				if (name[$ - 1] == '/')
 					name = name[0 .. $ - 1];
@@ -537,7 +537,7 @@ private:
 				if (!name.length || name == ".")
 					break;
 
-				(*parent).link(name, (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!TarVNode(this, _idCounter,
+				(*parent).link(name, (*_nodes).put(cast(SharedPtr!VNode)kernelAllocator.makeSharedPtr!TarVNode(this, _idCounter,
 						(*parent).id, header, &paxHeader)));
 				_idCounter++;
 				break;
@@ -548,13 +548,13 @@ private:
 		}
 	}
 
-	Ref!VNode _mount(FSNodeID parent, Ref!FileSystem fs) {
+	SharedPtr!VNode _mount(FSNodeID parent, SharedPtr!FileSystem fs) {
 		import fs.mountnode : MountVNode;
 
-		return (*_nodes).put(cast(Ref!VNode)kernelAllocator.makeRef!MountVNode(this, _idCounter++, parent, fs));
+		return (*_nodes).put(cast(SharedPtr!VNode)kernelAllocator.makeSharedPtr!MountVNode(this, _idCounter++, parent, fs));
 	}
 
-	void _umount(Ref!VNode toRemove) {
+	void _umount(SharedPtr!VNode toRemove) {
 		foreach (idx, node; (*_nodes))
 			if (node == toRemove) {
 				(*_nodes).remove(idx);

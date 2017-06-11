@@ -3,7 +3,7 @@ module data.bmpimage;
 import data.color;
 import io.log;
 import fs;
-import memory.ref_;
+import memory.ptr;
 import memory.allocator;
 
 private align(1) struct FileHeader {
@@ -37,7 +37,7 @@ align(1):
 
 class BMPImage {
 public:
-	this(Ref!VNode file) {
+	this(SharedPtr!VNode file) {
 		NodeContext nc;
 		if ((*file).open(nc, FileDescriptorMode.read))
 			return;
@@ -88,7 +88,7 @@ private:
 	BitmapHeader _bitmap;
 	Color[] _data;
 
-	void _readData(int bpp)(ref Ref!VNode file, ref NodeContext nc, size_t offset, int pad) if (bpp == 24 || bpp == 32) {
+	void _readData(int bpp)(ref SharedPtr!VNode file, ref NodeContext nc, size_t offset, int pad) if (bpp == 24 || bpp == 32) {
 		enum bytesPerPixel = bpp / 8;
 
 		ubyte toIdx(int bitmask) {

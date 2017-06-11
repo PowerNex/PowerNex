@@ -2,7 +2,7 @@ module memory.vmm;
 
 import data.address;
 import data.container;
-import memory.ref_;
+import memory.ptr;
 import memory.allocator;
 import task.process;
 import arch.paging;
@@ -275,11 +275,11 @@ public:
 		return PageFaultStatus.success;
 	}
 
-	Ref!VMProcess fork(scope Process process) {
-		Ref!VMProcess newProcess = kernelAllocator.makeRef!VMProcess(backend);
+	SharedPtr!VMProcess fork(scope Process process) {
+		SharedPtr!VMProcess newProcess = kernelAllocator.makeSharedPtr!VMProcess(backend);
 		if (!newProcess) {
 			process.signal(SignalType.noMemory, "Out of memory");
-			return Ref!VMProcess();
+			return SharedPtr!VMProcess();
 		}
 
 		foreach (obj; objects) {

@@ -4,9 +4,9 @@ public {
 	import fs.node;
 }
 
-import memory.ref_;
+import memory.ptr;
 
-Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
+SharedPtr!VNode findNode(scope SharedPtr!VNode startNode, in string path) {
 	import kmain: rootFS; //TODO:
 	import data.string_ : indexOf;
 	import io.log : log;
@@ -14,11 +14,11 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 	if (path.length && path[0] == '/')
 		return findNode((*rootFS).root, path[1 .. $]);
 
-	Ref!VNode currentNode = startNode;
+	SharedPtr!VNode currentNode = startNode;
 	string curPath = path;
 	while (curPath.length && currentNode) {
 		if ((*currentNode).type != NodeType.directory)
-			return Ref!VNode();
+			return SharedPtr!VNode();
 
 		long partEnding = curPath.indexOf('/');
 		string part;
@@ -33,18 +33,18 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 				curPath = curPath[partEnding + 1 .. $];
 		}
 
-		Ref!DirectoryEntryRange range;
-		(*currentNode).dirEntries(range);
+		SharedPtr!DirectoryEntryRange range;
+		assert((*currentNode).dirEntries(range) == IOStatus.success);
 
 		bool foundit;
-		foreach (DirectoryEntry e; range.data)
+		foreach (DirectoryEntry e; range.get)
 			if (e.name == part) {
 				currentNode = e.fileSystem.getNode(e.id);
 				foundit = true;
 				break;
 			}
 		if (!foundit)
-			return Ref!VNode();
+			return SharedPtr!VNode();
 
 		while (currentNode && (*currentNode).type == NodeType.symlink) {
 			//TODO: implement infinite check
@@ -54,7 +54,7 @@ Ref!VNode findNode(scope Ref!VNode startNode, in string path) {
 		}
 
 		if (!currentNode)
-			return Ref!VNode();
+			return SharedPtr!VNode();
 	}
 	return currentNode;
 }

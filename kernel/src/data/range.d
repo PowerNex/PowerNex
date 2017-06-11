@@ -1,7 +1,7 @@
 module data.range;
 
 interface InputRange(E) {
-	@property const(E) front() const;
+	@property ref const(E) front() const;
 	@property ref E front();
 	E moveFront();
 	void popFront();
@@ -25,7 +25,8 @@ interface BidirectionalRange(E) : ForwardRange!E {
 
 interface RandomAccessFinite(E) : BidirectionalRange!E {
 	@property RandomAccessFinite!E save();
-	E opIndex(size_t index);
+	ref const(E) opIndex(size_t index) const;
+	ref E opIndex(size_t index);
 	E moveAt(size_t index);
 	@property size_t length();
 	alias opDollar = length;

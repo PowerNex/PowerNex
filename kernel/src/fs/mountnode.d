@@ -2,11 +2,11 @@ module fs.mountnode;
 
 import fs;
 import memory.allocator;
-import memory.ref_;
+import memory.ptr;
 
 final class MountVNode : VNode {
 public:
-	this(FileSystem fs, FSNodeID id, FSNodeID parent, Ref!FileSystem mount) {
+	this(FileSystem fs, FSNodeID id, FSNodeID parent, SharedPtr!FileSystem mount) {
 		this.id = id;
 		this.type = NodeType.directory;
 		this.fs = fs;
@@ -31,7 +31,7 @@ public:
 		return IOStatus.success;
 	}
 
-	override IOStatus link(in string name, Ref!VNode node) { // Only used internally for now, aka add a node to a director
+	override IOStatus link(in string name, SharedPtr!VNode node) { // Only used internally for now, aka add a node to a directory
 		if ((*node).fs != *mounted)
 			return -IOStatus.wrongFileSystem;
 		return (*_root).link(name, node);
@@ -45,7 +45,7 @@ public:
 		return (*_root).readLink(path);
 	}
 
-	override IOStatus mount(in string name, Ref!FileSystem filesystem) {
+	override IOStatus mount(in string name, SharedPtr!FileSystem filesystem) {
 		return (*_root).mount(name, filesystem);
 	}
 
@@ -74,15 +74,15 @@ public:
 		return (*_root).duplicate(fd, copy);
 	}
 
-	override IOStatus dirEntries(out Ref!DirectoryEntryRange entriesRange) {
-		Ref!DirectoryEntryRange range;
+	override IOStatus dirEntries(out SharedPtr!DirectoryEntryRange entriesRange) {
+		SharedPtr!DirectoryEntryRange range;
 		IOStatus ret = (*_root).dirEntries(range);
 
 		if (ret != IOStatus.success)
 			return ret;
 
-		entriesRange = cast(Ref!DirectoryEntryRange)kernelAllocator.makeRef!MountDirectoryEntryRange(range, fs, _parent);
-		return IOStatus.success;
+		entriesRange = cast(SharedPtr!DirectoryEntryRange)kernelAllocator.makeSharedPtr!MountDirectoryEntryRange(range, fs, _parent);
+		return entriesRange ? IOStatus.success : -IOStatus.unknownError;
 	}
 
 	override IOStatus mkdir(in string name, ushort mode) {
@@ -102,20 +102,20 @@ public:
 	}
 
 private:
-	Ref!VNode _root;
+	SharedPtr!VNode _root;
 	FSNodeID _parent;
 }
 
 final class MountDirectoryEntryRange : DirectoryEntryRange {
 public:
-	this(Ref!DirectoryEntryRange range, FileSystem fs, FSNodeID parent) {
+	this(SharedPtr!DirectoryEntryRange range, FileSystem fs, FSNodeID parent) {
 		_range = range;
 		_fs = fs;
 		_parent = parent;
 		_parentEntry = DirectoryEntry(_fs, _parent, "..");
 	}
 
-	@property override const(DirectoryEntry) front() const {
+	@property override ref const(DirectoryEntry) front() const {
 		if ((*_range).front.name == "..")
 			return _parentEntry;
 
@@ -188,7 +188,7 @@ public:
 	}
 
 private:
-	Ref!DirectoryEntryRange _range;
+	SharedPtr!DirectoryEntryRange _range;
 	FileSystem _fs;
 	FSNodeID _parent;
 	DirectoryEntry _parentEntry;

@@ -33,9 +33,10 @@ interface IContainer(E) : OutputRange!E {
 	bool remove(size_t index);
 	bool remove(E obj);
 	void clear();
-	E get(size_t index);
+	ref E get(size_t index);
+	ref const(E) get(size_t index) const;
 	ref E opIndex(size_t index);
-	const(E) opIndex(size_t index) const;
+	ref const(E) opIndex(size_t index) const;
 
 	@property size_t length() const;
 	alias opDollar = length;
@@ -130,7 +131,12 @@ public:
 		_length = 0;
 	}
 
-	E get(size_t index) {
+	ref E get(size_t index) {
+		assert(index < _length);
+		return _list[index];
+	}
+
+	ref const(E) get(size_t index) const {
 		assert(index < _length);
 		return _list[index];
 	}
@@ -140,7 +146,7 @@ public:
 		return _list[index];
 	}
 
-	const(E) opIndex(size_t index) const {
+	ref const(E) opIndex(size_t index) const {
 		assert(index < _length);
 		return cast(const E)_list[index];
 	}

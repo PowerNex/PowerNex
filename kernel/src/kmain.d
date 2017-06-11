@@ -26,7 +26,7 @@ import system.syscallhandler;
 import data.textbuffer : scr = getBootTTY;
 import data.elf;
 import io.consolemanager;
-import memory.ref_;
+import memory.ptr;
 import fs;
 import arch.paging;
 import memory.vmm;
@@ -34,7 +34,7 @@ import memory.vmm;
 private immutable uint _major = __VERSION__ / 1000;
 private immutable uint _minor = __VERSION__ % 1000;
 
-__gshared Ref!FileSystem rootFS;
+__gshared SharedPtr!FileSystem rootFS;
 
 extern (C) int kmain(uint magic, ulong info) {
 	preInit();
@@ -184,16 +184,18 @@ void loadInitrd() {
 
 	ubyte[] tarfsData = VirtAddress().ptr!ubyte[tarfsLoc[0].num .. tarfsLoc[1].num];
 
-	rootFS = cast(Ref!FileSystem)kernelAllocator.makeRef!TarFS(tarfsData);
+	import fs.nullfs;
 
-	Ref!FileSystem iofs = cast(Ref!FileSystem)kernelAllocator.makeRef!IOFS();
+	rootFS = cast(SharedPtr!FileSystem)kernelAllocator.makeSharedPtr!TarFS(tarfsData);
+
+	SharedPtr!FileSystem iofs = cast(SharedPtr!FileSystem)kernelAllocator.makeSharedPtr!IOFS();
 
 	(*(*rootFS).root).mount("io", iofs);
 
 	char[8] levelStr = "||||||||";
-	void printData(Ref!VNode node, int level = 0) {
+	void printData(SharedPtr!VNode node, int level = 0) {
 		if ((*node).type == NodeType.directory) {
-			Ref!DirectoryEntryRange range;
+			SharedPtr!DirectoryEntryRange range;
 
 			IOStatus ret = (*node).dirEntries(range);
 			if (ret) {
@@ -204,14 +206,15 @@ void loadInitrd() {
 			int nextLevel = level + 1;
 			if (nextLevel > levelStr.length)
 				nextLevel = levelStr.length;
-			foreach (idx, ref DirectoryEntry e; range.data) {
-				if (e.name.length && e.name[0] == '.')
+			foreach (idx, ref DirectoryEntry e; range.get) {
+				if ((e.name.length && e.name[0] == '.') || false)
 					continue;
-				Ref!VNode n = e.fileSystem.getNode(e.id);
+				SharedPtr!VNode n = e.fileSystem.getNode(e.id);
 				if (!n)
 					continue;
 				log.info(levelStr[0 .. level], "»", e.name, " type: ", (*n).type, " id: ", (*n).id);
-				printData(n, nextLevel);
+				if ((*n).id != (*node).id)
+					printData(n, nextLevel);
 			}
 		}
 	}
