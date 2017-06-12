@@ -18,9 +18,9 @@ private enum {
 	cmosRegb = 0x0B
 }
 
-class CMOS {
-public:
-	this(ubyte centuryReg) {
+static struct CMOS {
+public static:
+	void init(ubyte centuryReg) {
 		_centuryReg = centuryReg;
 		retrieveTime();
 	}
@@ -28,12 +28,12 @@ public:
 	void retrieveTime() {
 		ushort[128] last;
 		ushort[128] rawData;
-		dump(rawData);
+		_dump(rawData);
 
 		do {
 			foreach (idx, val; rawData)
 				last[idx] = val;
-			dump(rawData);
+			_dump(rawData);
 		}
 		while (last[cmosSecond] != rawData[cmosSecond] || last[cmosMinute] != rawData[cmosMinute]
 				|| last[cmosHour] != rawData[cmosHour] || last[cmosDay] != rawData[cmosDay]
@@ -43,14 +43,14 @@ public:
 		PIT.clear();
 
 		if (!(rawData[cmosRegb] & 0x04)) { // If rawData is BCD
-			rawData[cmosSecond] = fromBCD(rawData[cmosSecond]);
-			rawData[cmosMinute] = fromBCD(rawData[cmosMinute]);
+			rawData[cmosSecond] = _fromBCD(rawData[cmosSecond]);
+			rawData[cmosMinute] = _fromBCD(rawData[cmosMinute]);
 			rawData[cmosHour] = ((rawData[cmosHour] & 0x0F) + (((rawData[cmosHour] & 0x70) / 16) * 10)) | (rawData[cmosHour] & 0x80);
-			rawData[cmosDay] = fromBCD(rawData[cmosDay]);
-			rawData[cmosMonth] = fromBCD(rawData[cmosMonth]);
-			rawData[cmosYear] = fromBCD(rawData[cmosYear]);
+			rawData[cmosDay] = _fromBCD(rawData[cmosDay]);
+			rawData[cmosMonth] = _fromBCD(rawData[cmosMonth]);
+			rawData[cmosYear] = _fromBCD(rawData[cmosYear]);
 			if (_centuryReg)
-				rawData[_centuryReg] = fromBCD(rawData[_centuryReg]);
+				rawData[_centuryReg] = _fromBCD(rawData[_centuryReg]);
 		}
 
 		if (!(rawData[cmosRegb] & 0x02) && (rawData[cmosHour] & 0x80)) // am/pm -> 24 hours
@@ -69,7 +69,7 @@ public:
 				rawData[cmosYear] += 100;
 		}
 
-		_timestamp = secondsOfYear(cast(ushort)(rawData[cmosYear] - 1)) + secondsOfMonth(rawData[cmosMonth] - 1,
+		_timestamp = _secondsOfYear(cast(ushort)(rawData[cmosYear] - 1)) + _secondsOfMonth(rawData[cmosMonth] - 1,
 				rawData[cmosYear]) + (rawData[cmosDay] - 1) * 86400 + (rawData[cmosHour]) * 3600 + (
 				rawData[cmosMinute]) * 60 + rawData[cmosSecond] + 0;
 	}
@@ -78,36 +78,36 @@ public:
 		return _timestamp + PIT.seconds;
 	}
 
-private:
-	ulong _timestamp;
-	ubyte _centuryReg;
+private static:
+	__gshared ulong _timestamp;
+	__gshared ubyte _centuryReg;
 
-	void dump(ref ushort[128] rawData) {
-		while (updateInProgress) {
+	void _dump(ref ushort[128] rawData) {
+		while (_updateInProgress) {
 		}
 		foreach (ubyte idx, ref d; rawData)
-			d = read(idx);
+			d = _read(idx);
 	}
 
-	ubyte read(ubyte reg) {
+	ubyte _read(ubyte reg) {
 		outp!ubyte(cmosAddress, reg); //(NMI_disable_bit << 7) |
 		return inp!ubyte(cmosData);
 	}
 
-	void write(ubyte reg, ubyte data) {
+	void _write(ubyte reg, ubyte data) {
 		outp!ubyte(cmosAddress, reg); //(NMI_disable_bit << 7) |
 		return outp!ubyte(cmosData, data);
 	}
 
-	ushort fromBCD(ushort bcd) {
+	ushort _fromBCD(ushort bcd) {
 		return (bcd / 16 * 10) + (bcd & 0xf);
 	}
 
-	bool updateInProgress() {
-		return !!(read(0x0A) & 0x80);
+	bool _updateInProgress() {
+		return !!(_read(0x0A) & 0x80);
 	}
 
-	uint secondsOfYear(ushort years) {
+	uint _secondsOfYear(ushort years) {
 		uint days = 0;
 		while (years > 1969) {
 			days += 365;
@@ -125,7 +125,7 @@ private:
 		return days * 86_400;
 	}
 
-	uint secondsOfMonth(int months, int year) {
+	uint _secondsOfMonth(int months, int year) {
 		uint days = 0;
 		switch (months) {
 		case 11:
@@ -157,22 +157,4 @@ private:
 		}
 		return days * 86_400;
 	}
-}
-
-//XXX: IsCMOSInited
-__gshared bool isCMOSInited = false;
-
-CMOS getCMOS() {
-	import data.util : inplaceClass;
-
-	__gshared ubyte[__traits(classInstanceSize, CMOS)] data;
-	__gshared CMOS cmos;
-
-	if (!cmos) {
-		import acpi.rsdp : rsdp;
-
-		cmos = inplaceClass!CMOS(data, rsdp.fadtInstance.century);
-		isCMOSInited = true;
-	}
-	return cmos;
 }

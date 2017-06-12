@@ -306,7 +306,7 @@ void getTimestamp() {
 	auto scheduler = getScheduler;
 
 	SharedPtr!Process process = scheduler.currentProcess;
-	(*process).syscallRegisters.rax = getCMOS.timeStamp;*/
+	(*process).syscallRegisters.rax = CMOS.timeStamp;*/
 }
 
 struct DirectoryListing {

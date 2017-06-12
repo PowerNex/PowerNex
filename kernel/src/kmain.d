@@ -142,7 +142,7 @@ void init(uint magic, ulong info) {
 
 	scr.writeln("CMOS initializing...");
 	log.info("CMOS initializing...");
-	getCMOS();
+	CMOS.init(rsdp.fadtInstance.century);
 
 	scr.writeln("Keyboard initializing...");
 	log.info("Keyboard initializing...");

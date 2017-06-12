@@ -45,11 +45,9 @@ struct Log {
 
 	// XXX: Page fault if this is not wrapped like this!
 	static ulong seconds() {
-		import hw.cmos.cmos : getCMOS, isCMOSInited;
+		import hw.cmos.cmos : CMOS;
 
-		if (isCMOSInited)
-			return getCMOS.timeStamp();
-		return 0;
+		return CMOS.timeStamp();
 	}
 
 	void init() {
@@ -74,6 +72,7 @@ struct Log {
 
 	void log(Arg...)(LogLevel level, string file, string func, int line, Arg args) {
 		import memory.ptr : SharedPtr;
+
 		char[ulong.sizeof * 8] buf;
 		if (!_enabled)
 			return;
