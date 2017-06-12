@@ -5,8 +5,8 @@ import fs;
 import fs.iofs.stdionode;
 import memory.ptr;
 
-class ConsoleManager {
-public:
+static struct ConsoleManager {
+public static:
 	void init() {
 		stdout = cast(SharedPtr!StdIONode)(*rootFS).root.findNode("/io/stdio");
 	}
@@ -15,18 +15,7 @@ public:
 		(*stdout).addKeyboardInput(ch);
 	}
 
-private:
+private static __gshared:
 	size_t _active;
 	SharedPtr!StdIONode stdout;
-}
-
-ConsoleManager getConsoleManager() {
-	import data.util : inplaceClass;
-
-	__gshared ubyte[__traits(classInstanceSize, ConsoleManager)] data;
-	__gshared ConsoleManager cm;
-
-	if (!cm)
-		cm = inplaceClass!ConsoleManager(data);
-	return cm;
 }

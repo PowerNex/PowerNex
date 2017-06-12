@@ -167,7 +167,7 @@ void init(uint magic, ulong info) {
 
 	scr.writeln("Starting ConsoleManager...");
 	log.info("Starting ConsoleManager...");
-	getConsoleManager.init();
+	ConsoleManager.init();
 
 	/*scr.writeln("Scheduler initializing...");
 	log.info("Scheduler initializing...");

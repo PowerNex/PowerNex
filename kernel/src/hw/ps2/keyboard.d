@@ -231,7 +231,7 @@ private:
 			if (ch != dchar.init) {
 				const bool ctrl = _state.isSet(KeyCode.leftCtrl) || _state.isSet(KeyCode.rightCtrl);
 				const bool alt = _state.isSet(KeyCode.leftAlt) || _state.isSet(KeyCode.rightAlt);
-				getConsoleManager.addKeyboardInput(ch, ctrl, alt, shift);
+				ConsoleManager.addKeyboardInput(ch, ctrl, alt, shift);
 				//Keyboard.Push(ch);
 			}
 		}
