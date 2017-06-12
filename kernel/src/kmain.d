@@ -160,8 +160,6 @@ void init(uint magic, ulong info) {
 	scr.writeln("Initrd initializing...");
 	log.info("Initrd initializing...");
 	loadInitrd();
-	while (true) {
-	}
 
 	scr.writeln("Starting ConsoleManager...");
 	log.info("Starting ConsoleManager...");
@@ -183,13 +181,9 @@ void loadInitrd() {
 	}
 
 	ubyte[] tarfsData = VirtAddress().ptr!ubyte[tarfsLoc[0].num .. tarfsLoc[1].num];
-
-	import fs.nullfs;
-
 	rootFS = cast(SharedPtr!FileSystem)kernelAllocator.makeSharedPtr!TarFS(tarfsData);
 
 	SharedPtr!FileSystem iofs = cast(SharedPtr!FileSystem)kernelAllocator.makeSharedPtr!IOFS();
-
 	(*(*rootFS).root).mount("io", iofs);
 
 	char[8] levelStr = "||||||||";

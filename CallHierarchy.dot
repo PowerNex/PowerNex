@@ -1,22 +1,22 @@
 digraph derp {
 	COM[style=filled,fillcolor=green];
-	ACPI;
-	CMOS;
+	ACPI[style=filled,fillcolor=green];
+	CMOS[style=filled,fillcolor=green];
 	Log[style=filled,fillcolor=green];
 	GDT[style=filled,fillcolor=green];
 	IDT[style=filled,fillcolor=green];
 	SyscallHandler[style=filled,fillcolor=green];
 	PIT[style=filled,fillcolor=green];
-	PS2;
+	PS2[style=filled,fillcolor=green];
 	Multiboot[style=filled,fillcolor=green];
 	FrameAllocator[style=filled,fillcolor=green];
 	Paging[style=filled,fillcolor=green];
-	Heap[style=filled,fillcolor=yellow];
-	PCI;
-	FS;
-	ConsoleManager;
+	Heap[style=filled,fillcolor=green];
+	PCI[style=filled,fillcolor=green];
+	FS[style=filled,fillcolor=green];
+	ConsoleManager[style=filled,fillcolor=green];
 	Scheduler;
-	VMM;
+	VMM[style=filled,fillcolor=yellow];
 
 	//(*) -> COM;
 
