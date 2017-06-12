@@ -1,10 +1,14 @@
 module kmain;
 
-version (PowerNex) {
-	// Good job, you are now able to compile PowerNex!
-} else {
-	static assert(0, "Please use the customized toolchain located here: http://wild.tk/PowerNex-Env.tar.xz");
-}
+import data.util : isVersion;
+
+static assert(isVersion!"PowerNex", "\x1B[31;1m\n\n
++--------------------------------------- ERROR ---------------------------------------+
+|                                                                                     |
+|  You need to follow the build steps that are specified inside the README.org file!  |
+|                                                                                     |
++-------------------------------------------------------------------------------------+
+\n\n\x1B[0m");
 
 import memory.allocator;
 import io.com;

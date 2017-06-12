@@ -31,6 +31,12 @@ template TypeTuple(T...) {
 	alias TypeTuple = T;
 }
 
+/// Source: https://forum.dlang.org/post/op.vksecuhdot0hzo@las-miodowy
+/// Author: Tomek Sowiński
+template isVersion(string ver) {
+	enum bool isVersion = !is(typeof({ mixin("version(" ~ ver ~ ") static assert(0);"); }));
+}
+
 template enumMembers(E) if (is(E == enum)) {
 	template withIdentifier(string ident) {
 		static if (ident == "Symbolize") {
@@ -102,7 +108,6 @@ ulong log2(ulong value) {
 
 	return result;
 }
-
 
 size_t strcpy(char[] dest, const char[] src) {
 	char* pD = dest.ptr;
