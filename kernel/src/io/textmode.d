@@ -83,8 +83,29 @@ struct Screen(int w, int h) {
 	void write(Slot[] slots) {
 		if (!_enabled)
 			return;
-		foreach (slot; slots)
+		foreach (slot; slots) {
+			Colors fg, bg;
+			import data.color : RGB = Color;
+
+			Colors toColors(RGB rgb) {
+				Colors c;
+				if (rgb.r / 128)
+					c |= Colors.red;
+				if (rgb.g / 128)
+					c |= Colors.green;
+				if (rgb.b / 128)
+					c |= Colors.blue;
+
+				size_t total = rgb.r + rgb.g + rgb.b;
+				if (total / 128 * 3)
+					c |= Colors.darkGrey; // Aka bright-bit
+
+				return c;
+			}
+
+			_color = Color(toColors(slot.fg), toColors(slot.bg));
 			_write(cast(char)slot.ch);
+		}
 		_moveCursor();
 	}
 
