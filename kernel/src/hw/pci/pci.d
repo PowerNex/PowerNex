@@ -12,10 +12,10 @@ private enum {
 }
 
 struct PCIDevice {
-	this(PCI pci, ubyte bus, ubyte slot) {
+	this(ubyte bus, ubyte slot) {
 		ushort[] raw = (&deviceID)[0 .. PCIDevice.sizeof / ushort.sizeof];
 		foreach (idx, ref word; raw)
-			word = pci.readData(bus, slot, 0, cast(ubyte)(idx * ushort.sizeof));
+			word = PCI.readData(bus, slot, 0, cast(ubyte)(idx * ushort.sizeof));
 	}
 
 align(1):
@@ -40,9 +40,9 @@ align(1):
 
 static assert(PCIDevice.sizeof == 64);
 
-class PCI {
-public:
-	this() {
+static struct PCI {
+public static:
+	void init() {
 		_devices = makeArray!PCIDevice(kernelAllocator, 16);
 		_scanForDevices();
 	}
@@ -61,9 +61,10 @@ public:
 		return null;
 	}
 
-private:
-	PCIDevice[] _devices;
-	size_t _deviceCount;
+private static:
+	__gshared PCIDevice[] _devices;
+	__gshared size_t _deviceCount;
+
 	void _scanForDevices() {
 		for (ubyte bus = 0; bus < 255; bus++)
 			for (ubyte slot = 0; slot < 32; slot++) {
@@ -79,7 +80,7 @@ private:
 
 				PCIDevice* device = &_devices[_deviceCount];
 
-				*device = PCIDevice(this, bus, slot);
+				*device = PCIDevice(bus, slot);
 
 				log.info("Found device at ", cast(void*)bus, ":", cast(void*)slot);
 				log.info("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
@@ -95,16 +96,4 @@ private:
 	ushort _deviceExist(ubyte bus, ubyte slot, ubyte func = 0) {
 		return readData(bus, slot, func, 0) != ushort.max;
 	}
-
-}
-
-PCI getPCI() {
-	import data.util : inplaceClass;
-
-	__gshared ubyte[__traits(classInstanceSize, PCI)] data;
-	__gshared PCI pci;
-
-	if (!pci)
-		pci = inplaceClass!PCI(data);
-	return pci;
 }

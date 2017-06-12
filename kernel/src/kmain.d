@@ -159,7 +159,7 @@ void init(uint magic, ulong info) {
 
 	scr.writeln("PCI initializing...");
 	log.info("PCI initializing...");
-	getPCI;
+	PCI.init();
 
 	scr.writeln("Initrd initializing...");
 	log.info("Initrd initializing...");
