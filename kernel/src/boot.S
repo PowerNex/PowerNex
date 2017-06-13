@@ -241,7 +241,7 @@ x64NotSupported_msg:
 	.ascii "                                                                                "
 	.ascii "                  If you believe that you should see this                       "
 	.ascii "                  message because of an error.                                  "
-	.ascii "                  Please report it to: vild.io/powernex                         "
+	.ascii "                  Please report it to: powernexos.org                           "
 	.ascii "                                   or: powernex@vild.io                         "
 	.ascii "                                                                                "
 	.byte 0

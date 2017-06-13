@@ -5,22 +5,26 @@ import std.file;
 import std.algorithm;
 import std.range;
 
-//dfmt off
 enum powerNexIsoName = "powernex.iso";
 enum objDir = topLevelDirName(Target(powerNexIsoName));
 enum docsFolder = "docs";
 enum docsConfig = "docs.json";
 
 //dfmt off
-enum CompileCommand : string { //TODO: change back -dw to -de, re-add -vgc?
-	dc = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dd" ~ docsFolder ~ " -X -Xf" ~ docsConfig ~ " -of$out $in",
-	dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
-	ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
-	ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T kernel/src/kernel.ld",
+enum CompileCommand : string {
 	iso = "grub-mkrescue -d /usr/lib/grub/i386-pc -o $out $in",
 	ndc = "dmd -of$out -od" ~ objDir ~ "/utils/obj $in",
 	copy = "cp -rf $in $out",
 	ungzip = "gzip -d -c $in > $out",
+
+	loader_ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
+	loader_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T loader/src/loader.ld",
+
+	//TODO: change back -dw to -de, re-add -vgc?
+	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dd" ~ docsFolder ~ " -X -Xf" ~ docsConfig ~ " -of$out $in",
+	kernel_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
+	kernel_ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
+	kernel_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T kernel/src/kernel.ld",
 
 	user_dc = "cc/bin/powernex-dmd -m64 -dip25 -de -color=on -debug -c -g -Iuserspace/librt/src -Iuserspace/libpowernex/src -I" ~ objDir ~ "/userspace/librt/src -I" ~ objDir ~ "/userspace/libpowernex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in",
 	user_dc_e = "cc/bin/powernex-dmd -m64 -dip25 -de -color=on -debug -g -Iuserspace/librt/src -Iuserspace/libpowernex/src -I" ~ objDir ~ "/userspace/librt/src -I" ~ objDir ~ "/userspace/libpowernex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in",
@@ -49,45 +53,54 @@ Target[] mapSources(string rootFolder, string glob = "*.d") {
 	return srcs;
 }
 
-struct UtilsPrograms {
+class UtilsPrograms {
 	Target generatesymbols;
 	Target makeinitrdold;
 
-	@disable this();
-	this(bool _) {
+	this() {
 		generatesymbols = Target("utils/generatesymbols", CompileCommand.ndc, [Target("utils/generatesymbols.d")]);
 		makeinitrdold = Target("utils/makeinitrdold", CompileCommand.ndc, [Target("utils/makeinitrd.d")]);
 	}
 }
 
-struct KernelDependencies {
+class Loader {
+	Target loaderAObj;
+	//Target loaderDObj;
+	Target loader;
+
+	this() {
+		loaderAObj = Target("loader/obj/acode.o", CompileCommand.loader_ac, mapSources("loader/", "*.S"));
+		//loaderDObj = Target("loader/obj/dcode.o", CompileCommand.loader_dc, mapSources("loader/"));
+		loader = Target("disk/boot/powerd.ldr", CompileCommand.loader_ld, [loaderAObj /*, loaderDObj*/ ]);
+	}
+}
+
+class KernelDependencies {
 	Target consolefontgz;
 	Target consolefont;
 
-	@disable this();
-	this(bool _) {
+	this() {
 		consolefontgz = Target("kernel/src/bin/consoleFont.psf.gz", CompileCommand.copy,
 				[Target("/usr/share/kbd/consolefonts/lat9w-16.psfu.gz")]);
 		consolefont = Target("kernel/src/bin/consoleFont.psf", CompileCommand.ungzip, [consolefontgz]);
 	}
 }
 
-struct Kernel {
+class Kernel {
 	Target kernelAObj;
 	Target kernelDObj;
 	Target kernel;
 	Target map;
 
-	@disable this();
-	this(bool _) {
-		kernelAObj = Target("kernel/obj/acode.o", CompileCommand.ac, mapSources("kernel/", "*.S"));
-		kernelDObj = Target("kernel/obj/dcode.o", CompileCommand.dc, mapSources("kernel/"), [kernelDependencies.consolefont]);
-		kernel = Target("disk/boot/powernex.krl", CompileCommand.ld, [kernelAObj, kernelDObj]);
+	this() {
+		kernelAObj = Target("kernel/obj/acode.o", CompileCommand.kernel_ac, mapSources("kernel/", "*.S"));
+		kernelDObj = Target("kernel/obj/dcode.o", CompileCommand.kernel_dc, mapSources("kernel/"), [kernelDependencies.consolefont]);
+		kernel = Target("disk/boot/powernex.krl", CompileCommand.kernel_ld, [kernelAObj, kernelDObj]);
 		map = Target("disk/boot/powernex.map", ToolCommand.generateSymbols, [kernel], [utilsPrograms.generatesymbols]);
 	}
 }
 
-struct UserspaceLibraries {
+class UserspaceLibraries {
 	Target syscallDi;
 	Target syscall;
 	Target libpowernexObj;
@@ -95,9 +108,8 @@ struct UserspaceLibraries {
 	Target librtObj;
 	Target librt;
 
-	@disable this();
-	this(bool _) {
-		syscallDi = Target("userspace/syscall.di", CompileCommand.dc_header, [Target("kernel/src/system/syscall.d")]);
+	this() {
+		syscallDi = Target("userspace/syscall.di", CompileCommand.kernel_dc_header, [Target("kernel/src/system/syscall.d")]);
 		syscall = Target("userspace/libpowernex/src/powernex/internal/syscall.di", ToolCommand.removeImports, [syscallDi]);
 
 		libpowernexObj = Target("userspace/libpowernex/obj/dcode.o", CompileCommand.user_dc, mapSources("userspace/libpowernex/"), [syscall]);
@@ -108,7 +120,7 @@ struct UserspaceLibraries {
 	}
 }
 
-struct UserspacePrograms {
+class UserspacePrograms {
 	Target initObj;
 	Target init_;
 	Target loginObj;
@@ -120,8 +132,7 @@ struct UserspacePrograms {
 	Target catObj;
 	Target cat;
 
-	@disable this();
-	this(bool _) {
+	this() {
 		initObj = Target("userspace/init/obj/dcode.o", CompileCommand.user_dc, mapSources("userspace/init/"),
 				[userspaceLibraries.librt, userspaceLibraries.libpowernex]);
 		init_ = Target("initrd/bin/init", CompileCommand.user_ld, [initObj, userspaceLibraries.librt,
@@ -149,18 +160,20 @@ struct UserspacePrograms {
 	}
 }
 
-UtilsPrograms* utilsPrograms;
-KernelDependencies* kernelDependencies;
-Kernel* kernel;
-UserspaceLibraries* userspaceLibraries;
-UserspacePrograms* userspacePrograms;
+UtilsPrograms utilsPrograms;
+Loader loader;
+KernelDependencies kernelDependencies;
+Kernel kernel;
+UserspaceLibraries userspaceLibraries;
+UserspacePrograms userspacePrograms;
 
 Build myBuild() {
-	utilsPrograms = new UtilsPrograms(false);
-	kernelDependencies = new KernelDependencies(false);
-	kernel = new Kernel(false);
-	userspaceLibraries = new UserspaceLibraries(false);
-	userspacePrograms = new UserspacePrograms(false);
+	utilsPrograms = new UtilsPrograms();
+	loader = new Loader();
+	kernelDependencies = new KernelDependencies();
+	kernel = new Kernel();
+	userspaceLibraries = new UserspaceLibraries();
+	userspacePrograms = new UserspacePrograms();
 
 	auto initrdFiles = Target("initrd/", CompileCommand.copy, [Target("initrd/")], [Target("initrd/data/dlogo.bmp")]);
 
@@ -168,7 +181,8 @@ Build myBuild() {
 			userspacePrograms.login, userspacePrograms.shell, userspacePrograms.helloworld, userspacePrograms.cat]);
 
 	auto isoFiles = Target("disk/", CompileCommand.copy, [Target("disk/")], [Target("disk/boot/grub/grub.cfg")]);
-	auto powernexIso = Target(powerNexIsoName, CompileCommand.iso, [isoFiles], [kernel.kernel, /* initrdOld,*/ initrd, kernel.map]);
+	auto powernexIso = Target(powerNexIsoName, CompileCommand.iso, [isoFiles], [loader.loader, kernel.kernel, /* initrdOld,*/ initrd,
+			kernel.map]);
 
 	return Build(powernexIso);
 }

@@ -46,5 +46,6 @@ This adds shortcuts for building and running.
 * Thanks to
 - Adam D. Ruppe - For his [[http://arsdnet.net/dcode/minimal.zip][minimal.zip]], which contains a bare bone minimal d runtime. Which this kernel is based on.
 - Bloodmanovski - For his D Kernel [[https://github.com/Bloodmanovski/Trinix][Trinix]], His files for booting x64 really helped me a lot.
+- Lukas "zrho" Heidemann - For his [[https://github.com/zrho/Hydrogen][Hydrogen]] project. It really inspired and help me to make PowerD, the intermediate bootloader.
 * License
 Mozilla Public License, version 2.0
