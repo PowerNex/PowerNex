@@ -10,4 +10,4 @@ COM1.log
 objs
 compile_commands.json
 docs/
-docs.json
+docs*.json

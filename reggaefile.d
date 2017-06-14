@@ -7,21 +7,21 @@ import std.range;
 
 enum powerNexIsoName = "powernex.iso";
 enum objDir = topLevelDirName(Target(powerNexIsoName));
-enum docsFolder = "docs";
-enum docsConfig = "docs.json";
 
 //dfmt off
 enum CompileCommand : string {
+	nothing = "true $in",
 	iso = "grub-mkrescue -d /usr/lib/grub/i386-pc -o $out $in",
 	ndc = "dmd -of$out -od" ~ objDir ~ "/utils/obj $in",
-	copy = "cp -rf $in $out",
+	copy = "cp -r $in $out",
 	ungzip = "gzip -d -c $in > $out",
 
 	loader_ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
+	loader_dc = "cc/bin/powernex-dmd -m64 -dip25 -de -vtls -color=on -debug -c -g -Iloader/src -I" ~ objDir ~ "/loader/src -Jloader/src -J" ~ objDir ~ "/loader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/loader -X -Xfdocs-loader.json -of$out $in",
 	loader_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T loader/src/loader.ld",
 
 	//TODO: change back -dw to -de, re-add -vgc?
-	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dd" ~ docsFolder ~ " -X -Xf" ~ docsConfig ~ " -of$out $in",
+	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/kernel -X -Xfdocs-kernel.json -of$out $in",
 	kernel_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
 	kernel_ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
 	kernel_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T kernel/src/kernel.ld",
@@ -65,13 +65,13 @@ class UtilsPrograms {
 
 class Loader {
 	Target loaderAObj;
-	//Target loaderDObj;
+	Target loaderDObj;
 	Target loader;
 
 	this() {
 		loaderAObj = Target("loader/obj/acode.o", CompileCommand.loader_ac, mapSources("loader/", "*.S"));
-		//loaderDObj = Target("loader/obj/dcode.o", CompileCommand.loader_dc, mapSources("loader/"));
-		loader = Target("disk/boot/powerd.ldr", CompileCommand.loader_ld, [loaderAObj /*, loaderDObj*/ ]);
+		loaderDObj = Target("loader/obj/dcode.o", CompileCommand.loader_dc, mapSources("loader/"));
+		loader = Target("disk/boot/powerd.ldr", CompileCommand.loader_ld, [loaderAObj, loaderDObj]);
 	}
 }
 
@@ -175,14 +175,19 @@ Build myBuild() {
 	userspaceLibraries = new UserspaceLibraries();
 	userspacePrograms = new UserspacePrograms();
 
-	auto initrdFiles = Target("initrd/", CompileCommand.copy, [Target("initrd/")], [Target("initrd/data/dlogo.bmp")]);
+	auto dlogo = Target("initrd/data/dlogo.bmp", CompileCommand.copy, [Target("initrd/data/dlogo.bmp")]);
+	auto initrdFiles = Target.phony("initrd/", CompileCommand.nothing, [dlogo]);
 
-	auto initrd = Target("disk/boot/powernex-initrd.dsk", ToolCommand.makeInitrd, [initrdFiles], [userspacePrograms.init_,
-			userspacePrograms.login, userspacePrograms.shell, userspacePrograms.helloworld, userspacePrograms.cat]);
+	auto initrd = Target("disk/boot/powernex-initrd.dsk", ToolCommand.makeInitrd, [initrdFiles], [initrdFiles,
+			userspacePrograms.init_, userspacePrograms.login, userspacePrograms.shell, userspacePrograms.helloworld, userspacePrograms.cat]);
 
-	auto isoFiles = Target("disk/", CompileCommand.copy, [Target("disk/")], [Target("disk/boot/grub/grub.cfg")]);
-	auto powernexIso = Target(powerNexIsoName, CompileCommand.iso, [isoFiles], [loader.loader, kernel.kernel, /* initrdOld,*/ initrd,
-			kernel.map]);
+	auto grubCfg = Target("disk/boot/grub/grub.cfg", CompileCommand.copy, [Target("disk/boot/grub/grub.cfg")]);
+	auto isoFiles = Target.phony("disk/", CompileCommand.nothing, [grubCfg, loader.loader, kernel.kernel, /* initrdOld,*/ initrd, kernel.map]);
+	auto powernexIso = Target(powerNexIsoName, CompileCommand.iso, [isoFiles]);
 
 	return Build(powernexIso);
+}
+
+void empty(in string[] inputs, in string[] outputs) {
+
 }
