@@ -4,6 +4,11 @@ module object;
  * Functions and object specifications are from: https://dlang.org/phobos/object.html
  */
 
+///
+template from(string moduleName) {
+	mixin("import from = " ~ moduleName ~ ";");
+}
+
 alias string = immutable(char)[];
 alias size_t = ulong;
 alias hash_t = size_t;
