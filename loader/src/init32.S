@@ -52,6 +52,10 @@ start:
 	mov $welcomeMsg, %esi
 	call writeString
 
+1:
+	hlt
+	jmp 1b
+
 .longModeCheck:
 	# Check to check if we can check if x64 is supported
 	mov $0x80000000, %eax
@@ -263,4 +267,3 @@ x64NotSupported_msg:
 	.ascii "                                   or: powernex@vild.io                         "
 	.ascii "                                                                                "
 	.byte 0
-

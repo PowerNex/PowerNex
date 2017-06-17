@@ -23,3 +23,9 @@ start64:
 	1:
 		hlt
 		jmp 1b
+
+
+.global __dmd_personality_v0
+__dmd_personality_v0:
+	hlt
+	jmp __dmd_personality_v0

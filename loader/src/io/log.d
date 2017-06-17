@@ -11,9 +11,9 @@ enum LogLevel {
 }
 
 ///
-char toChar(LogLevel level) @safe {
+char toChar(LogLevel level) @trusted {
 	// dfmt off
-	static char[LogLevel.max + 1] data = [
+	__gshared static char[LogLevel.max + 1] data = [
 		LogLevel.verbose: '&',
 		LogLevel.debug_: '+',
 		LogLevel.info: '*',
