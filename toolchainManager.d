@@ -282,7 +282,7 @@ int main(string[] args) {
 				"tar xkJ --no-same-owner -C " ~ toolchainFolder, No.IgnoreStdOut, Yes.IgnoreStdErr);
 	}
 
-	normal("Saveing new version file...\n");
+	normal("Saving new version file...\n");
 	{
 		JSONValue data = ["dmdVersion" : newVI.dmdVersion, "binutilsVersion" : newVI.binutilsVersion];
 		fwrite(versionInfoFile, data.toString);
