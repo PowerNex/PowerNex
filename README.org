@@ -19,8 +19,9 @@ You can support the project in many ways.
  - Monthly donations: [[https://www.patreon.com/Wild][https://www.patreon.com/Wild]]
  - One time donations: [[https://www.paypal.me/Vild][https://www.paypal.me/Vild]]
 * Building
-It requires a crosscompiler, see link below for download.
-It uses a build system called [[https://github.com/atilaneves/reggae][reggae]].
+It requires a crosscompiler, which can be aquired by running `./toolchainManager.d`.
+PowerNex is using a build system called [[https://github.com/atilaneves/reggae][reggae]], which build scripts are
+outputted in a [[https://ninja-build.org/][ninja]] format.
 
 To enter the development environment run `source env.sh`.
 This adds shortcuts for building and running.
@@ -29,7 +30,6 @@ This adds shortcuts for building and running.
 - 'b' :: Compiles and runs PowerNex in qemu
 - 'a' :: Runs ~addr2line~ on the kernel
 
-[[https://definewild.se/PowerNex-Toolchain-03-10-2016.tar.xz][Prebuild toolchain (wild and compilers) for (Arch)Linux x64]]
 * System requirements
 - A 64bit processor
 - At least 128 MiB of ram (Probably work on less)

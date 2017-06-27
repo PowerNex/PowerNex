@@ -210,14 +210,17 @@ void downloadProgress(T = SaveFile, Args...)(string name, const(char)[] url, Arg
 	normal("\x1b[?25h\n");
 }
 
-
 int main(string[] args) {
 	static string versionMsg = "PowerNex's toolchain manager v" ~ major.to!string ~ "." ~ minor.to!string ~ "."
 		~ patch.to!string ~ "\n" ~ "Copyright © 2017, Dan Printzell - https://github.com/Vild/PowerNex";
 
-	auto helpInformation = getopt(args, "v|version", "Show the updaters version", &showVersion, "c|clean",
-			"Clean out the toolchain folder before starting", &clean, "noconfirm",
-			"Always choose the default answer to questions", &noconfirm);
+	// dfmt off
+	auto helpInformation = getopt(args,
+		"v|version", "Show the updaters version", &showVersion,
+		"c|clean", "Clean out the toolchain folder before starting", &clean,
+		"noconfirm", "Always choose the default answer to questions", &noconfirm
+	);
+	// dfmt on
 
 	if (helpInformation.helpWanted) {
 		defaultGetoptPrinter(versionMsg, helpInformation.options);
