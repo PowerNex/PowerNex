@@ -4,16 +4,15 @@ ENTRY(start)
 PHDRS {
 	text PT_LOAD PHDRS FILEHDR;
 	data PT_LOAD;
+	bss PT_LOAD;
 	tls PT_TLS;
-	eh_frame PT_GNU_EH_FRAME;
-	note PT_NOTE;
 }
 
 SECTIONS {
 	. = 1M;
 
 	.multiboot : {
-		LONG(0x0) /* To force the linker to but .multiboot first*/
+		LONG(0x0) /* To force the linker to put .multiboot first*/
 		*(.multiboot)
 	} :text
 
@@ -37,32 +36,13 @@ SECTIONS {
 		DTORS_END = .;
 	} :data
 
-	.data ALIGN(0x1000) : {
-		*(.data .data.*)
-	} :data
-
-	.bss ALIGN(0x1000) : {
-		*(.bss .bss.*)
-	}
-
 	.eh_frame ALIGN(0x1000) : {
 		*(.eh_frame .eh_frame.*)
 	} :data
 
-	.comment ALIGN(0x1000) : {
-		*(.comment .comment.*)
+	.data ALIGN(0x1000) : {
+		*(.data .data.*)
 	} :data
-
-	.loaderData ALIGN(0x1000) : {
-		pml4 = .; . += 0x1000;
-		pml3_0 = .; . += 0x1000;
-		pml2_0_0 = .; . += 0x1000;
-
-		stack_end = .; . += 0x1000; stack = .;
-		gdt = .; . += 0x1000;
-		gdtPointer = .; . += 16;
-		multibootPointer = .; multibootPointer += 8;
-	}
 
 	.tdata ALIGN(0x1000) :  {
 		TDATA_START = .;
@@ -75,6 +55,23 @@ SECTIONS {
 		*(.tbss .tbss.*)
 		TBSS_END = .;
 	} :tls
+
+	.bss ALIGN(0x1000) : {
+		*(.bss .bss.*)
+	} :bss
+
+	.loaderData ALIGN(0x1000) : {
+		loaderData_start = .;
+		*(.loaderData .loaderData.*)
+		loaderData_end = .;
+	} :bss
+
+	/DISCARD/ : {
+		*(.comment)
+		*(.note .note.*)
+		*(.rela.*)
+		*(.debug_*)
+	}
 
 	. = ALIGN(0x1000);
 	LOADER_END = .;

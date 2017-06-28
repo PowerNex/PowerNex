@@ -1467,11 +1467,23 @@ extern (C) {
 		_d_arraybounds(m.name, line);
 	}
 
+	void _d_arrayboundsp(immutable(char*) file, uint line) {
+		import data.text : strlen;
+
+		_d_arraybounds(file[0 .. strlen(file)], line);
+	}
+
 	void _d_arraybounds(string m, uint line) {
 		onAssert("Range error", m, line);
 	}
 
 	void _d_unittest() {
+	}
+
+	void _d_assertp(immutable(char)* file, uint line) {
+		import data.text : strlen;
+
+		onAssert("Assertion failure", file[0 .. strlen(file)], line);
 	}
 
 	void _d_assertm(ModuleInfo* m, uint line) {
@@ -1613,5 +1625,24 @@ extern (C) {
 			}
 		}
 		assert(0);
+	}
+
+	byte[] _d_arraycopy(size_t size, byte[] from, byte[] to) {
+		if (to.length != from.length) {
+			assert(0, "lengths don't match for array copy");
+		} else if (to.ptr + to.length * size <= from.ptr || from.ptr + from.length * size <= to.ptr) {
+			size_t s = to.length * size;
+			byte* b1 = from.ptr;
+			byte* b2 = to.ptr;
+			while (s) {
+				*b2 = *b1;
+				++b2;
+				++b1;
+				--s;
+			}
+		} else {
+			assert(0, "overlapping array copy");
+		}
+		return to;
 	}
 }

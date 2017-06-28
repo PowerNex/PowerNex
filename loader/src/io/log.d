@@ -26,24 +26,8 @@ char toChar(LogLevel level) @trusted {
 	return data[level];
 }
 
-@safe struct Log {
-	private struct SymbolDef {
-	align(1):
-		ulong start;
-		ulong end;
-		ulong nameLength;
-	}
-
-	private struct SymbolMap {
-	align(1):
-		char[4] magic;
-		ulong count;
-		SymbolDef symbols;
-	}
-
-	private int _indent;
-	private bool _enabled;
-	private SymbolMap* _symbols;
+@trusted static struct Log {
+public static:
 
 	// XXX: Page fault if this is not wrapped like this!
 	static ulong seconds() {
@@ -55,11 +39,6 @@ char toChar(LogLevel level) @trusted {
 
 	void init() {
 		_indent = 0;
-		_enabled = true;
-	}
-
-	@property ref bool enabled() return  {
-		return _enabled;
 	}
 
 	void setSymbolMap(from!"data.address".VirtAddress address) @trusted {
@@ -78,16 +57,15 @@ char toChar(LogLevel level) @trusted {
 	void log(Args...)(LogLevel level, string file, string func, int line, Args args) {
 		import io.com : com1;
 		import data.text : itoa, BinaryInt;
-		import util.trait : Unqual, enumMembers;
+		import util.trait : Unqual, enumMembers, isNumber, isFloating;
+		import data.address : VirtAddress, PhysAddress, PhysAddress32;
 
 		char[ulong.sizeof * 8] buf;
-		if (!_enabled)
-			return;
 		for (int i = 0; i < _indent; i++)
 			com1.write(' ');
 
 		com1.write('[', itoa(seconds(), buf, 10), ']');
-		com1.write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
+		com1.write('[', level.toChar, "] ", file /*, ": ", func*/ , '@');
 
 		com1.write(itoa(line, buf, 10));
 		com1.write("> ");
@@ -159,7 +137,25 @@ char toChar(LogLevel level) @trusted {
 		_printStackTrace(rbp, skipFirst);
 	}
 
-private:
+private static:
+
+	private struct SymbolDef {
+	align(1):
+		ulong start;
+		ulong end;
+		ulong nameLength;
+	}
+
+	private struct SymbolMap {
+	align(1):
+		char[4] magic;
+		ulong count;
+		SymbolDef symbols;
+	}
+
+	__gshared int _indent;
+	__gshared SymbolMap* _symbols;
+
 	static string _helperFunctions() {
 		if (!__ctfe)
 			return "";
@@ -239,10 +235,6 @@ private:
 			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
 	}
-
 }
 
-ref Log log() {
-	__gshared Log instance;
-	return instance;
-}
+deprecated alias log = Log;

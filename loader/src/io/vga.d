@@ -59,13 +59,19 @@ enum CGAColor {
 }
 
 ///
-@safe struct VGA {
-public:
+@trusted static struct VGA {
+public static:
+	void init() {
+		_screen = cast(CGAVideoSlot[80 * 25]*)0xB8000;
+		_y = 1; // Because of the line that was written from init32.S
+		_color = CGASlotColor(CGAColor.yellow, CGAColor.black);
+	}
 	///
-	void clear() {
+	void clear() @trusted {
 		foreach (ref slot; *_screen)
-			slot = CGAVideoSlot(' ', _color);
+			slot = CGAVideoSlot('\x02', _color);
 		_x = _y = 0;
+		_moveCursor();
 	}
 
 	///
@@ -120,12 +126,12 @@ public:
 		return _color;
 	}
 
-private:
-	CGAVideoSlot[80 * 25]* _screen = (() @trusted => cast(CGAVideoSlot[80 * 25]*)0xB8000)();
-	ubyte _x;
-	ubyte _y = 1; // Because of the line that was written from init32.S
-	CGASlotColor _color = CGASlotColor(CGAColor.yellow, CGAColor.black);
-	int _blockCursor;
+private static:
+	__gshared CGAVideoSlot[80 * 25]* _screen;
+	__gshared ubyte _x;
+	__gshared ubyte _y;
+	__gshared CGASlotColor _color;
+	__gshared int _blockCursor;
 
 	void _moveCursor() {
 		import io.ioport : outp;
@@ -221,11 +227,6 @@ private:
 		_write(")");
 		_writeNumber(cast(int)value, 10);
 	}
-
 }
 
-/// The global instance of the VGA object
-@trusted ref VGA screen() {
-	__gshared VGA instance;
-	return instance;
-}
+deprecated alias screen = VGA;

@@ -295,11 +295,19 @@ extern (C) {
 		_d_arraybounds(m.name, line);
 	}
 
+	void _d_arrayboundsp(immutable(char*) file, uint line) {
+		_d_arraybounds(file[0 .. strlen(file)], line);
+	}
+
 	void _d_arraybounds(string m, uint line) {
 		throw new Error("Range error", m, line);
 	}
 
 	void _d_unittest() {
+	}
+
+	void _d_assertp(immutable(char)* file, uint line) {
+		onAssert("Assertion failure", file[0 .. strlen(file)], line);
 	}
 
 	void _d_assertm(ModuleInfo* m, uint line) {

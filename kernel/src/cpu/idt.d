@@ -125,7 +125,7 @@ private:
 	}
 
 	static template _generateJump(ulong id, bool hasError = false) {
-		const char[] _generateJump = `
+		enum _generateJump = `
 			static void isr` ~ id.stringof[0 .. $ - 2] ~ `() {
 				asm pure nothrow {
 					naked;
@@ -141,22 +141,22 @@ private:
 
 	static template _generateJumps(ulong from, ulong to, bool hasError = false) {
 		static if (from <= to)
-			const char[] _generateJumps = _generateJump!(from, hasError) ~ _generateJumps!(from + 1, to, hasError);
+			enum _generateJumps = _generateJump!(from, hasError) ~ _generateJumps!(from + 1, to, hasError);
 		else
-			const char[] _generateJumps = "";
+			enum _generateJumps = "";
 	}
 
 	static template _addJump(ulong id) {
-		const char[] _addJump = `
+		enum _addJump = `
 			_add(` ~ id.stringof[0 .. $ - 2] ~ `, SystemSegmentType.interruptGate, cast(ulong)&isr`
 			~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
 	}
 
 	static template _addJumps(ulong from, ulong to) {
 		static if (from <= to)
-			const char[] _addJumps = _addJump!from ~ _addJumps!(from + 1, to);
+			enum _addJumps = _addJump!from ~ _addJumps!(from + 1, to);
 		else
-			const char[] _addJumps = "";
+			enum _addJumps = "";
 	}
 
 	mixin(_generateJumps!(0, 7));

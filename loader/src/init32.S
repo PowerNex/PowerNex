@@ -22,24 +22,44 @@ multiboot2HeaderEnd:
 .text
 .code32
 
-// Linker storage
+.global loaderData_start
+.global loaderData_end
+
 .global pml4
 .global pml3_0
 .global pml2_0_0
 
-.global stack
 .global gdt
 .global gdtPointer
 .global multibootPointer
 
-
-// External files
+# External files
 .global start64
 
 .global start
 start:
+	xchg %bx, %bx
+
 	cli
 	mov $stack, %esp
+	push %eax # Magic
+	push %ebx # Struct
+
+.zeroLoaderData:
+	mov $loaderData_end, %eax
+	sub $loaderData_start, %eax
+	mov $4, %edi
+	div %edi # 4bytes / loop
+	mov %eax, %ecx
+
+	mov $loaderData_start, %edi
+	xor %eax, %eax
+	repnz
+	stosl
+
+.init:
+	pop %ebx # Struct
+	pop %eax # Magic
 
 	cmp $0x36d76289, %eax
 	jne invalidMagic
@@ -47,14 +67,10 @@ start:
 	mov %ebx, multibootPointer
 
 .helloWorld:
-	mov $0x0E, %ah // Color
-	mov $0xB8000, %edi // Pos
+	mov $0x0E, %ah # Color
+	mov $0xB8000, %edi # Pos
 	mov $welcomeMsg, %esi
 	call writeString
-
-1:
-	hlt
-	jmp 1b
 
 .longModeCheck:
 	# Check to check if we can check if x64 is supported
@@ -70,9 +86,9 @@ start:
 		jz notX64Capable
 
 .setupGDT:
-	movl $0x0000FFFF, (gdt + 8 * 1) // gdtCode64
+	movl $0x0000FFFF, (gdt + 8 * 1) # gdtCode64
 	movl $0x00AF9A00, (gdt + 8 * 1 + 4)
-	movl $0x0000FFFF, (gdt + 8 * 2) // gdtData64
+	movl $0x0000FFFF, (gdt + 8 * 2) # gdtData64
 	movl $0x00AF9200, (gdt + 8 * 2 + 4)
 
 	mov $gdtPointer, %esi
@@ -87,18 +103,28 @@ start:
 
 	movl $(pml3_0 + 0x3), pml4 + 0 * 8
 	movl $(pml2_0_0 + 0x3), pml3_0 + 0 * 8
+	movl $(pml1_0_0_X + 0x3), pml2_0_0 + 0 * 8
 
-	movl $pml2_0_0, %edi
-	movl $0x83, %esi
-	movl $512, %ecx
+	movl $(pml2_0_0 + 0 * 8), %edi
+	movl $(pml1_0_0_X + 0x3), %esi
+	movl $8, %ecx
 	1:
 		movl %esi, (%edi)
-		addl $0x400000, %esi
+		addl $0x1000, %esi
+		addl $0x8, %edi
+		loop 1b
+
+	# Skip nullpage
+	movl $(pml1_0_0_X + 8), %edi
+	movl $(0x1000 + 0x003), %esi
+	movl $(8 * 512 - 1), %ecx
+	1:
+		movl %esi, (%edi)
+		addl $0x1000, %esi
 		addl $0x8, %edi
 		loop 1b
 
 	movl $(pml4 + 0x3), pml4 + 509 * 8
-	xchg %bx, %bx
 
 .enablePaging:
 	# Enable PAE
@@ -164,8 +190,8 @@ start:
 	jmp .end
 
 invalidMagic:
-	mov $0x4E, %ah // Color
-	mov $0xB8000, %edi // Pos
+	mov $0x4E, %ah # Color
+	mov $0xB8000, %edi # Pos
 	mov $invalidMagicMsg, %esi
 	call writeString
 	jmp .end
@@ -230,8 +256,8 @@ invalidMagicMsg:
 	.ascii "                  * GRUB2      - gnu.org/software/grub                          "
 	.ascii "                                                                                "
 	.ascii "                                                                                "
-	.ascii "                  If you believe that you should see this                       "
-	.ascii "                  message because of an error.                                  "
+	.ascii "                  If you believe that you saw this message                      "
+	.ascii "                  because of an error.                                          "
 	.ascii "                  Please report it to: powernexos.org                           "
 	.ascii "                                   or: powernex@vild.io                         "
 	.ascii "                                                                                "
@@ -261,9 +287,17 @@ x64NotSupported_msg:
 	.ascii "                  * VirtualBox - virtualbox.org                                 "
 	.ascii "                                                                                "
 	.ascii "                                                                                "
-	.ascii "                  If you believe that you should see this                       "
-	.ascii "                  message because of an error.                                  "
+	.ascii "                  If you believe that you saw this message                      "
+	.ascii "                  because of an error.                                          "
 	.ascii "                  Please report it to: powernexos.org                           "
 	.ascii "                                   or: powernex@vild.io                         "
 	.ascii "                                                                                "
 	.byte 0
+
+
+.bss
+.global stack_end
+.global stack
+stack_end:
+	.space 0x1000
+stack:

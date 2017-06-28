@@ -1,10 +1,10 @@
 .text
 .code64
 .SET userCS, 0x18 | 0x3
-.SET kernelStack, 632//Process.image.offsetof + ImageInformation.kernelStack.offsetof
+.SET kernelStack, 632#Process.image.offsetof + ImageInformation.kernelStack.offsetof
 
 .global _onSyscallHandler
-.global _currentProcess // It is of the type SharedPtr!Process, we need to deref it to get the object
+.global _currentProcess # It is of the type SharedPtr!Process, we need to deref it to get the object
 
 .global onSyscall
 .type onSyscall, %function
@@ -14,14 +14,14 @@ onSyscall:
 	movq kernelStack(%rsp), %rsp
 	push (userStack)
 
-	push $(userCS + 8) // SS
-	push (userStack) // RSP
-	push %r11 // Flags
-	push $(userCS) // CS
-	push %rcx // RIP
+	push $(userCS + 8) # SS
+	push (userStack) # RSP
+	push %r11 # Flags
+	push $(userCS) # CS
+	push %rcx # RIP
 
-	push $0 // ErrorCode
-	push $0x80 // IntNumber
+	push $0 # ErrorCode
+	push $0x80 # IntNumber
 
 	push %rax
 	push %rbx
@@ -69,5 +69,5 @@ returnFromSyscall:
 	sysretq
 .size returnFromSyscall, .-returnFromSyscall
 .bss
-userStack: .long 1
-userRIP: .long 1
+userStack: .long 0
+userRIP: .long 0
