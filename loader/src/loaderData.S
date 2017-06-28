@@ -9,9 +9,9 @@ pml3_0:
 .global pml2_0_0
 pml2_0_0:
 	.space 0x1000
-.global pml1_0_0_X
-pml1_0_0_X:
-	.space 8 * 0x1000
+.global pml1_0_0_0
+pml1_0_0_0:
+	.space 0x1000
 
 .global gdt
 gdt:

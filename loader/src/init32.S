@@ -22,17 +22,6 @@ multiboot2HeaderEnd:
 .text
 .code32
 
-.global loaderData_start
-.global loaderData_end
-
-.global pml4
-.global pml3_0
-.global pml2_0_0
-
-.global gdt
-.global gdtPointer
-.global multibootPointer
-
 # External files
 .global start64
 
@@ -42,24 +31,6 @@ start:
 
 	cli
 	mov $stack, %esp
-	push %eax # Magic
-	push %ebx # Struct
-
-.zeroLoaderData:
-	mov $loaderData_end, %eax
-	sub $loaderData_start, %eax
-	mov $4, %edi
-	div %edi # 4bytes / loop
-	mov %eax, %ecx
-
-	mov $loaderData_start, %edi
-	xor %eax, %eax
-	repnz
-	stosl
-
-.init:
-	pop %ebx # Struct
-	pop %eax # Magic
 
 	cmp $0x36d76289, %eax
 	jne invalidMagic
@@ -103,25 +74,26 @@ start:
 
 	movl $(pml3_0 + 0x3), pml4 + 0 * 8
 	movl $(pml2_0_0 + 0x3), pml3_0 + 0 * 8
-	movl $(pml1_0_0_X + 0x3), pml2_0_0 + 0 * 8
+	movl $(pml1_0_0_0 + 0x3), pml2_0_0 + 0 * 8
 
-	movl $(pml2_0_0 + 0 * 8), %edi
-	movl $(pml1_0_0_X + 0x3), %esi
-	movl $8, %ecx
+	# Skip nullpage
+	movl $(pml1_0_0_0 + 8), %edi
+	movl $(0x1000 + 0x003), %esi
+	movl $(512 - 1), %ecx
 	1:
 		movl %esi, (%edi)
 		addl $0x1000, %esi
 		addl $0x8, %edi
 		loop 1b
 
-	# Skip nullpage
-	movl $(pml1_0_0_X + 8), %edi
-	movl $(0x1000 + 0x003), %esi
-	movl $(8 * 512 - 1), %ecx
+	# 2MiB rest of pages
+	movl $(pml2_0_0 + 8), %edi
+	movl $(0x200000 + 0x83), %esi
+	movl $511, %ecx
 	1:
 		movl %esi, (%edi)
-		addl $0x1000, %esi
-		addl $0x8, %edi
+		add $0x200000, %esi
+		add $0x8, %edi
 		loop 1b
 
 	movl $(pml4 + 0x3), pml4 + 509 * 8
