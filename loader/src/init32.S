@@ -57,16 +57,16 @@ start:
 		jz notX64Capable
 
 .setupGDT:
-	movl $0x0000FFFF, (gdt + 8 * 1) # gdtCode64
-	movl $0x00AF9A00, (gdt + 8 * 1 + 4)
-	movl $0x0000FFFF, (gdt + 8 * 2) # gdtData64
-	movl $0x00AF9200, (gdt + 8 * 2 + 4)
+	movl $0x0000FFFF, (gdtDescriptors + 8 * 1) # gdtCode64
+	movl $0x00AF9A00, (gdtDescriptors + 8 * 1 + 4)
+	movl $0x0000FFFF, (gdtDescriptors + 8 * 2) # gdtData64
+	movl $0x00AF9200, (gdtDescriptors + 8 * 2 + 4)
 
-	mov $gdtPointer, %esi
+	mov $gdtBase, %esi
 	movw $(3 * 8 - 1), (%esi)
 
-	movl $gdt, (gdtPointer + 2)
-	movl $0, (gdtPointer + 2 + 4)
+	movl $gdtDescriptors, (gdtBase + 2)
+	movl $0, (gdtBase + 2 + 4)
 
 .setupPaging:
 	mov $pml4, %eax
@@ -154,7 +154,7 @@ start:
 	out %al, $SlaveData
 
 .jumpMain:
-	lgdt (gdtPointer)
+	lgdt (gdtBase)
 	ljmp $0x8, $start64
 
 .end:

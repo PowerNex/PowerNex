@@ -91,25 +91,26 @@ enum GDTSystemType : ubyte {
 
 private extern (C) void cpuRefreshIREQ();
 
+private __gshared extern (C) GDTBase gdtBase;
+private __gshared extern (C) GDTDescriptor[256] gdtDescriptors;
+
 ///
 static struct GDT {
 public:
-	__gshared GDTBase base; ///
-	__gshared GDTDescriptor[256] descriptors; ///
 	//__gshared TSS tss;///
 	//__gshared ushort tssID;///
 
 	///
 	static void init() {
-		base.limit = cast(ushort)(_setupTable() * GDTDescriptor.sizeof - 1);
-		base.base = cast(ulong)descriptors.ptr;
+		gdtBase.limit = cast(ushort)(_setupTable() * GDTDescriptor.sizeof - 1);
+		gdtBase.base = cast(ulong)gdtDescriptors.ptr;
 
 		flush();
 	}
 
 	///
 	static void flush() {
-		void* baseAddr = cast(void*)(&base);
+		void* baseAddr = cast(void*)(&gdtBase);
 		//ushort id = cast(ushort)(tssID * GDTDescriptor.sizeof);
 		asm pure nothrow {
 			mov RAX, baseAddr;
@@ -121,13 +122,13 @@ public:
 
 	///
 	static void setNull(size_t index) {
-		descriptors[index].value = 0;
+		gdtDescriptors[index].value = 0;
 	}
 
 	///
 	static void setCode(size_t index, bool conforming, ubyte dpl_, bool present) {
-		descriptors[index].code = GDTCodeDescriptor.init;
-		with (descriptors[index].code) {
+		gdtDescriptors[index].code = GDTCodeDescriptor.init;
+		with (gdtDescriptors[index].code) {
 			c = conforming;
 			dpl = dpl_;
 			p = present;
@@ -138,8 +139,8 @@ public:
 
 	///
 	static void setData(uint index, bool present, ubyte dpl_) {
-		descriptors[index].data = GDTDataDescriptor.init;
-		with (descriptors[index].data) {
+		gdtDescriptors[index].data = GDTDataDescriptor.init;
+		with (gdtDescriptors[index].data) {
 			p = present;
 			dpl = dpl_;
 		}
@@ -147,16 +148,16 @@ public:
 
 	/*///
 	static void setTSS(uint index, ref TSS tss) {
-		descriptors[index].tss1 = TSSDescriptor1(tss);
-		descriptors[index + 1].tss2 = TSSDescriptor2(tss);
+		gdtDescriptors[index].tss1 = TSSDescriptor1(tss);
+		gdtDescriptors[index + 1].tss2 = TSSDescriptor2(tss);
 	}*/
 
 	///
 	void setSystem(uint index, uint limit, ulong base, GDTSystemType segType, ubyte dpl_, bool present, bool avail, bool granularity) {
-		descriptors[index].systemLow = GDTSystemDescriptor.init;
-		descriptors[index + 1].systemHigh = GDTSystemExtension.init;
+		gdtDescriptors[index].systemLow = GDTSystemDescriptor.init;
+		gdtDescriptors[index + 1].systemHigh = GDTSystemExtension.init;
 
-		with (descriptors[index].systemLow) {
+		with (gdtDescriptors[index].systemLow) {
 			baseLow = (base & 0xFFFF);
 			baseMiddleLow = (base >> 16) & 0xFF;
 			baseMiddleHigh = (base >> 24) & 0xFF;
@@ -171,7 +172,7 @@ public:
 			g = granularity;
 		}
 
-		descriptors[index + 1].systemHigh.baseHigh = (base >> 32) & 0xFFFFFFFF;
+		gdtDescriptors[index + 1].systemHigh.baseHigh = (base >> 32) & 0xFFFFFFFF;
 	}
 
 private:
