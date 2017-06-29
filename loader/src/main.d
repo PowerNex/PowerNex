@@ -31,5 +31,40 @@ extern (C) ulong main() @safe {
 
 	APIInfo.init();
 
+	// Multiboot2.init();
+
+	// Paging.init();
+	// Heap.init();
+
+	// ACPI.init();
+	// IOAPIC.init();
+
+	// auto kernelModule = Multiboot.getKernel();
+	// Kernel.verify(kernelModule);
+	// ELF64 kernelELF = ELF64(kernel);
+	// kernel = Kernel.process(kernelELF);
+
+	// LAPIC.init();
+	// IOAPIC.setup();
+	// PIC.init();
+
+	// LAPIC.calibrate();
+
+	// Init data
+	// SMP.init();
+
+	// IDT.setup(kernel.idtSettings); ?
+	// IOAPIC.setup(kernel.idtSettings); ?
+
+	// Syscall.init();
+
+	// Paging.map(kernel);
+
+	// Setup more info data
+	// freeData = Heap.lastAddress(); ?
+
+	// Turn on AP
+	// kernel.jmp();
+
 	return 0;
 }
