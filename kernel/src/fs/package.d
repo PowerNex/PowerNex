@@ -6,7 +6,7 @@ public {
 
 import memory.ptr;
 
-SharedPtr!VNode findNode(scope SharedPtr!VNode startNode, in string path) {
+SharedPtr!VNode findNode(SharedPtr!VNode startNode, in string path) {
 	import kmain: rootFS; //TODO:
 	import data.string_ : indexOf;
 	import io.log : log;

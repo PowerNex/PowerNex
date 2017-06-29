@@ -17,16 +17,17 @@ enum CompileCommand : string {
 	ungzip = "gzip -d -c $in > $out",
 
 	loader_ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
-	loader_dc = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -debug -c -g -Iloader/src -I" ~ objDir ~ "/loader/src -Jloader/src -J" ~ objDir ~ "/loader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/loader -X -Xfdocs-loader.json -of$out $in",
+	loader_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -debug -c -g -version=PowerD -Iloader/src -I" ~ objDir ~ "/loader/src -Jloader/src -J" ~ objDir ~ "/loader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/loader -X -Xfdocs-loader.json -of$out $in",
+	loader_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -IIloader/src -I" ~ objDir ~ "/Iloader/src -JIloader/src -J" ~ objDir ~ "/Iloader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
 	loader_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T loader/src/loader.ld -nostdlib --gc-sections",
 
 	//TODO: change back -dw to -de, re-add -vgc?
-	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/kernel -X -Xfdocs-kernel.json -of$out $in",
-	kernel_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
+	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/kernel -X -Xfdocs-kernel.json -of$out $in",
+	kernel_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
 	kernel_ac = "cc/bin/x86_64-powernex-as --divide --64 -o $out $in",
 	kernel_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T kernel/src/kernel.ld",
 
-	user_dc = "cc/bin/powernex-dmd -m64 -dip25 -de -color=on -debug -c -g -Iuserspace/librt/src -Iuserspace/libpowernex/src -I" ~ objDir ~ "/userspace/librt/src -I" ~ objDir ~ "/userspace/libpowernex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in",
+	user_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -de -color=on -debug -c -g -Iuserspace/librt/src -Iuserspace/libpowernex/src -I" ~ objDir ~ "/userspace/librt/src -I" ~ objDir ~ "/userspace/libpowernex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in",
 	user_dc_e = "cc/bin/powernex-dmd -m64 -dip25 -de -color=on -debug -g -Iuserspace/librt/src -Iuserspace/libpowernex/src -I" ~ objDir ~ "/userspace/librt/src -I" ~ objDir ~ "/userspace/libpowernex/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -of$out $in",
 	user_ac = "cc/bin/x86_64-powernex-as --divide --64 -o $out $in",
 	user_ar = "cc/bin/x86_64-powernex-ar rcs $out $in",
@@ -64,11 +65,13 @@ class UtilsPrograms {
 }
 
 class Loader {
+	//Target apiBaseDi;
 	Target loaderAObj;
 	Target loaderDObj;
 	Target loader;
 
 	this() {
+		//apiBaseDi = Target("kernel/base.di", CompileCommand.loader_dc_header, [Target("loader/src/api/base.d")]);
 		loaderAObj = Target("loader/obj/acode.o", CompileCommand.loader_ac, mapSources("loader/", "*.S"));
 		loaderDObj = Target("loader/obj/dcode.o", CompileCommand.loader_dc, mapSources("loader/"));
 		loader = Target("disk/boot/powerd.ldr", CompileCommand.loader_ld, [loaderAObj, loaderDObj]);
