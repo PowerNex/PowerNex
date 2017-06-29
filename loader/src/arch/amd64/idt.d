@@ -230,8 +230,8 @@ private:
 	}
 
 	extern (C) static void isrHandler(from!"data.register".Registers* regs) @trusted {
-		import io.vga : screen, CGASlotColor, CGAColor;
-		import io.log : log;
+		import io.vga : VGA, CGASlotColor, CGAColor;
+		import io.log : Log;
 		import io.ioport : outp;
 
 		regs.intNumber &= 0xFF;
@@ -245,23 +245,23 @@ private:
 			handler(regs);
 		else
 			with (regs) {
-				screen.color = CGASlotColor(CGAColor.red, CGAColor.black);
-				screen.writeln("===> UNCAUGHT INTERRUPT");
-				screen.writeln("IRQ = ", cast(InterruptType)intNumber, " | RIP = ", cast(void*)rip);
-				screen.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
-				screen.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
-				screen.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
-				screen.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
-				screen.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
-				screen.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
-				screen.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
-				screen.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
-				screen.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
-				screen.writeln(" CR2 = ", cast(void*)cr2);
-				screen.writeln("Flags: ", cast(void*)flags);
-				screen.writeln("Errorcode: ", cast(void*)errorCode);
+				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+				VGA.writeln("===> UNCAUGHT INTERRUPT");
+				VGA.writeln("IRQ = ", cast(InterruptType)intNumber, " | RIP = ", cast(void*)rip);
+				VGA.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
+				VGA.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
+				VGA.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
+				VGA.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
+				VGA.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
+				VGA.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
+				VGA.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
+				VGA.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
+				VGA.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
+				VGA.writeln(" CR2 = ", cast(void*)cr2);
+				VGA.writeln("Flags: ", cast(void*)flags);
+				VGA.writeln("Errorcode: ", cast(void*)errorCode);
 
-				log.fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", cast(InterruptType)intNumber, " | RIP = ",
+				Log.fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", cast(InterruptType)intNumber, " | RIP = ",
 						cast(void*)rip, "\n", "RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n", "RCX = ",
 						cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n", "RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi,
 						"\n", "RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n", " R8 = ", cast(void*)r8, "  |  R9 = ",

@@ -236,5 +236,3 @@ private static:
 		}
 	}
 }
-
-deprecated alias log = Log;

@@ -23,6 +23,6 @@ gdtPointer:
 multibootPointer:
 	.space 8
 
-.global powerDInfo
-powerDInfo:
+.global powerDHeader
+powerDHeader:
 	.space 64

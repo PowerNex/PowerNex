@@ -228,5 +228,3 @@ private static:
 		_writeNumber(cast(int)value, 10);
 	}
 }
-
-deprecated alias screen = VGA;
