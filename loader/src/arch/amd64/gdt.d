@@ -3,14 +3,14 @@ module arch.amd64.gdt;
 //import cpu.tss;
 
 ///
-align(1) struct GDTBase {
+align(1) @trusted struct GDTBase {
 align(1):
 	ushort limit; ///
 	ulong base; ///
 }
 
 ///
-struct GDTCodeDescriptor {
+@trusted struct GDTCodeDescriptor {
 align(1):
 	import data.bitfield;
 
@@ -26,7 +26,7 @@ align(1):
 }
 
 ///
-struct GDTDataDescriptor {
+@trusted struct GDTDataDescriptor {
 align(1):
 	import data.bitfield;
 
@@ -41,7 +41,7 @@ align(1):
 }
 
 ///
-struct GDTSystemDescriptor {
+@trusted struct GDTSystemDescriptor {
 align(1):
 	import data.bitfield;
 
@@ -57,14 +57,14 @@ align(1):
 }
 
 ///
-struct GDTSystemExtension {
+@trusted struct GDTSystemExtension {
 align(1):
 	uint baseHigh; ///
 	private uint reserved;
 }
 
 ///
-union GDTDescriptor {
+@trusted union GDTDescriptor {
 align(1):
 	GDTDataDescriptor data; ///
 	GDTCodeDescriptor code; ///
@@ -91,17 +91,17 @@ enum GDTSystemType : ubyte {
 
 private extern (C) void cpuRefreshIREQ();
 
-private __gshared extern (C) GDTBase gdtBase;
-private __gshared extern (C) GDTDescriptor[256] gdtDescriptors;
+private extern extern (C) __gshared GDTBase gdtBase;
+private extern extern (C) __gshared GDTDescriptor[256] gdtDescriptors;
 
 ///
-static struct GDT {
-public:
+@safe static struct GDT {
+public static:
 	//__gshared TSS tss;///
 	//__gshared ushort tssID;///
 
 	///
-	static void init() {
+	void init() {
 		gdtBase.limit = cast(ushort)(_setupTable() * GDTDescriptor.sizeof - 1);
 		gdtBase.base = cast(ulong)gdtDescriptors.ptr;
 
@@ -109,8 +109,9 @@ public:
 	}
 
 	///
-	static void flush() {
-		void* baseAddr = cast(void*)(&gdtBase);
+	void flush() @trusted {
+		// NOTE: Needs '.' because it need to grab the extern variable not the @property function.
+		void* baseAddr = cast(void*)(&.gdtBase);
 		//ushort id = cast(ushort)(tssID * GDTDescriptor.sizeof);
 		asm pure nothrow {
 			mov RAX, baseAddr;
@@ -121,12 +122,12 @@ public:
 	}
 
 	///
-	static void setNull(size_t index) {
+	void setNull(size_t index) {
 		gdtDescriptors[index].value = 0;
 	}
 
 	///
-	static void setCode(size_t index, bool conforming, ubyte dpl_, bool present) {
+	void setCode(size_t index, bool conforming, ubyte dpl_, bool present) {
 		gdtDescriptors[index].code = GDTCodeDescriptor.init;
 		with (gdtDescriptors[index].code) {
 			c = conforming;
@@ -138,7 +139,7 @@ public:
 	}
 
 	///
-	static void setData(uint index, bool present, ubyte dpl_) {
+	void setData(uint index, bool present, ubyte dpl_) {
 		gdtDescriptors[index].data = GDTDataDescriptor.init;
 		with (gdtDescriptors[index].data) {
 			p = present;
@@ -147,7 +148,7 @@ public:
 	}
 
 	/*///
-	static void setTSS(uint index, ref TSS tss) {
+	void setTSS(uint index, ref TSS tss) {
 		gdtDescriptors[index].tss1 = TSSDescriptor1(tss);
 		gdtDescriptors[index + 1].tss2 = TSSDescriptor2(tss);
 	}*/
@@ -175,8 +176,16 @@ public:
 		gdtDescriptors[index + 1].systemHigh.baseHigh = (base >> 32) & 0xFFFFFFFF;
 	}
 
-private:
-	static ushort _setupTable() {
+	@property ref GDTBase gdtBase() @trusted {
+		return .gdtBase;
+	}
+
+	@property ref GDTDescriptor[256] gdtDescriptors() @trusted {
+		return .gdtDescriptors;
+	}
+
+private static:
+	ushort _setupTable() {
 		ushort idx = 0;
 		setNull(idx++);
 		// Kernel

@@ -13,12 +13,14 @@ pml2_0_0:
 pml1_0_0_0:
 	.space 0x1000
 
-.global gdt
-gdt:
+.global gdtDescriptors
+gdtDescriptors:
 	.space 0x1000
-.global gdtPointer
-gdtPointer:
+
+.global gdtBase
+gdtBase:
 	.space 16
+
 .global multibootPointer
 multibootPointer:
 	.space 8

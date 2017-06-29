@@ -137,9 +137,9 @@ private:
 			static void isr` ~ id.stringof[0 .. $ - 2] ~ `() @trusted {
 				asm pure nothrow {
 					naked;
-					` ~ (hasError ? ""
-				: "push 0UL;") ~ `
-					push ` ~ id.stringof ~ `;
+					` ~ (hasError ? "" : "push 0UL;") ~ `
+					push `
+				~ id.stringof ~ `;
 
 					jmp isrCommon;
 				}
@@ -157,7 +157,7 @@ private:
 	static template _addJump(ulong id) {
 		enum _addJump = `
 			_add(` ~ id.stringof[0 .. $ - 2] ~ `, SystemSegmentType.interruptGate, cast(ulong)&isr`
-			~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
+				~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
 	}
 
 	static template _addJumps(ulong from, ulong to) {
