@@ -26,10 +26,11 @@ char toChar(LogLevel level) @trusted {
 	return data[level];
 }
 
+///
 @trusted static struct Log {
 public static:
 
-	// XXX: Page fault if this is not wrapped like this!
+	/// XXX: Page fault if this is not wrapped like this!
 	static ulong seconds() {
 		return 0;
 		/*import hw.cmos.cmos : CMOS;
@@ -37,10 +38,12 @@ public static:
 		return CMOS.timeStamp();*/
 	}
 
+	///
 	void init() {
 		_indent = 0;
 	}
 
+///
 	void setSymbolMap(from!"data.address".VirtAddress address) @trusted {
 		import data.address : VirtAddress;
 
@@ -50,10 +53,12 @@ public static:
 		_symbols = map;
 	}
 
+///
 	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(LogLevel level, Args args) {
 		log(level, file, func, line, args);
 	}
 
+///
 	void log(Args...)(LogLevel level, string file, string func, int line, Args args) {
 		import io.com : com1;
 		import data.text : itoa, BinaryInt;
@@ -94,7 +99,7 @@ public static:
 				com1.write(itoa(cast(ulong)arg.num, buf, 16));
 			} else static if (is(T == bool))
 				com1.write((arg) ? "true" : "false");
-			else static if (is(T : char))
+			else static if (is(T == char))
 				com1.write(arg);
 			else static if (isNumber!T)
 				com1.write(itoa(arg, buf, 10));
@@ -125,8 +130,10 @@ public static:
 		}
 	}
 
+	///
 	mixin(_helperFunctions());
 
+	///
 	void printStackTrace(bool skipFirst = false) @trusted {
 		import data.address : VirtAddress;
 

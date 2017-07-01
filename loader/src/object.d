@@ -1498,12 +1498,13 @@ extern (C) {
 		onAssert(msg, file, line);
 	}
 
+	void _d_switch_error(immutable(object.ModuleInfo)* m, uint line) {
+		onAssert("Switch assertion failure", m.name, line);
+	}
+
 	private void onAssert(string msg, string file, uint line) {
-		asm pure nothrow {
-		forever:
-			hlt;
-			jmp forever;
-		}
+		import io.log : Log, LogLevel;
+		Log.log(LogLevel.fatal, file, "", line, msg);
 	}
 
 	deprecated Object _d_newclass(const ClassInfo ci) {

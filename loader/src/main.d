@@ -16,6 +16,7 @@ extern (C) ulong main() @safe {
 	import api : APIInfo;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
+	import data.multiboot2 : Multiboot2;
 	import io.vga : VGA;
 	import io.log : Log;
 
@@ -30,7 +31,8 @@ extern (C) ulong main() @safe {
 
 	APIInfo.init();
 
-	// Multiboot2.init();
+	// TODO: Implement alternative UEFI loading
+	Multiboot2.init();
 
 	// Paging.init();
 	// Heap.init();
