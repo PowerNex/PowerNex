@@ -12,8 +12,9 @@ pipeline {
 					rm -rf cc || true
 					ln -s /usr cc
 					source ./env.sh
-					touch ./reggaefile.d
 					c
+					rm -rf build.ninja compile_commands.json rules.ninja || true
+					touch ./reggaefile.d
 					v
 					'''
         }
