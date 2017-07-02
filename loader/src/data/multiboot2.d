@@ -548,9 +548,9 @@ public static:
 
 	///
 	void accept(Multiboot2TagAPM* tag) {
-		Log.debug_("Multiboot2TagAPM: version: ", tag.version_, ", cseg: ", tag.cseg, ", offset: ", tag.offset, ", cseg16: ",
-				tag.cseg16, ", dseg: ", tag.dseg, ", flags: ", tag.flags, ", csegLen: ", tag.csegLen, ", cseg16Len: ",
-				tag.cseg16Len, ", dsegLen: ", tag.dsegLen);
+		Log.debug_("Multiboot2TagAPM: version: ", tag.version_, ", cseg: ", tag.cseg, ", offset: ", tag.offset,
+				", cseg16: ", tag.cseg16, ", dseg: ", tag.dseg, ", flags: ", tag.flags, ", csegLen: ", tag.csegLen,
+				", cseg16Len: ", tag.cseg16Len, ", dsegLen: ", tag.dsegLen);
 	}
 
 	///

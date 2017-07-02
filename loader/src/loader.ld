@@ -2,9 +2,8 @@ OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(start)
 
 PHDRS {
-	text PT_LOAD PHDRS FILEHDR;
-	data PT_LOAD;
-	bss PT_LOAD;
+	phdr PT_LOAD PHDRS FILEHDR;
+	load PT_LOAD;
 	tls PT_TLS;
 }
 
@@ -14,57 +13,57 @@ SECTIONS {
 	.multiboot : {
 		LONG(0x0) /* To force the linker to put .multiboot first*/
 		*(.multiboot)
-	} :text
+	} :load
 
 	.text ALIGN(0x1000) : {
 		*(.text .text.*)
-	} :text
+	} :load
 
 	.rodata ALIGN(0x1000) : {
 		*(.rodata .rodata.*)
-	} :text
+	} :load
 
 	.ctors ALIGN(0x1000) : {
 		CTORS_START = .;
 		*(.ctors .ctors.*)
 		CTORS_END = .;
-	} :data
+	} :load
 
 	.dtors ALIGN(0x1000) : {
 		DTORS_START = .;
 		*(.dtors .dtors.*)
 		DTORS_END = .;
-	} :data
+	} :load
 
 	.eh_frame ALIGN(0x1000) : {
 		*(.eh_frame .eh_frame.*)
-	} :data
+	} :load
 
 	.data ALIGN(0x1000) : {
 		*(.data .data.*)
-	} :data
-
-	.tdata ALIGN(0x1000) :  {
-		TDATA_START = .;
-		*(.tdata .tdata.*)
-		TDATA_END = .;
-	} :text :tls
-
-	.tbss ALIGN(0x1000) : {
-		TBSS_START = .;
-		*(.tbss .tbss.*)
-		TBSS_END = .;
-	} :tls
+	} :load
 
 	.bss ALIGN(0x1000) : {
 		*(.bss .bss.*)
-	} :bss
+	} :load
 
 	.loaderData ALIGN(0x1000) : {
 		loaderData_start = .;
 		*(.loaderData .loaderData.*)
 		loaderData_end = .;
-	} :bss
+	} :load
+
+	.tdata ALIGN(0x1000) :  {
+		TDATA_START = .;
+		*(.tdata .tdata.*)
+		TDATA_END = .;
+	} :tls :load
+
+	.tbss : {
+		TBSS_START = .;
+		*(.tbss .tbss.*)
+		TBSS_END = .;
+	} :tls :load
 
 	/DISCARD/ : {
 		*(.comment)
@@ -72,7 +71,4 @@ SECTIONS {
 		*(.rela.*)
 		*(.debug_*)
 	}
-
-	. = ALIGN(0x1000);
-	LOADER_END = .;
 }
