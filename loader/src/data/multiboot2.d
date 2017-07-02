@@ -539,6 +539,7 @@ public static:
 		}
 
 		VirtAddress end;
+		const(Elf64_Shdr)* tdata, tbss;
 		foreach (const ref Elf64_Shdr section; tag.sections) {
 			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type,
 					", flags: ", section.flags.VirtAddress, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
@@ -548,12 +549,21 @@ public static:
 			if (end < section.addr + section.size)
 				end = section.addr + section.size;
 
+			if (lookUpName(section.name) == ".tdata")
+				tdata = &section;
+			else if (lookUpName(section.name) == ".tbss")
+				tbss = &section;
 		}
 
 		{
 			import memory.allocator : Allocator;
 
 			Allocator.init(end.roundUp(0x1000));
+		}
+		{
+			import data.tls : TLS;
+
+			TLS.init(tdata.addr, tdata.size, tbss.addr, tbss.size);
 		}
 	}
 
