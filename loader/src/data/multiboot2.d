@@ -538,12 +538,23 @@ public static:
 			return name[0 .. name.strlen];
 		}
 
-		foreach (const ref Elf64_Shdr section; tag.sections)
-			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type, ", flags: ",
-					section.flags.VirtAddress, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
+		VirtAddress end;
+		foreach (const ref Elf64_Shdr section; tag.sections) {
+			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type,
+					", flags: ", section.flags.VirtAddress, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
 					section.size.VirtAddress, ", link: ", section.link, ", info: ", section.info, ", addralign: ",
 					section.addralign.VirtAddress, ", entsize: ", section.entsize.VirtAddress);
 
+			if (end < section.addr + section.size)
+				end = section.addr + section.size;
+
+		}
+
+		{
+			import memory.allocator : Allocator;
+
+			Allocator.init(end.roundUp(0x1000));
+		}
 	}
 
 	///
