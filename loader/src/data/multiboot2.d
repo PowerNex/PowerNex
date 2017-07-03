@@ -509,7 +509,7 @@ public static:
 	///
 	void accept(Multiboot2TagVBE* tag) {
 		Log.debug_("Multiboot2TagVBE: mode: ", tag.mode, ", interfaceSeq: ", tag.interfaceSeg, ", interfaceOff",
-				tag.interfaceOff, ", interfaceLen", tag.interfaceLen, ", controlInfo: ", tag.controlInfo.ptr, ", modeInfo: ", tag.modeInfo.ptr);
+				tag.interfaceOff, ", interfaceLen", tag.interfaceLen, ", controlInfo: ", &tag.controlInfo[0], ", modeInfo: ", &tag.modeInfo[0]);
 	}
 
 	///
@@ -591,12 +591,12 @@ public static:
 
 	///
 	void accept(Multiboot2TagOldACPI* tag) {
-		Log.debug_("Multiboot2TagOldACPI: rsdp: ", tag.rsdp.ptr);
+		Log.debug_("Multiboot2TagOldACPI: rsdp: ", &tag.rsdp[0]);
 	}
 
 	///
 	void accept(Multiboot2TagNewACPI* tag) {
-		Log.debug_("Multiboot2TagNewACPI: rsdp: ", tag.rsdp.ptr);
+		Log.debug_("Multiboot2TagNewACPI: rsdp: ", &tag.rsdp[0]);
 	}
 
 	///
