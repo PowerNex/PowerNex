@@ -82,7 +82,7 @@ alias irq = (x) => 32 + x;
 ///
 @safe static struct IDT {
 public:
-	alias InterruptCallback = void function(from!"data.register".Registers* regs); ///
+	alias InterruptCallback = @safe void function(from!"arch.amd64.register".Registers* regs); ///
 	__gshared IDTBase base; ///
 	__gshared IDTDescriptor[256] desc; ///
 	__gshared InterruptCallback[256] handlers; ///
@@ -229,7 +229,7 @@ private:
 		}
 	}
 
-	extern (C) static void isrHandler(from!"data.register".Registers* regs) @trusted {
+	extern (C) static void isrHandler(from!"arch.amd64.register".Registers* regs) @trusted {
 		import io.vga : VGA, CGASlotColor, CGAColor;
 		import io.log : Log;
 		import io.ioport : outp;

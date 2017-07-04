@@ -2,7 +2,12 @@ module data.text;
 
 ///
 @safe struct BinaryInt {
-	ulong number;///
+	ulong number; ///
+}
+
+///
+@safe struct HexInt {
+	ulong number; ///
 }
 
 ///
@@ -83,23 +88,31 @@ char[] strip(char[] str) {
 }
 
 ///
-string itoa(S)(S v, char[] buf, uint base = 10) @trusted if (from!"util.trait".isNumber!S) {
-	auto start = itoa(v, buf.ptr, buf.length, base);
+string itoa(S)(S v, char[] buf, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted
+		if (from!"util.trait".isNumber!S) {
+	auto start = itoa(v, buf.ptr, buf.length, base, padLength, padChar);
 	return cast(string)buf[start .. $];
 }
 
 ///
-size_t itoa(S)(S v, char* buf, ulong len, uint base = 10) @trusted if (from!"util.trait".isNumber!S) {
+size_t itoa(S)(S v, char* buf, ulong len, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted
+		if (from!"util.trait".isNumber!S) {
 	import util.trait : Unqual;
+
 	assert(1 < base && base <= 16);
 	Unqual!S value = v;
 	immutable char[] baseChars = cast(immutable char[])"0123456789ABCDEF";
 	size_t pos = len;
 	bool sign = false;
 
+	if (padLength > len)
+		padLength = len;
+
 	if (value < 0) {
 		sign = true;
 		value = -value;
+		if (padLength)
+			padLength--;
 	}
 
 	do {
@@ -107,6 +120,9 @@ size_t itoa(S)(S v, char* buf, ulong len, uint base = 10) @trusted if (from!"uti
 		value /= base;
 	}
 	while (value);
+
+	while (len - pos < padLength)
+		buf[--pos] = padChar;
 
 	if (sign)
 		buf[--pos] = '-';

@@ -43,7 +43,7 @@ public static:
 		_indent = 0;
 	}
 
-///
+	///
 	void setSymbolMap(from!"data.address".VirtAddress address) @trusted {
 		import data.address : VirtAddress;
 
@@ -53,15 +53,15 @@ public static:
 		_symbols = map;
 	}
 
-///
+	///
 	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(LogLevel level, Args args) {
 		log(level, file, func, line, args);
 	}
 
-///
+	///
 	void log(Args...)(LogLevel level, string file, string func, int line, Args args) {
 		import io.com : com1;
-		import data.text : itoa, BinaryInt;
+		import data.text : itoa, BinaryInt, HexInt;
 		import util.trait : Unqual, enumMembers, isNumber, isFloating;
 		import data.address : VirtAddress, PhysAddress, PhysAddress32;
 
@@ -90,13 +90,26 @@ public static:
 				com1.write(itoa(cast(ulong)arg, buf, 10));
 			} else static if (is(T == BinaryInt)) {
 				com1.write("0b");
-				com1.write(itoa(arg.num, buf, 2));
+				com1.write(itoa(arg.number, buf, 2));
+			} else static if (is(T == HexInt)) {
+				com1.write("0x");
+				com1.write(itoa(arg.number, buf, 16));
 			} else static if (is(T : V*, V)) {
 				com1.write("0x");
-				com1.write(itoa(cast(ulong)arg, buf, 16));
+				string val = itoa(cast(ulong)arg, buf, 16, 16);
+				foreach (idx; 0 .. 4) {
+					if (idx)
+						com1.write('_');
+					com1.write(val[idx * 4 .. (idx + 1) * 4]);
+				}
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
 				com1.write("0x");
-				com1.write(itoa(cast(ulong)arg.num, buf, 16));
+				string val = itoa(cast(ulong)arg.num, buf, 16, 16);
+				foreach (idx; 0 .. 4) {
+					if (idx)
+						com1.write('_');
+					com1.write(val[idx * 4 .. (idx + 1) * 4]);
+				}
 			} else static if (is(T == bool))
 				com1.write((arg) ? "true" : "false");
 			else static if (is(T == char))

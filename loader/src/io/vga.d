@@ -83,7 +83,7 @@ public static:
 	void write(Args...)(Args args) {
 		import data.address : VirtAddress, PhysAddress, PhysAddress32;
 		import util.trait : Unqual, isNumber, isFloating;
-		import data.text : BinaryInt;
+		import data.text : BinaryInt, HexInt;
 
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
@@ -91,14 +91,15 @@ public static:
 				_write(arg);
 			else static if (is(T == BinaryInt)) {
 				_write("0b");
-				_writeNumber(arg.num, 2);
-			} else static if (is(T : V*, V)) {
+				_writeNumber(arg.number, 2);
+			} else static if (is(T == HexInt)) {
 				_write("0x");
-				_writeNumber(cast(ulong)arg, 16);
-			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
-				_write("0x");
-				_writeNumber(cast(ulong)arg.num, 16);
-			} else static if (is(T == enum))
+				_writeNumber(arg.number, 16);
+			} else static if (is(T : V*, V))
+				_writePointer(cast(ulong)arg);
+			else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32))
+				_writePointer(arg.num);
+			else static if (is(T == enum))
 				_writeEnum(arg);
 			else static if (is(T == bool))
 				_write((arg) ? "true" : "false");
@@ -204,6 +205,19 @@ private static:
 
 		char[S.sizeof * 8] buf;
 		_write(itoa(value, buf, base));
+	}
+
+	void _writePointer(ulong value) {
+		import data.text : itoa;
+
+		char[ulong.sizeof * 8] buf;
+		_write("0x");
+		string val = itoa(value, buf, 16, 16);
+		foreach (idx; 0 .. 4) {
+			if (idx)
+				_write('_');
+			_write(val[idx * 4 .. (idx + 1) * 4]);
+		}
 	}
 
 	void _writeFloating(double value, uint base) {

@@ -271,5 +271,5 @@ x64NotSupported_msg:
 .global stack_end
 .global stack
 stack_end:
-	.space 0x1000
+	.space 0x4000
 stack:
