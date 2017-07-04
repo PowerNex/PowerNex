@@ -19,10 +19,12 @@ extern (C) ulong main() @safe {
 	import api : APIInfo;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
+	import arch.amd64.paging : Paging;
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
 	import io.vga : VGA;
 	import io.log : Log;
+	import memory.frameallocator : FrameAllocator;
 
 	GDT.init();
 	IDT.init();
@@ -35,8 +37,14 @@ extern (C) ulong main() @safe {
 
 	APIInfo.init();
 
+	FrameAllocator.init();
 	// TODO: Implement alternative UEFI loading
+	// Note this will initialize other modules
 	Multiboot2.init();
+	FrameAllocator.preAllocateFrames();
+
+	Paging.init();
+	// Heap.init();
 
 	TLS.aquireTLS();
 
@@ -44,9 +52,6 @@ extern (C) ulong main() @safe {
 	tlsTest2 = tlsTest;
 	tlsTest = "Works also!";
 	Log.info("tlsTest: ", tlsTest, " tlsTest2: ", tlsTest2);
-
-	// Paging.init();
-	// Heap.init();
 
 	// ACPI.init();
 	// IOAPIC.init();

@@ -2,6 +2,7 @@ module data.multiboot2;
 
 import data.address;
 import io.log : Log;
+import data.text : HexInt;
 
 ///
 enum Multiboot2TagType : uint {
@@ -487,11 +488,19 @@ public static:
 	///
 	void accept(Multiboot2TagModule* tag) {
 		Log.debug_("Multiboot2TagModule: start: ", tag.modStart, ", end: ", tag.modEnd, ", name: ", tag.name);
+
+		import memory.frameallocator : FrameAllocator;
+
+		FrameAllocator.markRange(tag.modStart.toX64, tag.modEnd.toX64);
 	}
 
 	///
 	void accept(Multiboot2TagBasicMeminfo* tag) {
 		Log.debug_("Multiboot2TagBasicMeminfo: lower:", tag.memLower, ", upper: ", tag.memUpper);
+
+		import memory.frameallocator : FrameAllocator;
+
+		FrameAllocator.maxFrames = (tag.memLower + tag.memUpper /* KiB */ ) / 4 /* each page is 4KiB */ ;
 	}
 
 	///
@@ -501,9 +510,15 @@ public static:
 
 	///
 	void accept(Multiboot2TagMMap* tag) {
+		import memory.frameallocator : FrameAllocator;
+
 		Log.debug_("Multiboot2TagMMap: size: ", tag.entrySize, " version: ", tag.entryVersion, ", entries:");
-		foreach (const ref Multiboot2MMapEntry entry; tag.entries)
-			Log.debug_("\taddr: ", entry.addr, ", len: ", entry.len.VirtAddress, ", type: ", entry.type);
+		foreach (const ref Multiboot2MMapEntry entry; tag.entries) {
+			Log.debug_("\taddr: ", entry.addr, ", len: ", entry.len.HexInt, ", type: ", entry.type);
+
+			if (entry.type != Multiboot2MemoryType.available)
+				FrameAllocator.markRange(entry.addr, entry.addr + entry.len);
+		}
 	}
 
 	///
@@ -538,13 +553,17 @@ public static:
 			return name[0 .. name.strlen];
 		}
 
+		VirtAddress start = ulong.max;
 		VirtAddress end;
 		const(Elf64_Shdr)* tdata, tbss;
 		foreach (const ref Elf64_Shdr section; tag.sections) {
 			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type,
-					", flags: ", section.flags.VirtAddress, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
-					section.size.VirtAddress, ", link: ", section.link, ", info: ", section.info, ", addralign: ",
-					section.addralign.VirtAddress, ", entsize: ", section.entsize.VirtAddress);
+					", flags: ", section.flags.HexInt, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
+					section.size.HexInt, ", link: ", section.link, ", info: ", section.info, ", addralign: ",
+					section.addralign.HexInt, ", entsize: ", section.entsize.HexInt);
+
+			if (start > section.addr)
+				start = section.addr;
 
 			if (end < section.addr + section.size)
 				end = section.addr + section.size;
@@ -557,8 +576,12 @@ public static:
 
 		{
 			import memory.allocator : Allocator;
+			import memory.frameallocator : FrameAllocator;
 
-			Allocator.init(end.roundUp(0x1000));
+			end = end.roundUp(0x1000);
+
+			FrameAllocator.markRange(start.PhysAddress, end.PhysAddress); // Gotta love identity mapping
+			Allocator.init(end);
 		}
 		{
 			import data.tls : TLS;
