@@ -575,13 +575,11 @@ public static:
 		}
 
 		{
-			import memory.allocator : Allocator;
 			import memory.frameallocator : FrameAllocator;
 
 			end = end.roundUp(0x1000);
 
 			FrameAllocator.markRange(start.PhysAddress, end.PhysAddress); // Gotta love identity mapping
-			Allocator.init(end);
 		}
 		{
 			import data.tls : TLS;

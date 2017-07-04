@@ -23,6 +23,13 @@ cpuRefreshIREQ:
 		ret
 .size cpuRefreshIREQ, .-cpuRefreshIREQ
 
+.global cpuFlushPage
+.type cpuFlushPage, %function
+cpuFlushPage:
+	invlpg (%rdi)
+	ret
+.size cpuFlushPage, .-cpuFlushPage
+
 .global cpuRetCR0
 .type cpuRetCR0, %function
 cpuRetCR0:
@@ -50,3 +57,4 @@ cpuRetCR4:
 	mov %CR4, %RAX
 	ret
 .size cpuRetCR4, .-cpuRetCR4
+

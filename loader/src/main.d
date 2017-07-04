@@ -25,6 +25,7 @@ extern (C) ulong main() @safe {
 	import io.vga : VGA;
 	import io.log : Log;
 	import memory.frameallocator : FrameAllocator;
+	import memory.heap : Heap;
 
 	GDT.init();
 	IDT.init();
@@ -44,7 +45,7 @@ extern (C) ulong main() @safe {
 	FrameAllocator.preAllocateFrames();
 
 	Paging.init();
-	// Heap.init();
+	Heap.init();
 
 	TLS.aquireTLS();
 

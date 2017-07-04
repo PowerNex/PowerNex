@@ -21,11 +21,11 @@ public static:
 	///	Aquire a TLS context for the current thread
 	void aquireTLS() @trusted {
 		import io.log : Log;
-		import memory.allocator : Allocator;
+		import memory.heap : Heap;
 
 		// TODO: check allocation is 0x10 aligned!
 		size_t size = tdataSize + tbssSize + TLSData.sizeof;
-		VirtAddress data = Allocator.alloc(size, 0x10);
+		VirtAddress data = Heap.allocate(size).VirtAddress;
 
 		Log.info("Allocated tls section at: ", data);
 
