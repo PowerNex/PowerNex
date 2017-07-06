@@ -621,11 +621,22 @@ public static:
 	///
 	void accept(Multiboot2TagOldACPI* tag) {
 		Log.debug_("Multiboot2TagOldACPI: rsdp: ", &tag.rsdp[0]);
+
+		{
+			import arch.amd64.acpi : ACPI;
+
+			ACPI.initOld(tag.rsdp);
+		}
 	}
 
 	///
 	void accept(Multiboot2TagNewACPI* tag) {
 		Log.debug_("Multiboot2TagNewACPI: rsdp: ", &tag.rsdp[0]);
+		{
+			import arch.amd64.acpi : ACPI;
+
+			ACPI.initNew(tag.rsdp);
+		}
 	}
 
 	///
