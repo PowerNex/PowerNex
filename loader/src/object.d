@@ -1504,7 +1504,20 @@ extern (C) {
 
 	private void onAssert(string msg, string file, uint line) {
 		import io.log : Log, LogLevel;
+
 		Log.log(LogLevel.fatal, file, "", line, msg);
+	}
+
+	void[] _d_arraycast(size_t newTypeSize, size_t curTypeSize, void[] arr) {
+		import io.log : Log;
+
+		auto len = curTypeSize * arr.length;
+
+		if (len % newTypeSize)
+			Log.fatal("Can't cast array! newTypeSize: ", newTypeSize, ", curTypeSize: ", curTypeSize, ", len: ", len);
+
+		*cast(size_t*)&arr = len / newTypeSize;
+		return arr;
 	}
 
 	deprecated Object _d_newclass(const ClassInfo ci) {

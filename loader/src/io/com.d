@@ -76,7 +76,7 @@ enum StatusInfo : ubyte {
 		import arch.amd64.idt : IDT, irq;
 
 		enum divisor = 115200;
-		ushort speed = divisor / 9600;
+		ushort speed = divisor / 115200;
 
 		IDT.register(irq(4), &_handleIRQ4);
 		IDT.register(irq(3), &_handleIRQ3);
