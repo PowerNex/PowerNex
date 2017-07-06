@@ -1,5 +1,8 @@
 module data.address;
 
+//XXX: Functions that cast SHOULD NOT be @safe/@trusted, as this invalidates the whole safeness system
+// It is currently like this because of lazyness
+
 pragma(inline, true):
 private mixin template AddressBase(Type = size_t) {
 	alias Func = void function(); ///
@@ -152,6 +155,11 @@ private mixin template AddressBase(Type = size_t) {
 
 @safe struct PhysAddress {
 	mixin AddressBase;
+
+	/// WARNING: THIS FUNCTION WILL NOT ALWAYS WORK
+	VirtAddress toVirtual() {
+		return VirtAddress(addr);
+	}
 }
 
 @safe struct PhysAddress32 {
