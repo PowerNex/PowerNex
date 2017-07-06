@@ -32,6 +32,7 @@ enum Multiboot2TagType : uint {
 
 ///
 @safe struct Multiboot2Color {
+align(1):
 	ubyte red; ///
 	ubyte green; ///
 	ubyte blue; ///
@@ -48,6 +49,7 @@ enum Multiboot2MemoryType : uint {
 
 ///
 @safe struct Multiboot2MMapEntry {
+align(1):
 	PhysAddress addr; ///
 	ulong len; ///
 	Multiboot2MemoryType type; ///
@@ -56,73 +58,78 @@ enum Multiboot2MemoryType : uint {
 
 alias Multiboot2MemoryMap = Multiboot2MMapEntry; ///
 
-@safe struct Multiboot2TagsHeader {
+@safe align(1) struct Multiboot2TagsHeader {
+align(1):
 	uint totalSize;
 	private uint reserved;
 }
 
 ///
-@safe struct Multiboot2TagBase {
+@safe align(1) struct Multiboot2TagBase {
+align(1):
 	Multiboot2TagType type; ///
 	uint size; ///
 }
 
 ///
-@safe struct Multiboot2TagEnd {
+@safe align(1) struct Multiboot2TagEnd {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 }
 
 ///
-@safe struct Multiboot2TagCmdLine {
+@safe align(1) struct Multiboot2TagCmdLine {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
-	private char _cmdLine;
 	///
 	@property char[] cmdLine() @trusted {
 		import data.text : strlen;
 
-		char* str = &_cmdLine;
+		char* str = (VirtAddress(&this) + Multiboot2TagCmdLine.sizeof).ptr!char;
+
 		return str[0 .. str.strlen];
 	}
 }
 
 ///
-@safe struct Multiboot2TagBootLoaderName {
+@safe align(1) struct Multiboot2TagBootLoaderName {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
-	private char _bootLoaderName;
 	///
 	@property char[] bootLoaderName() @trusted {
 		import data.text : strlen;
 
-		char* str = &_bootLoaderName;
+		char* str = (VirtAddress(&this) + Multiboot2TagBootLoaderName.sizeof).ptr!char;
 		return str[0 .. str.strlen];
 	}
 }
 
 ///
-@safe struct Multiboot2TagModule {
+@safe align(1) struct Multiboot2TagModule {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
 	PhysAddress32 modStart; ///
 	PhysAddress32 modEnd; ///
-	private char _name;
 
 	///
 	@property char[] name() @trusted {
 		import data.text : strlen;
 
-		char* str = &_name;
+		char* str = (VirtAddress(&this) + Multiboot2TagModule.sizeof).ptr!char;
 		return str[0 .. str.strlen];
 	}
 }
 
 ///
-@safe struct Multiboot2TagBasicMeminfo {
+@safe align(1) struct Multiboot2TagBasicMeminfo {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -131,7 +138,8 @@ alias Multiboot2MemoryMap = Multiboot2MMapEntry; ///
 }
 
 ///
-@safe struct Multiboot2TagBootdev {
+@safe align(1) struct Multiboot2TagBootdev {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -141,23 +149,23 @@ alias Multiboot2MemoryMap = Multiboot2MMapEntry; ///
 }
 
 ///
-@safe struct Multiboot2TagMMap {
+@safe align(1) struct Multiboot2TagMMap {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
 	uint entrySize; ///
 	uint entryVersion; ///
-	private Multiboot2MMapEntry _entries;
 
 	///
 	@property Multiboot2MMapEntry[] entries() @trusted {
-		Multiboot2MMapEntry* ent = &_entries;
-		return ent[0 .. (base.size - Multiboot2TagMMap.sizeof + _entries.sizeof) / entrySize];
+		return (VirtAddress(&this) + Multiboot2TagMMap.sizeof).ptr!Multiboot2MMapEntry[0 .. (base.size - Multiboot2TagMMap.sizeof) / entrySize];
 	}
 }
 
 ///
-@safe struct Multiboot2TagVBE {
+@safe align(1) struct Multiboot2TagVBE {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -178,7 +186,8 @@ enum Multiboot2FramebufferType : ubyte {
 }
 
 ///
-@safe struct Multiboot2TagFramebuffer { ///
+@safe align(1) struct Multiboot2TagFramebuffer {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -191,20 +200,20 @@ enum Multiboot2FramebufferType : ubyte {
 	private ushort reserved;
 
 	private union ExtraData {
-		private struct Indexed { // Multiboot2FramebufferType.indexed
+		private @safe struct Indexed { // Multiboot2FramebufferType.indexed
+		align(1):
 			ushort paletteNumColors; ///
-			private Multiboot2Color _palette;
 
 			///
 			@property Multiboot2Color[] palette() @trusted {
-				Multiboot2Color* colors = &_palette;
-				return colors[0 .. paletteNumColors];
+				return (VirtAddress(&paletteNumColors) + paletteNumColors.sizeof).ptr!Multiboot2Color[0 .. paletteNumColors];
 			}
 		}
 
 		Indexed indexed;
 
 		private struct RGB { // Multiboot2FramebufferType.rgb
+		align(1):
 			ubyte redFieldPosition; ///
 			ubyte redMaskSize; ///
 			ubyte greenFieldPosition; ///
@@ -222,6 +231,7 @@ enum Multiboot2FramebufferType : ubyte {
 /// TODO: Move to elf.d
 /// Note: Needs align(1) because of Multiboot2TagELFSections._sections
 @safe align(1) struct Elf64_Shdr {
+align(1):
 	uint name; ///
 	uint type; ///
 	ulong flags; ///
@@ -235,24 +245,24 @@ enum Multiboot2FramebufferType : ubyte {
 }
 
 ///
-@safe struct Multiboot2TagELFSections {
+@safe align(1) struct Multiboot2TagELFSections {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
 	uint num; ///
 	uint entsize; ///
 	uint shndx; ///
-	private Elf64_Shdr _sections;
 
 	///
 	@property Elf64_Shdr[] sections() @trusted {
-		Elf64_Shdr* ent = &_sections;
-		return ent[0 .. num];
+		return (VirtAddress(&this) + Multiboot2TagELFSections.sizeof).ptr!Elf64_Shdr[0 .. num];
 	}
 }
 
 ///
-@safe struct Multiboot2TagAPM {
+@safe align(1) struct Multiboot2TagAPM {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -268,7 +278,8 @@ enum Multiboot2FramebufferType : ubyte {
 }
 
 ///
-@safe struct Multiboot2TagEfi32 {
+@safe align(1) struct Multiboot2TagEfi32 {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -276,7 +287,8 @@ enum Multiboot2FramebufferType : ubyte {
 }
 
 ///
-@safe struct Multiboot2TagEfi64 {
+@safe align(1) struct Multiboot2TagEfi64 {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -284,88 +296,82 @@ enum Multiboot2FramebufferType : ubyte {
 }
 
 ///
-@safe struct Multiboot2TagSmbios {
+@safe align(1) struct Multiboot2TagSmbios {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
 	ubyte major; ///
 	ubyte minor; ///
 	private ubyte[6] reserved;
-	private ubyte _tables;
 
 	///
 	@property ubyte[] tables() @trusted {
-		ubyte* tables = &_tables;
-		return tables[0 .. (base.size - Multiboot2TagSmbios.sizeof + _tables.sizeof)];
+		return (VirtAddress(&this) + Multiboot2TagSmbios.sizeof).ptr!ubyte[0 .. base.size - Multiboot2TagSmbios.sizeof];
 	}
 }
 
 ///
-@safe struct Multiboot2TagOldACPI {
+@safe align(1) struct Multiboot2TagOldACPI {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
-
-	private ubyte _rsdp;
 
 	///
 	@property ubyte[] rsdp() @trusted {
-		ubyte* rsdp = &_rsdp;
-		return rsdp[0 .. (base.size - Multiboot2TagOldACPI.sizeof + _rsdp.sizeof)];
+		return (VirtAddress(&this) + Multiboot2TagOldACPI.sizeof).ptr!ubyte[0 .. base.size - Multiboot2TagOldACPI.sizeof];
 	}
 }
 
 ///
-@safe struct Multiboot2TagNewACPI {
+@safe align(1) struct Multiboot2TagNewACPI {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
-
-	private ubyte _rsdp;
 
 	///
 	@property ubyte[] rsdp() @trusted {
-		ubyte* rsdp = &_rsdp;
-		return rsdp[0 .. (base.size - Multiboot2TagNewACPI.sizeof + _rsdp.sizeof)];
+		return (VirtAddress(&this) + Multiboot2TagNewACPI.sizeof).ptr!ubyte[0 .. base.size - Multiboot2TagNewACPI.sizeof];
 	}
 }
 
 ///
-@safe struct Multiboot2TagNetwork {
+@safe align(1) struct Multiboot2TagNetwork {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
-
-	private ubyte _dhcpack;
 
 	///
 	@property ubyte[] dhcpack() @trusted {
-		ubyte* dhcpack = &_dhcpack;
-		return dhcpack[0 .. (base.size - Multiboot2TagNetwork.sizeof + _dhcpack.sizeof)];
+		return (VirtAddress(&this) + Multiboot2TagNetwork.sizeof).ptr!ubyte[0 .. base.size - Multiboot2TagNetwork.sizeof];
 	}
 }
 
 ///
-@safe struct Multiboot2TagEfiMMap {
+@safe align(1) struct Multiboot2TagEfiMMap {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
 	uint descrSize; ///
 	uint descrVers; ///
-	private ubyte _efiMMap;
 
 	///
 	@property ubyte[] efiMMap() @trusted {
-		ubyte* efiMMap = &_efiMMap;
-		return efiMMap[0 .. (base.size - Multiboot2TagEfiMMap.sizeof + _efiMMap.sizeof)];
+		return (VirtAddress(&this) + Multiboot2TagEfiMMap.sizeof).ptr!ubyte[0 .. base.size - Multiboot2TagEfiMMap.sizeof];
 	}
 }
 
 ///
-@safe struct Multiboot2TagBootServices {
+@safe align(1) struct Multiboot2TagBootServices {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 }
 
 ///
-@safe struct Multiboot2TagEfi32ImageHandle {
+@safe align(1) struct Multiboot2TagEfi32ImageHandle {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -373,7 +379,8 @@ enum Multiboot2FramebufferType : ubyte {
 }
 
 ///
-@safe struct Multiboot2TagEfi64ImageHandle {
+@safe align(1) struct Multiboot2TagEfi64ImageHandle {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
@@ -381,7 +388,8 @@ enum Multiboot2FramebufferType : ubyte {
 }
 
 ///
-@safe struct Multiboot2TagLoadBaseAddr {
+@safe align(1) struct Multiboot2TagLoadBaseAddr {
+align(1):
 	Multiboot2TagBase base; ///
 	alias base this; ///
 
