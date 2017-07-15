@@ -20,6 +20,7 @@ extern (C) ulong main() @safe {
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
 	import arch.amd64.paging : Paging;
+	import arch.amd64.pit : PIT;
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
 	import io.vga : VGA;
@@ -29,6 +30,8 @@ extern (C) ulong main() @safe {
 
 	GDT.init();
 	IDT.init();
+
+	PIT.init();
 
 	Log.init();
 	VGA.init();
@@ -49,12 +52,8 @@ extern (C) ulong main() @safe {
 
 	TLS.aquireTLS();
 
-	Log.info("tlsTest: ", tlsTest, " tlsTest2: ", tlsTest2);
-	tlsTest2 = tlsTest;
-	tlsTest = "Works also!";
-	Log.info("tlsTest: ", tlsTest, " tlsTest2: ", tlsTest2);
+	Log.fatal("END OF MAIN");
 
-	// ACPI.init();
 	// IOAPIC.init();
 
 	// auto kernelModule = Multiboot.getKernel();
