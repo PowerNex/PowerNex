@@ -17,6 +17,7 @@ string tlsTest2;
 ///
 extern (C) ulong main() @safe {
 	import api : APIInfo;
+	import arch.amd64.acpi : ACPI;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
 	import arch.amd64.paging : Paging;
@@ -52,7 +53,9 @@ extern (C) ulong main() @safe {
 
 	TLS.aquireTLS();
 
-	Log.fatal("END OF MAIN");
+	outputBoth("Reached end of main! Shutting down in 2 seconds.");
+	PIT.sleep(2000);
+	ACPI.shutdown();
 
 	// IOAPIC.init();
 
