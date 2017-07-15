@@ -19,7 +19,7 @@ enum CompileCommand : string {
 	loader_ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
 	loader_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -color=on -debug -c -g -version=PowerD -Iloader/src -I" ~ objDir ~ "/loader/src -Jloader/src -J" ~ objDir ~ "/loader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/loader -X -Xfdocs-loader.json -of$out $in",
 	loader_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -IIloader/src -I" ~ objDir ~ "/Iloader/src -JIloader/src -J" ~ objDir ~ "/Iloader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
-	loader_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T loader/src/loader.ld -nostdlib --gc-sections",
+	loader_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T loader/src/loader.ld -nostdlib",
 
 	//TODO: change back -dw to -de, re-add -vgc?
 	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/kernel -X -Xfdocs-kernel.json -of$out $in",
