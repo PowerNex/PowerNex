@@ -28,10 +28,9 @@ enum isStaticArray(T) = is(Unqual!T : E[n], E, size_t n); ///
 enum isClass(T) = is(Unqual!T == class) || isInterface!T; ///
 enum isInterface(T) = is(Unqual!T == interface); ///
 
-
 ///
-template TypeTuple(T...) {
-	alias TypeTuple = T;
+template AliasSeq(T...) {
+	alias AliasSeq = T;
 }
 
 ///
@@ -48,12 +47,65 @@ template enumMembers(E) if (is(E == enum)) {
 
 	template enumSpecificMembers(names...) {
 		static if (names.length > 0) {
-			alias enumSpecificMembers = TypeTuple!(withIdentifier!(names[0]).Symbolize!(__traits(getMember, E, names[0])),
+			alias enumSpecificMembers = AliasSeq!(withIdentifier!(names[0]).Symbolize!(__traits(getMember, E, names[0])),
 					enumSpecificMembers!(names[1 .. $]));
 		} else {
-			alias enumSpecificMembers = TypeTuple!();
+			alias enumSpecificMembers = AliasSeq!();
 		}
 	}
 
 	alias enumMembers = enumSpecificMembers!(__traits(allMembers, E));
+}
+
+/// std.meta.Filter reimplementation
+template staticFilter(alias pred, TList...) {
+	static if (TList.length == 0)
+		alias staticFilter = AliasSeq!();
+	else static if (TList.length == 1) {
+		static if (pred!(TList[0]))
+			alias staticFilter = AliasSeq!(TList[0]);
+		else
+			alias staticFilter = AliasSeq!();
+	} else // '$ / 2' is used to minimize the recursion 'levels'
+		alias staticFilter = AliasSeq!(staticFilter!(pred, TList[0 .. $ / 2]), staticFilter!(pred, TList[$ / 2 .. $]));
+}
+
+template staticMap(alias func, TList...) {
+	static if (TList.length == 0)
+		alias staticMap = AliasSeq!();
+	else static if (TList.length == 1)
+		alias staticMap = AliasSeq!(func!(TList[0]));
+	else // '$ / 2' is used to minimize the recursion 'levels'
+		alias staticMap = AliasSeq!(staticMap!(func, TList[0 .. $ / 2]), staticMap!(func, TList[$ / 2 .. $]));
+}
+
+///
+template getUDAs(alias symbol, alias uda) {
+	static if (is(typeof(uda))) // Is Instance
+		enum isRightUDA(alias attrib) = (uda == attrib);
+	else // Type
+		enum isRightUDA(alias attrib) = is(uda == typeof(attrib));
+
+	alias getUDAs = staticFilter!(isRightUDA, __traits(getAttributes, symbol));
+}
+
+///
+template hasUDA(alias symbol, alias uda) {
+	enum hasUDA = getUDAs!(symbol, uda).length;
+}
+
+/// Note: Symbols need to be public
+template getFunctionsWithUDA(alias symbol, alias uda) {
+	enum accessCheck(alias member) = __traits(compiles, __traits(getMember, symbol, member));
+	alias members = staticFilter!(accessCheck, __traits(allMembers, symbol));
+
+	alias getOverloads(alias member) = AliasSeq!(__traits(getOverloads, symbol, member));
+	alias overloads = staticMap!(getOverloads, members);
+
+	enum hasUDA(alias member) = .hasUDA!(member, uda);
+	alias udaMembers = staticFilter!(hasUDA, overloads);
+
+	alias wrap(alias member) = AliasSeq!(member, getUDAs!(member, uda));
+
+	alias getFunctionsWithUDA = staticMap!(wrap, udaMembers);
 }
