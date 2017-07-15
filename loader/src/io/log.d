@@ -121,11 +121,7 @@ public static:
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
 				com1.write("0x");
 				string val = itoa(cast(ulong)arg.num, buf, 16, 16);
-				foreach (idx; 0 .. 4) {
-					if (idx)
-						com1.write('_');
-					com1.write(val[idx * 4 .. (idx + 1) * 4]);
-				}
+				com1.write(val[0 .. 8], '_', val[8 .. 16]);
 			} else static if (is(T == bool))
 				com1.write((arg) ? "true" : "false");
 			else static if (is(T == char))

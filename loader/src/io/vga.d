@@ -213,11 +213,9 @@ private static:
 		char[ulong.sizeof * 8] buf;
 		_write("0x");
 		string val = itoa(value, buf, 16, 16);
-		foreach (idx; 0 .. 4) {
-			if (idx)
-				_write('_');
-			_write(val[idx * 4 .. (idx + 1) * 4]);
-		}
+		_write(val[0 .. 8]);
+		_write('_');
+		_write(val[8 .. 16]);
 	}
 
 	void _writeFloating(double value, uint base) {
