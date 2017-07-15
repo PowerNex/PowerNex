@@ -8,17 +8,17 @@ T inp(T)(ushort port) @trusted {
 		mov DX, port;
 	}
 
-	static if (isByte!T) {
+	static if (T.sizeof == 1) {
 		asm pure nothrow {
 			 in AL, DX;
 			mov ret, AL;
 		}
-	} else static if (isShort!T) {
+	} else static if (T.sizeof == 2) {
 		asm pure nothrow {
 			 in AX, DX;
 			mov ret, AX;
 		}
-	} else static if (isInt!T) {
+	} else static if (T.sizeof == 4) {
 		asm pure nothrow {
 			 in EAX, DX;
 			mov ret, EAX;
@@ -38,15 +38,15 @@ void outp(T)(ushort port, T d) @trusted {
 		mov DX, port;
 	}
 
-	static if (isByte!T) {
+	static if (T.sizeof == 1) {
 		asm pure nothrow {
 			out DX, AL;
 		}
-	} else static if (isShort!T) {
+	} else static if (T.sizeof == 2) {
 		asm pure nothrow {
 			out DX, AX;
 		}
-	} else static if (isInt!T) {
+	} else static if (T.sizeof == 4) {
 		asm pure nothrow {
 			out DX, EAX;
 		}
