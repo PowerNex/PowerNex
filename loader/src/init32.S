@@ -26,6 +26,7 @@ multiboot2HeaderEnd:
 .global start64
 
 .global start
+.type start, %function
 start:
 	xchg %bx, %bx
 
@@ -160,27 +161,34 @@ start:
 .end:
 	hlt
 	jmp .end
+.size start, .-start
 
+.type invalidMagic, %function
 invalidMagic:
 	mov $0x4E, %ah # Color
 	mov $0xB8000, %edi # Pos
 	mov $invalidMagicMsg, %esi
 	call writeString
 	jmp .end
+.size invalidMagic, .-invalidMagic
 
+.type notX64Capable, %function
 notX64Capable:
 	mov $0x4A, %ah
 	mov $0xB8000, %edi
 	mov $x64NotSupported_msg, %esi
 	call writeString
 	jmp .end
+.size notX64Capable, .-notX64Capable
 
+.type writeString, %function
 writeString:
 	lodsb
 	test %al, %al
 		jz .hidecursor
 	stosw
 	jmp writeString
+.size writeString, .-writeString
 
 .hidecursor:
 	mov $0x0F, %al

@@ -563,7 +563,7 @@ public static:
 
 		VirtAddress start = ulong.max;
 		VirtAddress end;
-		const(Elf64_Shdr)* tdata, tbss;
+		const(Elf64_Shdr)* tdata, tbss, symtab, strtab;
 		foreach (const ref Elf64_Shdr section; tag.sections) {
 			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type,
 					", flags: ", section.flags.HexInt, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
@@ -580,8 +580,19 @@ public static:
 				tdata = &section;
 			else if (lookUpName(section.name) == ".tbss")
 				tbss = &section;
+			else if (lookUpName(section.name) == ".symtab")
+				symtab = &section;
+			else if (lookUpName(section.name) == ".strtab")
+				strtab = &section;
 		}
+		() @trusted{
+			import io.log : ELF64Symbol;
 
+			ELF64Symbol[] symbols = symtab.addr.ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
+			char[] strings = strtab.addr.ptr!char[0 .. strtab.size];
+
+			Log.setSymbolMap(symbols, strings);
+		}();
 		{
 			import memory.frameallocator : FrameAllocator;
 

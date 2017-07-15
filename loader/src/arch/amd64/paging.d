@@ -454,9 +454,7 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 	import data.text : HexInt;
 
 	with (regs) {
-		auto addr = cr2;
-
-		const ulong virtAddr = addr.num;
+		const ulong virtAddr = cr2.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pml3Idx = (virtAddr >> 30) & 0x1FF;
 		const ushort pml2Idx = (virtAddr >> 21) & 0x1FF;
@@ -524,6 +522,8 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 		pageFlags = pml1Entry.vmFlags;
 
 	flagsDone:
+		Log.Func func = Log.getFuncName(rip);
+
 		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 		VGA.writeln("===> PAGE FAULT");
 		VGA.writeln("IRQ = ", intNumber, " | RIP = ", rip);
@@ -536,9 +536,9 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 		VGA.writeln("R12 = ", r12, " | R13 = ", r13);
 		VGA.writeln("R14 = ", r14, " | R15 = ", r15);
 		VGA.writeln(" CS = ", cs, " |  SS = ", ss);
-		VGA.writeln("addr= ", addr, " | CR0 = ", cr0);
-		VGA.writeln("CR2 = ", cr2, " | CR3 = ", cr3);
-		VGA.writeln("CR4 = ", cr4, " |Flags= ", flags.num.HexInt);
+		VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
+		VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
+		VGA.writeln("Flags = ", flags.num.HexInt);
 		VGA.writeln("Errorcode: ", errorCode.num.HexInt, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
 				(errorCode & (1 << 3) ? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
@@ -551,7 +551,7 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 		VGA.writeln("Page Mode: ", (pageFlags & PageFlags.present) ? "R" : "", (pageFlags & PageFlags.writable) ? "W" : "",
 				(pageFlags & PageFlags.execute) ? "X" : "", (pageFlags & PageFlags.user) ? "-User" : "");
 		//dfmt off
-		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, "\n",
+		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
 			"RAX = ", rax, " | RBX = ", rbx, "\n",
 			"RCX = ", rcx, " | RDX = ", rdx, "\n",
 			"RDI = ", rdi, " | RSI = ", rsi, "\n",
@@ -561,9 +561,9 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 			"R12 = ", r12, " | R13 = ", r13, "\n",
 			"R14 = ", r14, " | R15 = ", r15, "\n",
 			" CS = ", cs,  " |  SS = ", ss, "\n",
-			"addr= ",	addr," | CR0 = ", cr0, "\n",
-			"CR2 = ",	cr2, " | CR3 = ", cr3, "\n",
-			"CR4 = ",	cr4, " |Flags= ", flags.num.HexInt, "\n",
+			"CR0 = ",	cr0," | CR2 = ", cr2, "\n",
+			"CR3 = ",	cr3, " | CR4 = ", cr4, "\n",
+			"Flags = ", flags.num.HexInt, "\n",
 			"Errorcode: ", errorCode.num.HexInt, " (",
 				(errorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(errorCode & (1 << 1) ? " Write" : " Read"),

@@ -93,6 +93,10 @@ public:
 		base.offset = cast(ulong)desc.ptr;
 
 		_addAllJumps();
+
+		asm {
+			sti;
+		}
 	}
 
 	///
@@ -245,30 +249,41 @@ private:
 			handler(regs);
 		else
 			with (regs) {
-				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-				VGA.writeln("===> UNCAUGHT INTERRUPT");
-				VGA.writeln("IRQ = ", cast(InterruptType)intNumber, " | RIP = ", cast(void*)rip);
-				VGA.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
-				VGA.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
-				VGA.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
-				VGA.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
-				VGA.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
-				VGA.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
-				VGA.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
-				VGA.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
-				VGA.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
-				VGA.writeln(" CR2 = ", cast(void*)cr2);
-				VGA.writeln("Flags: ", cast(void*)flags);
-				VGA.writeln("Errorcode: ", cast(void*)errorCode);
+				import data.text : HexInt;
 
-				Log.fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", cast(InterruptType)intNumber, " | RIP = ",
-						cast(void*)rip, "\n", "RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n", "RCX = ",
-						cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n", "RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi,
-						"\n", "RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n", " R8 = ", cast(void*)r8, "  |  R9 = ",
-						cast(void*)r9, "\n", "R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11, "\n", "R12 = ",
-						cast(void*)r12, " | R13 = ", cast(void*)r13, "\n", "R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15,
-						"\n", " CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss, "\n", " CR2 = ", cast(void*)cr2, "\n",
-						"Flags: ", cast(void*)flags, "\n", "Errorcode: ", cast(void*)errorCode);
+				Log.Func func = Log.getFuncName(rip);
+
+				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+				VGA.writeln("===> PAGE FAULT");
+				VGA.writeln("IRQ = ", intNumber, " | RIP = ", rip);
+				VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
+				VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
+				VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
+				VGA.writeln("RSP = ", rsp, " | RBP = ", rbp);
+				VGA.writeln(" R8 = ", r8, " |  R9 = ", r9);
+				VGA.writeln("R10 = ", r10, " | R11 = ", r11);
+				VGA.writeln("R12 = ", r12, " | R13 = ", r13);
+				VGA.writeln("R14 = ", r14, " | R15 = ", r15);
+				VGA.writeln(" CS = ", cs, " |  SS = ", ss);
+				VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
+				VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
+				VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
+
+				// dfmt off
+				Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
+					"RAX = ", rax, " | RBX = ", rbx, "\n",
+					"RCX = ", rcx, " | RDX = ", rdx, "\n",
+					"RDI = ", rdi, " | RSI = ", rsi, "\n",
+					"RSP = ", rsp, " | RBP = ", rbp, "\n",
+					" R8 = ", r8,  " |  R9 = ", r9, "\n",
+					"R10 = ", r10, " | R11 = ", r11, "\n",
+					"R12 = ", r12, " | R13 = ", r13, "\n",
+					"R14 = ", r14, " | R15 = ", r15, "\n",
+					" CS = ", cs,  " |  SS = ", ss, "\n",
+					"CR0 = ",	cr0," | CR2 = ", cr2, "\n",
+					"CR3 = ",	cr3, " | CR4 = ", cr4, "\n",
+					"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
+				// dfmt on
 			}
 	}
 }

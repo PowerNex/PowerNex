@@ -1,5 +1,25 @@
 module io.log;
 
+/// TODO: Move
+struct ELF64Symbol {
+	import data.address : VirtAddress;
+
+	uint name; ///
+	ubyte info; ///
+	ubyte other; ///
+	ushort shndx; ///
+	VirtAddress value; ///
+	ulong size; ///
+
+	void print() {
+		import data.text : strlen;
+
+		char* str = &Log._strings[name];
+		Log.info("name: ", str[0 .. str.strlen], " (", name, ')', ", info: ", info, ", other: ", other, ", shndx: ",
+				shndx, ", value: ", value, ", size: ", size);
+	}
+}
+
 ///
 enum LogLevel {
 	verbose = 0,
@@ -44,13 +64,9 @@ public static:
 	}
 
 	///
-	void setSymbolMap(from!"data.address".VirtAddress address) @trusted {
-		import data.address : VirtAddress;
-
-		SymbolMap* map = cast(SymbolMap*)address.ptr;
-		if (map.magic[0 .. 4] != "DSYM")
-			return;
-		_symbols = map;
+	void setSymbolMap(ELF64Symbol[] symbols, char[] strings) @trusted {
+		_symbols = symbols;
+		_strings = strings;
 	}
 
 	///
@@ -137,6 +153,7 @@ public static:
 
 			asm pure nothrow @trusted {
 			forever:
+				cli;
 				hlt;
 				jmp forever;
 			}
@@ -154,27 +171,42 @@ public static:
 		asm pure nothrow {
 			mov rbp, RBP;
 		}
+
 		_printStackTrace(rbp, skipFirst);
 	}
 
+	///
+	struct Func {
+		string name; ///
+		ulong diff; ///
+	}
+
+	///
+	Func getFuncName(from!"data.address".VirtAddress addr) @trusted {
+		import data.text : strlen;
+
+		if (!_symbols)
+			return Func("No symbol map loaded", 0);
+
+		foreach (symbol; _symbols) {
+			if ((symbol.info & 0xF) != 0x2 /* Function */ )
+				continue;
+
+			if (addr < symbol.value || addr > symbol.value + symbol.size)
+				continue;
+
+			char* name = &_strings[symbol.name];
+
+			return Func(cast(string)name[0 .. name.strlen], (addr - symbol.value).num);
+		}
+
+		return Func("Symbol not in map!", 0);
+	}
+
 private static:
-
-	private struct SymbolDef {
-	align(1):
-		ulong start;
-		ulong end;
-		ulong nameLength;
-	}
-
-	private struct SymbolMap {
-	align(1):
-		char[4] magic;
-		ulong count;
-		SymbolDef symbols;
-	}
-
 	__gshared int _indent;
-	__gshared SymbolMap* _symbols;
+	__gshared ELF64Symbol[] _symbols;
+	__gshared char[] _strings;
 
 	static string _helperFunctions() {
 		if (!__ctfe)
@@ -202,9 +234,7 @@ private static:
 			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
 
-		while (rbp && //
-				rbp > 0xFFFF_FFFF_8000_0000 && rbp < 0xFFFF_FFFF_F000_0000 // XXX: Hax fix
-				) {
+		while (rbp) {
 			rip = rbp + ulong.sizeof;
 			if (!*rip.ptr!ulong)
 				break;
@@ -221,26 +251,7 @@ private static:
 
 			com1.write("] ");
 
-			struct Func {
-				string name;
-				ulong diff;
-			}
-
-			Func getFuncName(ulong addr) @trusted {
-				if (!_symbols)
-					return Func("Unknown function", 0);
-
-				SymbolDef* symbolDef = &_symbols.symbols;
-				for (int i = 0; i < _symbols.count; i++) {
-					if (symbolDef.start <= addr && addr <= symbolDef.end)
-						return Func(cast(string)(VirtAddress(symbolDef) + SymbolDef.sizeof).ptr[0 .. symbolDef.nameLength], addr - symbolDef.start);
-					symbolDef = cast(SymbolDef*)(VirtAddress(symbolDef) + SymbolDef.sizeof + symbolDef.nameLength).ptr;
-				}
-
-				return Func("Symbol not in map!", 0);
-			}
-
-			Func f = getFuncName(*rip.ptr!ulong);
+			Func f = getFuncName(*rip.ptr!VirtAddress);
 
 			com1.write(f.name);
 			if (f.diff) {

@@ -69,7 +69,7 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
-	int opCmp(typeof(this) other) const {
+	int opCmp(ref const typeof(this) other) const {
 		if (num < other.num)
 			return -1;
 		else if (num > other.num)
@@ -90,6 +90,11 @@ private mixin template AddressBase(Type = size_t) {
 
 	///
 	@property T* ptr(T = void)() @trusted {
+		return cast(T*)addr;
+	}
+
+	///
+	@property T* ptr(T = void)() @trusted const {
 		return cast(T*)addr;
 	}
 
