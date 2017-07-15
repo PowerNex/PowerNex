@@ -254,8 +254,8 @@ private:
 				Log.Func func = Log.getFuncName(rip);
 
 				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-				VGA.writeln("===> PAGE FAULT");
-				VGA.writeln("IRQ = ", intNumber, " | RIP = ", rip);
+				VGA.writeln("===> Unhandled interrupt");
+				VGA.writeln("IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip);
 				VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
 				VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
 				VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
@@ -270,7 +270,7 @@ private:
 				VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 
 				// dfmt off
-				Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
+				Log.error("===> Unhandled interrupt", "\n", "IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
 					"RAX = ", rax, " | RBX = ", rbx, "\n",
 					"RCX = ", rcx, " | RDX = ", rdx, "\n",
 					"RDI = ", rdi, " | RSI = ", rsi, "\n",
