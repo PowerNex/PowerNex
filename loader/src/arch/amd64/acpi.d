@@ -399,39 +399,52 @@ public static:
 		ubyte[] data = dsdt.amlData();
 
 		// TODO: Implement more out-of-bounds checks
-		while (data.length >= 4) {
-			if (data[0 .. 4] == "_S5_")
+		while (data.length >= 5) {
+			if (data[0 .. 5] == "_S5_\x12") // x12 = AMLOpcodes.packageOP
 				break;
 			data = data[1 .. $]; // TODO: Optimize using indexOf or something
 		}
 
-		if (data.length < 4)
+		if (data.length < 5)
 			Log.fatal("DSDT does not contain a _S5_");
 
 		// Find: AMLOpcodes.nameOP '\\'? "_S5_" AMLOpcodes.packageOP
-		if ((data[-1] == AMLOpcodes.nameOP || (data[-2] == AMLOpcodes.nameOP && data[-1] == '\\')) && data[4] == AMLOpcodes.packageOP) {
+		if (data[-1] == AMLOpcodes.nameOP || (data[-2] == AMLOpcodes.nameOP && data[-1] == '\\')) {
 			data = data[5 .. $];
 			const ubyte pkgLength = (data[0] & 0xC0 >> 6) + 2;
 			data = data[pkgLength .. $];
 
 			if (data[0] == AMLOpcodes.bytePrefix)
 				data = data[1 .. $]; // skip byteprefix
-			_shutdownData.sleepTypeA = cast(ushort)(data[0] << 10);
+			_shutdownData.sleepTypeA = cast(ushort)(cast(ushort)data[0] << 10);
 			data = data[1 .. $];
 
 			if (data[0] == AMLOpcodes.bytePrefix)
 				data = data[1 .. $]; // skip byteprefix
-			_shutdownData.sleepTypeB = cast(ushort)(data[0] << 10);
+			_shutdownData.sleepTypeB = cast(ushort)(cast(ushort)data[0] << 10);
 		} else
 			Log.fatal("Found invalid _S5_");
 	}
 
+	///
 	void shutdown() {
-		import io.ioport : outp;
+		import io.ioport : outp, inp;
+		import data.text : HexInt;
+		import io.vga : VGA;
 
-		outp!ushort(_shutdownData.pm1aControlBlock, _shutdownData.sleepEnable | _shutdownData.sleepTypeA);
-		if (_shutdownData.pm1bControlBlock)
-			outp!ushort(_shutdownData.pm1bControlBlock, _shutdownData.sleepEnable | _shutdownData.sleepTypeB);
+		ushort orgData = inp!ushort(_shutdownData.pm1aControlBlock);
+
+		Log.info("sleepEnable: ", _shutdownData.sleepEnable.HexInt, ", sleepTypeA: ", _shutdownData.sleepTypeA.HexInt,
+				", sleepTypeB: ", _shutdownData.sleepTypeB.HexInt);
+
+		VGA.writeln("sleepEnable: ", _shutdownData.sleepEnable.HexInt, ", sleepTypeA: ", _shutdownData.sleepTypeA.HexInt,
+				", sleepTypeB: ", _shutdownData.sleepTypeB.HexInt);
+
+		outp!ushort(_shutdownData.pm1aControlBlock, orgData | _shutdownData.sleepEnable | _shutdownData.sleepTypeA);
+		if (_shutdownData.pm1bControlBlock) {
+			orgData = inp!ushort(_shutdownData.pm1bControlBlock);
+			outp!ushort(_shutdownData.pm1bControlBlock, orgData | _shutdownData.sleepEnable | _shutdownData.sleepTypeB);
+		}
 
 		Log.fatal("ACPI-Shutdown failed!");
 	}
