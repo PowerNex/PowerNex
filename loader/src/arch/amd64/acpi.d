@@ -343,8 +343,8 @@ public static:
 		import arch.amd64.pit : PIT;
 		import data.text : HexInt;
 
-		_shutdownData.pm1aControlBlock = cast(ushort)fadt.pm1aControlBlock;
-		_shutdownData.pm1bControlBlock = cast(ushort)fadt.pm1bControlBlock;
+		_powerData.pm1aControlBlock = cast(ushort)fadt.pm1aControlBlock;
+		_powerData.pm1bControlBlock = cast(ushort)fadt.pm1bControlBlock;
 
 		// Enabling ACPI (if possible)
 		if (fadt.smiCommandPort && fadt.acpiEnable && fadt.acpiDisable && !inp!PM1ControlBlock(cast(ushort)fadt.pm1aControlBlock).sciEnable) {
@@ -382,8 +382,11 @@ public static:
 		import io.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 
-		_shutdownData.pm1aControlBlock = cast(ushort)fadt.xPM1aControlBlock.address;
-		_shutdownData.pm1bControlBlock = cast(ushort)fadt.xPM1bControlBlock.address;
+		_powerData.pm1aControlBlock = cast(ushort)fadt.xPM1aControlBlock.address;
+		_powerData.pm1bControlBlock = cast(ushort)fadt.xPM1bControlBlock.address;
+
+		_powerData.resetReg = fadt.resetReg;
+		_powerData.resetValue = fadt.resetValue;
 
 		// Enabling ACPII (if possible)
 		if (fadt.smiCommandPort && fadt.acpiEnable && fadt.acpiDisable
@@ -445,12 +448,12 @@ public static:
 
 		if (data[idx] == AMLOpcodes.bytePrefix)
 			idx++; // skip byteprefix
-		_shutdownData.sleepTypeA = cast(ushort)(cast(ushort)data[idx] << 10);
+		_powerData.sleepTypeA = cast(ushort)(cast(ushort)data[idx] << 10);
 		idx++;
 
 		if (data[idx] == AMLOpcodes.bytePrefix)
 			idx++; // skip byteprefix
-		_shutdownData.sleepTypeB = cast(ushort)(cast(ushort)data[idx] << 10);
+		_powerData.sleepTypeB = cast(ushort)(cast(ushort)data[idx] << 10);
 	}
 
 	///
@@ -459,30 +462,98 @@ public static:
 		import data.text : HexInt;
 		import io.vga : VGA;
 
-		ushort orgData = inp!ushort(_shutdownData.pm1aControlBlock);
-
-		Log.info("sleepEnable: ", _shutdownData.sleepEnable.HexInt, ", sleepTypeA: ", _shutdownData.sleepTypeA.HexInt,
-				", sleepTypeB: ", _shutdownData.sleepTypeB.HexInt);
-
-		VGA.writeln("sleepEnable: ", _shutdownData.sleepEnable.HexInt, ", sleepTypeA: ", _shutdownData.sleepTypeA.HexInt,
-				", sleepTypeB: ", _shutdownData.sleepTypeB.HexInt);
-
-		outp!ushort(_shutdownData.pm1aControlBlock, orgData | _shutdownData.sleepEnable | _shutdownData.sleepTypeA);
-		if (_shutdownData.pm1bControlBlock) {
-			orgData = inp!ushort(_shutdownData.pm1bControlBlock);
-			outp!ushort(_shutdownData.pm1bControlBlock, orgData | _shutdownData.sleepEnable | _shutdownData.sleepTypeB);
+		asm @trusted pure nothrow {
+			cli;
 		}
 
-		Log.fatal("ACPI-Shutdown failed!");
+		ushort orgData = inp!ushort(_powerData.pm1aControlBlock);
+
+		Log.info("sleepEnable: ", _powerData.sleepEnable.HexInt, ", sleepTypeA: ", _powerData.sleepTypeA.HexInt,
+				", sleepTypeB: ", _powerData.sleepTypeB.HexInt);
+
+		VGA.writeln("sleepEnable: ", _powerData.sleepEnable.HexInt, ", sleepTypeA: ", _powerData.sleepTypeA.HexInt,
+				", sleepTypeB: ", _powerData.sleepTypeB.HexInt);
+
+		outp!ushort(_powerData.pm1aControlBlock, orgData | _powerData.sleepEnable | _powerData.sleepTypeA);
+		if (_powerData.pm1bControlBlock) {
+			orgData = inp!ushort(_powerData.pm1bControlBlock);
+			outp!ushort(_powerData.pm1bControlBlock, orgData | _powerData.sleepEnable | _powerData.sleepTypeB);
+		}
+
+		{
+			import io.vga : VGA, CGAColor, CGASlotColor;
+
+			string resetMessage = "All attempts to shutdown have failed. Please shutdown the PC manually!";
+			VGA.color = CGASlotColor(CGAColor.black, CGAColor.red);
+			VGA.writeln(resetMessage);
+			Log.fatal(resetMessage);
+		}
+	}
+
+	///
+	void reboot() {
+		import io.ioport : inp, outp;
+
+		asm @trusted pure nothrow {
+			cli;
+		}
+
+		with (_powerData) {
+			if (resetReg.address) {
+				Log.debug_("Trying ACPIv2.0+ reset...");
+				switch (resetReg.addressSpace) with (FADTv2.GenericAddressStructure.AddressSpace) {
+				case systemMemory:
+					*resetReg.address.toVirtual.ptr!ubyte = resetValue;
+					break;
+				case systemIO:
+					outp!ubyte(cast(ushort)resetReg.address.num, resetValue);
+					break;
+				case pciConfigurationSpace:
+					Log.fatal("TODO: pciConfigurationSpace rebooting is not implemented!");
+					break;
+				default:
+					break;
+				}
+			}
+		}
+
+		Log.debug_("Trying PS/2 reset...");
+		enum ushort ps2PortControl = 0x64;
+		enum ushort ps2PortData = 0x60;
+		enum ubyte systemReset = 0xFE;
+		ubyte tmp = void;
+
+		// Check that the input buffer is empty
+		do {
+			tmp = inp!ubyte(ps2PortControl);
+			if (tmp & 0x1)
+				inp!ubyte(ps2PortData);
+		}
+		while (tmp & 0x3);
+
+		Log.debug_("\tSending reset!");
+		outp!ubyte(ps2PortControl, systemReset);
+
+		{
+			import io.vga : VGA, CGAColor, CGASlotColor;
+
+			string resetMessage = "All attempts to reboot have failed. Please reset the PC manually!";
+			VGA.color = CGASlotColor(CGAColor.black, CGAColor.red);
+			VGA.writeln(resetMessage);
+			Log.fatal(resetMessage);
+		}
 	}
 
 private static:
-	struct ShutdownData {
+	struct PowerData {
 		ushort pm1aControlBlock;
 		ushort pm1bControlBlock;
 		ushort sleepTypeA;
 		ushort sleepTypeB;
 		ushort sleepEnable = 1 << 13;
+
+		FADTv2.GenericAddressStructure resetReg;
+		ubyte resetValue;
 	}
 
 	enum SDTNeedVersion {
@@ -501,9 +572,9 @@ private static:
 		void function(SDTHeader*) func;
 	}
 
-	@property ref auto _shutdownData() @trusted {
-		__gshared ShutdownData _shutdownData;
-		return _shutdownData;
+	@property ref PowerData _powerData() @trusted {
+		__gshared PowerData _powerData;
+		return _powerData;
 	}
 
 	__gshared SDTLookup[{ return from!"util.trait".getFunctionsWithUDA!(ACPI, SDTIdentifier).length; }()] _lookups;

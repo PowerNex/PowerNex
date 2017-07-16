@@ -53,10 +53,6 @@ extern (C) ulong main() @safe {
 
 	TLS.aquireTLS();
 
-	outputBoth("Reached end of main! Shutting down in 2 seconds.");
-	PIT.sleep(2000);
-	ACPI.shutdown();
-
 	// IOAPIC.init();
 
 	// auto kernelModule = Multiboot.getKernel();
@@ -85,6 +81,10 @@ extern (C) ulong main() @safe {
 
 	// Turn on AP
 	// kernel.jmp();
+
+	outputBoth("Reached end of main! Shutting down in 2 seconds.");
+	PIT.sleep(2000);
+	ACPI.shutdown();
 
 	return 0;
 }

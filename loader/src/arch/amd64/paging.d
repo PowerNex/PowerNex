@@ -526,7 +526,7 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 
 		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 		VGA.writeln("===> PAGE FAULT");
-		VGA.writeln("IRQ = ", intNumber, " | RIP = ", rip);
+		VGA.writeln("                          | RIP = ", rip);
 		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
 		VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
 		VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
@@ -551,7 +551,8 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 		VGA.writeln("Page Mode: ", (pageFlags & PageFlags.present) ? "R" : "", (pageFlags & PageFlags.writable) ? "W" : "",
 				(pageFlags & PageFlags.execute) ? "X" : "", (pageFlags & PageFlags.user) ? "-User" : "");
 		//dfmt off
-		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
+		Log.fatal("===> PAGE FAULT", "\n",
+			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
 			"RAX = ", rax, " | RBX = ", rbx, "\n",
 			"RCX = ", rcx, " | RDX = ", rdx, "\n",
 			"RDI = ", rdi, " | RSI = ", rsi, "\n",
