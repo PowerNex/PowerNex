@@ -30,10 +30,10 @@ size_t strlen(const(char)[] str) @trusted {
 }
 
 ///
-long indexOf(inout(char)[] str, char ch, long start = 0) @trusted {
+long indexOf(T)(inout(T)[] haystack, T needle, long start = 0) @trusted {
 	long idx = start;
-	while (idx < str.length)
-		if (str[idx] == ch)
+	while (idx < haystack.length)
+		if (haystack[idx] == needle)
 			return idx;
 		else
 			idx++;
@@ -41,32 +41,10 @@ long indexOf(inout(char)[] str, char ch, long start = 0) @trusted {
 }
 
 ///
-long indexOf(string str, char ch, long start = 0) @trusted {
-	long idx = start;
-	while (idx < str.length)
-		if (str[idx] == ch)
-			return idx;
-		else
-			idx++;
-	return -1;
-}
-
-///
-long indexOfLast(inout(char)[] str, char ch, long start = 0) @trusted {
-	long idx = start ? start : str.length - 1;
+long indexOfLast(T)(inout(T)[] haystack, T needle, long start = 0) @trusted {
+	long idx = start ? start : haystack.length - 1;
 	while (idx > -1)
-		if (str[idx] == ch)
-			return idx;
-		else
-			idx--;
-	return -1;
-}
-
-///
-long indexOfLast(string str, char ch, long start = 0) @trusted {
-	long idx = start ? start : str.length - 1;
-	while (idx > -1)
-		if (str[idx] == ch)
+		if (haystack[idx] == needle)
 			return idx;
 		else
 			idx--;

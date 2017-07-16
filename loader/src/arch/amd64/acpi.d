@@ -276,8 +276,8 @@ align(1):
 	ubyte resetValue; ///
 	private ubyte[3] reserved3;
 
-	ulong xFirmwareControl; ///inp!ushort(cast(ushort)fadt.pm1bControlBlock) & FADTv1.PM1ControlBlock.sciEnable
-	ulong xDsdt; ///
+	PhysAddress xFirmwareControl; ///
+	PhysAddress xDSDT; ///
 
 	GenericAddressStructure xPM1aEventBlock; ///
 	GenericAddressStructure xPM1bEventBlock; ///
@@ -336,6 +336,7 @@ public static:
 		}
 	}
 
+	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v1Only)
 	void accept(FADTv1* fadt) {
 		import io.ioport : outp, inp;
@@ -362,8 +363,20 @@ public static:
 		}
 
 		Log.info("ACPI is now on!");
+
+		{
+			DSDT* dsdt = fadt.dsdt.toX64.toVirtual.ptr!DSDT;
+			if (!dsdt)
+				return;
+			if (!dsdt.valid)
+				return Log.error("SDT [DSDT] has an invalid checksum!");
+
+			dsdt.print();
+			accept(dsdt);
+		}
 	}
 
+	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v2Only)
 	void accept(FADTv2* fadt) {
 		import io.ioport : outp, inp;
@@ -390,40 +403,54 @@ public static:
 		}
 
 		Log.info("ACPI is now on!");
+
+		{
+			DSDT* dsdt = fadt.xDSDT.toVirtual.ptr!DSDT;
+			if (!dsdt)
+				return;
+			if (!dsdt.valid)
+				return Log.error("SDT [DSDT] has an invalid checksum!");
+
+			dsdt.print();
+			accept(dsdt);
+		}
 	}
 
+	/// This one doesn't really need the SDTIdentifier because it won't find it inside that list
+	/// DSDT is aquired from FADTv1 or FADTv2
 	@SDTIdentifier("DSDT", SDTNeedVersion.any)
 	void accept(DSDT* dsdt) {
 		import arch.amd64.aml : AMLOpcodes;
+		import data.text : indexOf;
 
 		ubyte[] data = dsdt.amlData();
 
-		// TODO: Implement more out-of-bounds checks
-		while (data.length >= 5) {
-			if (data[0 .. 5] == "_S5_\x12") // x12 = AMLOpcodes.packageOP
-				break;
-			data = data[1 .. $]; // TODO: Optimize using indexOf or something
-		}
-
-		if (data.length < 5)
-			Log.fatal("DSDT does not contain a _S5_");
-
+		long idx;
 		// Find: AMLOpcodes.nameOP '\\'? "_S5_" AMLOpcodes.packageOP
-		if (data[-1] == AMLOpcodes.nameOP || (data[-2] == AMLOpcodes.nameOP && data[-1] == '\\')) {
-			data = data[5 .. $];
-			const ubyte pkgLength = (data[0] & 0xC0 >> 6) + 2;
-			data = data[pkgLength .. $];
+		while (idx >= 0) {
+			// Start to search for the static part "_S5_" AMLOpcodes.packageOP.
+			// Searching for packageOP because it is (hopefully) more unique than '_'
+			idx = indexOf(data, cast(char)AMLOpcodes.packageOP, idx);
+			if (data[idx - 4 .. idx + 1] == "_S5_\x12") // x12 = AMLOpcodes.packageOP
+				if (data[idx - 5] == AMLOpcodes.nameOP || (data[idx - 6] == AMLOpcodes.nameOP && data[idx - 5] == '\\'))
+					break;
+			idx++;
+		}
+		if (idx < 0)
+			Log.fatal("DSDT does not contain a _S5_");
+		idx++;
 
-			if (data[0] == AMLOpcodes.bytePrefix)
-				data = data[1 .. $]; // skip byteprefix
-			_shutdownData.sleepTypeA = cast(ushort)(cast(ushort)data[0] << 10);
-			data = data[1 .. $];
+		const ubyte pkgLength = (data[0] & 0xC0 >> 6) + 2;
+		idx += pkgLength;
 
-			if (data[0] == AMLOpcodes.bytePrefix)
-				data = data[1 .. $]; // skip byteprefix
-			_shutdownData.sleepTypeB = cast(ushort)(cast(ushort)data[0] << 10);
-		} else
-			Log.fatal("Found invalid _S5_");
+		if (data[idx] == AMLOpcodes.bytePrefix)
+			idx++; // skip byteprefix
+		_shutdownData.sleepTypeA = cast(ushort)(cast(ushort)data[idx] << 10);
+		idx++;
+
+		if (data[idx] == AMLOpcodes.bytePrefix)
+			idx++; // skip byteprefix
+		_shutdownData.sleepTypeB = cast(ushort)(cast(ushort)data[idx] << 10);
 	}
 
 	///
