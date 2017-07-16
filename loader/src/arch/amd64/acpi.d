@@ -290,9 +290,102 @@ align(1):
 }
 
 ///
-@safe static struct ACPI {
-public static:
+@safe struct MADT {
 	///
+	align(1) struct APICBase {
+		///
+		enum Type : ubyte {
+			processorLocalAPIC = 0, ///
+			ioAPIC = 1, ///
+			interruptSourceOverride = 2, ///
+			nmi = 3, ///
+			localAPICNMI = 4, ///
+			localAPICAddressOverride = 5, ///
+			ioSAPIC = 6, ///
+			localSAPIC = 7, ///
+			platformInterruptSources = 8, ///
+			processorLocalX2APIC = 9, ///
+			localX2APICNMI = 0xA, ///
+			gic = 0xB, ///
+			gicd = 0xC ///
+		}
+
+		Type type; ///
+		ubyte size; ///
+	}
+
+	///
+	struct ProcessorLocalAPIC {
+		///
+		enum Flags {
+			disabled = 0, ///
+			enabled = 1 ///
+		}
+
+	align(1):
+		APICBase base; ///
+		alias base this;
+
+		ubyte processorID; ///
+		ubyte id; ///
+		Flags flags; /// 1 = Processor enabled
+	}
+
+	///
+	struct IOAPIC {
+		APICBase base; ///
+		alias base this;
+
+		ubyte id; ///
+		private ubyte reserved;
+		PhysAddress32 address; ///
+		uint globalSystemInterruptBase; ///
+	}
+
+	///
+	struct InterruptSourceOverride {
+		APICBase base; ///
+		alias base this;
+
+		ubyte busSource; ///
+		ubyte irqSource; ///
+		uint globalSystemInterrupt; ///
+		ushort flags; ///
+	}
+
+	struct EntryRange {
+		VirtAddress current;
+		VirtAddress neverAbove;
+
+		@property bool empty() {
+			return current >= neverAbove;
+		}
+
+		@property APICBase* front() {
+			return current.ptr!APICBase;
+		}
+
+		void popFront() {
+			current += front.size;
+		}
+	}
+
+align(1):
+	SDTHeader base; ///
+	alias base this;
+
+	uint localControllerAddress; ///
+	uint flags; /// 1 = Dual 8259 Legacy PICs Installed
+
+	@property EntryRange entries() {
+		VirtAddress vThis = VirtAddress(&this);
+		return EntryRange(vThis + MADT.sizeof, vThis + base.length);
+	}
+}
+
+///
+@safe static struct ACPI {
+public static: ///
 	void initOld(ubyte[] rsdpData) @trusted {
 		RSDPv1* rsdp = &(cast(RSDPv1[])rsdpData)[0];
 		assert(rsdp.revision == 0, "RSDP is not version 1.0!");
@@ -439,6 +532,7 @@ public static:
 					break;
 			idx++;
 		}
+
 		if (idx < 0)
 			Log.fatal("DSDT does not contain a _S5_");
 		idx++;
@@ -454,6 +548,40 @@ public static:
 		if (data[idx] == AMLOpcodes.bytePrefix)
 			idx++; // skip byteprefix
 		_powerData.sleepTypeB = cast(ushort)(cast(ushort)data[idx] << 10);
+	}
+
+	///
+	@SDTIdentifier("APIC", SDTNeedVersion.any)
+	void accept(MADT* madt) @trusted {
+		with (MADT) {
+			foreach (APICBase * entry; madt.entries) {
+				switch (entry.type) with (APICBase.Type) {
+				case processorLocalAPIC:
+					ProcessorLocalAPIC* processorLocalAPIC = cast(ProcessorLocalAPIC*)entry;
+					Log.info("Type: ", processorLocalAPIC.type, ", Length: ", processorLocalAPIC.size, ", ProcessorID: ",
+							processorLocalAPIC.processorID, ", ID: ", processorLocalAPIC.id, ", Flags: ", processorLocalAPIC.flags);
+					break;
+
+				case ioAPIC:
+					IOAPIC* ioACPI = cast(IOAPIC*)entry;
+					Log.info("Type: ", ioACPI.type, ", Length: ", ioACPI.size, ", ID: ", ioACPI.id, ", Address: ",
+							ioACPI.address, ", GlobalSystemInterruptBase: ", ioACPI.globalSystemInterruptBase);
+					break;
+
+				case interruptSourceOverride:
+					InterruptSourceOverride* interruptSourceOverride = cast(InterruptSourceOverride*)entry;
+					Log.info("Type: ", interruptSourceOverride.type, ", Length: ", interruptSourceOverride.size, ", BusSource: ",
+							interruptSourceOverride.busSource, ", IRQSource: ",
+							interruptSourceOverride.irqSource, ", GlobalSystemInterrupt: ",
+							interruptSourceOverride.globalSystemInterrupt, ", Flags: ", interruptSourceOverride.flags);
+					break;
+
+				default:
+					Log.info("Type: ", entry.type, ", Length: ", entry.size);
+					break;
+				}
+			}
+		}
 	}
 
 	///
