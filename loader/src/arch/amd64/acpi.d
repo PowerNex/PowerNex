@@ -315,9 +315,9 @@ align(1):
 	}
 
 	///
-	struct ProcessorLocalAPIC {
+	struct LAPIC {
 		///
-		enum Flags {
+		enum Flags : uint {
 			disabled = 0, ///
 			enabled = 1 ///
 		}
@@ -326,9 +326,27 @@ align(1):
 		APICBase base; ///
 		alias base this;
 
-		ubyte processorID; ///
-		ubyte id; ///
+		ubyte acpiID; ///
+		ubyte apicID; ///
 		Flags flags; /// 1 = Processor enabled
+	}
+
+	///
+	struct X2LAPIC {
+		///
+		enum Flags : uint {
+			disabled = 0, ///
+			enabled = 1 ///
+		}
+
+	align(1):
+		APICBase base; ///
+		alias base this;
+
+		private ushort reserved;
+		uint x2apicID; ///
+		Flags flags; ///
+		uint acpiID; ///
 	}
 
 	///
@@ -554,12 +572,18 @@ public static: ///
 	@SDTIdentifier("APIC", SDTNeedVersion.any)
 	void accept(MADT* madt) @trusted {
 		with (MADT) {
-			foreach (APICBase * entry; madt.entries) {
+			foreach (APICBase* entry; madt.entries) {
 				switch (entry.type) with (APICBase.Type) {
 				case processorLocalAPIC:
-					ProcessorLocalAPIC* processorLocalAPIC = cast(ProcessorLocalAPIC*)entry;
-					Log.info("Type: ", processorLocalAPIC.type, ", Length: ", processorLocalAPIC.size, ", ProcessorID: ",
-							processorLocalAPIC.processorID, ", ID: ", processorLocalAPIC.id, ", Flags: ", processorLocalAPIC.flags);
+					LAPIC* lAPIC = cast(LAPIC*)entry;
+					Log.info("Type: ", lAPIC.type, ", Length: ", lAPIC.size, ", ACPI ID: ", lAPIC.acpiID, ", APIC ID: ",
+							lAPIC.apicID, ", Flags: ", lAPIC.flags);
+					break;
+
+				case processorLocalX2APIC:
+					X2LAPIC* x2LAPIC = cast(X2LAPIC*)entry;
+					Log.info("Type: ", x2LAPIC.type, ", Length: ", x2LAPIC.size, ", X2APIC ID: ", x2LAPIC.x2apicID, ", Flags: ",
+							x2LAPIC.flags, ", ACPI ID: ", x2LAPIC.acpiID);
 					break;
 
 				case ioAPIC:
