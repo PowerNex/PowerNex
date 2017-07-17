@@ -27,4 +27,8 @@ multibootPointer:
 
 .global powerDHeader
 powerDHeader:
+	.space 32
+
+.global powerDACPI
+powerDACPI:
 	.space 64

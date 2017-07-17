@@ -171,39 +171,40 @@ align(1):
 }
 
 ///
-@safe struct FADTv2 {
+@safe align(1) struct GenericAddressStructure {
+align(1):
 	///
-	@safe align(1) struct GenericAddressStructure {
-	align(1):
-		///
-		enum AddressSpace : ubyte {
-			systemMemory = 0, ///
-			systemIO = 1, ///
-			pciConfigurationSpace = 2, ///
-			embeddedController = 3, ///
-			smBus = 4, ///
-			//reserved = 5 to 0x7E,
-			functionalFixedHardware = 0x7F, ///
-			//reserved = 0x80 to 0xBF,
-			oemDefined_start = 0xC0, ///
-			oemDefined_end = 0xFF ///
-		}
-
-		///
-		enum AccessSize : ubyte {
-			undefined = 0, ///
-			byteAccess = 1, ///
-			shortAccess = 2, ///
-			intAccess = 3, ///
-			longAccess = 4 ///
-		}
-
-		AddressSpace addressSpace; ///
-		ubyte bitWidth; ///
-		ubyte bitOffset; ///
-		AccessSize accessSize; ///
-		PhysAddress address; ///
+	enum AddressSpace : ubyte {
+		systemMemory = 0, ///
+		systemIO = 1, ///
+		pciConfigurationSpace = 2, ///
+		embeddedController = 3, ///
+		smBus = 4, ///
+		//reserved = 5 to 0x7E,
+		functionalFixedHardware = 0x7F, ///
+		//reserved = 0x80 to 0xBF,
+		oemDefined_start = 0xC0, ///
+		oemDefined_end = 0xFF ///
 	}
+
+	///
+	enum AccessSize : ubyte {
+		undefined = 0, ///
+		byteAccess = 1, ///
+		shortAccess = 2, ///
+		intAccess = 3, ///
+		longAccess = 4 ///
+	}
+
+	AddressSpace addressSpace; ///
+	ubyte bitWidth; ///
+	ubyte bitOffset; ///
+	AccessSize accessSize; ///
+	PhysAddress address; ///
+}
+
+///
+@safe struct FADTv2 {
 
 	///
 	enum PreferredPowerManagementProfile : ubyte {
@@ -405,6 +406,8 @@ align(1):
 @safe static struct ACPI {
 public static: ///
 	void initOld(ubyte[] rsdpData) @trusted {
+		import api : APIInfo;
+
 		RSDPv1* rsdp = &(cast(RSDPv1[])rsdpData)[0];
 		assert(rsdp.revision == 0, "RSDP is not version 1.0!");
 
@@ -412,6 +415,8 @@ public static: ///
 
 		RSDTv1* rsdt = rsdp.rsdtAddress.toX64.VirtAddress.ptr!RSDTv1;
 		assert(rsdt.valid);
+
+		APIInfo.acpi.rsdtV1 = VirtAddress(rsdt);
 		rsdt.print();
 
 		_createLookupTable(SDTNeedVersion.v1Only);
@@ -427,6 +432,8 @@ public static: ///
 
 	///
 	void initNew(ubyte[] rsdpData) @trusted {
+		import api : APIInfo;
+
 		RSDPv2* rsdp = &(cast(RSDPv2[])rsdpData)[0];
 		assert(rsdp.revision >= 2, "RSDP is not >= version 2.0!");
 
@@ -434,6 +441,8 @@ public static: ///
 
 		RSDTv2* rsdt = rsdp.xsdtAddress.VirtAddress.ptr!RSDTv2;
 		assert(rsdt.valid);
+
+		APIInfo.acpi.rsdtV2 = VirtAddress(rsdt);
 		rsdt.print();
 
 		_createLookupTable(SDTNeedVersion.v2Only);
@@ -450,12 +459,18 @@ public static: ///
 	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v1Only)
 	void accept(FADTv1* fadt) {
+		import api : APIInfo;
 		import io.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 		import data.text : HexInt;
 
-		_powerData.pm1aControlBlock = cast(ushort)fadt.pm1aControlBlock;
-		_powerData.pm1bControlBlock = cast(ushort)fadt.pm1bControlBlock;
+		with (APIInfo.acpi) {
+			with (shutdown) {
+				pm1aControlBlock = cast(ushort)fadt.pm1aControlBlock;
+				pm1bControlBlock = cast(ushort)fadt.pm1bControlBlock;
+			}
+			century = fadt.century;
+		}
 
 		// Enabling ACPI (if possible)
 		if (fadt.smiCommandPort && fadt.acpiEnable && fadt.acpiDisable && !inp!PM1ControlBlock(cast(ushort)fadt.pm1aControlBlock).sciEnable) {
@@ -482,6 +497,7 @@ public static: ///
 			if (!dsdt.valid)
 				return Log.error("SDT [DSDT] has an invalid checksum!");
 
+			APIInfo.acpi.dsdt = VirtAddress(dsdt);
 			dsdt.print();
 			accept(dsdt);
 		}
@@ -490,15 +506,29 @@ public static: ///
 	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v2Only)
 	void accept(FADTv2* fadt) {
+		import api : APIInfo;
+		import api.acpi : PowerDACPI;
 		import io.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 
-		_powerData.pm1aControlBlock = cast(ushort)fadt.xPM1aControlBlock.address;
-		_powerData.pm1bControlBlock = cast(ushort)fadt.xPM1bControlBlock.address;
+		with (APIInfo.acpi) {
+			with (shutdown) {
+				pm1aControlBlock = cast(ushort)fadt.xPM1aControlBlock.address;
+				pm1bControlBlock = cast(ushort)fadt.xPM1bControlBlock.address;
+			}
 
-		_powerData.resetReg = fadt.resetReg;
-		_powerData.resetValue = fadt.resetValue;
+			with (reboot) {
+				const Action[GenericAddressStructure.AddressSpace.max + 1] lookup = [
+					GenericAddressStructure.AddressSpace.systemIO : Action.io, GenericAddressStructure.AddressSpace.systemMemory : Action.memory
+				];
 
+				action = lookup[fadt.resetReg.addressSpace];
+				where.address = fadt.resetReg.address;
+				value = fadt.resetValue;
+			}
+
+			century = fadt.century;
+		}
 		// Enabling ACPII (if possible)
 		if (fadt.smiCommandPort && fadt.acpiEnable && fadt.acpiDisable
 				&& !inp!PM1ControlBlock(cast(ushort)fadt.xPM1aControlBlock.address).sciEnable) {
@@ -525,6 +555,7 @@ public static: ///
 			if (!dsdt.valid)
 				return Log.error("SDT [DSDT] has an invalid checksum!");
 
+			APIInfo.acpi.dsdt = VirtAddress(dsdt);
 			dsdt.print();
 			accept(dsdt);
 		}
@@ -534,6 +565,7 @@ public static: ///
 	/// DSDT is aquired from FADTv1 or FADTv2
 	@SDTIdentifier("DSDT", SDTNeedVersion.any)
 	void accept(DSDT* dsdt) {
+		import api : APIInfo;
 		import arch.amd64.aml : AMLOpcodes;
 		import data.text : indexOf;
 
@@ -558,14 +590,16 @@ public static: ///
 		const ubyte pkgLength = (data[0] & 0xC0 >> 6) + 2;
 		idx += pkgLength;
 
-		if (data[idx] == AMLOpcodes.bytePrefix)
-			idx++; // skip byteprefix
-		_powerData.sleepTypeA = cast(ushort)(cast(ushort)data[idx] << 10);
-		idx++;
+		with (APIInfo.acpi.shutdown) {
+			if (data[idx] == AMLOpcodes.bytePrefix)
+				idx++; // skip byteprefix
+			sleepTypeA = cast(ushort)(cast(ushort)data[idx] << 10);
+			idx++;
 
-		if (data[idx] == AMLOpcodes.bytePrefix)
-			idx++; // skip byteprefix
-		_powerData.sleepTypeB = cast(ushort)(cast(ushort)data[idx] << 10);
+			if (data[idx] == AMLOpcodes.bytePrefix)
+				idx++; // skip byteprefix
+			sleepTypeB = cast(ushort)(cast(ushort)data[idx] << 10);
+		}
 	}
 
 	///
@@ -610,6 +644,7 @@ public static: ///
 
 	///
 	void shutdown() {
+		import api : APIInfo;
 		import io.ioport : outp, inp;
 		import data.text : HexInt;
 		import io.vga : VGA;
@@ -618,18 +653,18 @@ public static: ///
 			cli;
 		}
 
-		ushort orgData = inp!ushort(_powerData.pm1aControlBlock);
+		with (APIInfo.acpi.shutdown) {
+			ushort orgData = inp!ushort(pm1aControlBlock);
 
-		Log.info("sleepEnable: ", _powerData.sleepEnable.HexInt, ", sleepTypeA: ", _powerData.sleepTypeA.HexInt,
-				", sleepTypeB: ", _powerData.sleepTypeB.HexInt);
+			Log.info("sleepEnable: ", sleepEnable.HexInt, ", sleepTypeA: ", sleepTypeA.HexInt, ", sleepTypeB: ", sleepTypeB.HexInt);
 
-		VGA.writeln("sleepEnable: ", _powerData.sleepEnable.HexInt, ", sleepTypeA: ", _powerData.sleepTypeA.HexInt,
-				", sleepTypeB: ", _powerData.sleepTypeB.HexInt);
+			VGA.writeln("sleepEnable: ", sleepEnable.HexInt, ", sleepTypeA: ", sleepTypeA.HexInt, ", sleepTypeB: ", sleepTypeB.HexInt);
 
-		outp!ushort(_powerData.pm1aControlBlock, orgData | _powerData.sleepEnable | _powerData.sleepTypeA);
-		if (_powerData.pm1bControlBlock) {
-			orgData = inp!ushort(_powerData.pm1bControlBlock);
-			outp!ushort(_powerData.pm1bControlBlock, orgData | _powerData.sleepEnable | _powerData.sleepTypeB);
+			outp!ushort(pm1aControlBlock, orgData | sleepEnable | sleepTypeA);
+			if (pm1bControlBlock) {
+				orgData = inp!ushort(pm1bControlBlock);
+				outp!ushort(pm1bControlBlock, orgData | sleepEnable | sleepTypeB);
+			}
 		}
 
 		{
@@ -644,30 +679,28 @@ public static: ///
 
 	///
 	void reboot() {
+		import api : APIInfo;
 		import io.ioport : inp, outp;
 
 		asm @trusted pure nothrow {
 			cli;
 		}
 
-		with (_powerData) {
-			if (resetReg.address) {
+		with (APIInfo.acpi.reboot)
+			if (action != Action.invalid) {
 				Log.debug_("Trying ACPIv2.0+ reset...");
-				switch (resetReg.addressSpace) with (FADTv2.GenericAddressStructure.AddressSpace) {
-				case systemMemory:
-					*resetReg.address.toVirtual.ptr!ubyte = resetValue;
+				switch (action) {
+				case Action.io:
+					outp!ubyte(where.ioPort, value);
 					break;
-				case systemIO:
-					outp!ubyte(cast(ushort)resetReg.address.num, resetValue);
-					break;
-				case pciConfigurationSpace:
-					Log.fatal("TODO: pciConfigurationSpace rebooting is not implemented!");
+				case Action.memory:
+					*where.address.toVirtual.ptr!ubyte = value;
 					break;
 				default:
+					Log.fatal("TODO: '", action, "' rebooting is not implemented!");
 					break;
 				}
 			}
-		}
 
 		Log.debug_("Trying PS/2 reset...");
 		enum ushort ps2PortControl = 0x64;
@@ -697,17 +730,6 @@ public static: ///
 	}
 
 private static:
-	struct PowerData {
-		ushort pm1aControlBlock;
-		ushort pm1bControlBlock;
-		ushort sleepTypeA;
-		ushort sleepTypeB;
-		ushort sleepEnable = 1 << 13;
-
-		FADTv2.GenericAddressStructure resetReg;
-		ubyte resetValue;
-	}
-
 	enum SDTNeedVersion {
 		any,
 		v1Only,
@@ -722,11 +744,6 @@ private static:
 	struct SDTLookup {
 		char[4] name;
 		void function(SDTHeader*) func;
-	}
-
-	@property ref PowerData _powerData() @trusted {
-		__gshared PowerData _powerData;
-		return _powerData;
 	}
 
 	__gshared SDTLookup[{ return from!"util.trait".getFunctionsWithUDA!(ACPI, SDTIdentifier).length; }()] _lookups;

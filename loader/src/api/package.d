@@ -1,7 +1,9 @@
 module api;
 public import api.base;
+public import api.acpi;
 
 private extern extern (C) __gshared PowerDHeader powerDHeader;
+private extern extern (C) __gshared PowerDACPI powerDACPI;
 
 @safe static struct APIInfo {
 public static:
@@ -17,6 +19,7 @@ public static:
 		return .powerDHeader;
 	}
 
-private static __gshared:
-
+	@property ref PowerDACPI acpi() @trusted {
+		return .powerDACPI;
+	}
 }
