@@ -1,7 +1,16 @@
+/**
+ * A module for allocating and free memory dynamically.
+ *
+ * Copyright: © 2015-2017, Dan Printzell
+ * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+ *  (See accompanying file LICENSE)
+ * Authors: $(LINK2 https://vild.io/, Dan Printzell)
+ */
 module memory.heap;
 
 import data.address;
 
+///
 @safe struct BuddyHeader {
 	BuddyHeader* next;
 	ubyte factor;
@@ -10,8 +19,10 @@ import data.address;
 
 static assert(BuddyHeader.sizeof == 2 * ulong.sizeof);
 
+///
 @safe static struct Heap {
 public static:
+	///
 	void init() @trusted {
 		import arch.amd64.paging : _makeAddress;
 
@@ -20,6 +31,7 @@ public static:
 		// TODO: Preallocate? _extend();
 	}
 
+	///
 	void[] allocate(size_t size) @trusted {
 		import data.number : log2;
 
@@ -71,6 +83,7 @@ public static:
 		return (buddy.VirtAddress + BuddyHeader.sizeof).ptr[0 .. size - BuddyHeader.sizeof];
 	}
 
+	///
 	void free(void[] address) @trusted {
 		import io.log : Log;
 
@@ -118,12 +131,14 @@ public static:
 		_getFreeFactors(buddy.factor) = buddy;
 	}
 
+	///
 	void gc() {
 		// TODO: Free pages that are not longer in use, and don't have any pages that are in use after it
 		// Should probably add a field to the BuddyHeader, to mark if something is free'd
 		assert(0);
 	}
 
+	///
 	void print() @trusted {
 		import io.log : Log;
 

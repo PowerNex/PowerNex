@@ -1,20 +1,32 @@
+/**
+ * A module for keeping track of which physical pages are in use and which are free.
+ *
+ * Copyright: © 2015-2017, Dan Printzell
+ * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+ *  (See accompanying file LICENSE)
+ * Authors: $(LINK2 https://vild.io/, Dan Printzell)
+ */
 module memory.frameallocator;
 
 import data.address;
 
+///
 @safe static struct FrameAllocator {
 public static:
+	///
 	void init() {
 		// Mark ACPI frames
 		markRange(PhysAddress(0xE0000), PhysAddress(0x100000));
 	}
 
+	///
 	void preAllocateFrames() @trusted {
 		foreach (ref ulong frame; _preallocated)
 			frame = ulong.max;
 		_allocPreAlloc(); // Add some nodes to _preallocated
 	}
 
+	///
 	void markRange(PhysAddress start, PhysAddress end) @trusted {
 		ulong curFrame = start / 0x1000;
 		const ulong endFrame = end / 0x1000;
@@ -28,6 +40,7 @@ public static:
 			markFrame(curFrame);
 	}
 
+	///
 	void markFrame(ulong idx) @trusted {
 		foreach (ref ulong frame; _preallocated)
 			if (frame == idx) {
@@ -48,6 +61,7 @@ public static:
 		}
 	}
 
+	///
 	ulong getFrame() {
 		ulong getFrameImpl(bool tryAgain) @trusted {
 			foreach (idx, ref ulong frame; _preallocated) {
@@ -84,6 +98,7 @@ public static:
 		return getFrameImpl(true);
 	}
 
+	///
 	void freeFrame(ulong idx) @trusted {
 		if (idx == 0)
 			return;
@@ -105,6 +120,7 @@ public static:
 			_currentBitmapIdx = bitmapIdx;
 	}
 
+	///
 	PhysAddress alloc() {
 		return PhysAddress(getFrame() << 12);
 	}
@@ -136,18 +152,22 @@ public static:
 		return PhysAddress((firstGood * 64) << 12);
 	}
 
+	///
 	void free(PhysAddress memory) @trusted {
 		freeFrame(memory.num / 0x1000);
 	}
 
+	///
 	@property ulong maxFrames() @trusted {
 		return _maxFrames;
 	}
 
+	///
 	@property void maxFrames(ulong maxFrames) @trusted {
 		_maxFrames = maxFrames;
 	}
 
+	///
 	@property ulong usedFrames() @trusted {
 		return _usedFrames;
 	}

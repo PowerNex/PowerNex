@@ -1,3 +1,7 @@
+/**
+ * This code is based on Adam D. Ruppe $(LINK2 http://arsdnet.net/dcode/minimal.zip minimal.zip).
+ * Probably Boost licensed
+ */
 module object;
 
 /**

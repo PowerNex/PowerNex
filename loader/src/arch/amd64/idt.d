@@ -1,3 +1,11 @@
+/**
+ * A module for interfacing with the $(I Interrupt Descriptor Table), also called IDT.
+ *
+ * Copyright: © 2015-2017, Dan Printzell
+ * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+ *  (See accompanying file LICENSE)
+ * Authors: $(LINK2 https://vild.io/, Dan Printzell)
+ */
 module arch.amd64.idt;
 
 ///

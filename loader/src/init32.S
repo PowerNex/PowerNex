@@ -1,3 +1,12 @@
+/**
+ * The early boot code that get control from GRUB and sets up 64bit to be able to call the second part of the boot code.
+ *
+ * Copyright: © 2015-2017, Dan Printzell
+ * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+ *  (See accompanying file LICENSE)
+ * Authors: $(LINK2 https://vild.io/, Dan Printzell)
+ */
+
 .macro VERSION
 	.ascii "PowerD v0.0.0-ALPHA "
 .endm

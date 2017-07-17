@@ -1,3 +1,11 @@
+/**
+ * Helper data structures for abstracing memory addresses.
+ *
+ * Copyright: © 2015-2017, Dan Printzell
+ * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+ *  (See accompanying file LICENSE)
+ * Authors: $(LINK2 https://vild.io/, Dan Printzell)
+ */
 module data.address;
 
 //XXX: Functions that cast SHOULD NOT be @safe/@trusted, as this invalidates the whole safeness system
@@ -138,6 +146,7 @@ private mixin template AddressBase(Type = size_t) {
 	}
 }
 
+/// This represents a virtual address
 @safe struct VirtAddress {
 	mixin AddressBase;
 
@@ -158,6 +167,7 @@ private mixin template AddressBase(Type = size_t) {
 	}
 }
 
+/// This represents a physical address
 @safe struct PhysAddress {
 	mixin AddressBase;
 
@@ -167,6 +177,7 @@ private mixin template AddressBase(Type = size_t) {
 	}
 }
 
+/// This represents a 32-bit physical address
 @safe struct PhysAddress32 {
 	mixin AddressBase!uint;
 
