@@ -23,21 +23,27 @@ template bitfieldShim(const char[] typeStr, alias data, args...) {
 template bitfieldImpl(const char[] typeStr, const char[] nameStr, int offset, args...) {
 	static if (!args.length)
 		enum ret = "";
-	else static if (!args[0].length)
+	else static if (args.length == 1 && !args[0].length)
 		enum ret = bitfieldImpl!(typeStr, nameStr, offset + args[1], args[2 .. $]).ret;
 	else {
-		const name = args[0];
-		const size = args[1];
-		const mask = bitmask!size;
-		const type = targetType!size;
+		enum name = args[0];
+		enum size = args[1];
+		enum mask = bitmask!size;
+		static if (args.length > 2 && is(args[2])) {
+			enum type = args[2].stringof;
+			enum nextItemAt = 3;
+		} else {
+			enum type = targetType!size;
+			enum nextItemAt = 2;
+		}
 
-		enum getter = "@property " ~ type ~ " " ~ name ~ "() { return cast(" ~ type ~ ")((" ~ nameStr ~ " >> " ~ itoh!(
-				offset) ~ ") & " ~ itoh!(mask) ~ "); } \n";
+		enum getter = "///\n@property " ~ type ~ " " ~ name ~ "() { return cast(" ~ type ~ ")((" ~ nameStr ~ " >> " ~ itoh!(
+					offset) ~ ") & " ~ itoh!(mask) ~ "); } \n";
 
-		enum setter = "@property void " ~ name ~ "(" ~ type ~ " val) { " ~ nameStr ~ " = (" ~ nameStr ~ " & " ~ itoh!(
-				~(mask << offset)) ~ ") | ((val & " ~ itoh!(mask) ~ ") << " ~ itoh!(offset) ~ "); } \n";
+		enum setter = "///\n@property void " ~ name ~ "(" ~ type ~ " val) { " ~ nameStr ~ " = (" ~ nameStr ~ " & " ~ itoh!(
+					~(mask << offset)) ~ ") | ((val & " ~ itoh!(mask) ~ ") << " ~ itoh!(offset) ~ "); } \n";
 
-		enum ret = getter ~ setter ~ bitfieldImpl!(typeStr, nameStr, offset + size, args[2 .. $]).ret;
+		enum ret = getter ~ setter ~ bitfieldImpl!(typeStr, nameStr, offset + size, args[nextItemAt .. $]).ret;
 	}
 }
 
@@ -49,15 +55,15 @@ template bitmask(long size) {
 ///
 template targetType(long size) {
 	static if (size == 1)
-		const targetType = "bool";
+		enum targetType = "bool";
 	else static if (size <= 8)
-		const targetType = "ubyte";
+		enum targetType = "ubyte";
 	else static if (size <= 16)
-		const targetType = "ushort";
+		enum targetType = "ushort";
 	else static if (size <= 32)
-		const targetType = "uint";
+		enum targetType = "uint";
 	else static if (size <= 64)
-		const targetType = "ulong";
+		enum targetType = "ulong";
 	else
 		static assert(0);
 }
