@@ -8,11 +8,13 @@
  */
 module api;
 
-public import api.base;
 public import api.acpi;
+public import api.base;
+public import api.cpu;
 
 private extern extern (C) __gshared PowerDHeader powerDHeader;
 private extern extern (C) __gshared PowerDACPI powerDACPI;
+private extern extern (C) __gshared PowerDCPUs powerDCPUs;
 
 @safe static struct APIInfo {
 public static:
@@ -30,5 +32,9 @@ public static:
 
 	@property ref PowerDACPI acpi() @trusted {
 		return .powerDACPI;
+	}
+
+	@property ref PowerDCPUs cpus() @trusted {
+		return .powerDCPUs;
 	}
 }

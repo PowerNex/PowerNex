@@ -42,3 +42,7 @@ powerDHeader:
 .global powerDACPI
 powerDACPI:
 	.space 64
+
+.global powerDCPUs
+powerDCPUs:
+	.space 1024

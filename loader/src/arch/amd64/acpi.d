@@ -1,6 +1,8 @@
 /**
  * A module for interfacing with the $(I Advanced Configuration and Power Interface), also called ACPI.
  *
+ * TODO: Implement System Resource Affinity Table (SRAT)
+ *
  * Copyright: © 2015-2017, Dan Printzell
  * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
  *  (See accompanying file LICENSE)
@@ -371,27 +373,70 @@ align(1):
 
 	///
 	struct InterruptSourceOverride {
+		///
+		struct Flags {
+			///
+			enum Polarity {
+				default_ = 0, ///
+				high = 1, ///
+				low = 3 ///
+			}
+
+			///
+			enum Trigger {
+				default_ = 0, ///
+				edge = 1, ///
+				level = 3 ///
+			}
+
+			private ushort data;
+
+			///
+			@property Polarity polarity() {
+				return cast(Polarity)(data & 3);
+			}
+
+			///
+			@property void polarity(Polarity p) {
+				data = (data & ~3) | (p & 3);
+			}
+
+			///
+			@property Trigger trigger() {
+				return cast(Trigger)((data >> 2) & 3);
+			}
+
+			///
+			@property void trigger(Trigger t) {
+				data = (data & ~12) | ((t & 3) << 2);
+			}
+		}
+
 		APICBase base; ///
 		alias base this;
 
 		ubyte busSource; ///
 		ubyte irqSource; ///
 		uint globalSystemInterrupt; ///
-		ushort flags; ///
+		Flags flags; ///
 	}
 
+	///
 	struct EntryRange {
-		VirtAddress current;
-		VirtAddress neverAbove;
+		VirtAddress current; ///
+		VirtAddress neverAbove; ///
 
+		///
 		@property bool empty() {
 			return current >= neverAbove;
 		}
 
+		///
 		@property APICBase* front() {
 			return current.ptr!APICBase;
 		}
 
+		///
 		void popFront() {
 			current += front.size;
 		}
@@ -613,40 +658,76 @@ public static: ///
 	///
 	@SDTIdentifier("APIC", SDTNeedVersion.any)
 	void accept(MADT* madt) @trusted {
+		import api : APIInfo;
+		import api.cpu : CPU, IRQFlags;
+
 		with (MADT) {
-			foreach (APICBase* entry; madt.entries) {
-				switch (entry.type) with (APICBase.Type) {
-				case processorLocalAPIC:
-					LAPIC* lAPIC = cast(LAPIC*)entry;
-					Log.info("Type: ", lAPIC.type, ", Length: ", lAPIC.size, ", ACPI ID: ", lAPIC.acpiID, ", APIC ID: ",
-							lAPIC.apicID, ", Flags: ", lAPIC.flags);
-					break;
+			size_t currentCPU;
+			size_t currentIOACPI;
+			with (APIInfo.cpus)
+				foreach (APICBase* entry; madt.entries) {
+					switch (entry.type) with (APICBase.Type) {
+					case processorLocalAPIC:
+						LAPIC* lAPIC = cast(LAPIC*)entry;
+						Log.info("Type: ", lAPIC.type, ", Length: ", lAPIC.size, ", ACPI ID: ", lAPIC.acpiID, ", APIC ID: ",
+								lAPIC.apicID, ", Flags: ", lAPIC.flags);
+						if (!(lAPIC.flags & LAPIC.Flags.enabled))
+							break;
+						if (currentCPU == cpus.length)
+							Log.fatal("Host PC has more than ", currentCPU, " cores. Please update PowerDCPUs.cpus!");
+						with (cpus[currentCPU++]) {
+							apicID = lAPIC.apicID;
+							acpiID = lAPIC.acpiID;
+							flags = CPU.Flags.lAPIC;
+						}
+						break;
 
-				case processorLocalX2APIC:
-					X2LAPIC* x2LAPIC = cast(X2LAPIC*)entry;
-					Log.info("Type: ", x2LAPIC.type, ", Length: ", x2LAPIC.size, ", X2APIC ID: ", x2LAPIC.x2apicID, ", Flags: ",
-							x2LAPIC.flags, ", ACPI ID: ", x2LAPIC.acpiID);
-					break;
+					case processorLocalX2APIC:
+						X2LAPIC* x2LAPIC = cast(X2LAPIC*)entry;
+						Log.info("Type: ", x2LAPIC.type, ", Length: ", x2LAPIC.size, ", X2APIC ID: ", x2LAPIC.x2apicID,
+								", Flags: ", x2LAPIC.flags, ", ACPI ID: ", x2LAPIC.acpiID);
+						if (!(x2LAPIC.flags & X2LAPIC.Flags.enabled))
+							break;
 
-				case ioAPIC:
-					IOAPIC* ioACPI = cast(IOAPIC*)entry;
-					Log.info("Type: ", ioACPI.type, ", Length: ", ioACPI.size, ", ID: ", ioACPI.id, ", Address: ",
-							ioACPI.address, ", GlobalSystemInterruptBase: ", ioACPI.globalSystemInterruptBase);
-					break;
+						if (currentCPU == cpus.length)
+							Log.fatal("Host PC has more than ", currentCPU, " cores. Please update PowerDCPUs.cpus!");
 
-				case interruptSourceOverride:
-					InterruptSourceOverride* interruptSourceOverride = cast(InterruptSourceOverride*)entry;
-					Log.info("Type: ", interruptSourceOverride.type, ", Length: ", interruptSourceOverride.size, ", BusSource: ",
-							interruptSourceOverride.busSource, ", IRQSource: ",
-							interruptSourceOverride.irqSource, ", GlobalSystemInterrupt: ",
-							interruptSourceOverride.globalSystemInterrupt, ", Flags: ", interruptSourceOverride.flags);
-					break;
+						with (cpus[currentCPU++]) {
+							apicID = x2LAPIC.x2apicID;
+							acpiID = x2LAPIC.acpiID;
+							flags = CPU.Flags.x2LAPIC;
+						}
+						break;
 
-				default:
-					Log.info("Type: ", entry.type, ", Length: ", entry.size);
-					break;
+					case ioAPIC:
+						IOAPIC* ioACPI = cast(IOAPIC*)entry;
+						Log.info("Type: ", ioACPI.type, ", Length: ", ioACPI.size, ", ID: ", ioACPI.id, ", Address: ",
+								ioACPI.address, ", GlobalSystemInterruptBase: ", ioACPI.globalSystemInterruptBase);
+						with (ioAPICs[currentIOACPI++]) {
+							id = ioACPI.id;
+							address = ioACPI.address;
+							gsi = ioACPI.globalSystemInterruptBase;
+						}
+						break;
+
+					case interruptSourceOverride:
+						InterruptSourceOverride* iso = cast(InterruptSourceOverride*)entry;
+						Log.info("Type: ", iso.type, ", Length: ", iso.size, ", BusSource: ", iso.busSource, ", IRQSource: ",
+								iso.irqSource, ", GlobalSystemInterrupt: ", iso.globalSystemInterrupt, ", Flags-Polarity: ",
+								iso.flags.polarity, ", Flags-Trigger: ", iso.flags.trigger);
+
+						irqMap[iso.irqSource] = iso.globalSystemInterrupt;
+						irqFlags[iso.irqSource].active = iso.flags.polarity == InterruptSourceOverride.Flags.Polarity.low
+							? IRQFlags.Active.low : IRQFlags.Active.high;
+						irqFlags[iso.irqSource].trigger = iso.flags.trigger == InterruptSourceOverride.Flags.Trigger.level
+							? IRQFlags.Trigger.level : IRQFlags.Trigger.edge;
+						break;
+
+					default:
+						Log.info("Type: ", entry.type, ", Length: ", entry.size);
+						break;
+					}
 				}
-			}
 		}
 	}
 
