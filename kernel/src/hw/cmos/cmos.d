@@ -70,8 +70,8 @@ public static:
 		}
 
 		_timestamp = _secondsOfYear(cast(ushort)(rawData[cmosYear] - 1)) + _secondsOfMonth(rawData[cmosMonth] - 1,
-				rawData[cmosYear]) + (rawData[cmosDay] - 1) * 86400 + (rawData[cmosHour]) * 3600 + (
-				rawData[cmosMinute]) * 60 + rawData[cmosSecond] + 0;
+				rawData[cmosYear]) + (rawData[cmosDay] - 1) * 86400 + (rawData[cmosHour]) * 3600 + (rawData[cmosMinute]) * 60
+			+ rawData[cmosSecond] + 0;
 	}
 
 	@property ulong timeStamp() {
@@ -130,28 +130,39 @@ private static:
 		switch (months) {
 		case 11:
 			days += 30;
+			goto case;
 		case 10:
 			days += 31;
+			goto case;
 		case 9:
 			days += 30;
+			goto case;
 		case 8:
 			days += 31;
+			goto case;
 		case 7:
 			days += 31;
+			goto case;
 		case 6:
 			days += 30;
+			goto case;
 		case 5:
 			days += 31;
+			goto case;
 		case 4:
 			days += 30;
+			goto case;
 		case 3:
 			days += 31;
+			goto case;
 		case 2:
 			days += 28;
 			if ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)))
 				days++;
+			goto case;
 		case 1:
 			days += 31;
+			break;
 		default:
 			break;
 		}
