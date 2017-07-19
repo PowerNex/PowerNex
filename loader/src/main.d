@@ -28,6 +28,7 @@ extern (C) ulong main() @safe {
 	import arch.amd64.acpi : ACPI;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
+	import arch.amd64.ioapic : IOAPIC;
 	import arch.amd64.paging : Paging;
 	import arch.amd64.pit : PIT;
 	import data.multiboot2 : Multiboot2;
@@ -61,7 +62,7 @@ extern (C) ulong main() @safe {
 
 	TLS.aquireTLS();
 
-	// IOAPIC.init();
+	IOAPIC.analyze();
 
 	// auto kernelModule = Multiboot.getKernel();
 	// Kernel.verify(kernelModule);

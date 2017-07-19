@@ -307,7 +307,7 @@ align(1):
 		///
 		enum Type : ubyte {
 			processorLocalAPIC = 0, ///
-			ioAPIC = 1, ///
+			ioapic = 1, ///
 			interruptSourceOverride = 2, ///
 			nmi = 3, ///
 			localAPICNMI = 4, ///
@@ -715,8 +715,8 @@ public static: ///
 
 		with (MADT) {
 			size_t currentCPU;
-			size_t currentIOACPI;
-			with (APIInfo.cpus)
+			size_t currentIOAPIC;
+			with (APIInfo.cpus) {
 				foreach (APICBase* entry; madt.entries) {
 					switch (entry.type) with (APICBase.Type) {
 					case processorLocalAPIC:
@@ -751,14 +751,14 @@ public static: ///
 						}
 						break;
 
-					case ioAPIC:
-						IOAPIC* ioACPI = cast(IOAPIC*)entry;
-						Log.info("Type: ", ioACPI.type, ", Length: ", ioACPI.size, ", ID: ", ioACPI.id, ", Address: ",
-								ioACPI.address, ", GlobalSystemInterruptBase: ", ioACPI.globalSystemInterruptBase);
-						with (ioAPICs[currentIOACPI++]) {
-							id = ioACPI.id;
-							address = ioACPI.address;
-							gsi = ioACPI.globalSystemInterruptBase;
+					case ioapic:
+						IOAPIC* ioapic = cast(IOAPIC*)entry;
+						Log.info("Type: ", ioapic.type, ", Length: ", ioapic.size, ", ID: ", ioapic.id, ", Address: ",
+								ioapic.address, ", GlobalSystemInterruptBase: ", ioapic.globalSystemInterruptBase);
+						with (ioapics[currentIOAPIC++]) {
+							id = ioapic.id;
+							address = ioapic.address;
+							gsi = ioapic.globalSystemInterruptBase;
 						}
 						break;
 
@@ -780,6 +780,9 @@ public static: ///
 						break;
 					}
 				}
+				cpuCount = currentCPU;
+				ioapicCount = currentIOAPIC;
+			}
 		}
 	}
 

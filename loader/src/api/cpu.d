@@ -28,8 +28,10 @@ import data.address;
 ///
 @safe struct IOAPIC {
 	ubyte id; ///
-	PhysAddress address; //
+	ubyte version_; ///
+	ushort gsiMaxRedirectCount; ///
 	uint gsi; ///
+	PhysAddress address; ///
 }
 
 ///
@@ -53,8 +55,10 @@ struct IRQFlags {
 }
 
 @safe struct PowerDCPUs {
+	size_t cpuCount; ///
 	CPU[32] cpus; ///
-	IOAPIC[2] ioAPICs; ///
+	size_t ioapicCount; ///
+	IOAPIC[2] ioapics; ///
 
 	uint[16 /* IRQ (0-15) */ ] irqMap; /// Map a IRQ to a GSI
 	IRQFlags[16] irqFlags; /// Mapping flags. See irqMap.
