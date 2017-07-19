@@ -23,6 +23,16 @@ pml2_0_0:
 pml1_0_0_0:
 	.space 0x1000
 
+.global pml3_510
+pml3_510:
+	.space 0x1000
+.global pml2_510_0
+pml2_510_0:
+	.space 0x1000
+.global pml1_510_0_0
+pml1_510_0_0:
+	.space 0x1000
+
 .global gdtDescriptors
 gdtDescriptors:
 	.space 0x1000

@@ -36,7 +36,7 @@ enum PageFlags {
 		}
 
 		/// If the map is active
-		@property bool present() {
+		@property bool present() const {
 			return cast(bool)((_data >> 0x0UL) & 0x1UL);
 		}
 		/// ditto
@@ -45,7 +45,7 @@ enum PageFlags {
 		}
 
 		// If the page is R/W instead of R/O
-		@property bool readWrite() {
+		@property bool readWrite() const {
 			return cast(bool)((_data >> 0x1UL) & 0x1UL);
 		}
 		/// ditto
@@ -54,7 +54,7 @@ enum PageFlags {
 		}
 
 		/// If userspace can access this page
-		@property bool user() {
+		@property bool user() const {
 			return cast(bool)((_data >> 0x2UL) & 0x1UL);
 		}
 		/// ditto
@@ -63,7 +63,7 @@ enum PageFlags {
 		}
 
 		/// If the map should bypass the cache and write directly to memory
-		@property bool writeThrough() {
+		@property bool writeThrough() const {
 			return cast(bool)((_data >> 0x3UL) & 0x1UL);
 		}
 		/// ditto
@@ -72,7 +72,7 @@ enum PageFlags {
 		}
 
 		/// If the map should bypass the read cache and read directly from memory
-		@property bool cacheDisable() {
+		@property bool cacheDisable() const {
 			return cast(bool)((_data >> 0x4UL) & 0x1UL);
 		}
 		/// ditto
@@ -81,7 +81,7 @@ enum PageFlags {
 		}
 
 		/// Is set when page has been accessed
-		@property bool accessed() {
+		@property bool accessed() const {
 			return cast(bool)((_data >> 0x5UL) & 0x1UL);
 		}
 		/// ditto
@@ -91,7 +91,7 @@ enum PageFlags {
 
 		/// Is set when page has been written to
 		/// NOTE: Only valid if hugeMap is 1, else this value should be zero
-		@property bool dirty() {
+		@property bool dirty() const {
 			return cast(bool)((_data >> 0x6UL) & 0x1UL);
 		}
 		/// ditto
@@ -110,7 +110,7 @@ enum PageFlags {
 			See_Also:
 				hugeMap, pat
 		*/
-		@property bool hugeMap() {
+		@property bool hugeMap() const {
 			return cast(bool)((_data >> 0x7UL) & 0x1UL);
 		}
 		/// ditto
@@ -127,7 +127,7 @@ enum PageFlags {
 			See_Also:
 				hugeMap
 		*/
-		@disable @property bool pat() {
+		@disable @property bool pat() const {
 			return cast(bool)((_data >> 0x7UL) & 0x1UL);
 		}
 		/// ditto
@@ -136,7 +136,7 @@ enum PageFlags {
 		}
 
 		/// Is not cleared from the cache on a PML4 switch
-		@property bool global() {
+		@property bool global() const {
 			return cast(bool)((_data >> 0x8UL) & 0x1UL);
 		}
 		/// ditto
@@ -145,7 +145,7 @@ enum PageFlags {
 		}
 
 		/// For future PowerNex usage (3bits)
-		@property ubyte osSpecific() {
+		@property ubyte osSpecific() const {
 			return cast(ubyte)((_data >> 0x9UL) & 0x7UL);
 		}
 		/// ditto
@@ -154,7 +154,7 @@ enum PageFlags {
 		}
 
 		/// The address to the next level in the page tables, or the final map address
-		@property ulong data() {
+		@property ulong data() const {
 			return cast(ulong)((_data >> 0xCUL) & 0xFFFFFFFFFFUL);
 		}
 		/// ditto
@@ -163,7 +163,7 @@ enum PageFlags {
 		}
 
 		/// For future PowerNex usage (10bits)
-		@property ushort osSpecific2() {
+		@property ushort osSpecific2() const {
 			return cast(ushort)((_data >> 0x34UL) & 0x7FFUL);
 		}
 		/// ditto
@@ -172,7 +172,7 @@ enum PageFlags {
 		}
 
 		/// Forbids execution in the map
-		@property bool noExecute() {
+		@property bool noExecute() const {
 			return cast(bool)((_data >> 0x3FUL) & 0x1UL);
 		}
 		/// ditto
@@ -180,7 +180,7 @@ enum PageFlags {
 			_data = (_data & ~(0x1UL << 0x3FUL)) | ((val & 0x1UL) << 0x3FUL);
 		}
 
-		@property PhysAddress address() {
+		@property PhysAddress address() const {
 			return PhysAddress(data << 12);
 		}
 
@@ -195,7 +195,7 @@ enum PageFlags {
 				return (((VirtAddress(&this) & ~0xFFF) << 9) | (id << 12)).ptr!NextLevel;
 			}
 
-		@property PageFlags vmFlags() {
+		@property PageFlags vmFlags() const {
 			PageFlags flags;
 			if (!present)
 				return PageFlags.none;
@@ -251,7 +251,49 @@ public static:
 
 	//TODO: maybe? void removeUserspace();
 
-	bool map(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags, bool clear = false) {
+	VirtAddress mapSpecial(PhysAddress pAddr, size_t size, PageFlags flags = PageFlags.present, bool clear = false) {
+		import io.log : Log;
+
+		const size_t pagesNeeded = ((size + 0xFFF) & ~0xFFF) / 0x1000;
+
+		const ulong specialID = 510; // XXX: Find this from somewhere else
+		PML1* special = _getSpecial();
+
+		size_t freePage = size_t.max;
+		size_t amountFree;
+		foreach (idx, const ref PML1.TableEntry entry; special.entries) {
+			if (!entry.present) {
+				if (!amountFree)
+					freePage = idx;
+				amountFree++;
+				if (pagesNeeded == amountFree)
+					break;
+			} else
+				amountFree = 0;
+		}
+
+		if (freePage == size_t.max || pagesNeeded != amountFree)
+			Log.fatal("Special PML1 is full!");
+
+		VirtAddress vAddr = _makeAddress(specialID, 0, 0, freePage);
+		Log.info("Mapping [", vAddr, " - ", vAddr + pagesNeeded * 0x1000 - 1, "]");
+		foreach (i; 0 .. pagesNeeded) {
+			PML1.TableEntry* entry = &special.entries[freePage + i];
+
+			entry.address = pAddr + i * 0x1000;
+			entry.vmFlags(flags | (clear ? PageFlags.writable : PageFlags.none));
+			_flush(vAddr);
+
+			if (clear) {
+				vAddr.memset(0, _pageSize);
+				entry.readWrite = !!(flags & flags.writable);
+				_flush(vAddr);
+			}
+		}
+		return vAddr;
+	}
+
+	bool map(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags = PageFlags.present, bool clear = false) {
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry)
 			return false;
@@ -390,8 +432,6 @@ private static:
 	}
 
 	PML1* _getSpecial() {
-		while (true) {
-		}
 		const ulong specialID = 510;
 		return _getPML1(specialID, 0, 0);
 	}

@@ -475,11 +475,22 @@ public static: ///
 		_createLookupTable(SDTNeedVersion.v1Only);
 
 		foreach (PhysAddress32 pSDT; rsdt.otherSDT) {
-			SDTHeader* sdt = pSDT.toX64.toVirtual.ptr!SDTHeader;
+			size_t size;
+			{ // Find the size
+				VirtAddress vAddr = pSDT.toX64.mapSpecial(SDTHeader.sizeof, false);
+				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
+				size = sdt.length;
+				vAddr.unmapSpecial(SDTHeader.sizeof);
+			}
+
+			VirtAddress vAddr = pSDT.toX64.mapSpecial(size, false);
+			SDTHeader* sdt = vAddr.ptr!SDTHeader;
+
 			if (!sdt.valid)
 				Log.error("SDT [", sdt, "] has an invalid checksum!");
 			sdt.print();
 			_runHandler(sdt);
+			vAddr.unmapSpecial(size);
 		}
 	}
 
@@ -501,11 +512,22 @@ public static: ///
 		_createLookupTable(SDTNeedVersion.v2Only);
 
 		foreach (PhysAddress pSDT; rsdt.otherSDT) {
-			SDTHeader* sdt = pSDT.toVirtual.ptr!SDTHeader;
+			size_t size;
+			{ // Find the size
+				VirtAddress vAddr = pSDT.mapSpecial(SDTHeader.sizeof, false);
+				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
+				size = sdt.length;
+				vAddr.unmapSpecial(SDTHeader.sizeof);
+			}
+
+			VirtAddress vAddr = pSDT.mapSpecial(size, false);
+			SDTHeader* sdt = vAddr.ptr!SDTHeader;
+
 			if (!sdt.valid)
 				Log.error("SDT [", sdt, "] has an invalid checksum!");
 			sdt.print();
 			_runHandler(sdt);
+			vAddr.unmapSpecial(size);
 		}
 	}
 
@@ -544,15 +566,30 @@ public static: ///
 		Log.info("ACPI is now on!");
 
 		{
-			DSDT* dsdt = fadt.dsdt.toX64.toVirtual.ptr!DSDT;
-			if (!dsdt)
+			PhysAddress pAddr = fadt.dsdt.toX64;
+			if (!pAddr)
 				return;
-			if (!dsdt.valid)
-				return Log.error("SDT [DSDT] has an invalid checksum!");
 
-			APIInfo.acpi.dsdt = VirtAddress(dsdt);
+			size_t size;
+			{ // Find the size
+				VirtAddress vAddr = pAddr.mapSpecial(SDTHeader.sizeof);
+				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
+				size = sdt.length;
+				vAddr.unmapSpecial(SDTHeader.sizeof);
+			}
+
+			VirtAddress vAddr = pAddr.mapSpecial(size);
+			DSDT* dsdt = vAddr.ptr!DSDT;
+			if (!dsdt.valid) {
+				vAddr.unmapSpecial(size);
+				return Log.error("SDT [DSDT] has an invalid checksum!");
+			}
+
+			APIInfo.acpi.dsdt = pAddr;
 			dsdt.print();
 			accept(dsdt);
+
+			vAddr.unmapSpecial(size);
 		}
 	}
 
@@ -602,15 +639,30 @@ public static: ///
 		Log.info("ACPI is now on!");
 
 		{
-			DSDT* dsdt = fadt.xDSDT.toVirtual.ptr!DSDT;
-			if (!dsdt)
+			PhysAddress pAddr = fadt.xDSDT;
+			if (!pAddr)
 				return;
-			if (!dsdt.valid)
-				return Log.error("SDT [DSDT] has an invalid checksum!");
 
-			APIInfo.acpi.dsdt = VirtAddress(dsdt);
+			size_t size;
+			{ // Find the size
+				VirtAddress vAddr = pAddr.mapSpecial(SDTHeader.sizeof);
+				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
+				size = sdt.length;
+				vAddr.unmapSpecial(SDTHeader.sizeof);
+			}
+
+			VirtAddress vAddr = pAddr.mapSpecial(size);
+			DSDT* dsdt = vAddr.ptr!DSDT;
+			if (!dsdt.valid) {
+				vAddr.unmapSpecial(size);
+				return Log.error("SDT [DSDT] has an invalid checksum!");
+			}
+
+			APIInfo.acpi.dsdt = pAddr;
 			dsdt.print();
 			accept(dsdt);
+
+			vAddr.unmapSpecial(size);
 		}
 	}
 
@@ -783,7 +835,8 @@ public static: ///
 					outp!ubyte(where.ioPort, value);
 					break;
 				case Action.memory:
-					*where.address.toVirtual.ptr!ubyte = value;
+					// Note we will leak memory here, but doesn't matter
+					*where.address.mapSpecial(ubyte.sizeof).ptr!ubyte = value;
 					break;
 				default:
 					Log.fatal("TODO: '", action, "' rebooting is not implemented!");

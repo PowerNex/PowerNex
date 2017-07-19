@@ -153,7 +153,7 @@ public static:
 		com1.write("\r\n");
 
 		if (level == LogLevel.fatal) {
-			printStackTrace(true);
+			printStackTrace(2);
 
 			asm pure nothrow @trusted {
 			forever:
@@ -168,7 +168,7 @@ public static:
 	mixin(_helperFunctions());
 
 	///
-	void printStackTrace(bool skipFirst = false) @trusted {
+	void printStackTrace(size_t skipLevels = 0) @trusted {
 		import data.address : VirtAddress;
 
 		VirtAddress rbp;
@@ -176,7 +176,7 @@ public static:
 			mov rbp, RBP;
 		}
 
-		_printStackTrace(rbp, skipFirst);
+		_printStackTrace(rbp, skipLevels);
 	}
 
 	///
@@ -226,14 +226,14 @@ private static:
 		return str;
 	}
 
-	void _printStackTrace(from!"data.address".VirtAddress rbp, bool skipFirst) {
+	void _printStackTrace(from!"data.address".VirtAddress rbp, size_t skipLevels = 0) {
 		import data.address : VirtAddress;
 		import io.com : com1;
 
 		com1.write("\r\nSTACKTRACE:\r\n");
 		VirtAddress rip;
 
-		if (skipFirst) {
+		while (skipLevels--) {
 			rip = rbp + ulong.sizeof;
 			rbp = VirtAddress(*rbp.ptr!ulong);
 		}

@@ -13,6 +13,7 @@ module data.address;
 
 pragma(inline, true):
 private mixin template AddressBase(Type = size_t) {
+	alias Self = typeof(this);
 	alias Func = void function(); ///
 	Type addr; ///
 
@@ -40,44 +41,44 @@ private mixin template AddressBase(Type = size_t) {
 
 	static if (is(Type == size_t)) {
 		/// Only for power of two
-		typeof(this) roundUp(size_t multiplier) {
+		Self roundUp(size_t multiplier) {
 			assert(multiplier && (multiplier & (multiplier - 1)) == 0, "Not power of two!");
-			return typeof(this)((addr + multiplier - 1) & ~(multiplier - 1));
+			return Self((addr + multiplier - 1) & ~(multiplier - 1));
 		}
 	}
 
 	///
-	typeof(this) opBinary(string op)(void* other) const {
-		return typeof(this)(mixin("addr" ~ op ~ "cast(Type)other"));
+	Self opBinary(string op)(void* other) const {
+		return Self(mixin("addr" ~ op ~ "cast(Type)other"));
 	}
 
 	///
-	typeof(this) opBinary(string op)(Type other) const {
-		return typeof(this)(mixin("addr" ~ op ~ "other"));
+	Self opBinary(string op)(Type other) const {
+		return Self(mixin("addr" ~ op ~ "other"));
 	}
 
 	///
-	typeof(this) opBinary(string op)(typeof(this) other) const {
-		return opBinary!op(other.ptr);
+	Self opBinary(string op)(Self other) const {
+		return opBinary!op(other.num);
 	}
 
 	///
-	typeof(this) opOpAssign(string op)(void* other) {
-		return typeof(this)(mixin("addr" ~ op ~ "= cast(Type)other"));
+	Self opOpAssign(string op)(void* other) {
+		return Self(mixin("addr" ~ op ~ "= cast(Type)other"));
 	}
 
 	///
-	typeof(this) opOpAssign(string op)(Type other) {
-		return typeof(this)(mixin("addr" ~ op ~ "= other"));
+	Self opOpAssign(string op)(Type other) {
+		return Self(mixin("addr" ~ op ~ "= other"));
 	}
 
 	///
-	typeof(this) opOpAssign(string op)(typeof(this) other) {
+	Self opOpAssign(string op)(Self other) {
 		return opOpAssign!op(other.ptr);
 	}
 
 	///
-	int opCmp(ref const typeof(this) other) const {
+	int opCmp(ref const Self other) const {
 		if (num < other.num)
 			return -1;
 		else if (num > other.num)
@@ -94,16 +95,6 @@ private mixin template AddressBase(Type = size_t) {
 			return 1;
 		else
 			return 0;
-	}
-
-	///
-	@property T* ptr(T = void)() @trusted {
-		return cast(T*)addr;
-	}
-
-	///
-	@property T* ptr(T = void)() @trusted const {
-		return cast(T*)addr;
 	}
 
 	///
@@ -124,19 +115,9 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
-	@property Func func() const @trusted {
-		return cast(Func)addr;
-	}
-
-	///
 	@property Func func(Func func) @trusted {
 		this.addr = cast(Type)func;
 		return cast(Func)addr;
-	}
-
-	///
-	T array(T : X[], X)(size_t length) const {
-		return (cast(X*)addr)[0 .. length];
 	}
 
 	///
@@ -149,6 +130,26 @@ private mixin template AddressBase(Type = size_t) {
 /// This represents a virtual address
 @safe struct VirtAddress {
 	mixin AddressBase;
+
+	///
+	@property T* ptr(T = void)() @trusted {
+		return cast(T*)addr;
+	}
+
+	///
+	@property T* ptr(T = void)() @trusted const {
+		return cast(T*)addr;
+	}
+
+	///
+	@property Func func() const @trusted {
+		return cast(Func)addr;
+	}
+
+	///
+	@property T array(T : X[], X)(size_t length) const {
+		return (cast(X*)addr)[0 .. length];
+	}
 
 	///
 	VirtAddress memcpy(VirtAddress other, size_t size) @trusted {
@@ -165,14 +166,40 @@ private mixin template AddressBase(Type = size_t) {
 
 		return this;
 	}
+
+	///
+	void unmapSpecial(size_t size) {
+		import arch.amd64.paging : Paging;
+
+		long offset = this.num & 0xFFF;
+		size += offset;
+
+		VirtAddress tmp = this & ~0xFFF;
+		while (offset > 0) {
+			Paging.unmap(tmp, false);
+			tmp += 0x1000;
+			offset -= 0x1000;
+		}
+		addr = 0;
+	}
 }
 
 /// This represents a physical address
 @safe struct PhysAddress {
 	mixin AddressBase;
 
+	///
+	VirtAddress mapSpecial(size_t size, bool readWrite = false, bool clear = false) {
+		import arch.amd64.paging : Paging, PageFlags;
+
+		const PhysAddress pAddr = this & ~0xFFF;
+		const size_t offset = this.num & 0xFFF;
+
+		return Paging.mapSpecial(pAddr, size + offset, PageFlags.present | (readWrite ? PageFlags.writable : PageFlags.none), clear) + offset;
+	}
+
 	/// WARNING: THIS FUNCTION WILL NOT ALWAYS WORK
-	VirtAddress toVirtual() {
+	deprecated("You are living dangerously if you use this function!") VirtAddress toVirtual() {
 		return VirtAddress(addr);
 	}
 }

@@ -108,6 +108,10 @@ start:
 
 	movl $(pml4 + 0x3), pml4 + 509 * 8
 
+	movl $(pml3_510 + 0x3), pml4 + 510 * 8
+	movl $(pml2_510_0 + 0x3), pml3_510 + 0 * 8
+	movl $(pml1_510_0_0 + 0x3), pml2_510_0 + 0 * 8
+
 .enablePaging:
 	# Enable PAE
 	mov %cr4, %eax
