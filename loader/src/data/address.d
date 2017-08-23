@@ -248,8 +248,8 @@ private mixin template AddressBase(Type = size_t) {
 	mixin MemoryRange!VirtAddress;
 
 	///
-	@property T[] toArray(T = void)() {
-		return start.ptr!T[(end.num - start.num) / (is(T == void) ? 1 : T.sizeof)];
+	@property T[] array(T = void)() @trusted {
+		return start.ptr!T[0 .. (end.num - start.num) / (is(T == void) ? 1 : T.sizeof)];
 	}
 }
 

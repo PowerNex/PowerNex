@@ -295,6 +295,7 @@ public static:
 
 	bool map(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags = PageFlags.present, bool clear = false) {
 		import io.log : Log;
+
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry) {
 			Log.fatal("Entry does not exist!");

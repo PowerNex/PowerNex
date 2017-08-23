@@ -13,12 +13,12 @@ import data.address;
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
 
-private void outputBoth(Args...)(Args args) @safe {
+private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) @safe {
 	import io.vga : VGA;
 	import io.log : Log;
 
 	VGA.writeln(args);
-	Log.info(args);
+	Log.info!(file, func, line)(args);
 }
 
 string tlsTest = "Works!";
@@ -72,17 +72,17 @@ extern (C) ulong main() @safe {
 	ELF64 kernelELF = ELF64(kernelModule);
 	ELFInstance kernel = kernelELF.aquireInstance();
 
+	outputBoth("Kernel ctors: ", kernel.ctors.ptr, ", size: ", kernel.ctors.length);
+	() @trusted{
+		foreach (ctor; kernel.ctors) {
+			outputBoth("\t Running: ", ctor);
+			ctor();
+		}
+	}();
+
 	outputBoth("Kernels main is located at: ", VirtAddress(kernel.main));
 	int output = kernel.main(0, null);
 	outputBoth("Main function returned: ", output.PhysAddress32);
-
-	/*Log.verbose("verbose");
-	Log.debug_("debug_");
-	Log.info("info");
-	Log.warning("warning");
-	Log.error("error");
-	Log.fatal("fatal");*/
-
 
 	// LAPIC.init();
 	// IOAPIC.setup();

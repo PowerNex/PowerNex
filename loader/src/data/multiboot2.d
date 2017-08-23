@@ -551,6 +551,8 @@ public static:
 	void accept(Multiboot2TagELFSections* tag) {
 		Log.debug_("Multiboot2TagELFSections: num: ", tag.num, ", entsize: ", tag.entsize, ", shndx: ", tag.shndx, ", sections: ");
 
+		// TODO: Merge with ELF64!
+
 		char[] lookUpName(uint nameIdx) @trusted {
 			import data.text : strlen;
 
@@ -584,7 +586,7 @@ public static:
 				strtab = &section;
 		}
 		() @trusted{
-			import io.log : ELF64Symbol;
+			import data.elf64 : ELF64Symbol;
 
 			ELF64Symbol[] symbols = symtab.addr.ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
 			char[] strings = strtab.addr.ptr!char[0 .. strtab.size];

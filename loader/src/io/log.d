@@ -8,26 +8,6 @@
  */
 module io.log;
 
-/// TODO: Move
-struct ELF64Symbol {
-	import data.address : VirtAddress;
-
-	uint name; ///
-	ubyte info; ///
-	ubyte other; ///
-	ushort shndx; ///
-	VirtAddress value; ///
-	ulong size; ///
-
-	void print() {
-		import data.text : strlen;
-
-		char* str = &Log._strings[name];
-		Log.info("name: ", str[0 .. str.strlen], " (", name, ')', ", info: ", info, ", other: ", other, ", shndx: ",
-				shndx, ", value: ", value, ", size: ", size);
-	}
-}
-
 ///
 enum LogLevel {
 	verbose = 0,
@@ -56,6 +36,8 @@ char toChar(LogLevel level) @trusted {
 
 ///
 @trusted static struct Log {
+	import data.elf64 : ELF64Symbol;
+
 public static:
 
 	/// XXX: Page fault if this is not wrapped like this!

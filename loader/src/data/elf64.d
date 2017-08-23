@@ -1,7 +1,6 @@
 module data.elf64;
 
 import data.address;
-import io.log : Log;
 
 ///
 @safe struct ELF64Header {
@@ -46,6 +45,7 @@ import io.log : Log;
 
 	static assert(Ident.sizeof == 16);
 
+	///
 	enum Type : ushort {
 		none = 0,
 		relocateable = 1,
@@ -54,13 +54,14 @@ import io.log : Log;
 		core = 4
 	}
 
+	///
 	enum Machine : ushort {
 		none = 0,
 		i386 = 3,
 		x86_64 = 62
 	}
 
-	alias Version = Ident.Version;
+	alias Version = Ident.Version; ///
 
 	Ident ident; ///
 	Type type; ///
@@ -80,7 +81,6 @@ import io.log : Log;
 
 /// Note: Needs align(1) because of Multiboot2TagELFSections._sections
 @safe align(1) struct ELF64SectionHeader {
-align(1):
 	uint name; ///
 	uint type; ///
 	ulong flags; ///
@@ -130,11 +130,21 @@ align(1):
 }
 
 ///
+struct ELF64Symbol {
+	uint name; ///
+	ubyte info; ///
+	ubyte other; ///
+	ushort shndx; ///
+	VirtAddress value; ///
+	ulong size; ///
+}
+
+///
 @safe struct ELFInstance {
 	import api : APIInfo;
 
 	int function(int argc, char** argv /*APIInfo**/ ) main;
-	VirtMemoryRange ctor;
+	void function() @system[] ctors;
 }
 
 ///
@@ -149,15 +159,109 @@ public:
 		_verify();
 
 		_programHeaders = (_elfData.start + _header.programHeaderOffset).array!(ELF64ProgramHeader[])(_header.programHeaderCount);
-		_printProgramHeaders();
+		_sectionHeaders = (_elfData.start + _header.sectionHeaderOffset).array!(ELF64SectionHeader[])(_header.sectionHeaderCount);
+
+		if (_header.sectionHeaderStringIndex)
+			_sectionNameStringTable = &_sectionHeaders[_header.sectionHeaderStringIndex];
+
+		// _printProgramHeaders();
+		// _printSectionHeaders();
 	}
 
 	ELFInstance aquireInstance() {
-		import memory.frameallocator : FrameAllocator;
-		import arch.amd64.paging : Paging, PageFlags;
-
 		ELFInstance instance;
 		instance.main = () @trusted{ return cast(typeof(instance.main))_header.entry.ptr; }();
+
+		_mapping();
+
+		instance.ctors = _getCtors();
+
+		return instance;
+	}
+
+private:
+	VirtMemoryRange _elfData;
+	ELF64Header* _header;
+	ELF64ProgramHeader[] _programHeaders;
+	ELF64SectionHeader[] _sectionHeaders;
+	ELF64SectionHeader* _sectionNameStringTable;
+
+	void _verify() {
+		import io.log : Log;
+
+		if (_header.ident.magic != ELF64Header.Ident.magicValue)
+			Log.fatal("Kernel is not an ELF");
+		if (_header.ident.class_ != ELF64Header.Ident.Class.class64)
+			Log.fatal("Kernel is not an ELF64");
+		if (_header.ident.data != ELF64Header.Ident.Data.twoLittleEndian)
+			Log.fatal("Kernel is not 2LSB");
+		if (_header.ident.version_ != ELF64Header.Ident.Version.current)
+			Log.fatal("Kernels ELFVersion isn't current");
+		if (_header.ident.osABI != ELF64Header.Ident.OSABI.sysv && _header.ident.abiVersion == 0)
+			Log.fatal("Kernel is not a SysV version 0");
+		if (_header.programHeaderEntrySize != ELF64ProgramHeader.sizeof)
+			Log.fatal("_header.programHeaderEntrySize != ELF64ProgramHeader.sizeof: ", _header.programHeaderEntrySize,
+					" != ", ELF64ProgramHeader.sizeof);
+		if (_header.sectionHeaderEntrySize != ELF64SectionHeader.sizeof)
+			Log.fatal("_header.sectionHeaderEntrySize != ELF64SectionHeader.sizeof: ", _header.sectionHeaderEntrySize,
+					" != ", ELF64SectionHeader.sizeof);
+		Log.info("Kernel is valid!");
+	}
+
+	void _printProgramHeaders() {
+		import io.log : Log;
+
+		foreach (const ref ELF64ProgramHeader programHeader; _programHeaders)
+			with (programHeader)
+				// dfmt off
+				Log.debug_("ELF64ProgramHeader:",
+					"\n\ttype: ", type,
+					"\n\tflags: ", flags,
+					"\n\toffset: ", offset,
+					"\n\tvAddr: ", vAddr,
+					"\n\tpAddr: ", pAddr,
+					"\n\tfilesz: ", filesz,
+					"\n\tmemsz: ", memsz,
+					"\n\talign: ", align_
+				);
+				// dfmt on
+	}
+
+	const(char)[] _lookUpSectionName(uint nameIdx) @trusted {
+		import data.text : strlen;
+
+		if (!_sectionNameStringTable)
+			return "{No string table!}";
+
+		const(char)* name = (_elfData.start + _sectionNameStringTable.offset + nameIdx).ptr!(const(char));
+		return name[0 .. name.strlen];
+	}
+
+	void _printSectionHeaders() {
+		import io.log : Log;
+
+		foreach (const ref ELF64SectionHeader sectionHeader; _sectionHeaders)
+			with (sectionHeader)
+				// dfmt off
+				Log.debug_("ELF64SectionHeader:",
+					"\n\tname: '", _lookUpSectionName(name), "' (", name, ")",
+					"\n\ttype: ", type,
+					"\n\tflags: ", flags,
+					"\n\taddr: ", addr,
+					"\n\toffset: ", offset,
+					"\n\tsize: ", size,
+					"\n\tlink: ", link,
+					"\n\tinfo: ", info,
+					"\n\taddralign: ", addralign,
+					"\n\tentsize: ", entsize
+				);
+				// dfmt on
+	}
+
+	void _mapping() {
+		import io.log : Log;
+		import memory.frameallocator : FrameAllocator;
+		import arch.amd64.paging : Paging, PageFlags;
 
 		foreach (ref ELF64ProgramHeader hdr; _programHeaders) {
 			if (hdr.type != ELF64ProgramHeader.Type.load)
@@ -198,39 +302,12 @@ public:
 					Log.fatal("Failed to remap ", addr);
 			}
 		}
-
-		return instance;
 	}
 
-private:
-	VirtMemoryRange _elfData;
-	ELF64Header* _header;
-	ELF64ProgramHeader[] _programHeaders;
-	void _verify() {
-		if (_header.ident.magic != ELF64Header.Ident.magicValue)
-			Log.fatal("Kernel is not an ELF");
-		if (_header.ident.class_ != ELF64Header.Ident.Class.class64)
-			Log.fatal("Kernel is not an ELF64");
-		if (_header.ident.data != ELF64Header.Ident.Data.twoLittleEndian)
-			Log.fatal("Kernel is not 2LSB");
-		if (_header.ident.version_ != ELF64Header.Ident.Version.current)
-			Log.fatal("Kernels ELFVersion isn't current");
-		if (_header.ident.osABI != ELF64Header.Ident.OSABI.sysv && _header.ident.abiVersion == 0)
-			Log.fatal("Kernel is not a SysV version 0");
-		if (_header.programHeaderEntrySize != ELF64ProgramHeader.sizeof)
-			Log.fatal("_header.programHeaderEntrySize != ELF64ProgramHeader.sizeof: ", _header.programHeaderEntrySize,
-					" != ", ELF64ProgramHeader.sizeof);
-		Log.info("Kernel is valid!");
-	}
-
-	void _printProgramHeaders() {
-		foreach (const ref ELF64ProgramHeader programHeader; _programHeaders)
-			with (programHeader)
-				Log.debug_("ELF64ProgramHeader:", "\n\ttype: ", type, "\n\tflags: ", flags, "\n\toffset: ", offset,
-						"\n\tvAddr: ", vAddr, "\n\tpAddr: ", pAddr, "\n\tfilesz: ", filesz, "\n\tmemsz: ", memsz, "\n\talign: ", align_);
-	}
-
-	void _allocate() {
-
+	void function()[] _getCtors() {
+		foreach (ref ELF64SectionHeader section; _sectionHeaders)
+			if (_lookUpSectionName(section.name) == ".ctors")
+				return VirtMemoryRange(section.addr, section.addr + section.size).array!(void function() @system);
+		return null;
 	}
 }
