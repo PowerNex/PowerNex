@@ -35,7 +35,6 @@ enum CompileCommand : string {
 }
 
 enum ToolCommand : string {
-	generateSymbols = objDir ~ "/utils/generatesymbols $in $out",
 	makeInitrdOld = objDir ~ "/utils/makeinitrdold $in $out",
 	makeInitrd = "tar -c --posix -f $out -C $in .",
 	removeImports = "sed -e 's/^import .*//g' -e 's/enum/import powernex.data.address;\\nenum/' -e 's/module system.syscall;/module powernex.internal.syscall;/' $in > $out",
@@ -55,11 +54,9 @@ Target[] mapSources(string rootFolder, string glob = "*.d") {
 }
 
 class UtilsPrograms {
-	Target generatesymbols;
 	Target makeinitrdold;
 
 	this() {
-		generatesymbols = Target("utils/generatesymbols", CompileCommand.ndc, [Target("utils/generatesymbols.d")]);
 		makeinitrdold = Target("utils/makeinitrdold", CompileCommand.ndc, [Target("utils/makeinitrd.d")]);
 	}
 }
@@ -93,13 +90,11 @@ class Kernel {
 	Target kernelAObj;
 	Target kernelDObj;
 	Target kernel;
-	Target map;
 
 	this() {
 		kernelAObj = Target("kernel/obj/acode.o", CompileCommand.kernel_ac, mapSources("kernel/", "*.S"));
 		kernelDObj = Target("kernel/obj/dcode.o", CompileCommand.kernel_dc, mapSources("kernel/"), [kernelDependencies.consolefont]);
 		kernel = Target("disk/boot/powernex.krl", CompileCommand.kernel_ld, [kernelAObj, kernelDObj]);
-		map = Target("disk/boot/powernex.map", ToolCommand.generateSymbols, [kernel], [utilsPrograms.generatesymbols, Target("kernel/src/kernel.ld")]);
 	}
 }
 
@@ -185,7 +180,7 @@ Build myBuild() {
 			userspacePrograms.init_, userspacePrograms.login, userspacePrograms.shell, userspacePrograms.helloworld, userspacePrograms.cat]);
 
 	auto grubCfg = Target("disk/boot/grub/grub.cfg", CompileCommand.copy, [Target("disk/boot/grub/grub.cfg")]);
-	auto isoFiles = Target.phony("disk/", CompileCommand.nothing, [grubCfg, loader.loader, kernel.kernel, /* initrdOld,*/ initrd, kernel.map]);
+	auto isoFiles = Target.phony("disk/", CompileCommand.nothing, [grubCfg, loader.loader, kernel.kernel, /* initrdOld,*/ initrd]);
 	auto powernexIso = Target(powerNexIsoName, CompileCommand.iso, [isoFiles]);
 
 	return Build(powernexIso);

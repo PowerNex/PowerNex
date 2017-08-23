@@ -14,7 +14,6 @@ module data.address;
 pragma(inline, true):
 private mixin template AddressBase(Type = size_t) {
 	alias Self = typeof(this);
-	alias Func = void function(); ///
 	Type addr; ///
 
 	alias addr this; ///
@@ -30,7 +29,7 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
-	this(Func func) {
+	this(Func)(Func func) if (is(Func == function)) {
 		this.addr = cast(Type)func;
 	}
 
@@ -115,7 +114,7 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
-	@property Func func(Func func) @trusted {
+	@property Func func(Func)(Func func) @trusted if (is(Func == function)) {
 		this.addr = cast(Type)func;
 		return cast(Func)addr;
 	}
@@ -142,13 +141,23 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
-	@property Func func() const @trusted {
+	@property Func func(Func)() @trusted if (is(Func == function)) {
 		return cast(Func)addr;
 	}
 
 	///
-	@property T array(T : X[], X)(size_t length) const {
-		return (cast(X*)addr)[0 .. length];
+	@property Func func(Func)() const @trusted if (is(Func == function)) {
+		return cast(Func)addr;
+	}
+
+	///
+	@property T array(T : X[], X)(size_t length) @trusted {
+		return ptr!X[0 .. length];
+	}
+
+	///
+	@property T array(T : X[], X)(size_t length) @trusted const {
+		return ptr!X[0 .. length];
 	}
 
 	///
@@ -211,6 +220,66 @@ private mixin template AddressBase(Type = size_t) {
 	///
 	@property PhysAddress toX64() {
 		return addr.PhysAddress;
+	}
+
+	///
+	PhysAddress opCast(T : PhysAddress)() {
+		return addr.PhysAddress;
+	}
+}
+
+@safe mixin template MemoryRange(Address) {
+	Address start; ///
+	Address end; ///
+
+	///
+	@property size_t size() const {
+		return end.num - start.num;
+	}
+
+	///
+	bool opCast(T : bool)() {
+		return start || end;
+	}
+}
+
+///
+@safe struct VirtMemoryRange {
+	mixin MemoryRange!VirtAddress;
+
+	///
+	@property T[] toArray(T = void)() {
+		return start.ptr!T[(end.num - start.num) / (is(T == void) ? 1 : T.sizeof)];
+	}
+}
+
+///
+@safe struct PhysMemoryRange {
+	mixin MemoryRange!PhysAddress;
+
+	///
+	VirtAddress mapSpecial(bool readWrite = false, bool clear = false) {
+		return start.mapSpecial(size, readWrite, clear);
+	}
+
+	/// WARNING: THIS FUNCTION WILL NOT ALWAYS WORK
+	deprecated("You are living dangerously if you use this function!") VirtMemoryRange toVirtual() {
+		return VirtMemoryRange(start.toVirtual, end.toVirtual);
+	}
+}
+
+///
+@safe struct PhysMemoryRange32 {
+	mixin MemoryRange!PhysAddress32;
+
+	///
+	@property PhysMemoryRange toX64() {
+		return PhysMemoryRange(start.toX64, end.toX64);
+	}
+
+	///
+	PhysMemoryRange opCast(T : PhysMemoryRange)() {
+		return PhysMemoryRange(start.toX64, end.toX64);
 	}
 }
 

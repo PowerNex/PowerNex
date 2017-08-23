@@ -11,6 +11,7 @@ module data.multiboot2;
 import data.address;
 import io.log : Log;
 import data.text : HexInt;
+import data.elf64 : ELF64SectionHeader;
 
 ///
 enum Multiboot2TagType : uint {
@@ -236,22 +237,6 @@ align(1):
 	ExtraData extraData;
 }
 
-/// TODO: Move to elf.d
-/// Note: Needs align(1) because of Multiboot2TagELFSections._sections
-@safe align(1) struct Elf64_Shdr {
-align(1):
-	uint name; ///
-	uint type; ///
-	ulong flags; ///
-	VirtAddress addr; ///
-	VirtAddress offset; ///
-	ulong size; ///
-	uint link; ///
-	uint info; ///
-	ulong addralign; ///
-	ulong entsize; ///
-}
-
 ///
 @safe align(1) struct Multiboot2TagELFSections {
 align(1):
@@ -263,8 +248,8 @@ align(1):
 	uint shndx; ///
 
 	///
-	@property Elf64_Shdr[] sections() @trusted {
-		return (VirtAddress(&this) + Multiboot2TagELFSections.sizeof).ptr!Elf64_Shdr[0 .. num];
+	@property ELF64SectionHeader[] sections() @trusted {
+		return (VirtAddress(&this) + Multiboot2TagELFSections.sizeof).ptr!ELF64SectionHeader[0 .. num];
 	}
 }
 
@@ -503,18 +488,23 @@ public static:
 
 	///
 	void accept(Multiboot2TagModule* tag) {
-		Log.debug_("Multiboot2TagModule: start: ", tag.modStart, ", end: ", tag.modEnd, ", name: ", tag.name);
-
 		import memory.frameallocator : FrameAllocator;
 
+		Log.debug_("Multiboot2TagModule: start: ", tag.modStart, ", end: ", tag.modEnd, ", name: ", tag.name);
+
 		FrameAllocator.markRange(tag.modStart.toX64, tag.modEnd.toX64);
+		() @trusted{
+			if (_moduleCount >= _modules.length)
+				Log.fatal("Multiboot2TagModule: Too many modules! Please increase _modules's size");
+			_modules[_moduleCount++] = tag;
+		}();
 	}
 
 	///
 	void accept(Multiboot2TagBasicMeminfo* tag) {
-		Log.debug_("Multiboot2TagBasicMeminfo: lower:", tag.memLower, ", upper: ", tag.memUpper);
-
 		import memory.frameallocator : FrameAllocator;
+
+		Log.debug_("Multiboot2TagBasicMeminfo: lower:", tag.memLower, ", upper: ", tag.memUpper);
 
 		FrameAllocator.maxFrames = (tag.memLower + tag.memUpper /* KiB */ ) / 4 /* each page is 4KiB */ ;
 	}
@@ -571,8 +561,8 @@ public static:
 
 		VirtAddress start = ulong.max;
 		VirtAddress end;
-		const(Elf64_Shdr)* tdata, tbss, symtab, strtab;
-		foreach (const ref Elf64_Shdr section; tag.sections) {
+		const(ELF64SectionHeader)* tdata, tbss, symtab, strtab;
+		foreach (const ref ELF64SectionHeader section; tag.sections) {
 			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type,
 					", flags: ", section.flags.HexInt, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
 					section.size.HexInt, ", link: ", section.link, ", info: ", section.info, ", addralign: ",
@@ -688,6 +678,20 @@ public static:
 		Log.debug_("Multiboot2TagLoadBaseAddr: loadBaseAddr: ", tag.loadBaseAddr);
 	}
 
+	///
+	PhysMemoryRange getModule(string name) {
+		foreach (Multiboot2TagModule* m; modules)
+			if (m.name == name)
+				return PhysMemoryRange(m.modStart.toX64, m.modEnd.toX64);
+
+		return PhysMemoryRange();
+	}
+
+	///
+	@property Multiboot2TagModule*[] modules() @trusted {
+		return _modules[0 .. _moduleCount];
+	}
+
 private static:
 	@trusted struct TagRange {
 		VirtAddress tagAddr;
@@ -713,4 +717,7 @@ private static:
 	}
 
 	__gshared TagRange _tags;
+
+	__gshared Multiboot2TagModule*[8] _modules;
+	__gshared size_t _moduleCount;
 }

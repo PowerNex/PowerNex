@@ -23,7 +23,7 @@ enum PageFlags {
 	present = 1, /// The map is active
 	writable = 2, /// The map is writable
 	user = 4, /// User mode can access it
-	execute = 8 /// Disallow code from execution
+	execute = 8 /// Allow code from execution
 }
 
 /// Page table level
@@ -281,7 +281,7 @@ public static:
 			PML1.TableEntry* entry = &special.entries[freePage + i];
 
 			entry.address = pAddr + i * 0x1000;
-			entry.vmFlags(flags | (clear ? PageFlags.writable : PageFlags.none));
+			entry.vmFlags = flags | (clear ? PageFlags.writable : PageFlags.none);
 			_flush(vAddr);
 
 			if (clear) {
@@ -294,15 +294,20 @@ public static:
 	}
 
 	bool map(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags = PageFlags.present, bool clear = false) {
+		import io.log : Log;
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
-		if (!entry)
+		if (!entry) {
+			Log.fatal("Entry does not exist!");
 			return false;
+		}
 
-		if (entry.present)
+		if (entry.present) {
+			Log.fatal("Entry is already mapped to: ", entry.address);
 			return false;
+		}
 
 		entry.address = pAddr ? pAddr : getNextFreePage();
-		entry.vmFlags(flags | (clear ? PageFlags.writable : PageFlags.none));
+		entry.vmFlags = flags | (clear ? PageFlags.writable : PageFlags.none);
 		_flush(vAddr);
 
 		if (clear) {
@@ -325,9 +330,6 @@ public static:
 		*/
 
 	bool remap(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags) {
-		if (!pAddr || !flags)
-			return true;
-
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry)
 			return false;
@@ -335,10 +337,10 @@ public static:
 		if (!entry.present)
 			return false;
 
-		if (pAddr)
+		if (!!pAddr)
 			entry.address = pAddr;
-		if (flags)
-			entry.vmFlags(flags);
+		if (!!flags)
+			entry.vmFlags = flags;
 		_flush(vAddr);
 		return true;
 	}
@@ -355,7 +357,7 @@ public static:
 		}
 
 		entry.address = PhysAddress();
-		entry.vmFlags(PageFlags.none);
+		entry.vmFlags = PageFlags.none;
 		_flush(vAddr);
 		return true;
 	}

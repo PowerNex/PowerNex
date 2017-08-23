@@ -1,84 +1,64 @@
 OUTPUT_FORMAT(elf64-x86-64)
-ENTRY(lstart)
-KERNEL_LMA = 1M;
+ENTRY(main)
+KERNEL_LMA = 16M;
 KERNEL_VMA = 0xFFFFFFFF80000000;
-lstart = start - KERNEL_VMA;
+
+PHDRS {
+	phdr PT_NULL PHDRS FILEHDR;
+	text PT_LOAD;
+	data PT_LOAD;
+	tls PT_TLS;
+}
+
 SECTIONS {
-	. = KERNEL_LMA;
+	. = KERNEL_VMA;
 
-	.multiboot : AT(ADDR(.multiboot)) {
-		LONG(0x0)
-		*(.multiboot)
-	}
-
-	. += KERNEL_VMA;
-
-	.text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_VMA) {
+	.text ALIGN(0x1000) : AT(ADDR(.text) - KERNEL_VMA + KERNEL_LMA) {
 		*(.text .text.*)
-	}
+	} :text
 
-	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_VMA) {
-		*(.initpd)
+	.rodata ALIGN(0x1000) : AT(ADDR(.rodata) - KERNEL_VMA + KERNEL_LMA) {
 		*(.rodata .rodata.*)
-		*(.rdata)
-	}
+	} :text
 
-	.minfo ALIGN(0x1000) : AT(ADDR(.minfo) - KERNEL_VMA) {
-		*(.minfo)
-	}
+	.eh_frame ALIGN(0x1000) : AT(ADDR(.eh_frame) - KERNEL_VMA + KERNEL_LMA) {
+		*(.eh_frame .eh_frame.*)
+	} :text
 
-	.deh_eh ALIGN(0x1000) : AT(ADDR(.deh_eh) - KERNEL_VMA) {
-		*(.deh_eh)
-	}
-
-	.dtors.d_dso_dtor ALIGN(0x1000) : AT(ADDR(.dtors.d_dso_dtor) - KERNEL_VMA) {
-		*(.dtors .dtors.*)
-		 *(.dtors.d_dso_dtor)
-	}
-
-	.ctors.d_dso_ctor ALIGN(0x1000) : AT(ADDR(.ctors.d_dso_ctor) - KERNEL_VMA) {
+	.ctors ALIGN(0x1000) : AT(ADDR(.ctors) - KERNEL_VMA + KERNEL_LMA) {
+		CTORS_START = .;
 		*(.ctors .ctors.*)
-		*(.ctors.d_dso_ctor)
-	}
+		CTORS_END = .;
+	} :data
 
-	.eh_frame ALIGN(0x1000) : AT(ADDR(.eh_frame) - KERNEL_VMA) {
-		*(.eh_frame)
-	}
+	.dtors ALIGN(0x1000) : AT(ADDR(.dtors) - KERNEL_VMA + KERNEL_LMA) {
+		DTORS_START = .;
+		*(.dtors .dtors.*)
+		DTORS_END = .;
+	} :data
 
-	.data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_VMA) {
+	.data ALIGN(0x1000) : AT(ADDR(.data) - KERNEL_VMA + KERNEL_LMA) {
 		*(.data .data.*)
-	}
+	} :data
 
-	.symbols ALIGN(0x1000) : AT(ADDR(.symbols) - KERNEL_VMA) {
-		KERNEL_SYMBOLS_START = .;
-		*(.symbols .symbols.*)
-		KERNEL_SYMBOLS_END = .;
-	}
-
-	.tdata ALIGN(0x1000) : AT(ADDR(.tdata) - KERNEL_VMA) {
-		*(.tdata .tdata.*)
-	}
-
-	.got ALIGN(0x1000) : AT(ADDR(.got) - KERNEL_VMA) {
-		*(.got)
-		*(.got.plt)
-	}
-
-	.bss ALIGN(0x1000) : AT(ADDR(.bss) - KERNEL_VMA) {
-		KERNEL_BSS_START = .;
-		*(.COMMON)
+	.bss ALIGN(0x1000) : AT(ADDR(.bss) - KERNEL_VMA + KERNEL_LMA) {
 		*(.bss)
-	}
+	} :data
 
-	.tbss : AT(ADDR(.tbss) - KERNEL_VMA) {
+	.tdata ALIGN(0x1000) : AT(ADDR(.tdata) - KERNEL_VMA + KERNEL_LMA) {
+		*(.tdata .tdata.*)
+	} :tls :data
+
+	.tbss : AT(ADDR(.tbss) - KERNEL_VMA + KERNEL_LMA) {
+		TBSS_START = .;
 		*(.tbss .tbss.*)
-	}
+		TBSS_END = .;
+	} :tls :data
 
 	KERNEL_END = (. + 0xFFF) & 0xFFFFFFFFFFFFF000;
 
 	/DISCARD/ : {
 		*(.comment)
 		*(.note .note.*)
-		*(.rela.*)
 	}
 }

@@ -8,6 +8,8 @@
  */
 module main;
 
+import data.address;
+
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
 
@@ -31,6 +33,7 @@ extern (C) ulong main() @safe {
 	import arch.amd64.ioapic : IOAPIC;
 	import arch.amd64.paging : Paging;
 	import arch.amd64.pit : PIT;
+	import data.elf64 : ELF64, ELFInstance;
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
 	import io.vga : VGA;
@@ -64,10 +67,22 @@ extern (C) ulong main() @safe {
 
 	IOAPIC.analyze();
 
-	// auto kernelModule = Multiboot.getKernel();
-	// Kernel.verify(kernelModule);
-	// ELF64 kernelELF = ELF64(kernel);
-	// kernel = Kernel.process(kernelELF);
+	auto kernelModule = Multiboot2.getModule("kernel");
+	outputBoth("Kernel module: [", kernelModule.start, "-", kernelModule.end, "]");
+	ELF64 kernelELF = ELF64(kernelModule);
+	ELFInstance kernel = kernelELF.aquireInstance();
+
+	outputBoth("Kernels main is located at: ", VirtAddress(kernel.main));
+	int output = kernel.main(0, null);
+	outputBoth("Main function returned: ", output.PhysAddress32);
+
+	/*Log.verbose("verbose");
+	Log.debug_("debug_");
+	Log.info("info");
+	Log.warning("warning");
+	Log.error("error");
+	Log.fatal("fatal");*/
+
 
 	// LAPIC.init();
 	// IOAPIC.setup();

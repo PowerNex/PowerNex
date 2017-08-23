@@ -10,8 +10,6 @@ private extern (C) extern __gshared {
 	ubyte KERNEL_LMA;
 	ubyte KERNEL_VMA;
 	ubyte KERNEL_END;
-	ubyte KERNEL_SYMBOLS_START;
-	ubyte KERNEL_SYMBOLS_END;
 	ubyte PML4;
 }
 
@@ -27,14 +25,6 @@ public:
 
 	@property static VirtAddress kernelEnd() {
 		return VirtAddress(&KERNEL_END);
-	}
-
-	@property static VirtAddress kernelSymbolsStart() {
-		return VirtAddress(&KERNEL_SYMBOLS_START);
-	}
-
-	@property static VirtAddress kernelSymbolsEnd() {
-		return VirtAddress(&KERNEL_SYMBOLS_END);
 	}
 
 	@property static VirtAddress pml4() {

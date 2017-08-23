@@ -2377,7 +2377,9 @@ bool _xopEquals(in void*, in void*) {
 	assert(0);
 }
 
-extern (C) void _d_run_main() {
+private alias extern(C) int function(char[][] args) MainFunc;
+extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc) {
+	return 0xDEAD_C0DE;
 }
 
 extern (C) void* memset(void* p, uint value, size_t count) {

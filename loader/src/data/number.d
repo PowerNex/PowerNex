@@ -30,3 +30,13 @@ ulong log2(ulong value) {
 
 	return result;
 }
+
+///
+T min(T)(T a, T b) {
+	return a < b ? a : b;
+}
+
+///
+T max(T)(T a, T b) {
+	return a > b ? a : b;
+}
