@@ -94,7 +94,7 @@ VersionInfo getNewInfo() {
 	}
 
 	VersionInfo newVI;
-	newVI.dmdVersion = getLatestVersion("https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/PowerNexCompiler/api/json");
+	newVI.dmdVersion = getLatestVersion("https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/master/api/json");
 	newVI.binutilsVersion = getLatestVersion("https://ci.vild.io/job/PowerNex/job/powernex-binutils/job/master/api/json");
 
 	return newVI;
@@ -273,7 +273,7 @@ int main(string[] args) {
 	mkdirRecurse(toolchainFolder ~ "/bin");
 	if (newDMD || clean) {
 		downloadProgress("DMD",
-				"https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/PowerNexCompiler/" ~ newVI.dmdVersion.to!string ~ "/artifact/powernex-dmd",
+				"https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/master/" ~ newVI.dmdVersion.to!string ~ "/artifact/powernex-dmd",
 				"cc/bin/powernex-dmd");
 		normal("Fixing permissions...\n");
 		executeShell("chmod +x cc/bin/powernex-dmd");
