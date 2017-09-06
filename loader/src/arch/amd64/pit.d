@@ -26,17 +26,7 @@ public static:
 		outp!ubyte(0x40, h);
 	}
 
-	@property ulong seconds() @trusted {
-		if (_hz)
-			return _counter / _hz;
-		return 0;
-	}
-
-	void clear() @trusted {
-		_counter = 0;
-	}
-
-	void sleep(size_t amount) @trusted {
+	void earlySleep(size_t amount) @trusted {
 		size_t endAt = _counter + amount;
 
 		while (_counter < endAt) {

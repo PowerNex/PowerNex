@@ -30,8 +30,10 @@ extern (C) ulong main() @safe {
 	import arch.amd64.acpi : ACPI;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
+	import arch.amd64.lapic : LAPIC;
 	import arch.amd64.ioapic : IOAPIC;
 	import arch.amd64.paging : Paging;
+	import arch.amd64.pic : PIC;
 	import arch.amd64.pit : PIT;
 	import data.elf64 : ELF64, ELFInstance;
 	import data.multiboot2 : Multiboot2;
@@ -72,7 +74,7 @@ extern (C) ulong main() @safe {
 	ELF64 kernelELF = ELF64(kernelModule);
 	ELFInstance kernel = kernelELF.aquireInstance();
 
-	outputBoth("Kernel ctors: ", kernel.ctors.ptr, ", size: ", kernel.ctors.length);
+	outputBoth("Kernel ctors: ", &kernel.ctors[0], ", size: ", kernel.ctors.length);
 	() @trusted{
 		foreach (ctor; kernel.ctors) {
 			outputBoth("\t Running: ", ctor);
@@ -80,15 +82,14 @@ extern (C) ulong main() @safe {
 		}
 	}();
 
-	outputBoth("Kernels main is located at: ", VirtAddress(kernel.main));
-	int output = kernel.main(0, null);
-	outputBoth("Main function returned: ", output.PhysAddress32);
+	LAPIC.init();
+	IOAPIC.setupLoader();
+	PIC.disable();
 
-	// LAPIC.init();
-	// IOAPIC.setup();
-	// PIC.init();
+	LAPIC.calibrate();
+	LAPIC.setup();
 
-	// LAPIC.calibrate();
+	outputBoth("CPU bus freq: ", LAPIC.cpuBusFreq / 1_000_000, ".", LAPIC.cpuBusFreq % 1_000_000, " Mhz");
 
 	// Init data
 	// SMP.init();
@@ -106,8 +107,13 @@ extern (C) ulong main() @safe {
 	// Turn on AP
 	// kernel.jmp();
 
+	outputBoth("Kernels main is located at: ", VirtAddress(kernel.main));
+	int output = kernel.main(0, null);
+	outputBoth("Main function returned: ", output.PhysAddress32);
+
 	outputBoth("Reached end of main! Shutting down in 2 seconds.");
-	PIT.sleep(2000);
+	LAPIC.sleep(2000);
+
 	ACPI.shutdown();
 
 	return 0;

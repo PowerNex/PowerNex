@@ -35,18 +35,18 @@ import data.address;
 }
 
 ///
-struct IRQFlags {
+@safe struct IRQFlags {
 	import data.bitfield : bitfield;
 
 	///
 	enum Active : ubyte {
-		high, ///
+		high = 0, ///
 		low ///
 	}
 
 	///
 	enum Trigger : ubyte {
-		edge, ///
+		edge = 0, ///
 		level ///
 	}
 
@@ -60,7 +60,13 @@ struct IRQFlags {
 	size_t ioapicCount; ///
 	IOAPIC[2] ioapics; ///
 
-	uint[16 /* IRQ (0-15) */ ] irqMap; /// Map a IRQ to a GSI
+	/// Map a IRQ to a GSI
+	uint[16 /* IRQ (0-15) */ ] irqMap = () {
+		uint[16] o;
+		foreach (uint i, ref uint x; o)
+			x = i;
+		return o;
+	}();
 	IRQFlags[16] irqFlags; /// Mapping flags. See irqMap.
 }
 

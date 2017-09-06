@@ -10,8 +10,15 @@ module arch.amd64.ioapic;
 
 import data.address;
 
+/***
+ * > The Intel I/O Advanced Programmable Interrupt Controller is used to distribute external interrupts in a more
+ * > advanced manner than that of the standard 8259 PIC. With the I/O APIC, interrupts can be distributed to physical or
+ * > logical (clusters of) processors and can be prioritized. Each I/O APIC typically handles 24 external interrupts.
+ * - http://wiki.osdev.org/IOAPIC
+ */
 @safe static struct IOAPIC {
 public static:
+	///
 	void analyze() {
 		import api : APIInfo;
 		import api.cpu : IOAPIC;
@@ -23,6 +30,22 @@ public static:
 			ioapic.version_ = cast(ubyte)(data & 0xFF);
 			ioapic.gsiMaxRedirectCount = cast(ubyte)((data >> 16) & 0xFF) + 1;
 			Log.info("IOAPIC: version: ", ioapic.version_, ", gsiMaxRedirectCount: ", ioapic.gsiMaxRedirectCount);
+			vAddr.unmapSpecial(0x20);
+		}
+	}
+
+	///
+	void setupLoader() {
+		import api : APIInfo;
+		import api.cpu : IOAPIC;
+
+		foreach (ref IOAPIC ioapic; APIInfo.cpus.ioapics[0 .. APIInfo.cpus.ioapicCount]) {
+			VirtAddress vAddr = ioapic.address.mapSpecial(0x20, true);
+			foreach (i; 0 .. ioapic.gsiMaxRedirectCount) {
+				const uint gsi = ioapic.gsi + i;
+
+				_ioRedirectionTable(vAddr, i, _createRedirect(gsi));
+			}
 			vAddr.unmapSpecial(0x20);
 		}
 	}
@@ -61,9 +84,19 @@ private static:
 		import data.bitfield : bitfield;
 
 		private ulong data;
-		mixin(bitfield!(data, "vector", 8, "deliveryMode", 3, DeliveryMode, "destinationMode", 1, DestinationMode,
-				"deliveryStatus", 1, DeliveryStatus, "pinPolarity", 1, PinPolarity, "remoteIRR ", 1, "triggerMode", 1,
-				TriggerMode, "disable", 1, "destination", 8));
+		// dfmt off
+		mixin(bitfield!(data,
+			"vector", 8,
+			"deliveryMode", 3, DeliveryMode,
+			"destinationMode", 1, DestinationMode,
+			"deliveryStatus", 1, DeliveryStatus,
+			"pinPolarity", 1, PinPolarity,
+			"remoteIRR ", 1,
+			"triggerMode", 1, TriggerMode,
+			"mask", 1,
+			"destination", 8
+		));
+		// dfmt on
 	}
 
 	ref uint _ioregsel(VirtAddress address) {
@@ -100,7 +133,47 @@ private static:
 		return _read(address, 2);
 	}
 
-	ulong _ioRedirectionTable(VirtAddress address, uint irq) {
-		return cast(ulong)_read(address, 0x10 + irq * 2 + 1) << 32UL | cast(ulong)_read(address, 0x10 + irq * 2);
+	Redirection _ioRedirectionTable(VirtAddress address, uint irq) {
+		return Redirection(cast(ulong)_read(address, irq * 2 + 1) << 32UL | cast(ulong)_read(address, irq * 2));
+	}
+
+	void _ioRedirectionTable(VirtAddress address, uint irq, Redirection redirection) {
+		_write(address, irq * 2, cast(uint)redirection.data);
+		_write(address, irq * 2 + 1, cast(uint)(redirection.data >> 32UL));
+	}
+
+	Redirection _createRedirect(uint gsi) {
+		ubyte getIRQ(uint gsi) {
+			import api : APIInfo;
+
+			foreach (ubyte irq, uint value; APIInfo.cpus.irqMap)
+				if (value == gsi)
+					return irq;
+			return ubyte.max;
+		}
+
+		Redirection redirection;
+		const uint irq = getIRQ(gsi);
+
+		// Loader info
+		with (Redirection) {
+			redirection.deliveryMode = DeliveryMode.fixed;
+			redirection.mask = true;
+			redirection.destinationMode = DestinationMode.physical;
+
+			if (irq != ubyte.max) {
+				import api : APIInfo;
+				import api.cpu : IRQFlags;
+
+				const IRQFlags flags = APIInfo.cpus.irqFlags[irq];
+				redirection.triggerMode = flags.trigger == IRQFlags.Trigger.level ? TriggerMode.level : TriggerMode.edge;
+				redirection.pinPolarity = flags.active == IRQFlags.Active.high ? PinPolarity.activeHigh : PinPolarity.activeLow;
+			} else {
+				// PCI-like interrupt lines (comment stolen from Hydrogen)
+				redirection.triggerMode = TriggerMode.level;
+				redirection.pinPolarity = PinPolarity.activeLow;
+			}
+		}
+		return redirection;
 	}
 }

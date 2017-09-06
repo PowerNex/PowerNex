@@ -145,13 +145,14 @@ start:
 .SET MasterData, 0x21
 .SET SlaveControl, 0xA0
 .SET SlaveData, 0xA1
+.SET IRQBase, 0x20
 	mov $0x11, %al
 	out %al, $MasterControl # Starts setup of controllers
 	out %al, $SlaveControl
 
-	mov $0x20, %al
+	mov $IRQBase, %al
 	out %al, $MasterData # Master PIC interrupt id
-	mov $0x28, %al
+	mov $(IRQBase + 8), %al
 	out %al, $SlaveData # Slave PIC interrupt id
 
 	mov $0x04, %al

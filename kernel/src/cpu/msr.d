@@ -26,7 +26,7 @@ struct MSR {
 		uint low, high;
 		asm pure nothrow {
 			mov ECX, ident;
-			wrmsr;
+			rdmsr;
 			mov high, EDX;
 			mov low, EAX;
 		}

@@ -85,22 +85,23 @@ enum InterruptStackType : ushort {
 }
 
 ///
-alias irq = (x) => 32 + x;
+alias irq = (ubyte x) => cast(ubyte)(0x20 + x);
 
 ///
 @safe static struct IDT {
-public:
+public static:
 	alias InterruptCallback = @safe void function(from!"arch.amd64.register".Registers* regs); ///
 	__gshared IDTBase base; ///
 	__gshared IDTDescriptor[256] desc; ///
 	__gshared InterruptCallback[256] handlers; ///
 
 	///
-	static void init() @trusted {
+	void init() @trusted {
 		base.limit = (IDTDescriptor.sizeof * desc.length) - 1;
 		base.offset = cast(ulong)desc.ptr;
 
 		_addAllJumps();
+		flush();
 
 		asm {
 			sti;
@@ -108,7 +109,7 @@ public:
 	}
 
 	///
-	static void flush() @trusted {
+	void flush() @trusted {
 		void* baseAddr = cast(void*)(&base);
 		asm pure nothrow {
 			mov RAX, baseAddr;
@@ -117,12 +118,25 @@ public:
 	}
 
 	///
-	static void register(uint id, InterruptCallback cb) @trusted {
+	void register(uint id, InterruptCallback cb) @trusted {
 		handlers[id] = cb;
 	}
 
-private:
-	static void _add(uint id, SystemSegmentType gateType, ulong func, ubyte dplFlags, ubyte istFlags) @trusted {
+	/// Returns: The address to the old gate function
+	static from!"data.address".VirtAddress registerGate(uint id, from!"data.address".VirtAddress gateFunction) @trusted {
+		import data.address : VirtAddress;
+
+		auto d = &desc[id];
+		VirtAddress oldFunction = ((cast(ulong)d.targetHigh << 32UL) | (cast(ulong)d.targetMiddle << 16UL) | cast(ulong)d.targetLow)
+			.VirtAddress;
+
+		_add(id, SystemSegmentType.interruptGate, gateFunction.num, 0, InterruptStackType.registerStack);
+
+		return oldFunction;
+	}
+
+private static:
+	void _add(uint id, SystemSegmentType gateType, ulong func, ubyte dplFlags, ubyte istFlags) @trusted {
 		with (desc[id]) {
 			targetLow = func & 0xFFFF;
 			segment = 0x08;
@@ -135,25 +149,22 @@ private:
 		}
 	}
 
-	static void _addAllJumps() {
+	void _addAllJumps() {
 		mixin(_addJumps!(0, 255));
 		_add(3, SystemSegmentType.interruptGate, cast(ulong)&isr3, 3, InterruptStackType.debug_);
 		_add(8, SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
-		_add(0x21, SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
-		_add(0x24, SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
+		_add(irq(1), SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
+		_add(irq(4), SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
 		_add(0x80, SystemSegmentType.interruptGate, cast(ulong)&isr128, 3, InterruptStackType.registerStack);
-
-		flush();
 	}
 
-	static template _generateJump(ulong id, bool hasError = false) {
+	template _generateJump(ulong id, bool hasError = false) {
 		enum _generateJump = `
-			static void isr` ~ id.stringof[0 .. $ - 2] ~ `() @trusted {
+			 void isr` ~ id.stringof[0 .. $ - 2] ~ `() @trusted {
 				asm pure nothrow {
 					naked;
 					` ~ (hasError ? "" : "push 0UL;") ~ `
-					push `
-				~ id.stringof ~ `;
+					push ` ~ id.stringof ~ `;
 
 					jmp isrCommon;
 				}
@@ -161,20 +172,20 @@ private:
 		`;
 	}
 
-	static template _generateJumps(ulong from, ulong to, bool hasError = false) {
+	template _generateJumps(ulong from, ulong to, bool hasError = false) {
 		static if (from <= to)
 			enum _generateJumps = _generateJump!(from, hasError) ~ _generateJumps!(from + 1, to, hasError);
 		else
 			enum _generateJumps = "";
 	}
 
-	static template _addJump(ulong id) {
+	template _addJump(ulong id) {
 		enum _addJump = `
 			_add(` ~ id.stringof[0 .. $ - 2] ~ `, SystemSegmentType.interruptGate, cast(ulong)&isr`
 				~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
 	}
 
-	static template _addJumps(ulong from, ulong to) {
+	template _addJumps(ulong from, ulong to) {
 		static if (from <= to)
 			enum _addJumps = _addJump!from ~ _addJumps!(from + 1, to);
 		else
@@ -187,7 +198,7 @@ private:
 	mixin(_generateJumps!(10, 14, true));
 	mixin(_generateJumps!(15, 255));
 
-	static void isrIgnore() @trusted {
+	void isrIgnore() @trusted {
 		asm pure nothrow {
 			naked;
 			cli;
@@ -199,7 +210,7 @@ private:
 		}
 	}
 
-	extern (C) static void isrCommon() @trusted {
+	extern (C) void isrCommon() @trusted {
 		asm pure nothrow {
 			naked;
 			cli;
@@ -243,16 +254,19 @@ private:
 		}
 	}
 
-	extern (C) static void isrHandler(from!"arch.amd64.register".Registers* regs) @trusted {
+	extern (C) void isrHandler(from!"arch.amd64.register".Registers* regs) @trusted {
 		import io.vga : VGA, CGASlotColor, CGAColor;
 		import io.log : Log;
 		import io.ioport : outp;
+		import arch.amd64.pic : PIC;
 
 		regs.intNumber &= 0xFF;
-		if (32 <= regs.intNumber && regs.intNumber <= 48) {
-			if (regs.intNumber >= 40)
-				outp!ubyte(0xA0, 0x20);
-			outp!ubyte(0x20, 0x20);
+		if (PIC.enabled) {
+			if (irq(0) <= regs.intNumber && regs.intNumber <= irq(16)) {
+				if (regs.intNumber >= irq(8))
+					outp!ubyte(0xA0, 0x20);
+				outp!ubyte(0x20, 0x20);
+			}
 		}
 
 		if (auto handler = handlers[regs.intNumber])

@@ -73,7 +73,7 @@ enum InterruptStackType : ushort {
 	mce
 }
 
-alias irq = (x) => 32 + x;
+alias irq = (x) => 0x20 + x;
 
 static struct IDT {
 public:

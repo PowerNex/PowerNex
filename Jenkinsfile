@@ -11,6 +11,7 @@ pipeline {
 					sh '''
 					rm -rf cc || true
 					ln -s /usr cc
+					mkdir HOME || true; export HOME="$(pwd)/HOME"
 					source ./env.sh
 					c
 					rm -rf build.ninja compile_commands.json rules.ninja || true

@@ -51,6 +51,7 @@ import data.address;
 	VirtAddress rsdtV1; /// The RSDT for ACPI V.1
 	VirtAddress rsdtV2; /// The RSDT for ACPI V.2+
 	PhysAddress dsdt; /// The address where the DSDT structure is located
+	PhysAddress lapicAddress;
 
 	ubyte century; /// What century we are in (for offseting CMOS)
 }

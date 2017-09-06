@@ -422,6 +422,17 @@ align(1):
 	}
 
 	///
+	struct LocalAPICNMI {
+	align(1):
+		APICBase base; ///
+		alias base this;
+
+		ubyte processor; ///
+		ushort flags; ///
+		ubyte lintID; ///
+	}
+
+	///
 	struct EntryRange {
 		VirtAddress current; ///
 		VirtAddress neverAbove; ///
@@ -446,7 +457,7 @@ align(1):
 	SDTHeader base; ///
 	alias base this;
 
-	uint localControllerAddress; ///
+	PhysAddress32 lapicAddress; ///
 	uint flags; /// 1 = Dual 8259 Legacy PICs Installed
 
 	@property EntryRange entries() {
@@ -553,11 +564,11 @@ public static: ///
 
 			size_t counter;
 			while (!inp!PM1ControlBlock(cast(ushort)fadt.pm1aControlBlock).sciEnable && counter++ < 300)
-				PIT.sleep(10);
+				PIT.earlySleep(10);
 
 			if (fadt.pm1bControlBlock)
 				while (inp!PM1ControlBlock(cast(ushort)fadt.pm1bControlBlock).sciEnable && counter++ < 300)
-					PIT.sleep(10);
+					PIT.earlySleep(10);
 
 			if (counter >= 300)
 				Log.fatal("Failed to turn on ACPI!");
@@ -619,18 +630,18 @@ public static: ///
 
 			century = fadt.century;
 		}
-		// Enabling ACPII (if possible)
+		// Enabling ACPI (if possible)
 		if (fadt.smiCommandPort && fadt.acpiEnable && fadt.acpiDisable
 				&& !inp!PM1ControlBlock(cast(ushort)fadt.xPM1aControlBlock.address).sciEnable) {
 			outp!ubyte(cast(ushort)fadt.smiCommandPort, fadt.acpiEnable);
 
 			size_t counter;
 			while (!inp!PM1ControlBlock(cast(ushort)fadt.xPM1aControlBlock.address).sciEnable && counter++ < 300)
-				PIT.sleep(10);
+				PIT.earlySleep(10);
 
 			if (fadt.xPM1bControlBlock.address)
 				while (!inp!PM1ControlBlock(cast(ushort)fadt.xPM1bControlBlock.address).sciEnable && counter++ < 300)
-					PIT.sleep(10);
+					PIT.earlySleep(10);
 
 			if (counter >= 300)
 				Log.fatal("Failed to turn on ACPI!");
@@ -713,6 +724,8 @@ public static: ///
 		import api : APIInfo;
 		import api.cpu : CPU, IRQFlags;
 
+		APIInfo.acpi.lapicAddress = madt.lapicAddress;
+
 		with (MADT) {
 			size_t currentCPU;
 			size_t currentIOAPIC;
@@ -775,6 +788,12 @@ public static: ///
 							? IRQFlags.Trigger.level : IRQFlags.Trigger.edge;
 						break;
 
+					case localAPICNMI:
+						LocalAPICNMI* nmi = cast(LocalAPICNMI*)entry;
+						Log.info("Type: ", nmi.type, ", Length: ", nmi.size, ", Processor: ", nmi.processor, ", Flags: ",
+								nmi.flags, ", LINT ID: ", nmi.lintID);
+						// TODO: Implement this
+						break;
 					default:
 						Log.info("Type: ", entry.type, ", Length: ", entry.size);
 						break;

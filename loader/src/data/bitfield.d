@@ -37,7 +37,7 @@ template bitfieldImpl(const char[] typeStr, const char[] nameStr, int offset, ar
 			enum nextItemAt = 2;
 		}
 
-		enum getter = "///\n@property " ~ type ~ " " ~ name ~ "() { return cast(" ~ type ~ ")((" ~ nameStr ~ " >> " ~ itoh!(
+		enum getter = "///\n@property " ~ type ~ " " ~ name ~ "() const { return cast(" ~ type ~ ")((" ~ nameStr ~ " >> " ~ itoh!(
 					offset) ~ ") & " ~ itoh!(mask) ~ "); } \n";
 
 		enum setter = "///\n@property void " ~ name ~ "(" ~ type ~ " val) { " ~ nameStr ~ " = (" ~ nameStr ~ " & " ~ itoh!(
