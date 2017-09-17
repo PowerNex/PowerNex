@@ -55,5 +55,3 @@ import data.address;
 
 	ubyte century; /// What century we are in (for offseting CMOS)
 }
-
-static assert(PowerDACPI.sizeof <= 64, "Please update the size for PowerDACPI inside of loaderData.S!");

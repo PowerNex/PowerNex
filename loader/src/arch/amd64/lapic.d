@@ -29,8 +29,9 @@ private extern extern (C) void LAPIC_spuriousTimer();
 @safe static struct LAPIC {
 public static:
 	///
-	void init() {
+	void init() @trusted {
 		import api : APIInfo;
+		import api.cpu : CPUThread;
 		import arch.amd64.msr : MSR;
 		import arch.amd64.idt : IDT;
 
@@ -61,7 +62,7 @@ public static:
 		if (!_x2APIC) {
 			_lapicAddress = APIInfo.acpi.lapicAddress.mapSpecial(0x1000, true, false);
 			() @trusted{ LAPIC_address = _lapicAddress; }();
-			_write(Registers.logicalDestination, 1 << ((_getCurrentID() % 8) + 24)); // TODO: check if +24 is correct, https://github.com/zrho/Hydrogen/blob/b58c084e6aea5b7ef29d5586a07e3511f5348efa/loader/src/lapic.c#L98
+			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24)); // TODO: check if +24 is correct, https://github.com/zrho/Hydrogen/blob/b58c084e6aea5b7ef29d5586a07e3511f5348efa/loader/src/lapic.c#L98
 		}
 	}
 
@@ -71,7 +72,7 @@ public static:
 			_lapicAddress.unmapSpecial(0x1000);
 	}*/
 
-	void calibrate() {
+	void calibrate() @trusted {
 		import arch.amd64.idt : IDT, irq;
 		import arch.amd64.msr : MSR;
 		import io.log : Log;
@@ -151,7 +152,7 @@ public static:
 		IDT.registerGate(irq(0), oldIRQ0);
 	}
 
-	void setup() {
+	void setup() @trusted {
 		import arch.amd64.idt : IDT, irq;
 
 		IDT.register(irq(0), &_onTick);
@@ -177,17 +178,50 @@ public static:
 		_setTimer(irq(0), TimerMode.periodic, timerCountValue, divition);
 	}
 
-	void sleep(size_t amount) {
-		const size_t endAt = _counter + amount;
+	void sleep(size_t milliseconds) @trusted {
+		const size_t endAt = _counter + milliseconds;
 
 		while (_counter < endAt) {
-			/*asm @trusted pure nothrow {
-				hlt;
-			}*/
+			asm @trusted pure nothrow {
+				db 0xF3, 0x90; // pause
+			}
 		}
 	}
 
-	@property ulong cpuBusFreq() {
+	void init(uint destination, bool assert_) @trusted {
+		InterruptCommand ic;
+		ic.deliveryMode = DeliveryMode.init;
+		ic.level = assert_ ? Level.assert_ : Level.deassert;
+
+		if (_x2APIC)
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
+		else {
+			_write(Registers._interruptCommandHigh, destination << 24);
+			_write(Registers.interruptCommand, ic.data);
+		}
+	}
+
+	/// Entrypoint is (address >> 12)
+	void startup(uint destination, PhysAddress32 entrypointPage) @trusted {
+		InterruptCommand ic;
+		ic.vector = entrypointPage.num!ubyte;
+		ic.deliveryMode = DeliveryMode.startup;
+		ic.level = Level.assert_;
+
+		if (_x2APIC)
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
+		else {
+			_write(Registers._interruptCommandHigh, destination << 24);
+			_write(Registers.interruptCommand, ic.data);
+		}
+	}
+
+	uint getCurrentID() @trusted {
+		uint id = _read(Registers.apicID);
+		return _x2APIC ? id : (id >> 24);
+	}
+
+	@property ulong cpuBusFreq() @trusted {
 		return _cpuBusFreq;
 	}
 
@@ -202,7 +236,7 @@ private static:
 		spurious = 0x0F,
 		errorStatus = 0x28,
 		interruptCommand = 0x30,
-		interruptCommandHigh = 0x31, // ONLY VALID FOR MMIO
+		_interruptCommandHigh = 0x31, // ONLY VALID FOR MMIO // WRITE TO FIRST!
 		localVectorTableTimer = 0x32,
 		localVectorTablePerformanceMonitor = 0x34,
 		localVectorTableLInt0 = 0x35,
@@ -211,6 +245,53 @@ private static:
 		timerInitialCount = 0x38,
 		timerCurrentCount = 0x39,
 		timerDivide = 0x3E
+	}
+
+	enum DeliveryMode : ubyte {
+		fixed = 0b000,
+		smi = 0b010,
+		nmi = 0b100,
+		init = 0b101,
+		startup = 0b110
+	}
+
+	enum DestinationMode {
+		physical = 0,
+		logical
+	}
+
+	enum Level {
+		deassert = 0,
+		assert_
+	}
+
+	enum DestinationShorthand {
+		noShorthand = 0b00,
+		self = 0b01,
+		allIncludingSelf = 0b10,
+		allExcludingSelf = 0b11,
+	}
+
+	// Register.interruptCommand
+	struct InterruptCommand {
+		import data.bitfield : bitfield;
+
+		uint data;
+		// dfmt off
+		mixin(bitfield!(data,
+			"vector", 8,
+			"deliveryMode", 3, DeliveryMode,
+			"destinationMode", 1, DestinationMode,
+			"deliveryStatus", 1,
+			"zero0", 1,
+			"level", 1, Level,
+			"triggerMode", 1, TriggerMode,
+			"zero1", 2,
+			"destinationShorthand", 2, DestinationShorthand,
+			/*"zero2", 12,
+			"destination", 32*/
+		));
+		// dfmt on
 	}
 
 	enum MessageType {
@@ -295,15 +376,15 @@ private static:
 	enum divitionPower = 16;
 	enum divition = toDivition(3); // log(2;16) - 1 = 3;
 	enum pitHZ = 100;
-	enum apicTimerHZ = 1000;
+	enum apicTimerHZ = 1000; // Else the sleep won't be in ms
 
-	VirtAddress _lapicAddress;
-	bool _x2APIC;
-	ulong _cpuBusFreq;
+	__gshared VirtAddress _lapicAddress;
+	__gshared bool _x2APIC;
+	__gshared ulong _cpuBusFreq;
 
-	size_t _counter;
+	__gshared size_t _counter;
 
-	uint _read(Registers offset) {
+	uint _read(Registers offset) @trusted {
 		import arch.amd64.msr : MSR;
 
 		if (_x2APIC)
@@ -312,7 +393,7 @@ private static:
 			return *(_lapicAddress + offset * 0x10).ptr!uint;
 	}
 
-	void _write(Registers offset, uint value) {
+	void _write(Registers offset, uint value) @trusted {
 		import arch.amd64.msr : MSR;
 
 		if (_x2APIC)
@@ -321,9 +402,22 @@ private static:
 			*(_lapicAddress + offset * 0x10).ptr!uint = value;
 	}
 
-	uint _getCurrentID() {
-		uint id = _read(Registers.apicID);
-		return _x2APIC ? id : (id >> 24);
+	ulong _read64(Registers offset) @trusted {
+		import arch.amd64.msr : MSR;
+
+		if (!_x2APIC)
+			return 0;
+
+		return MSR.x2APICRegister(cast(ushort)offset);
+	}
+
+	void _write64(Registers offset, ulong value) @trusted {
+		import arch.amd64.msr : MSR;
+
+		if (!_x2APIC)
+			return;
+
+		MSR.x2APICRegister(cast(ushort)offset, value);
 	}
 
 	// Setup lapic timer

@@ -32,10 +32,10 @@ public static:
 	}
 
 	///
-	void[] allocate(size_t size) @trusted {
+	void[] allocate(size_t wantSize) @trusted {
 		import data.number : log2;
 
-		size = (size + BuddyHeader.sizeof + _minSize - 1) & ~(_minSize - 1);
+		size_t size = (wantSize + BuddyHeader.sizeof + _minSize - 1) & ~(_minSize - 1);
 		if (size > _maxSize)
 			return null; //TODO: Solve somehow
 
@@ -80,7 +80,7 @@ public static:
 		}
 		_getFreeFactors(factor) = buddy.next;
 
-		return (buddy.VirtAddress + BuddyHeader.sizeof).ptr[0 .. size - BuddyHeader.sizeof];
+		return (buddy.VirtAddress + BuddyHeader.sizeof).ptr[0 .. wantSize];
 	}
 
 	///

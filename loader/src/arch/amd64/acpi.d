@@ -722,13 +722,13 @@ public static: ///
 	@SDTIdentifier("APIC", SDTNeedVersion.any)
 	void accept(MADT* madt) @trusted {
 		import api : APIInfo;
-		import api.cpu : CPU, IRQFlags;
+		import api.cpu : CPUThread, IRQFlags;
 
 		APIInfo.acpi.lapicAddress = madt.lapicAddress;
 
 		with (MADT) {
-			size_t currentCPU;
-			size_t currentIOAPIC;
+			bool hasIOACPI;
+			uint currentCPUThread;
 			with (APIInfo.cpus) {
 				foreach (APICBase* entry; madt.entries) {
 					switch (entry.type) with (APICBase.Type) {
@@ -736,43 +736,57 @@ public static: ///
 						LAPIC* lAPIC = cast(LAPIC*)entry;
 						Log.info("Type: ", lAPIC.type, ", Length: ", lAPIC.size, ", ACPI ID: ", lAPIC.acpiID, ", APIC ID: ",
 								lAPIC.apicID, ", Flags: ", lAPIC.flags);
-						if (!(lAPIC.flags & LAPIC.Flags.enabled))
-							break;
-						if (currentCPU == cpus.length)
-							Log.fatal("Host PC has more than ", currentCPU, " cores. Please update PowerDCPUs.cpus!");
-						with (cpus[currentCPU++]) {
+
+						CPUThread cpuThread;
+						with (cpuThread) {
+							id = currentCPUThread;
+							flags = CPUThread.Flag.lAPIC | (!currentCPUThread) ? CPUThread.Flag.bsp : CPUThread.Flag.none;
+							state = (!currentCPUThread) ? CPUThread.State.on : (lAPIC.flags & LAPIC.Flags.enabled)
+								? CPUThread.State.off : CPUThread.State.disabled;
 							apicID = lAPIC.apicID;
 							acpiID = lAPIC.acpiID;
-							flags = CPU.Flags.lAPIC;
 						}
+						currentCPUThread++;
+
+						cpuThreads.put(cpuThread);
 						break;
 
 					case processorLocalX2APIC:
 						X2LAPIC* x2LAPIC = cast(X2LAPIC*)entry;
 						Log.info("Type: ", x2LAPIC.type, ", Length: ", x2LAPIC.size, ", X2APIC ID: ", x2LAPIC.x2apicID,
 								", Flags: ", x2LAPIC.flags, ", ACPI ID: ", x2LAPIC.acpiID);
-						if (!(x2LAPIC.flags & X2LAPIC.Flags.enabled))
-							break;
 
-						if (currentCPU == cpus.length)
-							Log.fatal("Host PC has more than ", currentCPU, " cores. Please update PowerDCPUs.cpus!");
-
-						with (cpus[currentCPU++]) {
+						CPUThread cpuThread;
+						with (cpuThread) {
+							id = currentCPUThread;
+							flags = CPUThread.Flag.x2LAPIC | (!currentCPUThread) ? CPUThread.Flag.bsp : CPUThread.Flag.none;
+							state = (!currentCPUThread) ? CPUThread.State.on : (x2LAPIC.flags & X2LAPIC.Flags.enabled)
+								? CPUThread.State.off : CPUThread.State.disabled;
 							apicID = x2LAPIC.x2apicID;
 							acpiID = x2LAPIC.acpiID;
-							flags = CPU.Flags.x2LAPIC;
 						}
+						currentCPUThread++;
+						cpuThreads.put(cpuThread);
 						break;
 
 					case ioapic:
+						import cpu = api.cpu;
+
 						IOAPIC* ioapic = cast(IOAPIC*)entry;
 						Log.info("Type: ", ioapic.type, ", Length: ", ioapic.size, ", ID: ", ioapic.id, ", Address: ",
 								ioapic.address, ", GlobalSystemInterruptBase: ", ioapic.globalSystemInterruptBase);
-						with (ioapics[currentIOAPIC++]) {
-							id = ioapic.id;
-							address = ioapic.address;
-							gsi = ioapic.globalSystemInterruptBase;
-						}
+						if (hasIOACPI)
+							Log.fatal("Host PC has more than 1 IOAPIC. Please implement support for more than one!");
+
+						cpu.IOAPIC ioa;
+
+						ioa.id = ioapic.id;
+						ioa.address = ioapic.address;
+						ioa.gsi = ioapic.globalSystemInterruptBase;
+
+						ioapics.put(ioa);
+
+						hasIOACPI = true;
 						break;
 
 					case interruptSourceOverride:
@@ -799,8 +813,6 @@ public static: ///
 						break;
 					}
 				}
-				cpuCount = currentCPU;
-				ioapicCount = currentIOAPIC;
 			}
 		}
 	}

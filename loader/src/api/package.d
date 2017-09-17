@@ -12,10 +12,6 @@ public import api.acpi;
 public import api.base;
 public import api.cpu;
 
-private extern extern (C) __gshared PowerDHeader powerDHeader;
-private extern extern (C) __gshared PowerDACPI powerDACPI;
-private extern extern (C) __gshared PowerDCPUs powerDCPUs;
-
 @safe static struct APIInfo {
 public static:
 	void init() {
@@ -27,14 +23,19 @@ public static:
 	}
 
 	@property ref PowerDHeader header() @trusted {
-		return .powerDHeader;
+		return _header;
 	}
 
 	@property ref PowerDACPI acpi() @trusted {
-		return .powerDACPI;
+		return _acpi;
 	}
 
 	@property ref PowerDCPUs cpus() @trusted {
-		return .powerDCPUs;
+		return _cpus;
 	}
+
+private static:
+	__gshared PowerDHeader _header;
+	__gshared PowerDACPI _acpi;
+	__gshared PowerDCPUs _cpus;
 }

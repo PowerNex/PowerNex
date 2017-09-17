@@ -6,15 +6,16 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-.text
+.section .initCode, "ax"
 .code64
 
 .global main
+.global mainAP
 .global multibootPointer
 
-.global start64
-.type start64, %function
-start64:
+.global boot64BSP
+.type boot64BSP, %function
+boot64BSP:
 	cli
 	mov $0x10, %ax
 	mov %ax, %ds
@@ -32,8 +33,28 @@ start64:
 	1:
 		hlt
 		jmp 1b
-.size start64, .-start64
+.size boot64BSP, .-boot64BSP
 
+.global boot64AP
+.type boot64AP, %function
+boot64AP:
+	cli
+	mov $0x10, %ax
+	mov %ax, %ds
+	mov %ax, %es
+	mov %ax, %fs
+	mov %ax, %gs
+	mov %ax, %ss
+
+	xor %rax, %rax
+	mov %rax, %dr0
+
+	call mainAP
+
+	1:
+		hlt
+		jmp 1b
+.size boot64AP, .-boot64AP
 
 .global __dmd_personality_v0
 .type __dmd_personality_v0, %function

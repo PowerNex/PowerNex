@@ -100,9 +100,6 @@ enum GDTSystemType : ubyte {
 
 private extern (C) void cpuRefreshIREQ();
 
-private extern extern (C) __gshared GDTBase gdtBase;
-private extern extern (C) __gshared GDTDescriptor[256] gdtDescriptors;
-
 ///
 @safe static struct GDT {
 public static:
@@ -119,8 +116,7 @@ public static:
 
 	///
 	void flush() @trusted {
-		// NOTE: Needs '.' because it need to grab the extern variable not the @property function.
-		void* baseAddr = cast(void*)(&.gdtBase);
+		void* baseAddr = cast(void*)(&_gdtBase);
 		//ushort id = cast(ushort)(tssID * GDTDescriptor.sizeof);
 		asm pure nothrow {
 			mov RAX, baseAddr;
@@ -186,14 +182,17 @@ public static:
 	}
 
 	@property ref GDTBase gdtBase() @trusted {
-		return .gdtBase;
+		return _gdtBase;
 	}
 
-	@property ref GDTDescriptor[256] gdtDescriptors() @trusted {
-		return .gdtDescriptors;
+	@property ref auto gdtDescriptors() @trusted {
+		return _gdtDescriptors;
 	}
 
 private static:
+	__gshared GDTBase _gdtBase;
+	__gshared GDTDescriptor[8] _gdtDescriptors;
+
 	ushort _setupTable() {
 		ushort idx = 0;
 		setNull(idx++);

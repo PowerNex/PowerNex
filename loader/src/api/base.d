@@ -24,5 +24,3 @@ struct PowerDHeader {
 	size_t magic; /// The magic
 	Version version_; /// The PowerD version
 }
-
-static assert(PowerDHeader.sizeof <= 32, "Please update the size for PowerDHeader inside of loaderData.S!");

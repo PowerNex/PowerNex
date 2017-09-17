@@ -16,6 +16,10 @@ SECTIONS {
 		*(.multiboot)
 	} :text
 
+	.init : {
+		*(.initCode .initCode.*)
+	}
+
 	.text ALIGN(0x1000) : {
 		*(.text .text.*)
 	} :text
@@ -46,12 +50,6 @@ SECTIONS {
 
 	.bss ALIGN(0x1000) : {
 		*(.bss .bss.*)
-	} :data
-
-	.loaderData ALIGN(0x1000) : {
-		loaderData_start = .;
-		*(.loaderData .loaderData.*)
-		loaderData_end = .;
 	} :data
 
 	.tdata ALIGN(0x1000) :  {

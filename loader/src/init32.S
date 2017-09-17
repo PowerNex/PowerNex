@@ -28,7 +28,7 @@ multiboot2Header:
 	.int 0
 multiboot2HeaderEnd:
 
-.text
+.section .initCode, "ax"
 .code32
 
 # External files
@@ -38,22 +38,53 @@ multiboot2HeaderEnd:
 .type start, %function
 start:
 	xchg %bx, %bx
+	jmp boot32BSP
+.size start, .-start
 
+.type boot32BSP, %function
+boot32BSP:
 	cli
 	mov $stack, %esp
 
 	cmp $0x36d76289, %eax
 	jne invalidMagic
-
 	mov %ebx, multibootPointer
 
-.helloWorld:
+	call helloWorld
+	call longModeCheck
+	call remapIRQ
+	call setupPaging
+	call enablePagingAndLongMode
+	call jumpMainBSP
+.size boot32BSP, .-boot32BSP
+
+.global boot32AP
+.type boot32AP, %function
+boot32AP:
+	mov $apStack, %esp
+
+	mov $0xA0, %ah # Color
+	mov $0xB8000, %edi # Pos
+	mov $welcomeAPMsg, %esi
+	call writeString
+
+	call longModeCheck
+	call enablePagingAndLongMode
+	call jumpMainAP
+.size boot32AP, .-boot32AP
+
+.type helloWorld, %function
+helloWorld:
 	mov $0x0E, %ah # Color
 	mov $0xB8000, %edi # Pos
 	mov $welcomeMsg, %esi
 	call writeString
 
-.longModeCheck:
+	ret
+.size helloWorld, .-helloWorld
+
+.type longModeCheck, %function
+longModeCheck:
 	# Check to check if we can check if x64 is supported
 	mov $0x80000000, %eax
 	cpuid
@@ -65,23 +96,42 @@ start:
 	cpuid
 	test $(1 << 29), %edx
 		jz notX64Capable
+	ret
+.size longModeCheck, .-longModeCheck
 
-.setupGDT:
-	movl $0x0000FFFF, (gdtDescriptors + 8 * 1) # gdtCode64
-	movl $0x00AF9A00, (gdtDescriptors + 8 * 1 + 4)
-	movl $0x0000FFFF, (gdtDescriptors + 8 * 2) # gdtData64
-	movl $0x00AF9200, (gdtDescriptors + 8 * 2 + 4)
+.type remapIRQ, %function
+remapIRQ:
+	.SET MasterControl, 0x20
+	.SET MasterData, 0x21
+	.SET SlaveControl, 0xA0
+	.SET SlaveData, 0xA1
+	.SET IRQBase, 0x20
+	mov $0x11, %al
+	out %al, $MasterControl # Starts setup of controllers
+	out %al, $SlaveControl
 
-	mov $gdtBase, %esi
-	movw $(3 * 8 - 1), (%esi)
+	mov $IRQBase, %al
+	out %al, $MasterData # Master PIC interrupt id
+	mov $(IRQBase + 8), %al
+	out %al, $SlaveData # Slave PIC interrupt id
 
-	movl $gdtDescriptors, (gdtBase + 2)
-	movl $0, (gdtBase + 2 + 4)
+	mov $0x04, %al
+	out %al, $MasterData # Tells master that it has a slave at IRQ2 (0000 0100)
+	mov $0x02, %al
+	out %al, $SlaveData # Tells the slave that it's a slave (0000 0010)
 
-.setupPaging:
-	mov $pml4, %eax
-	mov %eax, %cr3
+	mov $0x01, %al
+	out %al, $MasterData # 8086/88 (MCS-80/85) mode
+	out %al, $SlaveData
 
+	mov $0x0, %al
+	out %al, $MasterData # Sets the masks to 0
+	out %al, $SlaveData
+	ret
+.size remapIRQ, .-remapIRQ
+
+.type setupPaging, %function
+setupPaging:
 	movl $(pml3_0 + 0x3), pml4 + 0 * 8
 	movl $(pml2_0_0 + 0x3), pml3_0 + 0 * 8
 	movl $(pml1_0_0_0 + 0x3), pml2_0_0 + 0 * 8
@@ -111,8 +161,14 @@ start:
 	movl $(pml3_510 + 0x3), pml4 + 510 * 8
 	movl $(pml2_510_0 + 0x3), pml3_510 + 0 * 8
 	movl $(pml1_510_0_0 + 0x3), pml2_510_0 + 0 * 8
+	ret
+.size setupPaging, .-setupPaging
 
-.enablePaging:
+.type enablePagingAndLongMode, %function
+enablePagingAndLongMode:
+	mov $pml4, %eax
+	mov %eax, %cr3
+
 	# Enable PAE
 	mov %cr4, %eax
 	bts $5, %eax # physical address extension
@@ -139,43 +195,26 @@ start:
 	bts $9, %eax # fxsave and fxrstor instructions
 	bts $10, %eax # unmasked simd floating point exceptions
 	mov %eax, %cr4
+	ret
+.size enablePagingAndLongMode, .-enablePagingAndLongMode
 
-.remapIRQ:
-.SET MasterControl, 0x20
-.SET MasterData, 0x21
-.SET SlaveControl, 0xA0
-.SET SlaveData, 0xA1
-.SET IRQBase, 0x20
-	mov $0x11, %al
-	out %al, $MasterControl # Starts setup of controllers
-	out %al, $SlaveControl
+.type jumpMainBSP, %function
+jumpMainBSP:
+	lgdt gdtBase
+	ljmp $0x8, $boot64BSP
+.size jumpMainBSP, .-jumpMainBSP
 
-	mov $IRQBase, %al
-	out %al, $MasterData # Master PIC interrupt id
-	mov $(IRQBase + 8), %al
-	out %al, $SlaveData # Slave PIC interrupt id
+.type jumpMainAP, %function
+jumpMainAP:
+	lgdt gdtBase
+	ljmp $0x8, $boot64AP
+.size jumpMainAP, .-jumpMainAP
 
-	mov $0x04, %al
-	out %al, $MasterData # Tells master that it has a slave at IRQ2 (0000 0100)
-	mov $0x02, %al
-	out %al, $SlaveData # Tells the slave that it's a slave (0000 0010)
-
-	mov $0x01, %al
-	out %al, $MasterData # 8086/88 (MCS-80/85) mode
-	out %al, $SlaveData
-
-	mov $0x0, %al
-	out %al, $MasterData # Sets the masks to 0
-	out %al, $SlaveData
-
-.jumpMain:
-	lgdt (gdtBase)
-	ljmp $0x8, $start64
-
-.end:
+.type halt, %function
+halt:
 	hlt
-	jmp .end
-.size start, .-start
+	jmp halt
+.size halt, .-halt
 
 .type invalidMagic, %function
 invalidMagic:
@@ -183,7 +222,7 @@ invalidMagic:
 	mov $0xB8000, %edi # Pos
 	mov $invalidMagicMsg, %esi
 	call writeString
-	jmp .end
+	jmp halt
 .size invalidMagic, .-invalidMagic
 
 .type notX64Capable, %function
@@ -192,7 +231,7 @@ notX64Capable:
 	mov $0xB8000, %edi
 	mov $x64NotSupported_msg, %esi
 	call writeString
-	jmp .end
+	jmp halt
 .size notX64Capable, .-notX64Capable
 
 .type writeString, %function
@@ -226,6 +265,10 @@ writeString:
 welcomeMsg:
 	VERSION
 	.ascii "- https://powernexos.org"
+	.byte 0
+
+welcomeAPMsg:
+	.ascii "Hi, I'm a AP"
 	.byte 0
 
 invalidMagicMsg:
@@ -288,10 +331,45 @@ x64NotSupported_msg:
 	.ascii "                                                                                "
 	.byte 0
 
+gdtDescriptors:
+	.quad 0x0000000000000000
+	.quad 0x00AF9A000000FFFF
+	.quad 0x00AF92000000FFFF
+
+gdtBase:
+	.short (3 * 8 - 1) # limit
+	.int gdtDescriptors # base
+	.short 0 # padding
 
 .bss
+.align 0x1000
+.global pml4
+pml4:
+	.space 0x1000
+pml3_0:
+	.space 0x1000
+pml2_0_0:
+	.space 0x1000
+pml1_0_0_0:
+	.space 0x1000
+
+pml3_510:
+	.space 0x1000
+pml2_510_0:
+	.space 0x1000
+pml1_510_0_0:
+	.space 0x1000
+
 .global stack_end
 .global stack
 stack_end:
 	.space 0x4000
 stack:
+
+apStack_end:
+	.space 0x400
+apStack:
+
+.global multibootPointer
+multibootPointer:
+	.space 8

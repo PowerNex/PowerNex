@@ -11,18 +11,29 @@ module api.cpu;
 import data.address;
 
 ///
-@safe struct CPU {
+@safe struct CPUThread {
 	///
-	enum Flags : uint {
-		lAPIC = 1 << 0, //
-		x2LAPIC = 1 << 1 //
+	enum State : ubyte {
+		on, ///
+		off, ///
+		disabled /// Probably broken
 	}
 
+	///
+	enum Flag : ubyte {
+		none = 0, ///
+		lAPIC = 0 << 0, ///
+		x2LAPIC = 1 << 0, ///
+		bsp = 1 << 1 ///
+	}
+
+	uint id; ///
+	State state; ///
+	Flag flags; ///
 	uint apicID; ///
 	uint acpiID; ///
-	Flags flags; ///
 	uint lapicTimerFreq; ///
-	uint domain; ///
+	//TODO:? uint domain; ///
 }
 
 ///
@@ -54,11 +65,11 @@ import data.address;
 	mixin(bitfield!(data, "active", 1, Active, "trigger", 1, Trigger));
 }
 
+///
 @safe struct PowerDCPUs {
-	size_t cpuCount; ///
-	CPU[32] cpus; ///
-	size_t ioapicCount; ///
-	IOAPIC[2] ioapics; ///
+	import data.vector : Vector;
+	Vector!(CPUThread) cpuThreads; ///
+	Vector!(IOAPIC) ioapics; ///
 
 	/// Map a IRQ to a GSI
 	uint[16 /* IRQ (0-15) */ ] irqMap = () {
@@ -69,5 +80,3 @@ import data.address;
 	}();
 	IRQFlags[16] irqFlags; /// Mapping flags. See irqMap.
 }
-
-static assert(PowerDCPUs.sizeof <= 1024, "Please update the size for PowerDCPUs inside of loaderData.S!");

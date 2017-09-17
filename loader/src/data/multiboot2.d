@@ -632,22 +632,13 @@ public static:
 	///
 	void accept(Multiboot2TagOldACPI* tag) {
 		Log.debug_("Multiboot2TagOldACPI: rsdp: ", &tag.rsdp[0]);
-
-		{
-			import arch.amd64.acpi : ACPI;
-
-			ACPI.initOld(tag.rsdp);
-		}
+		() @trusted{ _rsdpOld = tag.rsdp; }();
 	}
 
 	///
 	void accept(Multiboot2TagNewACPI* tag) {
 		Log.debug_("Multiboot2TagNewACPI: rsdp: ", &tag.rsdp[0]);
-		{
-			import arch.amd64.acpi : ACPI;
-
-			ACPI.initNew(tag.rsdp);
-		}
+		() @trusted{ _rsdpNew = tag.rsdp; }();
 	}
 
 	///
@@ -678,6 +669,16 @@ public static:
 	///
 	void accept(Multiboot2TagLoadBaseAddr* tag) {
 		Log.debug_("Multiboot2TagLoadBaseAddr: loadBaseAddr: ", tag.loadBaseAddr);
+	}
+
+	///
+	@property ubyte[] rsdpOld() @trusted {
+		return _rsdpOld;
+	}
+
+	///
+	@property ubyte[] rsdpNew() @trusted {
+		return _rsdpNew;
 	}
 
 	///
@@ -719,6 +720,9 @@ private static:
 	}
 
 	__gshared TagRange _tags;
+
+	__gshared ubyte[] _rsdpOld;
+	__gshared ubyte[] _rsdpNew;
 
 	__gshared Multiboot2TagModule*[8] _modules;
 	__gshared size_t _moduleCount;

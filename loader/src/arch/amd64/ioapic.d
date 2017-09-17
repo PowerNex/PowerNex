@@ -24,7 +24,7 @@ public static:
 		import api.cpu : IOAPIC;
 		import io.log : Log;
 
-		foreach (ref IOAPIC ioapic; APIInfo.cpus.ioapics[0 .. APIInfo.cpus.ioapicCount]) {
+		foreach (ref IOAPIC ioapic; APIInfo.cpus.ioapics) {
 			VirtAddress vAddr = ioapic.address.mapSpecial(0x20, true);
 			const uint data = _ioapicVer(vAddr);
 			ioapic.version_ = cast(ubyte)(data & 0xFF);
@@ -39,7 +39,7 @@ public static:
 		import api : APIInfo;
 		import api.cpu : IOAPIC;
 
-		foreach (ref IOAPIC ioapic; APIInfo.cpus.ioapics[0 .. APIInfo.cpus.ioapicCount]) {
+		foreach (ref IOAPIC ioapic; APIInfo.cpus.ioapics) {
 			VirtAddress vAddr = ioapic.address.mapSpecial(0x20, true);
 			foreach (i; 0 .. ioapic.gsiMaxRedirectCount) {
 				const uint gsi = ioapic.gsi + i;

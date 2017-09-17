@@ -103,8 +103,8 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
-	@property Type num() const {
-		return addr;
+	@property T num(T = Type)() const {
+		return cast(T)addr;
 	}
 
 	///

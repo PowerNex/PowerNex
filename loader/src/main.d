@@ -13,7 +13,7 @@ import data.address;
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
 
-private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) @safe {
+private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) @trusted {
 	import io.vga : VGA;
 	import io.log : Log;
 
@@ -21,6 +21,27 @@ private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTIO
 	Log.info!(file, func, line)(args);
 }
 
+///
+extern (C) ulong mainAP() @safe {
+	import api : APIInfo;
+	import api.cpu : CPUThread;
+	import arch.amd64.lapic : LAPIC;
+	import io.log : Log;
+	import data.tls : TLS;
+
+	TLS.aquireTLS();
+	size_t id = LAPIC.getCurrentID();
+	CPUThread* currentThread = &APIInfo.cpus.cpuThreads[id];
+
+	outputBoth("AP ", id, " has successfully booted!");
+
+	currentThread.state = CPUThread.State.on;
+
+	while (true) {
+	}
+}
+
+// FIXME: If removed the loader crashes, please fix
 string tlsTest = "Works!";
 string tlsTest2;
 
@@ -35,6 +56,7 @@ extern (C) ulong main() @safe {
 	import arch.amd64.paging : Paging;
 	import arch.amd64.pic : PIC;
 	import arch.amd64.pit : PIT;
+	import arch.amd64.smp : SMP;
 	import data.elf64 : ELF64, ELFInstance;
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
@@ -65,6 +87,13 @@ extern (C) ulong main() @safe {
 	Paging.init();
 	Heap.init();
 
+	if (auto _ = Multiboot2.rsdpNew)
+		ACPI.initNew(_);
+	else if (auto _ = Multiboot2.rsdpOld)
+		ACPI.initOld(_);
+	else
+		Log.fatal("No RSDP entry in the multiboot2 structure!");
+
 	TLS.aquireTLS();
 
 	IOAPIC.analyze();
@@ -92,7 +121,7 @@ extern (C) ulong main() @safe {
 	outputBoth("CPU bus freq: ", LAPIC.cpuBusFreq / 1_000_000, ".", LAPIC.cpuBusFreq % 1_000_000, " Mhz");
 
 	// Init data
-	// SMP.init();
+	SMP.init();
 
 	// IDT.setup(kernel.idtSettings); ?
 	// IOAPIC.setup(kernel.idtSettings); ?
