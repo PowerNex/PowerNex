@@ -34,6 +34,9 @@ public static:
 
 			while (cpuThread.state == CPUThread.State.off) {
 				LAPIC.sleep(1);
+				/*asm @trusted pure nothrow {
+					db 0xF3, 0x90; // pause
+				}*/
 			}
 		}
 	}

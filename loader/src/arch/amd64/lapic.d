@@ -60,9 +60,11 @@ public static:
 		}
 
 		if (!_x2APIC) {
-			_lapicAddress = APIInfo.acpi.lapicAddress.mapSpecial(0x1000, true, false);
-			() @trusted{ LAPIC_address = _lapicAddress; }();
-			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24)); // TODO: check if +24 is correct, https://github.com/zrho/Hydrogen/blob/b58c084e6aea5b7ef29d5586a07e3511f5348efa/loader/src/lapic.c#L98
+			if (!_lapicAddress) {
+				_lapicAddress = APIInfo.acpi.lapicAddress.mapSpecial(0x1000, true, false);
+				() @trusted{ LAPIC_address = _lapicAddress; }();
+			}
+			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24));
 		}
 	}
 
@@ -99,7 +101,7 @@ public static:
 		_write(Registers.localVectorTableError, LocalVectorTable.disabled.data);
 		_write(Registers.taskPriority, 0);
 
-		_write(Registers.spurious, () { Spurious s; s.vector = irq(7); s.enabled = true; return s.data; }());
+		_write(Registers.spurious, () { Spurious s; s.vector = 255; s.enabled = true; return s.data; }());
 		_write(Registers.localVectorTableTimer, () { LVTTimer timer; timer.vector = irq(0); return timer.data; }());
 		_write(Registers.timerDivide, divition);
 
@@ -159,6 +161,11 @@ public static:
 		IDT.register(254, &_onError);
 		IDT.register(255, &_onSpurious);
 
+		_write(Registers.spurious, () { Spurious s; s.vector = 255; s.enabled = true; return s.data; }());
+		_write(Registers.taskPriority, 0);
+		_write(Registers.endOfInterrupt, 0);
+		_write(Registers.errorStatus, 0);
+
 		_write(Registers.localVectorTableLInt0, () {
 			LocalVectorTable lvt;
 			lvt.messageType = MessageType.externalInterrupt;
@@ -171,9 +178,6 @@ public static:
 		uint timerCountValue = cast(uint)(_cpuBusFreq / apicTimerHZ / divitionPower);
 		if (timerCountValue < divitionPower)
 			timerCountValue = divitionPower;
-		import io.log : Log;
-
-		Log.warning("timerCountValue: ", timerCountValue);
 
 		_setTimer(irq(0), TimerMode.periodic, timerCountValue, divition);
 	}

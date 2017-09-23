@@ -17,18 +17,20 @@ private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTIO
 	import io.vga : VGA;
 	import io.log : Log;
 	import arch.amd64.msr : MSR;
+	import data.text : HexInt;
 
-	size_t id = 0;
 	if (MSR.fs) {
 		import api.cpu : CPUThread;
 
-		if (auto _ = currentThread)
-			id = _.id;
-		else
-			id = 1337;
+		if (auto _ = currentThread) {
+			VGA.writeln('<', HexInt(_.id), "> ", args);
+			Log.info!(file, func, line)('<', HexInt(_.id), "> ", args);
+			return;
+		}
 	}
-	VGA.writeln('<', id, "> ", args);
-	Log.info!(file, func, line)('<', id, "> ", args);
+
+	VGA.writeln(args);
+	Log.info!(file, func, line)(args);
 }
 
 __gshared VirtAddress apStackLoc = from!"arch.amd64.paging"._makeAddress(0, 2, 0, 0);
@@ -60,9 +62,13 @@ extern (C) ulong mainAP() @safe {
 	import data.tls : TLS;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
+	import arch.amd64.paging : Paging;
 
 	GDT.flush();
 	IDT.flush();
+	Paging.init();
+
+	LAPIC.setup();
 
 	TLS.aquireTLS();
 	size_t id = LAPIC.getCurrentID();
@@ -152,11 +158,6 @@ extern (C) ulong main() @safe {
 
 	// Init data
 	SMP.init();
-
-	// IDT.setup(kernel.idtSettings); ?
-	// IOAPIC.setup(kernel.idtSettings); ?
-
-	// Syscall.init();
 
 	// Setup more info data
 	// freeData = Heap.lastAddress(); ?
