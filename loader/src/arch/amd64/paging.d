@@ -504,6 +504,9 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 	import io.vga : VGA, CGAColor, CGASlotColor;
 	import io.log : Log;
 	import data.text : HexInt;
+	import arch.amd64.lapic : LAPIC;
+
+	size_t id = LAPIC.getCurrentID();
 
 	with (regs) {
 		const ulong virtAddr = cr2.num;
@@ -577,7 +580,7 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 		Log.Func func = Log.getFuncName(rip);
 
 		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-		VGA.writeln("===> PAGE FAULT");
+		VGA.writeln("===> PAGE FAULT (CPU ", id, ")");
 		VGA.writeln("                          | RIP = ", rip);
 		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
 		VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
@@ -603,7 +606,7 @@ private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 		VGA.writeln("Page Mode: ", (pageFlags & PageFlags.present) ? "R" : "", (pageFlags & PageFlags.writable) ? "W" : "",
 				(pageFlags & PageFlags.execute) ? "X" : "", (pageFlags & PageFlags.user) ? "-User" : "");
 		//dfmt off
-		Log.fatal("===> PAGE FAULT", "\n",
+		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
 			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
 			"RAX = ", rax, " | RBX = ", rbx, "\n",
 			"RCX = ", rcx, " | RDX = ", rdx, "\n",

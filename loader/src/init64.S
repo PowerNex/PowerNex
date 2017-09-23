@@ -10,6 +10,7 @@
 .code64
 
 .global main
+.global newStackAP
 .global mainAP
 .global multibootPointer
 
@@ -24,8 +25,7 @@ boot64BSP:
 	mov %ax, %gs
 	mov %ax, %ss
 
-	xor %rax, %rax
-	mov %rax, %dr0
+	mov $0, %rbp
 
 	mov multibootPointer, %edi
 	call main
@@ -46,8 +46,9 @@ boot64AP:
 	mov %ax, %gs
 	mov %ax, %ss
 
-	xor %rax, %rax
-	mov %rax, %dr0
+	call newStackAP
+	mov %rax, %rsp
+	mov $0, %rbp
 
 	call mainAP
 

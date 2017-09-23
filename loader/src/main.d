@@ -16,9 +16,39 @@ static private immutable uint _minor = __VERSION__ % 1000;
 private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) @trusted {
 	import io.vga : VGA;
 	import io.log : Log;
+	import arch.amd64.msr : MSR;
 
-	VGA.writeln(args);
-	Log.info!(file, func, line)(args);
+	size_t id = 0;
+	if (MSR.fs) {
+		import api.cpu : CPUThread;
+
+		if (auto _ = currentThread)
+			id = _.id;
+		else
+			id = 1337;
+	}
+	VGA.writeln('<', id, "> ", args);
+	Log.info!(file, func, line)('<', id, "> ", args);
+}
+
+__gshared VirtAddress apStackLoc = from!"arch.amd64.paging"._makeAddress(0, 2, 0, 0);
+
+extern (C) VirtAddress newStackAP() @trusted {
+	import arch.amd64.paging : Paging, PageFlags;
+
+	if (!Paging.map(apStackLoc, PhysAddress(), PageFlags.present | PageFlags.writable | PageFlags.execute))
+		return VirtAddress();
+
+	auto stack = apStackLoc + 0x1000;
+	apStackLoc += 0x1000 * 2; // As protection
+
+	{
+		import arch.amd64.lapic : LAPIC;
+
+		size_t id = LAPIC.getCurrentID();
+		outputBoth("AP ", id, " stack is: ", stack);
+	}
+	return stack;
 }
 
 ///
@@ -28,10 +58,15 @@ extern (C) ulong mainAP() @safe {
 	import arch.amd64.lapic : LAPIC;
 	import io.log : Log;
 	import data.tls : TLS;
+	import arch.amd64.gdt : GDT;
+	import arch.amd64.idt : IDT;
+
+	GDT.flush();
+	IDT.flush();
 
 	TLS.aquireTLS();
 	size_t id = LAPIC.getCurrentID();
-	CPUThread* currentThread = &APIInfo.cpus.cpuThreads[id];
+	currentThread = &APIInfo.cpus.cpuThreads[id];
 
 	outputBoth("AP ", id, " has successfully booted!");
 
@@ -41,9 +76,7 @@ extern (C) ulong mainAP() @safe {
 	}
 }
 
-// FIXME: If removed the loader crashes, please fix
-string tlsTest = "Works!";
-string tlsTest2;
+from!"api.cpu".CPUThread* currentThread; /// The current threads structure
 
 ///
 extern (C) ulong main() @safe {
@@ -86,6 +119,7 @@ extern (C) ulong main() @safe {
 
 	Paging.init();
 	Heap.init();
+	TLS.aquireTLS();
 
 	if (auto _ = Multiboot2.rsdpNew)
 		ACPI.initNew(_);
@@ -94,7 +128,7 @@ extern (C) ulong main() @safe {
 	else
 		Log.fatal("No RSDP entry in the multiboot2 structure!");
 
-	TLS.aquireTLS();
+	currentThread = &APIInfo.cpus.cpuThreads[0];
 
 	IOAPIC.analyze();
 
@@ -103,18 +137,14 @@ extern (C) ulong main() @safe {
 	ELF64 kernelELF = ELF64(kernelModule);
 	ELFInstance kernel = kernelELF.aquireInstance();
 
-	outputBoth("Kernel ctors: ", &kernel.ctors[0], ", size: ", kernel.ctors.length);
-	() @trusted{
-		foreach (ctor; kernel.ctors) {
-			outputBoth("\t Running: ", ctor);
-			ctor();
-		}
-	}();
+	outputBoth("kernel.main: ", VirtAddress(kernel.main));
+	outputBoth("kernel.ctors: ");
+	foreach (idx, ctor; kernel.ctors)
+		outputBoth("\t", idx, ": ", VirtAddress(ctor));
 
 	LAPIC.init();
 	IOAPIC.setupLoader();
 	PIC.disable();
-
 	LAPIC.calibrate();
 	LAPIC.setup();
 
@@ -128,15 +158,21 @@ extern (C) ulong main() @safe {
 
 	// Syscall.init();
 
-	// Paging.map(kernel);
-
 	// Setup more info data
 	// freeData = Heap.lastAddress(); ?
 
-	// Turn on AP
-	// kernel.jmp();
-
+	outputBoth("Kernel.ctors.length: ", kernel.ctors.length);
+	() @trusted{
+		foreach (ctor; kernel.ctors) {
+			outputBoth("\t Running: ", VirtAddress(ctor));
+			if (VirtAddress(ctor) < 0xFFFFFFFF_80000000)
+				Log.fatal("ctor is invalid!");
+			ctor();
+		}
+	}();
 	outputBoth("Kernels main is located at: ", VirtAddress(kernel.main));
+	if (VirtAddress(kernel.main) < 0xFFFFFFFF_80000000)
+		Log.fatal("Main is invalid!");
 	int output = kernel.main(0, null);
 	outputBoth("Main function returned: ", output.PhysAddress32);
 

@@ -103,6 +103,8 @@ public static:
 		_addAllJumps();
 		flush();
 
+		register(0xD, &_onGPF);
+
 		asm {
 			sti;
 		}
@@ -274,11 +276,14 @@ private static:
 		else
 			with (regs) {
 				import data.text : HexInt;
+				import arch.amd64.lapic : LAPIC;
+
+				size_t id = LAPIC.getCurrentID();
 
 				Log.Func func = Log.getFuncName(rip);
 
 				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-				VGA.writeln("===> Unhandled interrupt");
+				VGA.writeln("===> Unhandled interrupt (CPU ", id, ")");
 				VGA.writeln("IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip);
 				VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
 				VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
@@ -294,7 +299,8 @@ private static:
 				VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 
 				// dfmt off
-				Log.error("===> Unhandled interrupt", "\n", "IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
+				Log.error("===> Unhandled interrupt (CPU ", id, ")", "\n",
+					"IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
 					"RAX = ", rax, " | RBX = ", rbx, "\n",
 					"RCX = ", rcx, " | RDX = ", rdx, "\n",
 					"RDI = ", rdi, " | RSI = ", rsi, "\n",
@@ -309,5 +315,57 @@ private static:
 					"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 				// dfmt on
 			}
+	}
+}
+
+private void _onGPF(from!"arch.amd64.register".Registers* regs) @safe {
+	import io.vga : VGA, CGASlotColor, CGAColor;
+	import io.log : Log;
+	import data.text : HexInt;
+	import arch.amd64.lapic : LAPIC;
+
+	size_t id = LAPIC.getCurrentID();
+
+	with (regs) {
+		Log.Func func = Log.getFuncName(rip);
+
+		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+		VGA.writeln("===> GeneralProtectionFault (CPU ", id, ")");
+		VGA.writeln("                          | RIP = ", rip);
+		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
+		VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
+		VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
+		VGA.writeln("RSP = ", rsp, " | RBP = ", rbp);
+		VGA.writeln(" R8 = ", r8, " |  R9 = ", r9);
+		VGA.writeln("R10 = ", r10, " | R11 = ", r11);
+		VGA.writeln("R12 = ", r12, " | R13 = ", r13);
+		VGA.writeln("R14 = ", r14, " | R15 = ", r15);
+		VGA.writeln(" CS = ", cs, " |  SS = ", ss);
+		VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
+		VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
+		VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
+
+		// dfmt off
+		Log.error("===> GeneralProtectionFault (CPU ", id, ")", "\n",
+			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
+			"RAX = ", rax, " | RBX = ", rbx, "\n",
+			"RCX = ", rcx, " | RDX = ", rdx, "\n",
+			"RDI = ", rdi, " | RSI = ", rsi, "\n",
+			"RSP = ", rsp, " | RBP = ", rbp, "\n",
+			" R8 = ", r8,  " |  R9 = ", r9, "\n",
+			"R10 = ", r10, " | R11 = ", r11, "\n",
+			"R12 = ", r12, " | R13 = ", r13, "\n",
+			"R14 = ", r14, " | R15 = ", r15, "\n",
+			" CS = ", cs,  " |  SS = ", ss, "\n",
+			"CR0 = ",	cr0," | CR2 = ", cr2, "\n",
+			"CR3 = ",	cr3, " | CR4 = ", cr4, "\n",
+			"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
+		// dfmt on
+
+		while (true) {
+			asm @trusted pure nothrow {
+				hlt;
+			}
+		}
 	}
 }

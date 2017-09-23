@@ -563,6 +563,7 @@ public static:
 
 		VirtAddress start = ulong.max;
 		VirtAddress end;
+		immutable ELF64SectionHeader empty;
 		const(ELF64SectionHeader)* tdata, tbss, symtab, strtab;
 		foreach (const ref ELF64SectionHeader section; tag.sections) {
 			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type,
@@ -602,6 +603,11 @@ public static:
 		}
 		{
 			import data.tls : TLS;
+
+			if (!tdata)
+				tdata = &empty;
+			if (!tbss)
+				tbss = &empty;
 
 			TLS.init(tdata.addr, tdata.size, tbss.addr, tbss.size);
 		}

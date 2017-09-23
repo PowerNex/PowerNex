@@ -61,6 +61,7 @@ SECTIONS {
 	.tbss : {
 		TBSS_START = .;
 		*(.tbss .tbss.*)
+		*(.tcommon)
 		TBSS_END = .;
 	} :tls :data
 

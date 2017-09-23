@@ -27,13 +27,13 @@ public static:
 		this.tbssSize = tbssSize;
 	}
 
-	///	Aquire a TLS context for the current thread
+	/// Aquire a TLS context for the current thread
 	void aquireTLS() @trusted {
 		import io.log : Log;
 		import memory.heap : Heap;
 
 		// TODO: check allocation is 0x10 aligned!
-		size_t size = tdataSize + tbssSize + TLSData.sizeof;
+		size_t size = ((tdataSize + tbssSize + 0xF) & ~0xF) + TLSData.sizeof;
 		VirtAddress data = Heap.allocate(size).VirtAddress;
 
 		Log.info("Allocated tls section at: ", data);

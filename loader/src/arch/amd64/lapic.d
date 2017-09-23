@@ -217,6 +217,8 @@ public static:
 	}
 
 	uint getCurrentID() @trusted {
+		if (!_lapicAddress)
+			return 0;
 		uint id = _read(Registers.apicID);
 		return _x2APIC ? id : (id >> 24);
 	}
