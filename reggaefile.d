@@ -17,13 +17,13 @@ enum CompileCommand : string {
 	ungzip = "gzip -d -c $in > $out",
 
 	loader_ac = "cc/bin/x86_64-powernex-as --64 -o $out $in",
-	loader_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -color=on -debug -c -g -version=PowerD -Iloader/src -I" ~ objDir ~ "/loader/src -Jloader/src -J" ~ objDir ~ "/loader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/loader -X -Xfdocs-loader.json -of$out $in",
-	loader_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -IIloader/src -I" ~ objDir ~ "/Iloader/src -JIloader/src -J" ~ objDir ~ "/Iloader/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
+	loader_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -color=on -debug -c -g -version=PowerD -Iloader/src -I" ~ objDir ~ "/loader/src -Jloader/src -J" ~ objDir ~ "/loader/src -Jdisk/ -J" ~ objDir ~ "/disk -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/loader -X -Xfdocs-loader.json -of$out $in",
+	loader_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -IIloader/src -I" ~ objDir ~ "/Iloader/src -JIloader/src -J" ~ objDir ~ "/Iloader/src -Jdisk/ -J" ~ objDir ~ "/disk -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
 	loader_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T loader/src/loader.ld -nostdlib",
 
 	//TODO: change back -dw to -de, re-add -vgc?
-	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/kernel -X -Xfdocs-kernel.json -of$out $in",
-	kernel_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
+	kernel_dc = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -Jdisk/ -J" ~ objDir ~ "/disk -defaultlib= -debuglib= -version=bare_metal -debug=allocations -D -Dddocs/kernel -X -Xfdocs-kernel.json -of$out $in",
+	kernel_dc_header = "cc/bin/powernex-dmd -m64 -dip25 -dip1000 -dw -vtls -color=on -fPIC -debug -c -g -Ikernel/src -I" ~ objDir ~ "/kernel/src -Jkernel/src -J" ~ objDir ~ "/kernel/src -Jdisk/ -J" ~ objDir ~ "/disk -defaultlib= -debuglib= -version=bare_metal -debug=allocations -o- -Hf$out $in",
 	kernel_ac = "cc/bin/x86_64-powernex-as --divide --64 -o $out $in",
 	kernel_ld = "cc/bin/x86_64-powernex-ld -o $out -z max-page-size=0x1000 $in -T kernel/src/kernel.ld",
 
@@ -76,13 +76,12 @@ class Loader {
 }
 
 class KernelDependencies {
-	Target consolefontgz;
-	Target consolefont;
+	Target consoleFont;
+	Target consoleFontBold;
 
 	this() {
-		consolefontgz = Target("kernel/src/bin/consoleFont.psf.gz", CompileCommand.copy,
-				[Target("/usr/share/kbd/consolefonts/lat9w-16.psfu.gz")]);
-		consolefont = Target("kernel/src/bin/consoleFont.psf", CompileCommand.ungzip, [consolefontgz]);
+		consoleFont = Target("disk/data/font/terminus/ter-v16n.psf");
+		consoleFontBold = Target("disk/data/font/terminus/ter-v16b.psf");
 	}
 }
 
@@ -93,7 +92,7 @@ class Kernel {
 
 	this() {
 		kernelAObj = Target("kernel/obj/acode.o", CompileCommand.kernel_ac, mapSources("kernel/", "*.S"));
-		kernelDObj = Target("kernel/obj/dcode.o", CompileCommand.kernel_dc, mapSources("kernel/"), [kernelDependencies.consolefont]);
+		kernelDObj = Target("kernel/obj/dcode.o", CompileCommand.kernel_dc, mapSources("kernel/"), [kernelDependencies.consoleFont, kernelDependencies.consoleFontBold]);
 		kernel = Target("disk/boot/powernex.krl", CompileCommand.kernel_ld, [kernelAObj, kernelDObj]);
 	}
 }
