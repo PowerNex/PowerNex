@@ -8,13 +8,13 @@ extern (C) extern __gshared ubyte boot16_location, boot16_start, boot16_end;
 public static:
 	void init() @trusted {
 		import arch.amd64.lapic : LAPIC;
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import api.cpu : CPUThread;
 		import io.log : Log;
 
 		_setupInit16();
 
-		foreach (size_t idx, ref CPUThread cpuThread; APIInfo.cpus.cpuThreads) {
+		foreach (size_t idx, ref CPUThread cpuThread; getPowerDAPI.cpus.cpuThreads) {
 			if (cpuThread.state != CPUThread.State.off) {
 				Log.debug_("Skipping cpuThreads[", idx, "] it's state is: ", cpuThread.state);
 				continue;

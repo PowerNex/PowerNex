@@ -470,7 +470,7 @@ align(1):
 @safe static struct ACPI {
 public static: ///
 	void initOld(ubyte[] rsdpData) @trusted {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 
 		RSDPv1* rsdp = &(cast(RSDPv1[])rsdpData)[0];
 		assert(rsdp.revision == 0, "RSDP is not version 1.0!");
@@ -480,7 +480,7 @@ public static: ///
 		RSDTv1* rsdt = rsdp.rsdtAddress.toX64.VirtAddress.ptr!RSDTv1;
 		assert(rsdt.valid);
 
-		APIInfo.acpi.rsdtV1 = VirtAddress(rsdt);
+		getPowerDAPI.acpi.rsdtV1 = VirtAddress(rsdt);
 		rsdt.print();
 
 		_createLookupTable(SDTNeedVersion.v1Only);
@@ -507,7 +507,7 @@ public static: ///
 
 	///
 	void initNew(ubyte[] rsdpData) @trusted {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 
 		RSDPv2* rsdp = &(cast(RSDPv2[])rsdpData)[0];
 		assert(rsdp.revision >= 2, "RSDP is not >= version 2.0!");
@@ -517,7 +517,7 @@ public static: ///
 		RSDTv2* rsdt = rsdp.xsdtAddress.VirtAddress.ptr!RSDTv2;
 		assert(rsdt.valid);
 
-		APIInfo.acpi.rsdtV2 = VirtAddress(rsdt);
+		getPowerDAPI.acpi.rsdtV2 = VirtAddress(rsdt);
 		rsdt.print();
 
 		_createLookupTable(SDTNeedVersion.v2Only);
@@ -545,12 +545,12 @@ public static: ///
 	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v1Only)
 	void accept(FADTv1* fadt) {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import io.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 		import data.text : HexInt;
 
-		with (APIInfo.acpi) {
+		with (getPowerDAPI.acpi) {
 			with (shutdown) {
 				pm1aControlBlock = cast(ushort)fadt.pm1aControlBlock;
 				pm1bControlBlock = cast(ushort)fadt.pm1bControlBlock;
@@ -596,7 +596,7 @@ public static: ///
 				return Log.error("SDT [DSDT] has an invalid checksum!");
 			}
 
-			APIInfo.acpi.dsdt = pAddr;
+			getPowerDAPI.acpi.dsdt = pAddr;
 			dsdt.print();
 			accept(dsdt);
 
@@ -607,12 +607,12 @@ public static: ///
 	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v2Only)
 	void accept(FADTv2* fadt) {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import api.acpi : PowerDACPI;
 		import io.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 
-		with (APIInfo.acpi) {
+		with (getPowerDAPI.acpi) {
 			with (shutdown) {
 				pm1aControlBlock = cast(ushort)fadt.xPM1aControlBlock.address;
 				pm1bControlBlock = cast(ushort)fadt.xPM1bControlBlock.address;
@@ -669,7 +669,7 @@ public static: ///
 				return Log.error("SDT [DSDT] has an invalid checksum!");
 			}
 
-			APIInfo.acpi.dsdt = pAddr;
+			getPowerDAPI.acpi.dsdt = pAddr;
 			dsdt.print();
 			accept(dsdt);
 
@@ -681,7 +681,7 @@ public static: ///
 	/// DSDT is aquired from FADTv1 or FADTv2
 	@SDTIdentifier("DSDT", SDTNeedVersion.any)
 	void accept(DSDT* dsdt) {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import arch.amd64.aml : AMLOpcodes;
 		import data.text : indexOf;
 
@@ -706,7 +706,7 @@ public static: ///
 		const ubyte pkgLength = (data[0] & 0xC0 >> 6) + 2;
 		idx += pkgLength;
 
-		with (APIInfo.acpi.shutdown) {
+		with (getPowerDAPI.acpi.shutdown) {
 			if (data[idx] == AMLOpcodes.bytePrefix)
 				idx++; // skip byteprefix
 			sleepTypeA = cast(ushort)(cast(ushort)data[idx] << 10);
@@ -721,15 +721,15 @@ public static: ///
 	///
 	@SDTIdentifier("APIC", SDTNeedVersion.any)
 	void accept(MADT* madt) @trusted {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import api.cpu : CPUThread, IRQFlags;
 
-		APIInfo.acpi.lapicAddress = madt.lapicAddress;
+		getPowerDAPI.acpi.lapicAddress = madt.lapicAddress;
 
 		with (MADT) {
 			bool hasIOACPI;
 			uint currentCPUThread;
-			with (APIInfo.cpus) {
+			with (getPowerDAPI.cpus) {
 				foreach (APICBase* entry; madt.entries) {
 					switch (entry.type) with (APICBase.Type) {
 					case processorLocalAPIC:
@@ -819,7 +819,7 @@ public static: ///
 
 	///
 	void shutdown() {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import io.ioport : outp, inp;
 		import data.text : HexInt;
 		import io.vga : VGA;
@@ -828,7 +828,7 @@ public static: ///
 			cli;
 		}
 
-		with (APIInfo.acpi.shutdown) {
+		with (getPowerDAPI.acpi.shutdown) {
 			ushort orgData = inp!ushort(pm1aControlBlock);
 
 			Log.info("sleepEnable: ", sleepEnable.HexInt, ", sleepTypeA: ", sleepTypeA.HexInt, ", sleepTypeB: ", sleepTypeB.HexInt);
@@ -854,14 +854,14 @@ public static: ///
 
 	///
 	void reboot() {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import io.ioport : inp, outp;
 
 		asm @trusted pure nothrow {
 			cli;
 		}
 
-		with (APIInfo.acpi.reboot)
+		with (getPowerDAPI.acpi.reboot)
 			if (action != Action.invalid) {
 				Log.debug_("Trying ACPIv2.0+ reset...");
 				switch (action) {

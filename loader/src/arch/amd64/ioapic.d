@@ -20,11 +20,11 @@ import data.address;
 public static:
 	///
 	void analyze() {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import api.cpu : IOAPIC;
 		import io.log : Log;
 
-		foreach (ref IOAPIC ioapic; APIInfo.cpus.ioapics) {
+		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
 			VirtAddress vAddr = ioapic.address.mapSpecial(0x20, true);
 			const uint data = _ioapicVer(vAddr);
 			ioapic.version_ = cast(ubyte)(data & 0xFF);
@@ -36,10 +36,10 @@ public static:
 
 	///
 	void setupLoader() {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import api.cpu : IOAPIC;
 
-		foreach (ref IOAPIC ioapic; APIInfo.cpus.ioapics) {
+		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
 			VirtAddress vAddr = ioapic.address.mapSpecial(0x20, true);
 			foreach (i; 0 .. ioapic.gsiMaxRedirectCount) {
 				const uint gsi = ioapic.gsi + i;
@@ -100,13 +100,13 @@ private static:
 	}
 
 	ref uint _ioregsel(VirtAddress address) {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 
 		return *address.ptr!uint;
 	}
 
 	ref uint _ioregwin(VirtAddress address) {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 
 		return *(address + 0x10).ptr!uint;
 	}
@@ -144,9 +144,9 @@ private static:
 
 	Redirection _createRedirect(uint gsi) {
 		ubyte getIRQ(uint gsi) {
-			import api : APIInfo;
+			import api : getPowerDAPI;
 
-			foreach (ubyte irq, uint value; APIInfo.cpus.irqMap)
+			foreach (ubyte irq, uint value; getPowerDAPI.cpus.irqMap)
 				if (value == gsi)
 					return irq;
 			return ubyte.max;
@@ -162,10 +162,10 @@ private static:
 			redirection.destinationMode = DestinationMode.physical;
 
 			if (irq != ubyte.max) {
-				import api : APIInfo;
+				import api : getPowerDAPI;
 				import api.cpu : IRQFlags;
 
-				const IRQFlags flags = APIInfo.cpus.irqFlags[irq];
+				const IRQFlags flags = getPowerDAPI.cpus.irqFlags[irq];
 				redirection.triggerMode = flags.trigger == IRQFlags.Trigger.level ? TriggerMode.level : TriggerMode.edge;
 				redirection.pinPolarity = flags.active == IRQFlags.Active.high ? PinPolarity.activeHigh : PinPolarity.activeLow;
 			} else {

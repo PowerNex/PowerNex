@@ -110,6 +110,15 @@ public:
 		}
 		return res;
 	}
+	int opApply(scope int delegate(const ref T) cb) @trusted {
+		int res;
+		for (size_t i = 0; i < _length; i++) {
+			res = cb(_list[i]);
+			if (res)
+				break;
+		}
+		return res;
+	}
 
 	int opApply(scope int delegate(size_t, const T) cb) @trusted const {
 		int res;
@@ -122,6 +131,16 @@ public:
 	}
 
 	int opApply(scope int delegate(size_t, ref T) cb) @trusted {
+		int res;
+		for (size_t i = 0; i < _length; i++) {
+			res = cb(i, _list[i]);
+			if (res)
+				break;
+		}
+		return res;
+	}
+
+	int opApply(scope int delegate(size_t, const ref T) cb) @trusted {
 		int res;
 		for (size_t i = 0; i < _length; i++) {
 			res = cb(i, _list[i]);

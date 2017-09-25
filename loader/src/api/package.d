@@ -8,34 +8,57 @@
  */
 module api;
 
+import data.address;
+
 public import api.acpi;
-public import api.base;
 public import api.cpu;
 
-@safe static struct APIInfo {
-public static:
-	void init() {
-		header = PowerDHeader.init;
-		with (header) {
-			magic = PowerDHeader.magicValue;
-			version_ = Version(0, 0, 0); // TODO: Sync with init32.S somehow
-		}
+/// SymVer version format: Major.Minor.Patch
+struct Version {
+	// TODO: Change to a smaller unsigned interger container?
+	size_t major; /// The major version
+	size_t minor; /// The minor version
+	size_t patch; /// The patch version
+}
+
+///
+struct Module {
+	char[] name; ///
+	PhysMemoryRange memory; ///
+}
+
+///
+struct MemoryMap {
+	/// Copy of MultibootMemoryType
+	enum Type {
+		available = 1,
+		reserved,
+		acpiReclaimable,
+		nvs,
+		badRAM
 	}
 
-	@property ref PowerDHeader header() @trusted {
-		return _header;
-	}
+	PhysMemoryRange memory; ///
+	Type type; ///
+}
 
-	@property ref PowerDACPI acpi() @trusted {
-		return _acpi;
-	}
+/// The PowerD information container
+@safe struct PowerDAPI {
+	enum size_t magicValue = 0x3056_4472_6577_6F50UL; /// "PowerDV0" as size_t (backwards because of little-endian)
+	size_t magic = magicValue; /// The magic
+	// TODO: Sync with init32.S somehow
+	Version version_ = Version(0, 0, 0); /// The PowerD version
 
-	@property ref PowerDCPUs cpus() @trusted {
-		return _cpus;
-	}
+	size_t ramAmount; ///
 
-private static:
-	__gshared PowerDHeader _header;
-	__gshared PowerDACPI _acpi;
-	__gshared PowerDCPUs _cpus;
+	from!"data.vector".Vector!Module modules; ///
+	from!"data.vector".Vector!MemoryMap memoryMaps; ///
+
+	PowerDACPI acpi; ///
+	PowerDCPUs cpus; ///
+}
+
+ref PowerDAPI getPowerDAPI() @trusted {
+	__gshared PowerDAPI powerDAPI;
+	return powerDAPI;
 }

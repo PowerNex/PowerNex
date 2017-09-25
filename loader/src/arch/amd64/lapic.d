@@ -30,7 +30,7 @@ private extern extern (C) void LAPIC_spuriousTimer();
 public static:
 	///
 	void init() @trusted {
-		import api : APIInfo;
+		import api : getPowerDAPI;
 		import api.cpu : CPUThread;
 		import arch.amd64.msr : MSR;
 		import arch.amd64.idt : IDT;
@@ -61,7 +61,7 @@ public static:
 
 		if (!_x2APIC) {
 			if (!_lapicAddress) {
-				_lapicAddress = APIInfo.acpi.lapicAddress.mapSpecial(0x1000, true, false);
+				_lapicAddress = getPowerDAPI.acpi.lapicAddress.mapSpecial(0x1000, true, false);
 				() @trusted{ LAPIC_address = _lapicAddress; }();
 			}
 			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24));

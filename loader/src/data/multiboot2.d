@@ -393,10 +393,78 @@ private extern extern (C) __gshared Multiboot2TagsHeader* multibootPointer;
 
 @safe static struct Multiboot2 {
 public static:
-	///
-	void init() @trusted {
+	//
+	void earlyParse() @trusted {
+		import memory.frameallocator : FrameAllocator;
+
 		_tags = TagRange(multibootPointer.VirtAddress + Multiboot2TagsHeader.sizeof);
-		parse();
+
+		foreach (tag; _tags) switch (tag.type) with (Multiboot2TagType) {
+		case module_:
+			auto t = cast(Multiboot2TagModule*)tag;
+			FrameAllocator.markRange(t.modStart.toX64, t.modEnd.toX64);
+			break;
+		case basicMemInfo:
+			auto t = cast(Multiboot2TagBasicMeminfo*)tag;
+			FrameAllocator.maxFrames = (t.memLower + t.memUpper /* KiB */ ) / 4 /* each page is 4KiB */ ;
+			break;
+		case mMap:
+			auto t = cast(Multiboot2TagMMap*)tag;
+			foreach (const ref Multiboot2MMapEntry entry; t.entries) {
+				if (entry.type != Multiboot2MemoryType.available)
+					FrameAllocator.markRange(entry.addr, entry.addr + entry.len);
+			}
+			break;
+		case elfSections:
+			auto t = cast(Multiboot2TagELFSections*)tag;
+
+			char[] lookUpName(uint nameIdx) @trusted {
+				import data.text : strlen;
+
+				auto tmp = t.sections[t.shndx];
+				char* name = (tmp.addr + nameIdx).ptr!char;
+				return name[0 .. name.strlen];
+			}
+
+			VirtAddress start = ulong.max;
+			VirtAddress end;
+			immutable ELF64SectionHeader empty;
+			const(ELF64SectionHeader)* tdata = &empty, tbss = &empty, symtab, strtab;
+			foreach (const ref ELF64SectionHeader section; t.sections) {
+				if (start > section.addr)
+					start = section.addr;
+
+				if (end < section.addr + section.size)
+					end = section.addr + section.size;
+
+				if (lookUpName(section.name) == ".tdata")
+					tdata = &section;
+				else if (lookUpName(section.name) == ".tbss")
+					tbss = &section;
+				else if (lookUpName(section.name) == ".symtab")
+					symtab = &section;
+				else if (lookUpName(section.name) == ".strtab")
+					strtab = &section;
+			}
+			() @trusted{
+				import data.elf64 : ELF64Symbol;
+
+				ELF64Symbol[] symbols = symtab.addr.ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
+				char[] strings = strtab.addr.ptr!char[0 .. strtab.size];
+
+				Log.setSymbolMap(symbols, strings);
+			}();
+			FrameAllocator.markRange(start.PhysAddress, end.roundUp(0x1000).PhysAddress); // Gotta love identity mapping
+			{
+				import data.tls : TLS;
+
+				TLS.init(tdata.addr, tdata.size, tbss.addr, tbss.size);
+			}
+
+			break;
+		default:
+			break;
+		}
 	}
 
 	//
@@ -488,25 +556,20 @@ public static:
 
 	///
 	void accept(Multiboot2TagModule* tag) {
-		import memory.frameallocator : FrameAllocator;
+		import api : getPowerDAPI, Module;
 
 		Log.debug_("Multiboot2TagModule: start: ", tag.modStart, ", end: ", tag.modEnd, ", name: ", tag.name);
 
-		FrameAllocator.markRange(tag.modStart.toX64, tag.modEnd.toX64);
-		() @trusted{
-			if (_moduleCount >= _modules.length)
-				Log.fatal("Multiboot2TagModule: Too many modules! Please increase _modules's size");
-			_modules[_moduleCount++] = tag;
-		}();
+		getPowerDAPI().modules.put(Module(tag.name, PhysMemoryRange32(tag.modStart, tag.modEnd).toX64));
 	}
 
 	///
 	void accept(Multiboot2TagBasicMeminfo* tag) {
-		import memory.frameallocator : FrameAllocator;
+		import api : getPowerDAPI;
 
 		Log.debug_("Multiboot2TagBasicMeminfo: lower:", tag.memLower, ", upper: ", tag.memUpper);
 
-		FrameAllocator.maxFrames = (tag.memLower + tag.memUpper /* KiB */ ) / 4 /* each page is 4KiB */ ;
+		getPowerDAPI.ramAmount = (tag.memLower + tag.memUpper /* KiB */ ) / 4 /* each page is 4KiB */ ;
 	}
 
 	///
@@ -516,14 +579,13 @@ public static:
 
 	///
 	void accept(Multiboot2TagMMap* tag) {
+		import api : getPowerDAPI, MemoryMap;
 		import memory.frameallocator : FrameAllocator;
 
 		Log.debug_("Multiboot2TagMMap: size: ", tag.entrySize, " version: ", tag.entryVersion, ", entries:");
 		foreach (const ref Multiboot2MMapEntry entry; tag.entries) {
 			Log.debug_("\taddr: ", entry.addr, ", len: ", entry.len.HexInt, ", type: ", entry.type);
-
-			if (entry.type != Multiboot2MemoryType.available)
-				FrameAllocator.markRange(entry.addr, entry.addr + entry.len);
+			getPowerDAPI.memoryMaps.put(MemoryMap(PhysMemoryRange(entry.addr, entry.addr + entry.len), cast(MemoryMap.Type)entry.type));
 		}
 	}
 
@@ -551,8 +613,6 @@ public static:
 	void accept(Multiboot2TagELFSections* tag) {
 		Log.debug_("Multiboot2TagELFSections: num: ", tag.num, ", entsize: ", tag.entsize, ", shndx: ", tag.shndx, ", sections: ");
 
-		// TODO: Merge with ELF64!
-
 		char[] lookUpName(uint nameIdx) @trusted {
 			import data.text : strlen;
 
@@ -561,56 +621,11 @@ public static:
 			return name[0 .. name.strlen];
 		}
 
-		VirtAddress start = ulong.max;
-		VirtAddress end;
-		immutable ELF64SectionHeader empty;
-		const(ELF64SectionHeader)* tdata, tbss, symtab, strtab;
-		foreach (const ref ELF64SectionHeader section; tag.sections) {
+		foreach (const ref ELF64SectionHeader section; tag.sections)
 			Log.debug_("\tname: '", lookUpName(section.name), "'(idx: ", section.name, "), type: ", section.type,
 					", flags: ", section.flags.HexInt, ", addr: ", section.addr, ", offset: ", section.offset, ", size: ",
 					section.size.HexInt, ", link: ", section.link, ", info: ", section.info, ", addralign: ",
 					section.addralign.HexInt, ", entsize: ", section.entsize.HexInt);
-
-			if (start > section.addr)
-				start = section.addr;
-
-			if (end < section.addr + section.size)
-				end = section.addr + section.size;
-
-			if (lookUpName(section.name) == ".tdata")
-				tdata = &section;
-			else if (lookUpName(section.name) == ".tbss")
-				tbss = &section;
-			else if (lookUpName(section.name) == ".symtab")
-				symtab = &section;
-			else if (lookUpName(section.name) == ".strtab")
-				strtab = &section;
-		}
-		() @trusted{
-			import data.elf64 : ELF64Symbol;
-
-			ELF64Symbol[] symbols = symtab.addr.ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
-			char[] strings = strtab.addr.ptr!char[0 .. strtab.size];
-
-			Log.setSymbolMap(symbols, strings);
-		}();
-		{
-			import memory.frameallocator : FrameAllocator;
-
-			end = end.roundUp(0x1000);
-
-			FrameAllocator.markRange(start.PhysAddress, end.PhysAddress); // Gotta love identity mapping
-		}
-		{
-			import data.tls : TLS;
-
-			if (!tdata)
-				tdata = &empty;
-			if (!tbss)
-				tbss = &empty;
-
-			TLS.init(tdata.addr, tdata.size, tbss.addr, tbss.size);
-		}
 	}
 
 	///
@@ -689,16 +704,13 @@ public static:
 
 	///
 	PhysMemoryRange getModule(string name) {
-		foreach (Multiboot2TagModule* m; modules)
+		import api : getPowerDAPI, Module;
+
+		foreach (const ref Module m; getPowerDAPI.modules)
 			if (m.name == name)
-				return PhysMemoryRange(m.modStart.toX64, m.modEnd.toX64);
+				return m.memory;
 
 		return PhysMemoryRange();
-	}
-
-	///
-	@property Multiboot2TagModule*[] modules() @trusted {
-		return _modules[0 .. _moduleCount];
 	}
 
 private static:
@@ -729,7 +741,4 @@ private static:
 
 	__gshared ubyte[] _rsdpOld;
 	__gshared ubyte[] _rsdpNew;
-
-	__gshared Multiboot2TagModule*[8] _modules;
-	__gshared size_t _moduleCount;
 }

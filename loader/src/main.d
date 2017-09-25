@@ -55,7 +55,7 @@ extern (C) VirtAddress newStackAP() @trusted {
 
 ///
 extern (C) ulong mainAP() @safe {
-	import api : APIInfo;
+	import api : getPowerDAPI;
 	import api.cpu : CPUThread;
 	import arch.amd64.lapic : LAPIC;
 	import io.log : Log;
@@ -72,7 +72,7 @@ extern (C) ulong mainAP() @safe {
 
 	TLS.aquireTLS();
 	size_t id = LAPIC.getCurrentID();
-	currentThread = &APIInfo.cpus.cpuThreads[id];
+	currentThread = &getPowerDAPI.cpus.cpuThreads[id];
 
 	outputBoth("AP ", id, " has successfully booted!");
 
@@ -86,7 +86,7 @@ from!"api.cpu".CPUThread* currentThread; /// The current threads structure
 
 ///
 extern (C) ulong main() @safe {
-	import api : APIInfo;
+	import api : getPowerDAPI;
 	import arch.amd64.acpi : ACPI;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
@@ -115,17 +115,22 @@ extern (C) ulong main() @safe {
 	outputBoth("Hello world from D!");
 	outputBoth("\tCompiled using '", __VENDOR__, "', D version ", _major, ".", _minor);
 
-	APIInfo.init();
+	{
+		auto _ = getPowerDAPI.version_;
+		outputBoth("Loader version: ", _.major, ".", _.minor, ".", _.patch);
+	}
 
 	FrameAllocator.init();
 	// TODO: Implement alternative UEFI loading
 	// Note this will initialize other modules
-	Multiboot2.init();
+	Multiboot2.earlyParse();
 	FrameAllocator.preAllocateFrames();
 
 	Paging.init();
 	Heap.init();
 	TLS.aquireTLS();
+
+	Multiboot2.parse();
 
 	if (auto _ = Multiboot2.rsdpNew)
 		ACPI.initNew(_);
@@ -134,7 +139,7 @@ extern (C) ulong main() @safe {
 	else
 		Log.fatal("No RSDP entry in the multiboot2 structure!");
 
-	currentThread = &APIInfo.cpus.cpuThreads[0];
+	currentThread = &getPowerDAPI.cpus.cpuThreads[0];
 
 	IOAPIC.analyze();
 

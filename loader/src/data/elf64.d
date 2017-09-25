@@ -141,9 +141,9 @@ struct ELF64Symbol {
 
 ///
 @safe struct ELFInstance {
-	import api : APIInfo;
+	import api : getPowerDAPI;
 
-	int function(int argc, char** argv /*APIInfo**/ ) main;
+	int function(int argc, char** argv /*getPowerDAPI**/ ) main;
 	void function() @system[] ctors;
 }
 
