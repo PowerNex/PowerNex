@@ -25,7 +25,7 @@ multiboot2Header:
 
 	.short MULTIBOOT_HEADER_TAG_END
 	.short 0
-	.int 0
+	.int 8
 multiboot2HeaderEnd:
 
 .section .initCode, "ax"
