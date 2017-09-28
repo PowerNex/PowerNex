@@ -143,8 +143,8 @@ struct ELF64Symbol {
 @safe struct ELFInstance {
 	import api : getPowerDAPI;
 
-	int function(int argc, char** argv /*getPowerDAPI**/ ) main;
-	void function() @system[] ctors;
+	size_t function() @system main;
+	size_t function() @system[] ctors;
 }
 
 ///
@@ -153,6 +153,7 @@ public:
 	///
 	this(PhysMemoryRange kernelModule) {
 		// I can do this due to 1-to-1 mapping, and the loader + modules sizes are less than 1GiB
+		_elfDataPhys = kernelModule;
 		_elfData = kernelModule.toVirtual;
 		_header = _elfData.start.ptr!ELF64Header;
 
@@ -180,6 +181,7 @@ public:
 	}
 
 private:
+	PhysMemoryRange _elfDataPhys;
 	VirtMemoryRange _elfData;
 	ELF64Header* _header;
 	ELF64ProgramHeader[] _programHeaders;
@@ -269,21 +271,22 @@ private:
 
 			VirtAddress vAddr = hdr.vAddr;
 			VirtAddress data = _elfData.start + hdr.offset;
+			PhysAddress pData = _elfDataPhys.start + hdr.offset;
 
-			Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", hdr.pAddr, " - ", hdr.pAddr + hdr.memsz, "]");
-			FrameAllocator.markRange(hdr.pAddr, hdr.pAddr + hdr.memsz);
+			Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", pData, " - ", pData + hdr.memsz, "]");
+			FrameAllocator.markRange(pData, pData + hdr.memsz);
 			for (size_t offset; offset < hdr.memsz; offset += 0x1000) {
-				import data.number : max, min;
+				import data.number : min;
 
 				VirtAddress addr = vAddr + offset;
-				PhysAddress pAddr = hdr.pAddr + offset;
+				PhysAddress pAddr = pData + offset;
 
 				// Map with writable
-				if (!Paging.map(addr, pAddr, PageFlags.present | PageFlags.writable, false))
+				if (!Paging.map(addr, PhysAddress(), PageFlags.present | PageFlags.writable, false))
 					Log.fatal("Failed to map ", addr, "( to ", pAddr, ")");
 
 				// Copying the data over, and zeroing the excess
-				size_t dataLen = min(0x1000, max(0, hdr.filesz - offset));
+				size_t dataLen = (offset > hdr.filesz) ? 0 : min(hdr.filesz - offset, 0x1000);
 				size_t zeroLen = min(0x1000 - dataLen, hdr.memsz - offset);
 
 				addr.memcpy(data + offset, dataLen);
@@ -304,10 +307,10 @@ private:
 		}
 	}
 
-	void function()[] _getCtors() {
+	auto _getCtors() {
 		foreach (ref ELF64SectionHeader section; _sectionHeaders)
 			if (_lookUpSectionName(section.name) == ".ctors")
-				return VirtMemoryRange(section.addr, section.addr + section.size).array!(void function() @system);
+				return VirtMemoryRange(section.addr, section.addr + section.size).array!(size_t function() @system);
 		return null;
 	}
 }

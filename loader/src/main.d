@@ -163,6 +163,7 @@ extern (C) ulong main() @safe {
 
 	// Init data
 	SMP.init();
+	outputBoth("SMP.init DONE!!!!!!!");
 
 	// Setup more info data
 	// freeData = Heap.lastAddress(); ?
@@ -179,13 +180,21 @@ extern (C) ulong main() @safe {
 	outputBoth("Kernels main is located at: ", VirtAddress(kernel.main));
 	if (VirtAddress(kernel.main) < 0xFFFFFFFF_80000000)
 		Log.fatal("Main is invalid!");
-	int output = kernel.main(0, null);
-	outputBoth("Main function returned: ", output.PhysAddress32);
+	() @trusted {
+		size_t output = kernel.main();
+		outputBoth("Main function returned: ", output.VirtAddress);
+	}();
 
 	outputBoth("Reached end of main! Shutting down in 2 seconds.");
 	LAPIC.sleep(2000);
 
 	ACPI.shutdown();
+
+	// Needed for now, else it will fail to boot the APs
+	asm @trusted pure nothrow {
+		nop;
+		nop;
+	}
 
 	return 0;
 }

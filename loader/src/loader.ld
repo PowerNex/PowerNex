@@ -52,7 +52,7 @@ SECTIONS {
 		*(.bss .bss.*)
 	} :data
 
-	.tdata :  {
+	.tdata : {
 		TDATA_START = .;
 		*(.tdata .tdata.*)
 		TDATA_END = .;

@@ -72,7 +72,7 @@ struct Screen(int w, int h) {
 		if (!_enabled)
 			return;
 
-		foreach (ref VideoSlot slot; (*_screen)[w .. $]) {
+		foreach (ref VideoSlot slot; (*_screen)[0 .. $]) {
 			slot.ch = ' ';
 			slot.color = _color;
 		}
@@ -261,4 +261,4 @@ private:
 
 }
 
-__gshared Screen!(80, 25) getScreen = Screen!(80, 25)(Colors.cyan, Colors.black, 0xFFFF_FFFF_800B_8000);
+__gshared Screen!(80, 25) getScreen = Screen!(80, 25)(Colors.cyan, Colors.black, 0xB8000);

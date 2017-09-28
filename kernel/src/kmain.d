@@ -40,13 +40,13 @@ private immutable uint _minor = __VERSION__ % 1000;
 
 __gshared SharedPtr!FileSystem rootFS;
 
-extern (C) int kmain(uint magic, ulong info) {
+extern (C) void kmain() {
 	preInit();
 	welcome();
-	init(magic, info);
-	asm pure nothrow {
-		sti;
-	}
+	//init(magic, info);
+	//asm pure nothrow {
+	//	sti;
+	//}
 
 	/*string initFile = "/bin/init";
 	ELF init = new ELF((*rootFS).root.findNode(initFile));
@@ -63,7 +63,6 @@ extern (C) int kmain(uint magic, ulong info) {
 	scr.foreground = Color(255, 0, 255);
 	scr.background = Color(255, 255, 0);
 	scr.writeln("kmain functions has exited!");
-	return 0;
 	Log.fatal("kmain functions has exited!");
 }
 
@@ -80,6 +79,7 @@ void preInit() {
 	import io.textmode;
 
 	COM.init();
+	// TODO: Make sure that it only append on the loader output, not replaces it.
 	scr;
 	scr.onChangedCallback = &bootTTYToTextmode;
 	getScreen.clear();
@@ -93,16 +93,16 @@ void preInit() {
 	GDT.init();
 
 	scr.writeln("IDT initializing...");
-	IDT.init();
 	Log.info("IDT initializing...");
+	//IDT.init();
 
 	scr.writeln("Syscall Handler initializing...");
 	Log.info("Syscall Handler initializing...");
 	SyscallHandler.init();
 
 	scr.writeln("PIT initializing...");
-	PIT.init();
 	Log.info("PIT initializing...");
+	//PIT.init();
 }
 
 void welcome() {
@@ -113,7 +113,7 @@ void welcome() {
 	Log.info("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
 }
 
-void init(uint magic, ulong info) {
+/+ void init(uint magic, ulong info) {
 	scr.writeln("Multiboot parsing...");
 	Log.info("Multiboot parsing...");
 	Multiboot.parseHeader(magic, info);
@@ -172,9 +172,9 @@ void init(uint magic, ulong info) {
 	/*scr.writeln("Scheduler initializing...");
 	Log.info("Scheduler initializing...");
 	getScheduler.init();*/
-}
+} +/
 
-void loadInitrd() {
+/+ void loadInitrd() {
 	import fs.tarfs : TarFS;
 	import fs.iofs : IOFS;
 
@@ -219,4 +219,4 @@ void loadInitrd() {
 
 	Log.info("directoryEntries for rootFS!\n---------------------");
 	printData((*rootFS).root);
-}
+} +/

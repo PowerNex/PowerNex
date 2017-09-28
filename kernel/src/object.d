@@ -56,31 +56,6 @@ template from(string moduleName) {
 
 import data.string_ : strlen;
 
-void main() {
-}
-
-extern (C) int kmain(uint magic, ulong info);
-int callKmain(uint magic, ulong info) {
-	try {
-		return kmain(magic, info);
-	}
-	catch (Throwable t) {
-		log.info("\n**UNCAUGHT EXCEPTION**\n");
-		t.print();
-
-		import memory.allocator : dispose, kernelAllocator;
-
-		kernelAllocator.dispose(t);
-		return 1;
-	}
-}
-
-__gshared string[] environment;
-
-extern (C) void _Dkmain_entry(uint magic, ulong info) {
-	exit(callKmain(magic, info));
-}
-
 void exit(ssize_t code = 0) {
 	asm pure nothrow {
 		cli;
@@ -2375,11 +2350,6 @@ alias size_t hash_t;
 
 bool _xopEquals(in void*, in void*) {
 	assert(0);
-}
-
-private alias extern(C) int function(char[][] args) MainFunc;
-extern (C) int _d_run_main(int argc, char **argv, MainFunc mainFunc) {
-	return 0xDEAD_C0DE;
 }
 
 extern (C) void* memset(void* p, uint value, size_t count) {
