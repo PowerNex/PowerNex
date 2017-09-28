@@ -9,7 +9,7 @@ import memory.ptr;
 SharedPtr!VNode findNode(SharedPtr!VNode startNode, in string path) {
 	import kmain: rootFS; //TODO:
 	import data.string_ : indexOf;
-	import io.log : log;
+	import io.log : Log;
 
 	if (path.length && path[0] == '/')
 		return findNode((*rootFS).root, path[1 .. $]);

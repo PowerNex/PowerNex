@@ -357,7 +357,7 @@ private void _onGPF(from!"arch.amd64.register".Registers* regs) @safe {
 			"R12 = ", r12, " | R13 = ", r13, "\n",
 			"R14 = ", r14, " | R15 = ", r15, "\n",
 			" CS = ", cs,  " |  SS = ", ss, "\n",
-			"CR0 = ",	cr0," | CR2 = ", cr2, "\n",
+			"CR0 = ",	cr0, " | CR2 = ", cr2, "\n",
 			"CR3 = ",	cr3, " | CR4 = ", cr4, "\n",
 			"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 		// dfmt on

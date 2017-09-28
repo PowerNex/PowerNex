@@ -9,7 +9,7 @@ static struct FrameAllocator {
 public:
 	static void init() {
 		_neverFreeBelow = PhysAddress((Linker.kernelEnd - Linker.kernelStart + Linker.kernelPhysStart.num).num);
-		log.warning("_neverFreeBelow: ", _neverFreeBelow);
+		Log.warning("_neverFreeBelow: ", _neverFreeBelow);
 
 		_maxFrames = Multiboot.memorySize / 4;
 		foreach (ref ulong frame; _preallocated)
@@ -25,7 +25,7 @@ public:
 		for (ulong i = 0; i < Multiboot.memoryMapCount; i++) {
 			auto m = maps[i];
 			if (m.type != MultibootMemoryType.available) {
-				log.debug_("Address: ", cast(void*)m.address, " Size: ", m.length, " Frames: ", m.length / 0x1000);
+				Log.debug_("Address: ", cast(void*)m.address, " Size: ", m.length, " Frames: ", m.length / 0x1000);
 				for (ulong j = 0; j < m.length / 0x1000; j++)
 					markFrame(m.address / 0x1000 + j);
 			}

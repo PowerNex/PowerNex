@@ -76,14 +76,14 @@ private static:
 
 				if (_deviceCount == _devices.length)
 					if (!expandArray!PCIDevice(kernelAllocator, _devices, 16))
-						log.fatal("Can't expand PCIDevices array!");
+						Log.fatal("Can't expand PCIDevices array!");
 
 				PCIDevice* device = &_devices[_deviceCount];
 
 				*device = PCIDevice(bus, slot);
 
-				log.info("Found device at ", cast(void*)bus, ":", cast(void*)slot);
-				log.info("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
+				Log.info("Found device at ", cast(void*)bus, ":", cast(void*)slot);
+				Log.info("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
 						device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
 				scr.writeln("Found device at ", cast(void*)bus, ":", cast(void*)slot);
 				scr.writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",

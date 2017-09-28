@@ -254,7 +254,7 @@ private:
 				scr.writeln("Flags: ", cast(void*)flags);
 				scr.writeln("Errorcode: ", cast(void*)errorCode);
 
-				log.fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", cast(InterruptType)intNumber, " | RIP = ",
+				Log.fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", cast(InterruptType)intNumber, " | RIP = ",
 						cast(void*)rip, "\n", "RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n", "RCX = ",
 						cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n", "RDI = ", cast(void*)rdi, " | RSI = ",
 						cast(void*)rsi, "\n", "RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n", " R8 = ",

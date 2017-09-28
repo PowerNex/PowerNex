@@ -126,7 +126,7 @@ void exec(string path, string[] args) {
 	}
 
 	elf.mapAndRun(args);
-	log.fatal();*/
+	Log.fatal();*/
 }
 
 @SyscallEntry(SyscallID.alloc)
@@ -182,7 +182,7 @@ void open(string file, string modestr) {
 		(*process).syscallRegisters.rax = 0;
 		import io.log;
 
-		log.warning("Failed to Read!");
+		Log.warning("Failed to Read!");
 		return;
 	}
 
@@ -260,7 +260,7 @@ void write(size_t id, ubyte[] data, size_t offset) { //TODO: remove offset
 		(*process).syscallRegisters.rax = 0;
 		import io.log;
 
-		log.warning("Failed to Read!");
+		Log.warning("Failed to Read!");
 		return;
 	}
 
@@ -285,7 +285,7 @@ void read(size_t id, ubyte[] data, size_t offset) {
 		(*process).syscallRegisters.rax = 0;
 		import io.log;
 
-		log.warning("Failed to Write!");
+		Log.warning("Failed to Write!");
 		return;
 	}
 
@@ -337,7 +337,7 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 	if (path) {
 		SharedPtr!VNode newDir = cwd.findNode(path);
 		if (!newDir || (*newDir).type != NodeType.directory) {
-			log.error();
+			Log.error();
 			(*process).syscallRegisters.rax = size_t.max;
 			return;
 		}
@@ -346,7 +346,7 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 
 	SharedPtr!DirectoryEntryRange range;
 	if ((*cwd).dirEntries(range) != IOStatus.success) {
-		log.error();
+		Log.error();
 		(*process).syscallRegisters.rax = size_t.max;
 		return;
 	}
@@ -358,7 +358,7 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 			(*range).popFront();
 		}
 
-		log.warning();
+		Log.warning();
 		(*process).syscallRegisters.rax = len;
 		return;
 	}
@@ -367,7 +367,7 @@ void listDirectory(string path, DirectoryListing[] listings, size_t start) {
 		(*range).popFront(); //TODO: optimize
 
 	if (start) {
-		log.warning();
+		Log.warning();
 		(*process).syscallRegisters.rax = 0;
 		return;
 	}

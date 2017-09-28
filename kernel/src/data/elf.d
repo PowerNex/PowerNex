@@ -353,7 +353,7 @@ public:
 					cur += 0x1000;
 				}
 
-				log.debug_("Start: ", start, " End: ", end, " cur: ", cur, " Mode: R", (mode & MapMode.writable) ? "W" : "",
+				Log.debug_("Start: ", start, " End: ", end, " cur: ", cur, " Mode: R", (mode & MapMode.writable) ? "W" : "",
 						(mode & MapMode.noExecute) ? "" : "X", (mode & MapMode.user) ? "-User" : "");
 
 				memset(start.ptr, 0, (program.virtAddress - start).num);
@@ -386,17 +386,17 @@ public:
 		SharedPtr!IAllocator oldAlloc = (*process).allocator;
 
 		(*process).allocator = cast(SharedPtr!IAllocator)kernelAllocator.makeSharedPtr!UserSpaceAllocator(process, startHeap);
-		log.info("process: ", (*_file).name, "(", (*process).pid, ")\tallocator: ", cast(void*)(*process).allocator.data);
+		Log.info("process: ", (*_file).name, "(", (*process).pid, ")\tallocator: ", cast(void*)(*process).allocator.data);
 
-		log.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+		Log.info("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
 		enum stackSize = 0x1000;
-		log.info("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
+		Log.info("BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB");
 		VirtAddress userStack = (*(*process).allocator).allocate(stackSize).VirtAddress + stackSize;
-		log.info("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC");
+		Log.info("CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC");
 		(*process).image.userStack = userStack;
-		log.info("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
+		Log.info("DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD");
 		(*process).threadState.tls = TLS.init(*process, false);
-		log.info("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF: ", userStack);
+		Log.info("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF: ", userStack);
 
 		{
 			ubyte length = 0;

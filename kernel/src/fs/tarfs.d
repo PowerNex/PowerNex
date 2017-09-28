@@ -8,7 +8,7 @@ import data.string_;
 import memory.ptr;
 import memory.allocator;
 
-import io.log : log;
+import io.log : Log;
 
 /// Tar header for the POSIX ustar version
 struct TarHeader {
@@ -45,7 +45,7 @@ struct TarHeader {
 	private char[12] pad; /// Padding
 
 	@property bool checksumValid() {
-		import io.log : log;
+		import io.log : Log;
 
 		ssize_t oldChecksum = checksum.toNumber;
 
@@ -475,7 +475,7 @@ private:
 
 			// Checksum needs to be valid
 			if (!header.checksumValid) {
-				log.warning("Invalid tar entry header!: ", (curLoc - start));
+				Log.warning("Invalid tar entry header!: ", (curLoc - start));
 				break;
 			}
 
@@ -528,7 +528,7 @@ private:
 				if (idx != -1) {
 					parent = parent.findNode(name[0 .. idx]);
 					if (!parent) {
-						log.error("Parent: ", name[0 .. idx], " not found! Dropping file!");
+						Log.error("Parent: ", name[0 .. idx], " not found! Dropping file!");
 						break;
 					}
 					name = name[idx + 1 .. $];

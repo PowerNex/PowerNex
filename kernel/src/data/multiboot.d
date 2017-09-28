@@ -206,7 +206,7 @@ struct Multiboot {
 			case MultibootTagType.cmdLine:
 				auto tmp = cast(MultibootTagString*)mbt;
 				string str = tmp.string_;
-				log.debug_("CmdLine: ", str);
+				Log.debug_("CmdLine: ", str);
 				if (!str.length)
 					break;
 
@@ -217,7 +217,7 @@ struct Multiboot {
 					if (str[cur] == ' ') {
 						cmdKey[cmdLength] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
 						cmdValue[cmdLength] = (start > divider) ? null : str[divider + 1 .. cur];
-						log.debug_("\tKey: '", cmdKey[cmdLength], "' Value: '", cmdValue[cmdLength], "'");
+						Log.debug_("\tKey: '", cmdKey[cmdLength], "' Value: '", cmdValue[cmdLength], "'");
 						cmdLength++;
 						start = cur + 1;
 					} else if (str[cur] == '=')
@@ -226,7 +226,7 @@ struct Multiboot {
 				}
 				cmdKey[cmdLength] = (start == divider) ? null : str[start .. (start < divider) ? divider : cur];
 				cmdValue[cmdLength] = (start > divider) ? null : str[divider + 1 .. cur];
-				log.debug_("\tKey: '", cmdKey[cmdLength], "' Value: '", cmdValue[cmdLength], "'");
+				Log.debug_("\tKey: '", cmdKey[cmdLength], "' Value: '", cmdValue[cmdLength], "'");
 				cmdLength++;
 				break;
 
@@ -238,7 +238,7 @@ struct Multiboot {
 
 				modules[modulesCount++] = tmp;
 
-				log.info("Name: Module (", cast(void*)tmp, "), Start: ", cast(void*)tmp.modStart, ", End: ",
+				Log.info("Name: Module (", cast(void*)tmp, "), Start: ", cast(void*)tmp.modStart, ", End: ",
 						cast(void*)tmp.modEnd, ", Name: '", tmp.string_, "'");
 				break;
 
@@ -254,7 +254,7 @@ struct Multiboot {
 				for (auto tmp = &(cast(MultibootTagMemoryMap*)mbt).entry; cast(void*)tmp < (cast(void*)mbt + mbt.size); tmp = cast(
 						MultibootMemoryMap*)(cast(ulong)tmp + (cast(MultibootTagMemoryMap*)mbt).entrySize)) {
 					memoryMap[memoryMapCount++] = tmp;
-					log.info("BaseAddr: ", cast(void*)tmp.address, ", Length: ", cast(void*)tmp.length, ", Type: ", tmp.type);
+					Log.info("BaseAddr: ", cast(void*)tmp.address, ", Length: ", cast(void*)tmp.length, ", Type: ", tmp.type);
 				}
 				break;
 
@@ -281,13 +281,13 @@ struct Multiboot {
 
 			case MultibootTagType.acpiOld:
 				auto tmp = cast(MultibootTagOldACPI*)mbt;
-				log.info("acpiOld: ", tmp.rsdp, " size: ", tmp.size - MultibootTagOldACPI.sizeof);
+				Log.info("acpiOld: ", tmp.rsdp, " size: ", tmp.size - MultibootTagOldACPI.sizeof);
 				acpiRSDPV10 = tmp.rsdp;
 				break;
 
 			case MultibootTagType.acpiNew:
 				auto tmp = cast(MultibootTagNewACPI*)mbt;
-				log.info("acpiNew: ", tmp.rsdp, " size: ", tmp.size - MultibootTagNewACPI.sizeof);
+				Log.info("acpiNew: ", tmp.rsdp, " size: ", tmp.size - MultibootTagNewACPI.sizeof);
 				acpiRSDPV20 = tmp.rsdp;
 				break;
 

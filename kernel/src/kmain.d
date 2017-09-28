@@ -57,14 +57,14 @@ extern (C) int kmain(uint magic, ulong info) {
 		init.mapAndRun([initFile]);
 	} else {
 		scr.writeln("Invalid ELF64 file");
-		log.fatal("Invalid ELF64 file!");
+		Log.fatal("Invalid ELF64 file!");
 	}*/
 
 	scr.foreground = Color(255, 0, 255);
 	scr.background = Color(255, 255, 0);
 	scr.writeln("kmain functions has exited!");
-	log.fatal("kmain functions has exited!");
 	return 0;
+	Log.fatal("kmain functions has exited!");
 }
 
 void bootTTYToTextmode(size_t start, size_t end) {
@@ -85,92 +85,92 @@ void preInit() {
 	getScreen.clear();
 
 	scr.writeln("Log initializing...");
-	log.init();
-	log.info("Log is now enabled!");
+	Log.init();
+	Log.info("Log is now enabled!");
 
 	scr.writeln("GDT initializing...");
-	log.info("GDT initializing...");
+	Log.info("GDT initializing...");
 	GDT.init();
 
 	scr.writeln("IDT initializing...");
-	log.info("IDT initializing...");
 	IDT.init();
+	Log.info("IDT initializing...");
 
 	scr.writeln("Syscall Handler initializing...");
-	log.info("Syscall Handler initializing...");
+	Log.info("Syscall Handler initializing...");
 	SyscallHandler.init();
 
 	scr.writeln("PIT initializing...");
-	log.info("PIT initializing...");
 	PIT.init();
+	Log.info("PIT initializing...");
 }
 
 void welcome() {
 	scr.writeln("Welcome to PowerNex!");
 	scr.writeln("\tThe number one D kernel!");
 	scr.writeln("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
-	log.info("Welcome to PowerNex's serial console!");
-	log.info("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
+	Log.info("Welcome to PowerNex's serial console!");
+	Log.info("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
 }
 
 void init(uint magic, ulong info) {
 	scr.writeln("Multiboot parsing...");
-	log.info("Multiboot parsing...");
+	Log.info("Multiboot parsing...");
 	Multiboot.parseHeader(magic, info);
 
 	scr.writeln("FrameAllocator initializing...");
-	log.info("FrameAllocator initializing...");
+	Log.info("FrameAllocator initializing...");
 	FrameAllocator.init();
 
 	scr.writeln("KernelHWPaging initializing...");
-	log.info("KernelHWPaging initializing...");
+	Log.info("KernelHWPaging initializing...");
 
 	initKernelHWPaging();
 
 	scr.writeln("KernelHWPaging WORKED");
-	log.info("KernelHWPaging WORKED");
+	Log.info("KernelHWPaging WORKED");
 
 	scr.writeln("KHeap initializing...");
-	log.info("KHeap initializing...");
+	Log.info("KHeap initializing...");
 
 	KHeap.init();
 	initKernelAllocator();
 
 	scr.writeln("ACPI initializing...");
-	log.info("ACPI initializing...");
+	Log.info("ACPI initializing...");
 	rsdp.init();
 
 	scr.writeln("CMOS initializing...");
-	log.info("CMOS initializing...");
+	Log.info("CMOS initializing...");
 	CMOS.init(rsdp.fadtInstance.century);
 
 	scr.writeln("Keyboard initializing...");
-	log.info("Keyboard initializing...");
+	Log.info("Keyboard initializing...");
 	PS2Keyboard.init();
 
 	{
 		VirtAddress[2] symmap = Multiboot.getModule("symmap");
 		if (symmap[0]) {
-			log.setSymbolMap(symmap[0]);
-			log.info("Successfully loaded symbols!");
+			//Log.setSymbolMap(symmap[0]);
+			Log.info("Successfully loaded symbols!");
 		} else
-			log.fatal("No module called symmap!");
+			Log.fatal("No module called symmap!");
 	}
 
 	scr.writeln("PCI initializing...");
-	log.info("PCI initializing...");
+	Log.info("PCI initializing...");
 	PCI.init();
 
 	scr.writeln("Initrd initializing...");
-	log.info("Initrd initializing...");
+	Log.info("Initrd initializing...");
 	loadInitrd();
 
 	scr.writeln("Starting ConsoleManager...");
-	log.info("Starting ConsoleManager...");
+	Log.info("Starting ConsoleManager...");
 	ConsoleManager.init();
 
 	/*scr.writeln("Scheduler initializing...");
-	log.info("Scheduler initializing...");
+	Log.info("Scheduler initializing...");
 	getScheduler.init();*/
 }
 
@@ -180,7 +180,7 @@ void loadInitrd() {
 
 	VirtAddress[2] tarfsLoc = Multiboot.getModule("tarfs");
 	if (!tarfsLoc[0]) {
-		log.fatal("No module called tarfs!");
+		Log.fatal("No module called tarfs!");
 		return;
 	}
 
@@ -197,7 +197,7 @@ void loadInitrd() {
 
 			IOStatus ret = (*node).dirEntries(range);
 			if (ret) {
-				log.error("dirEntries: ", -ret, ", ", (*node).name, "(", (*node).id, ")", " node:", typeid((*node)).name,
+				Log.error("dirEntries: ", -ret, ", ", (*node).name, "(", (*node).id, ")", " node:", typeid((*node)).name,
 						" fs:", typeid((*node).fs).name);
 				return;
 			}
@@ -210,13 +210,13 @@ void loadInitrd() {
 				SharedPtr!VNode n = e.fileSystem.getNode(e.id);
 				if (!n)
 					continue;
-				log.info(levelStr[0 .. level], "»", e.name, " type: ", (*n).type, " id: ", (*n).id);
+				Log.info(levelStr[0 .. level], "»", e.name, " type: ", (*n).type, " id: ", (*n).id);
 				if ((*n).id != (*node).id)
 					printData(n, nextLevel);
 			}
 		}
 	}
 
-	log.info("directoryEntries for rootFS!\n---------------------");
+	Log.info("directoryEntries for rootFS!\n---------------------");
 	printData((*rootFS).root);
 }

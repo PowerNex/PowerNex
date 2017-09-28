@@ -61,7 +61,7 @@ struct RSDT {
 
 			hdr = (vAddr + (phys.num & 0xFFF)).ptr!ACPISDTHeader;
 			if (hdr.signature != sig) {
-				import io.log : log;
+				import io.log : Log;
 
 				scr.writeln("hdr.signature (", hdr.signature, ") != sig (", sig, ")");
 				continue;
@@ -187,7 +187,7 @@ private T* _mapSDT(T : ACPISDTHeader = ACPISDTHeader)(PhysAddress phys) {
 
 struct RSDP {
 	void init() {
-		import io.log : log;
+		import io.log : Log;
 		import data.multiboot : Multiboot;
 
 		if (auto _ = Multiboot.acpiRSDPV20)
@@ -196,7 +196,7 @@ struct RSDP {
 			initV10(_);
 		else {
 			scr.writeln("RSDP missing!");
-			log.fatal("RSDP missing!");
+			Log.fatal("RSDP missing!");
 		}
 	}
 

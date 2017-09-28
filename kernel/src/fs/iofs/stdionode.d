@@ -90,7 +90,7 @@ public:
 
 	override IOStatus write(ref NodeContext fd, in ubyte[] buffer) {
 		import data.textbuffer : scr = getBootTTY;
-		import io.log : log;
+		import io.log : Log;
 
 		scr.write(cast(char[])buffer);
 		return cast(IOStatus)buffer.length;

@@ -18,8 +18,8 @@ dchar parseUTF8(ubyte[] data, ref size_t bytesUsed) {
 			break;
 
 	if (expectedCharSize > 3) { // Invalid, char cannot have more than 4 bytes
-		log.debug_("Invalid, cannot have more than 4 bytes");
-		log.warning("\t Error byte: ", cast(void*)data[0]);
+		Log.debug_("Invalid, cannot have more than 4 bytes");
+		Log.warning("\t Error byte: ", cast(void*)data[0]);
 		goto error;
 	} else if (expectedCharSize == 0) { // Doesn't require another bytes
 		bytesUsed = 1;
@@ -27,13 +27,13 @@ dchar parseUTF8(ubyte[] data, ref size_t bytesUsed) {
 	} else if (expectedCharSize == 1) {
 		// If expectedCharSize is 1, it is a 'extra' char
 		// expectedCharSize can only be 0 (Means 1), 2, 3
-		log.debug_("Invalid byte");
-		log.warning("\t Error byte: ", cast(void*)data[0]);
+		Log.debug_("Invalid byte");
+		Log.warning("\t Error byte: ", cast(void*)data[0]);
 		goto error;
 	}
 
 	if (data.length < expectedCharSize) {
-		log.debug_("Data array is too small! needed size: ", expectedCharSize, " is: ", data.length);
+		Log.debug_("Data array is too small! needed size: ", expectedCharSize, " is: ", data.length);
 		goto error;
 	}
 
@@ -41,8 +41,8 @@ dchar parseUTF8(ubyte[] data, ref size_t bytesUsed) {
 
 	for (size_t i = 1; i < expectedCharSize; i++) {
 		if ((data[i] & 0b1100_0000) != 0b1000_0000) {
-			log.debug_("Expected a 'extra' char, found a data char instead");
-			log.warning("\t Error byte: ", cast(void*)data[i], " idx: ", i);
+			Log.debug_("Expected a 'extra' char, found a data char instead");
+			Log.warning("\t Error byte: ", cast(void*)data[i], " idx: ", i);
 			goto error;
 		}
 

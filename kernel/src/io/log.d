@@ -1,86 +1,91 @@
+/**
+ * Contains everything related to logging.
+ *
+ * Copyright: © 2015-2017, Dan Printzell
+ * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+ *  (See accompanying file LICENSE)
+ * Authors: $(LINK2 https://vild.io/, Dan Printzell)
+ */
 module io.log;
 
-import io.com;
-import data.address;
-import data.string_;
-import data.util;
-
-__gshared Log log;
-
-/*
-
-TODO: FIX THIS!!!
-
-	Combine this with textmode aswell.
-
-*/
-
+///
 enum LogLevel {
-	verbose = '&',
-	debug_ = '+',
-	info = '*',
-	warning = '#',
-	error = '-',
-	fatal = '!'
+	verbose = 0,
+	debug_,
+	info,
+	warning,
+	error,
+	fatal
 }
 
-struct Log {
-	private struct SymbolDef {
-	align(1):
-		ulong start;
-		ulong end;
-		ulong nameLength;
+///
+char toChar(LogLevel level) @trusted {
+	// dfmt off
+	__gshared static char[LogLevel.max + 1] data = [
+		LogLevel.verbose: '&',
+		LogLevel.debug_: '+',
+		LogLevel.info: '*',
+		LogLevel.warning: '#',
+		LogLevel.error: '-',
+		LogLevel.fatal: '!'
+	];
+	// dfmt on
+
+	return data[level];
+}
+
+///
+@trusted static struct Log {
+	//import data.elf64 : ELF64Symbol;
+	///
+	struct ELF64Symbol {
+		uint name; ///
+		ubyte info; ///
+		ubyte other; ///
+		ushort shndx; ///
+		from!"data.address".VirtAddress value; ///
+		ulong size; ///
 	}
 
-	private struct SymbolMap {
-	align(1):
-		char[4] magic;
-		ulong count;
-		SymbolDef symbols;
-	}
+public static:
 
-	private int _indent;
-	private bool _enabled;
-	private SymbolMap* _symbols;
-
-	// XXX: Page fault if this is not wrapped like this!
+	/// XXX: Page fault if this is not wrapped like this!
 	static ulong seconds() {
-		import hw.cmos.cmos : CMOS;
+		return 0;
+		/*import hw.cmos.cmos : CMOS;
 
-		return CMOS.timeStamp();
+		return CMOS.timeStamp();*/
 	}
 
+	///
 	void init() {
 		_indent = 0;
-		_enabled = true;
 	}
 
-	@property ref bool enabled() return  {
-		return _enabled;
+	///
+	void setSymbolMap(ELF64Symbol[] symbols, char[] strings) @trusted {
+		_symbols = symbols;
+		_strings = strings;
 	}
 
-	void setSymbolMap(VirtAddress address) {
-		SymbolMap* map = cast(SymbolMap*)address.ptr;
-		if (map.magic[0 .. 4] != "DSYM")
-			return;
-		_symbols = map;
-	}
-
-	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(LogLevel level, Arg args) {
+	///
+	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(LogLevel level, Args args) {
 		log(level, file, func, line, args);
 	}
 
-	void log(Arg...)(LogLevel level, string file, string func, int line, Arg args) {
-		import memory.ptr : SharedPtr;
+	///
+	void log(Args...)(LogLevel level, string file, string func, int line, Args args) {
+		import io.com : com1;
+		import data.text : itoa, BinaryInt, HexInt;
+		import util.trait : Unqual, enumMembers, isNumber, isFloating;
+		import data.address : VirtAddress, PhysAddress, PhysAddress32;
 
 		char[ulong.sizeof * 8] buf;
-		if (!_enabled)
-			return;
 		for (int i = 0; i < _indent; i++)
 			com1.write(' ');
 
 		com1.write('[', itoa(seconds(), buf, 10), ']');
-		com1.write('[', cast(char)level, "] ", file /*, ": ", func*/ , '@');
+		com1.write('[', level.toChar, "] ", file /*, ": ", func*/ , '@');
 
 		com1.write(itoa(line, buf, 10));
 		com1.write("> ");
@@ -100,19 +105,25 @@ struct Log {
 				com1.write(itoa(cast(ulong)arg, buf, 10));
 			} else static if (is(T == BinaryInt)) {
 				com1.write("0b");
-				com1.write(itoa(arg.num, buf, 2));
+				com1.write(itoa(arg.number, buf, 2));
+			} else static if (is(T == HexInt)) {
+				com1.write("0x");
+				com1.write(itoa(arg.number, buf, 16));
 			} else static if (is(T : V*, V)) {
 				com1.write("0x");
-				com1.write(itoa(cast(ulong)arg, buf, 16));
+				string val = itoa(cast(ulong)arg, buf, 16, 16);
+				foreach (idx; 0 .. 4) {
+					if (idx)
+						com1.write('_');
+					com1.write(val[idx * 4 .. (idx + 1) * 4]);
+				}
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
 				com1.write("0x");
-				com1.write(itoa(cast(ulong)arg.num, buf, 16));
-			} else static if (is(T == SharedPtr!X, X)) {
-				com1.write("0x");
-				com1.write(itoa(cast(ulong)cast(void*)arg.get(), buf, 16));
+				string val = itoa(cast(ulong)arg.num, buf, 16, 16);
+				com1.write(val[0 .. 8], '_', val[8 .. 16]);
 			} else static if (is(T == bool))
 				com1.write((arg) ? "true" : "false");
-			else static if (is(T : char))
+			else static if (is(T == char))
 				com1.write(arg);
 			else static if (isNumber!T)
 				com1.write(itoa(arg, buf, 10));
@@ -131,85 +142,112 @@ struct Log {
 		}
 
 		com1.write("\r\n");
-	}
 
-	void verbose(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		log(LogLevel.verbose, file, func, line, args);
-	}
+		if (level == LogLevel.fatal) {
+			printStackTrace(2);
 
-	void debug_(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		log(LogLevel.debug_, file, func, line, args);
-	}
-
-	void info(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		log(LogLevel.info, file, func, line, args);
-	}
-
-	void warning(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		log(LogLevel.warning, file, func, line, args);
-	}
-
-	void error(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		log(LogLevel.error, file, func, line, args);
-	}
-
-	void fatal(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Arg...)(Arg args) {
-		log(LogLevel.fatal, file, func, line, args);
-		printStackTrace(true);
-
-		asm pure nothrow {
-		forever:
-			hlt;
-			jmp forever;
+			asm pure nothrow @trusted {
+			forever:
+				cli;
+				hlt;
+				jmp forever;
+			}
 		}
 	}
 
-	void printStackTrace(bool skipFirst = false) {
-		/*import task.scheduler : getScheduler;
-		import task.process : Process;*/
+	///
+	mixin(_helperFunctions());
+
+	///
+	void printStackTrace(size_t skipLevels = 0) @trusted {
+		import data.address : VirtAddress;
 
 		VirtAddress rbp;
 		asm pure nothrow {
 			mov rbp, RBP;
 		}
-		_printStackTrace(rbp, skipFirst);
 
-		/*if (SharedPtr!Process p = getScheduler.currentProcess)
-			if (!(*p).kernelProcess) {
-				auto page = (*p).threadState.paging.getPage((*p).syscallRegisters.rbp);
-				if (!page || !page.present)
-					return;
-				_printStackTrace((*p).syscallRegisters.rbp, skipFirst);
-			}*/
+		_printStackTrace(rbp, skipLevels);
 	}
 
-	private void _printStackTrace(VirtAddress rbp, bool skipFirst) {
+	///
+	struct Func {
+		string name; ///
+		ulong diff; ///
+	}
+
+	///
+	Func getFuncName(from!"data.address".VirtAddress addr) @trusted {
+		import data.text : strlen;
+
+		if (!_symbols)
+			return Func("No symbol map loaded", 0);
+
+		foreach (symbol; _symbols) {
+			if ((symbol.info & 0xF) != 0x2 /* Function */ )
+				continue;
+
+			if (addr < symbol.value || addr > symbol.value + symbol.size)
+				continue;
+
+			char* name = &_strings[symbol.name];
+
+			return Func(cast(string)name[0 .. name.strlen], (addr - symbol.value).num);
+		}
+
+		return Func("Symbol not in map!", 0);
+	}
+
+private static:
+	__gshared int _indent;
+	__gshared ELF64Symbol[] _symbols;
+	__gshared char[] _strings;
+
+	static string _helperFunctions() {
+		if (!__ctfe)
+			return "";
+		import util.trait : enumMembers;
+
+		string str;
+		foreach (level; enumMembers!LogLevel)
+			str ~= "///\n\tvoid " ~ __traits(allMembers, LogLevel)[level]
+				~ "(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) { log(LogLevel." ~ __traits(allMembers,
+						LogLevel)[level] ~ ", file, func, line, args); }\n\n\t";
+
+		return str;
+	}
+
+	void _printStackTrace(from!"data.address".VirtAddress rbp, size_t skipLevels = 0) {
+		import data.address : VirtAddress;
+		import io.com : com1;
+
 		com1.write("\r\nSTACKTRACE:\r\n");
 		VirtAddress rip;
 
-		if (skipFirst) {
+		while (skipLevels--) {
 			rip = rbp + ulong.sizeof;
 			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
 
-		while (rbp && //
-				rbp > 0xFFFF_FFFF_8000_0000 && rbp < 0xFFFF_FFFF_F000_0000 // XXX: Hax fix
-				) {
+		while (rbp) {
 			rip = rbp + ulong.sizeof;
 			if (!*rip.ptr!ulong)
 				break;
 
-			//import task.scheduler : getScheduler, TablePtr;
-
-			/*if (getScheduler && getScheduler.currentProcess) {
-				TablePtr!(void)* page = (*getScheduler.currentProcess).threadState.paging.getPage(rip);
-				if (!page || !page.present)
-					break;
-			}*/
-
 			com1.write("\t[");
+			///
+			struct ELF64Symbol {
+				uint name; ///
+				ubyte info; ///
+				ubyte other; ///
+				ushort shndx; ///
+				VirtAddress value; ///
+				ulong size; ///
+			}
 
 			{
+				import data.text : itoa;
+
 				char[ulong.sizeof * 8] buf;
 				com1.write("0x");
 				com1.write(itoa(*rip.ptr!ulong, buf, 16));
@@ -217,29 +255,12 @@ struct Log {
 
 			com1.write("] ");
 
-			struct Func {
-				string name;
-				ulong diff;
-			}
-
-			Func getFuncName(ulong addr) {
-				if (!_symbols)
-					return Func("Unknown function", 0);
-
-				SymbolDef* symbolDef = &_symbols.symbols;
-				for (int i = 0; i < _symbols.count; i++) {
-					if (symbolDef.start <= addr && addr <= symbolDef.end)
-						return Func(cast(string)(VirtAddress(symbolDef) + SymbolDef.sizeof).ptr[0 .. symbolDef.nameLength], addr - symbolDef.start);
-					symbolDef = cast(SymbolDef*)(VirtAddress(symbolDef) + SymbolDef.sizeof + symbolDef.nameLength).ptr;
-				}
-
-				return Func("Symbol not in map!", 0);
-			}
-
-			Func f = getFuncName(*rip.ptr!ulong);
+			Func f = getFuncName(*rip.ptr!VirtAddress);
 
 			com1.write(f.name);
 			if (f.diff) {
+				import data.text : itoa;
+
 				char[ulong.sizeof * 8] buf;
 				com1.write("+0x");
 				com1.write(itoa(f.diff, buf, 16));
@@ -248,6 +269,6 @@ struct Log {
 			com1.write("\r\n");
 			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
-	}
 
+	}
 }

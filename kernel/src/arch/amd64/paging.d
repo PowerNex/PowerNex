@@ -581,7 +581,7 @@ private void _onPageFault(from!"data.register".Registers* regs) {
 				(pageFlags & VMPageFlags.execute) ? "X" : "", (pageFlags & VMPageFlags.user) ? "-User" : "");
 
 		//dfmt off
-		log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", cast(void*)rip, "\n",
+		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", cast(void*)rip, "\n",
 			"RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n",
 			"RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n",
 			"RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi, "\n",

@@ -134,10 +134,10 @@ extern (C) {
 
 	// the compiler spits this out all the time
 	deprecated("Please use allocators instead") Object _d_newclass(const ClassInfo ci) {
-		//log.debug_("Creating a new class of type: ", ci.name);
+		//Log.debug_("Creating a new class of type: ", ci.name);
 		assert(0, "NO KERNEL HEAP"); //void* memory = getKernelHeap.alloc(ci.init.length);
 		/*if (memory is null) {
-			log.fatal("\n\n_d_newclass malloc failure\n\n");
+			Log.fatal("\n\n_d_newclass malloc failure\n\n");
 			exit();
 		}
 
@@ -215,7 +215,7 @@ extern (C) {
 	}
 
 	deprecated("Please use allocators instead") void[] _d_arraycatT(TypeInfo ti, void[] x, void[] y) {
-		log.fatal(ti.toString);
+		Log.fatal(ti.toString);
 		auto size = ti.next.tsize();
 
 		if (!(x.length + y.length) || !size)
@@ -254,7 +254,7 @@ extern (C) {
 
 		if (len % newTypeSize)
 			try
-				log.fatal("Can't cast array! newTypeSize: ", newTypeSize, ", curTypeSize: ", curTypeSize, ", len: ", len);
+				Log.fatal("Can't cast array! newTypeSize: ", newTypeSize, ", curTypeSize: ", curTypeSize, ", len: ", len);
 		catch (Exception) {
 		}
 
@@ -287,7 +287,7 @@ extern (C) {
 
 	// and these came when I started using foreach
 	void _d_unittestm(string file, uint line) {
-		log.info("_d_unittest_");
+		Log.info("_d_unittest_");
 		exit(1);
 	}
 
@@ -323,10 +323,10 @@ extern (C) {
 	}
 
 	private void onAssert(string msg, string file, uint line) {
-		import io.log : log;
+		import io.log : Log;
 
-		log.log(LogLevel.fatal, file, "UNKNOWN", line, msg);
-		log.printStackTrace(true);
+		Log.log(LogLevel.fatal, file, "UNKNOWN", line, msg);
+		Log.printStackTrace(true);
 
 		asm pure nothrow {
 		forever:
@@ -433,7 +433,7 @@ class Throwable : Object { // required by the D compiler
 	}
 
 	void print() {
-		log.fatal(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
+		Log.fatal(this.classinfo.name, "@", file, "(", line, "): ", message, "\n");
 	}
 }
 
@@ -1907,7 +1907,7 @@ private {
 }
 
 void terminate() {
-	log.info("Uncaught exception or busted up stack\n");
+	Log.info("Uncaught exception or busted up stack\n");
 	exit();
 }
 
@@ -2476,7 +2476,7 @@ deprecated("Please use allocators instead") inout(T)[] dup(T)(inout(T)[] a) {
 }
 
 extern (C) Throwable __dmd_begin_catch(_Unwind_Exception* exceptionObject) {
-	log.error("STUB");
+	Log.error("STUB");
 	return null;
 }
 
@@ -2495,10 +2495,10 @@ struct _Unwind_Context {
 alias ulong _Unwind_Exception_Class;
 extern (C) _Unwind_Reason_Code __dmd_personality_v0(int ver, _Unwind_Action actions,
 		_Unwind_Exception_Class exceptionClass, _Unwind_Exception* exceptionObject, _Unwind_Context* context) {
-	log.error("STUB");
+	Log.error("STUB");
 	return 0;
 }
 
 extern (C) void _Unwind_Resume(void*) {
-	log.error("STUB");
+	Log.error("STUB");
 }

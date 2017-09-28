@@ -73,15 +73,15 @@ public:
 	}
 
 	void free(void[] address) {
-		import io.log : log;
+		import io.log : Log;
 
 		if (address.VirtAddress < _startAddress) // Can't free memory that hasn't been allocated with KHeap, or invalid memory
 			return;
 
 		BuddyHeader* buddy = (address.VirtAddress - BuddyHeader.sizeof).ptr!BuddyHeader;
 		if (buddy.magic != _magic) {
-			log.error("Buddy magic invalid for: ", address.ptr.VirtAddress, " Magic: ", cast(ubyte[])buddy.magic[0 .. 3]);
-			log.printStackTrace();
+			Log.error("Buddy magic invalid for: ", address.ptr.VirtAddress, " Magic: ", cast(ubyte[])buddy.magic[0 .. 3]);
+			Log.printStackTrace();
 			return;
 		}
 
@@ -126,19 +126,19 @@ public:
 	}
 
 	void print() {
-		import io.log : log;
+		import io.log : Log;
 
-		log.info("Printing KHeap!");
+		Log.info("Printing KHeap!");
 		foreach (ubyte factor; _lowerFactor .. _upperFactor + 1) {
 			BuddyHeader* buddy = _getFreeFactors(factor);
 			if (!buddy)
 				continue;
 
-			log.info("\tFactor: ", cast(ulong)factor, " Size: ", 1 << factor);
+			Log.info("\tFactor: ", cast(ulong)factor, " Size: ", 1 << factor);
 
 			size_t counter;
 			while (buddy) {
-				log.info("\tBuddy[", counter++, "]: ", buddy);
+				Log.info("\tBuddy[", counter++, "]: ", buddy);
 				buddy = buddy.next;
 			}
 		}

@@ -28,9 +28,9 @@ auto make(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
 
 	void[] chunk = alloc.allocate(size);
 	if (!chunk) {
-		import io.log : log;
+		import io.log : Log;
 
-		log.fatal("Failed to allocate size: ", size);
+		Log.fatal("Failed to allocate size: ", size);
 	}
 	auto result = cast(ReturnType)chunk.ptr;
 

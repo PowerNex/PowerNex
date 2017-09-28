@@ -89,8 +89,8 @@ struct Process {
 			return;
 		import io.log;
 
-		log.info("Freeing: ", name, "(", pid, ")");
-		log.printStackTrace();
+		Log.info("Freeing: ", name, "(", pid, ")");
+		Log.printStackTrace();
 	}
 
 	PID pid;

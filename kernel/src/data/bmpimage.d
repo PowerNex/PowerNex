@@ -54,7 +54,7 @@ public:
 			_readData!24(file, nc, offset, pad);
 			break;
 		default:
-			log.error("Can't handle bpp = ", _bitmap.bitsPerPixel);
+			Log.error("Can't handle bpp = ", _bitmap.bitsPerPixel);
 			return;
 		}
 	}
@@ -102,7 +102,7 @@ private:
 		immutable ubyte bid = toIdx(_bitmap.blueMask);
 		immutable ubyte aid = toIdx(_bitmap.alphaMask);
 
-		log.debug_("rid: ", cast(int)rid, " gid: ", cast(int)gid, " bid: ", cast(int)bid, " aid: ", cast(int)aid);
+		Log.debug_("rid: ", cast(int)rid, " gid: ", cast(int)gid, " bid: ", cast(int)bid, " aid: ", cast(int)aid);
 
 		ubyte[bytesPerPixel] buf = void;
 		for (int y = _bitmap.height - 1; y >= 0; y--) {
