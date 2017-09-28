@@ -116,8 +116,10 @@ char question(char defaultAlt, char[] alternative, Args...)(Args args) {
 	stdout.flush();
 	stderr.flush();
 
-	if (noconfirm)
+	if (noconfirm) {
+		warning("\n");
 		return defaultAlt;
+	}
 
 	if (!fgets(data.ptr, data.length, stdin.getFP)) {
 		error("[fgets] Is stdin valid?\n");
@@ -195,6 +197,9 @@ void downloadProgress(T = SaveFile, Args...)(string name, const(char)[] url, Arg
 	static float lastDiff = -1;
 
 	http.onProgress = (size_t total, size_t current, size_t _, size_t __) {
+		import std.string : leftJustifier;
+
+		enum width = 64;
 		float fDiff = cast(float)current / cast(float)total;
 		if (fDiff.isNaN)
 			fDiff = 0;
@@ -203,7 +208,19 @@ void downloadProgress(T = SaveFile, Args...)(string name, const(char)[] url, Arg
 
 		size_t procent = cast(size_t)(100 * fDiff);
 
-		normal("\r", name, ": ", format("%3d", procent), "% [", repeat('=', procent), repeat(' ', 100 - procent), "]");
+		size_t filled = cast(size_t)(width * fDiff * 8);
+
+		dchar[] step = [' ', '▏', '▎', '▍', '▋', '▊', '▉', '█'];
+
+		long fullFilled = cast(long)(filled) / 8;
+		if (fullFilled < 0)
+			fullFilled = 0;
+		long empty = width - fullFilled - 1;
+		if (empty < 0)
+			empty = 0;
+
+		normal("\r", name, ":", leftJustifier("", 8 - name.length + 1, ' '), format("%3d", procent), "% \x1b[36;46;1m",
+				repeat(step[$ - 1], fullFilled), repeat(step[filled % 8], (procent != 100) * 1), repeat(step[0], empty));
 		return 0;
 	};
 	http.perform();
