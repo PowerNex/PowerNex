@@ -20,29 +20,36 @@ public static:
 				continue;
 			}
 
-			Log.debug_("cpuThreads[", idx, "].init()");
+			Log.debug_("cpuThreads[", idx, "].init(): ", cpuThread.apicID);
 			LAPIC.init(cpuThread.apicID, true);
 			LAPIC.sleep(2);
 			LAPIC.init(cpuThread.apicID, false);
 			LAPIC.sleep(10);
 
-			Log.debug_("cpuThreads[", idx, "].startup()");
+			Log.debug_("cpuThreads[", idx, "].startup()1: ", cpuThread.apicID);
 			LAPIC.startup(cpuThread.apicID, PhysAddress32(&boot16_location));
 			LAPIC.sleep(2); // ~1ms I guess
 			LAPIC.startup(cpuThread.apicID, PhysAddress32(&boot16_location));
 			LAPIC.sleep(2); // ~1ms I guess
 
-			while (cpuThread.state == CPUThread.State.off) {
+			size_t counter = 0;
+			while (cpuThread.state == CPUThread.State.off && counter < 1000) {
 				LAPIC.sleep(1);
-				/*asm @trusted pure nothrow {
-					db 0xF3, 0x90; // pause
-				}*/
+				counter++;
 			}
+			if (counter >= 1000)
+				Log.error("cpuThreads[", idx, "] failed to boot!");
 		}
 	}
 
 private static:
 	void _setupInit16() @trusted {
-		VirtAddress(&boot16_location).memcpy(VirtAddress(&boot16_start), cast(size_t)&boot16_end - cast(size_t)&boot16_start);
+		import io.log : Log;
+		Log.info("memcpy(", _location, ", ", _start, ", ", _end - _start, ");");
+		_location.memcpy(_start, (_end - _start).num);
 	}
+
+	@property VirtAddress _location() @trusted { return VirtAddress(&boot16_location); }
+	@property VirtAddress _start() @trusted { return VirtAddress(&boot16_start); }
+	@property VirtAddress _end() @trusted { return VirtAddress(&boot16_end); }
 }

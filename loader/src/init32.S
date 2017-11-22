@@ -29,6 +29,7 @@ multiboot2Header:
 multiboot2HeaderEnd:
 
 .section .initCode, "ax"
+.align 16
 .code32
 
 # External files

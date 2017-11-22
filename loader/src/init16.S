@@ -53,6 +53,7 @@ boot16_trampoline:
 	mov %ax, %fs
 	mov %ax, %gs
 	mov %ax, %ss
+
 	ljmp $0x8, $boot32AP
 .size boot16_trampoline, .-boot16_trampoline
 

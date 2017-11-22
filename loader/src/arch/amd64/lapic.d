@@ -34,6 +34,7 @@ public static:
 		import api.cpu : CPUThread;
 		import arch.amd64.msr : MSR;
 		import arch.amd64.idt : IDT;
+		import io.log : Log;
 
 		{ // check cpuid for x2apic
 			enum x2APICFlag = 1 << 21;
@@ -45,6 +46,8 @@ public static:
 			}
 
 			_x2APIC = !!(ecxValue & x2APICFlag);
+			_x2APIC = false;
+			Log.info("X2APIC support: ", _x2APIC);
 		}
 
 		{ // Enable lapic
@@ -185,11 +188,7 @@ public static:
 	void sleep(size_t milliseconds) @trusted {
 		const size_t endAt = _counter + milliseconds;
 
-		while (_counter < endAt) {
-			asm @trusted pure nothrow {
-				db 0xF3, 0x90; // pause
-			}
-		}
+		while (_counter < endAt) {}
 	}
 
 	void init(uint destination, bool assert_) @trusted {
@@ -211,7 +210,6 @@ public static:
 		ic.vector = entrypointPage.num!ubyte;
 		ic.deliveryMode = DeliveryMode.startup;
 		ic.level = Level.assert_;
-
 		if (_x2APIC)
 			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
 		else {
@@ -221,8 +219,6 @@ public static:
 	}
 
 	uint getCurrentID() @trusted {
-		if (!_lapicAddress)
-			return 0;
 		uint id = _read(Registers.apicID);
 		return _x2APIC ? id : (id >> 24);
 	}

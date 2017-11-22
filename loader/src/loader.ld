@@ -11,54 +11,54 @@ PHDRS {
 SECTIONS {
 	. = 1M;
 
-	.multiboot : {
+	.multiboot ALIGN(16) : {
 		LONG(0x0) /* To force the linker to put .multiboot first*/
 		*(.multiboot)
 	} :text
 
-	.init : {
+	.init ALIGN(16) : {
 		*(.initCode .initCode.*)
 	}
 
-	.text : {
+	.text ALIGN(16) : {
 		*(.text .text.*)
 	} :text
 
-	.rodata : {
+	.rodata ALIGN(16) : {
 		*(.rodata .rodata.*)
 	} :text
 
-	.eh_frame : {
+	.eh_frame ALIGN(16) : {
 		*(.eh_frame .eh_frame.*)
 	} :text
 
-	.ctors : {
+	.ctors ALIGN(16) : {
 		CTORS_START = .;
 		*(.ctors .ctors.*)
 		CTORS_END = .;
 	} :data
 
-	.dtors : {
+	.dtors ALIGN(16) : {
 		DTORS_START = .;
 		*(.dtors .dtors.*)
 		DTORS_END = .;
 	} :data
 
-	.data : {
+	.data ALIGN(16) : {
 		*(.data .data.*)
 	} :data
 
-	.bss : {
+	.bss ALIGN(16) : {
 		*(.bss .bss.*)
 	} :data
 
-	.tdata : {
+	.tdata ALIGN(16) : {
 		TDATA_START = .;
 		*(.tdata .tdata.*)
 		TDATA_END = .;
 	} :tls :data
 
-	.tbss : {
+	.tbss ALIGN(16) : {
 		TBSS_START = .;
 		*(.tbss .tbss.*)
 		*(.tcommon)

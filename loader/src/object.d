@@ -1506,6 +1506,12 @@ extern (C) {
 		onAssert("Switch assertion failure", m.name, line);
 	}
 
+	void __assert (const char *msg, immutable(char)*file, int line) {
+		import data.text : strlen;
+
+		onAssert("Switch assertion failure", file[0 .. strlen(file)], line);
+	}
+
 	private void onAssert(string msg, string file, uint line) {
 		import io.log : Log, LogLevel;
 

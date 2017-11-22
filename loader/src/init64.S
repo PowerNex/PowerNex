@@ -7,6 +7,7 @@
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
 .section .initCode, "ax"
+.align 16
 .code64
 
 .global main

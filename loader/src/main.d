@@ -180,7 +180,8 @@ extern (C) ulong main() @safe {
 	outputBoth("Kernels main is located at: ", VirtAddress(kernel.main));
 	if (VirtAddress(kernel.main) < 0xFFFFFFFF_80000000)
 		Log.fatal("Main is invalid!");
-	() @trusted {
+
+	() @trusted{ //
 		size_t output = kernel.main();
 		outputBoth("Main function returned: ", output.VirtAddress);
 	}();
@@ -189,12 +190,6 @@ extern (C) ulong main() @safe {
 	LAPIC.sleep(2000);
 
 	ACPI.shutdown();
-
-	// Needed for now, else it will fail to boot the APs
-	asm @trusted pure nothrow {
-		nop;
-		nop;
-	}
 
 	return 0;
 }
