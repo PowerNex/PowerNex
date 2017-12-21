@@ -170,13 +170,13 @@ Build myBuild() {
 	kernelDependencies = new KernelDependencies();
 	kernel = new Kernel();
 	userspaceLibraries = new UserspaceLibraries();
-	userspacePrograms = new UserspacePrograms();
+	//userspacePrograms = new UserspacePrograms();
 
 	auto dlogo = Target("initrd/data/dlogo.bmp", CompileCommand.copy, [Target("initrd/data/dlogo.bmp")]);
 	auto initrdFiles = Target.phony("initrd/", CompileCommand.nothing, [dlogo]);
 
-	auto initrd = Target("disk/boot/powernex-initrd.dsk", ToolCommand.makeInitrd, [initrdFiles], [initrdFiles,
-			userspacePrograms.init_, userspacePrograms.login, userspacePrograms.shell, userspacePrograms.helloworld, userspacePrograms.cat]);
+	auto initrd = Target("disk/boot/powernex-initrd.dsk", ToolCommand.makeInitrd, [initrdFiles], [initrdFiles/*,
+			userspacePrograms.init_, userspacePrograms.login, userspacePrograms.shell, userspacePrograms.helloworld, userspacePrograms.cat*/]);
 
 	auto grubCfg = Target("disk/boot/grub/grub.cfg", CompileCommand.copy, [Target("disk/boot/grub/grub.cfg")]);
 	auto isoFiles = Target.phony("disk/", CompileCommand.nothing, [grubCfg, loader.loader, kernel.kernel, /* initrdOld,*/ initrd]);

@@ -13,7 +13,7 @@ import data.address;
 public import api.acpi;
 public import api.cpu;
 
-/// SymVer version format: Major.Minor.Patch
+/// SemVer version format: Major.Minor.Patch
 struct Version {
 	// TODO: Change to a smaller unsigned interger container?
 	size_t major; /// The major version
