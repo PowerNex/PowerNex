@@ -20,13 +20,29 @@ public static:
 				continue;
 			}
 
+			debug {
+				auto code = VirtMemoryRange(_start, _end).array!ubyte;
+				auto correctCode = VirtMemoryRange(_location, _location + (_end - _start)).array!ubyte;
+
+				if (code != correctCode) {
+					size_t wrongOffset;
+					for (size_t i; i < code.length; i++)
+						if (code[i] != correctCode[i]) {
+							wrongOffset = i;
+							break;
+						}
+					Log.fatal("BOOT CODE IS INVALID!\nCorrect Code: ", correctCode, "\n    RAM Code: ", code, "\nWrong offset: ",
+							wrongOffset, "(", cast(void*)code[wrongOffset], " != ", cast(void*)correctCode[wrongOffset]);
+				}
+			}
+
 			Log.debug_("cpuThreads[", idx, "].init(): ", cpuThread.apicID);
 			LAPIC.init(cpuThread.apicID, true);
 			LAPIC.sleep(2);
 			LAPIC.init(cpuThread.apicID, false);
 			LAPIC.sleep(10);
 
-			Log.debug_("cpuThreads[", idx, "].startup()1: ", cpuThread.apicID);
+			Log.debug_("cpuThreads[", idx, "].startup()1: ", cpuThread.apicID, " location: ", PhysAddress32(&boot16_location));
 			LAPIC.startup(cpuThread.apicID, PhysAddress32(&boot16_location));
 			LAPIC.sleep(2); // ~1ms I guess
 			LAPIC.startup(cpuThread.apicID, PhysAddress32(&boot16_location));
@@ -45,11 +61,20 @@ public static:
 private static:
 	void _setupInit16() @trusted {
 		import io.log : Log;
+
 		Log.info("memcpy(", _location, ", ", _start, ", ", _end - _start, ");");
 		_location.memcpy(_start, (_end - _start).num);
 	}
 
-	@property VirtAddress _location() @trusted { return VirtAddress(&boot16_location); }
-	@property VirtAddress _start() @trusted { return VirtAddress(&boot16_start); }
-	@property VirtAddress _end() @trusted { return VirtAddress(&boot16_end); }
+	@property VirtAddress _location() @trusted {
+		return VirtAddress(&boot16_location);
+	}
+
+	@property VirtAddress _start() @trusted {
+		return VirtAddress(&boot16_start);
+	}
+
+	@property VirtAddress _end() @trusted {
+		return VirtAddress(&boot16_end);
+	}
 }

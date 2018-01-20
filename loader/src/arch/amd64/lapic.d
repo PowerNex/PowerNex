@@ -188,7 +188,8 @@ public static:
 	void sleep(size_t milliseconds) @trusted {
 		const size_t endAt = _counter + milliseconds;
 
-		while (_counter < endAt) {}
+		while (_counter < endAt) {
+		}
 	}
 
 	void init(uint destination, bool assert_) @trusted {
@@ -196,8 +197,12 @@ public static:
 		ic.deliveryMode = DeliveryMode.init;
 		ic.level = assert_ ? Level.assert_ : Level.deassert;
 
+		import io.log : Log;
+
+		Log.debug_("ic.data: ", cast(void*)(ic.data | (cast(ulong)destination << (32UL + 24UL))));
+
 		if (_x2APIC)
-			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
 		else {
 			_write(Registers._interruptCommandHigh, destination << 24);
 			_write(Registers.interruptCommand, ic.data);
@@ -207,11 +212,16 @@ public static:
 	/// Entrypoint is (address >> 12)
 	void startup(uint destination, PhysAddress32 entrypointPage) @trusted {
 		InterruptCommand ic;
-		ic.vector = entrypointPage.num!ubyte;
+		ic.vector = (entrypointPage >> 12).num!ubyte;
 		ic.deliveryMode = DeliveryMode.startup;
 		ic.level = Level.assert_;
+
+		import io.log : Log;
+
+		Log.debug_("ic.data: ", cast(void*)(ic.data | (cast(ulong)destination << (32UL + 24UL))));
+
 		if (_x2APIC)
-			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
 		else {
 			_write(Registers._interruptCommandHigh, destination << 24);
 			_write(Registers.interruptCommand, ic.data);
@@ -290,7 +300,7 @@ private static:
 			"triggerMode", 1, TriggerMode,
 			"zero1", 2,
 			"destinationShorthand", 2, DestinationShorthand,
-			/*"zero2", 12,
+			"zero2", 12/*,
 			"destination", 32*/
 		));
 		// dfmt on

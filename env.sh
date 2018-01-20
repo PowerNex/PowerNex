@@ -5,7 +5,7 @@
 # 	fi
 # }
 function c() { rm -rf objs powernex.iso && echo "Clean successful" || echo "Clean failed"; }
-function v() { rdmd build.d; }
+function v() { c; rdmd build.d; }
 function b() { v && qemu-system-x86_64 -cdrom powernex.iso -m 512 -monitor stdio -smp 4 -serial file:COM1.log -enable-kvm 2>/dev/null; }
 function bd() { v && qemu-system-x86_64 -cdrom powernex.iso -m 512 -monitor stdio -smp 4 -serial file:COM1.log -d int,guest_errors -D qemu_debug.log 2>/dev/null; }
 function a() { addr2line -e objs/PowerNex/disk/boot/powernex.krl $1; }

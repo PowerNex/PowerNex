@@ -40,8 +40,8 @@ boot16_gdtBase:
 
 boot16_gdtDescriptors:
 	.quad 0x0000000000000000 # null
-	.quad 0x00CF9A000000FFFF # code
-	.quad 0x00CF92000000FFFF # data
+	.quad 0x00CF9B000000FFFF # code
+	.quad 0x00CF93000000FFFF # data
 
 .code32
 .align 16
