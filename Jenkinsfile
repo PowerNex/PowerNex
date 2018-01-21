@@ -14,10 +14,9 @@ pipeline {
 					ln -s /usr build/cc
 					mkdir HOME || true; export HOME="$(pwd)/HOME"
 					source ./env.sh
-					c
-					rm -rf build.ninja compile_commands.json rules.ninja || true
-					touch ./reggaefile.d
 					v
+					mv powernex.iso powernex-sym.iso
+					cp powernex-sym.iso powernex.iso
 					'''
         }
 			}
