@@ -10,13 +10,13 @@ pipeline {
 				ansiColor('xterm') {
 					sh '''
 					rm -rf cc || true
-					mkdir build
+					mkdir -p build
 					ln -s /usr build/cc
 					mkdir HOME || true; export HOME="$(pwd)/HOME"
 					source ./env.sh
 					v
-					mv powernex.iso powernex-sym.iso
-					cp powernex-sym.iso powernex.iso
+					mv -f powernex.iso powernex-sym.iso
+					cp -f powernex-sym.iso powernex.iso
 					'''
         }
 			}
