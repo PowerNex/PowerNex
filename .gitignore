@@ -1,13 +1,9 @@
 powernex.iso
 bochsout.txt
 bx_enh_dbg.ini
-/cc
+/build
 COM1.log
 .vscode
 *~
-*.ninja*
-*.reggae
-objs
-compile_commands.json
-docs/
+docs/generated
 docs*.json
