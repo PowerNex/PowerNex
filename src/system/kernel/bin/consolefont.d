@@ -3,7 +3,7 @@ module bin.consolefont;
 import data.font;
 import data.psf;
 
-private __gshared ubyte[] _consoleFont_PSF = cast(ubyte[])import("data/font/terminus/ter-v16n.psf");
+private __gshared ubyte[] _consoleFont_PSF;// = cast(ubyte[])import("data/font/terminus/ter-v16n.psf");
 
 PSF getConsoleFont() {
 	import data.util : inplaceClass;

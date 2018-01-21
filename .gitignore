@@ -6,4 +6,4 @@ COM1.log
 .vscode
 *~
 docs/generated
-docs*.json
+docs/*.json

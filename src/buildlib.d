@@ -1,4 +1,4 @@
-module utils.buildlib;
+module src.buildlib;
 
 import std.stdio : write, writeln, stderr;
 import std.variant : Algebraic, visit;
@@ -15,7 +15,7 @@ void warning(Args...)(Args args) { stderr.write("\x1b[31;1m", args, "\x1b[0m"); 
 void error(Args...)(Args args)   { stderr.write("\x1b[37;41;1m", args, "\x1b[0m"); }
 // dfmt on
 
-static files(Files...) = [Files].map!(x => new Target(Path(x, false), true, false, null, null, null)).array();
+static files(string Prefix, Files...) = [Files].map!(x => new Target(Path(Prefix ~ x, false), true, false, null, null, null)).array();
 
 /// SemVer version format: Major.Minor.Patch
 struct SemVer {
@@ -67,7 +67,7 @@ class Project {
 	@property string objDir() {
 		import std.format : format;
 
-		return format("objs/%s/", name);
+		return format("build/objs/%s/", name);
 	}
 }
 

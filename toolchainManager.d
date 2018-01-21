@@ -58,7 +58,7 @@ struct VersionInfo {
 	size_t binutilsVersion;
 }
 
-const string toolchainFolder = "cc";
+const string toolchainFolder = "build/cc";
 const string versionInfoFile = toolchainFolder ~ "/versionInfo";
 
 VersionInfo getOldInfo() {
@@ -289,11 +289,10 @@ int main(string[] args) {
 
 	mkdirRecurse(toolchainFolder ~ "/bin");
 	if (newDMD || clean) {
-		downloadProgress("DMD",
-				"https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/master/" ~ newVI.dmdVersion.to!string ~ "/artifact/powernex-dmd",
-				"cc/bin/powernex-dmd");
+		downloadProgress("DMD", "https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/master/" ~ newVI.dmdVersion.to!string ~ "/artifact/powernex-dmd",
+				toolchainFolder ~ "/bin/powernex-dmd");
 		normal("Fixing permissions...\n");
-		executeShell("chmod +x cc/bin/powernex-dmd");
+		executeShell("chmod +x " ~ toolchainFolder ~ "/bin/powernex-dmd");
 	}
 
 	if (newBinutils || clean) {
