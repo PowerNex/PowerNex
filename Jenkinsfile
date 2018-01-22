@@ -9,7 +9,7 @@ pipeline {
 				}
 				ansiColor('xterm') {
 					sh '''
-					rm -rf cc || true
+					rm -rf build || true
 					mkdir -p build
 					ln -s /usr build/cc
 					mkdir HOME || true; export HOME="$(pwd)/HOME"
