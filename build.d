@@ -15,6 +15,7 @@ immutable {
 	string dCompilerPath = ccPrefix ~ "powernex-dmd";
 	string aCompilerPath = ccPrefix ~ "x86_64-powernex-as";
 	string linkerPath = ccPrefix ~ "x86_64-powernex-ld";
+	string archivePath = ccPrefix ~ "x86_64-powernex-ar";
 }
 
 shared static this() {
@@ -85,7 +86,7 @@ int main(string[] args) {
 
 	auto os = findDependency("PowerNexOS");
 	SysTime buildFileTime = DirEntry(args[0]).timeLastModified;
-	//os.dotGraph();
+	// os.dotGraph();
 
 	BuildInfo bi = os.gatherBuildInfo();
 	normal("Needs to rebuild ", bi.targets.length, " target(s)\n");

@@ -8,7 +8,7 @@
  */
 module memory.frameallocator;
 
-import data.address;
+import stl.address;
 
 ///
 @safe static struct FrameAllocator {

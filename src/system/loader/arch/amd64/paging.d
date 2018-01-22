@@ -9,7 +9,7 @@
  */
 module arch.amd64.paging;
 
-import data.address;
+import stl.address;
 
 /*
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
@@ -250,6 +250,37 @@ public static:
 	}
 
 	//TODO: maybe? void removeUserspace();
+
+	///
+	VirtAddress mapSpecialAddress(PhysMemoryRange range, bool readWrite = false, bool clear = false) {
+		return mapSpecialAddress(range.start, range.size, readWrite, clear);
+	}
+
+	///
+	VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) {
+		import arch.amd64.paging : Paging, PageFlags;
+
+		const PhysAddress pa = pAddr & ~0xFFF;
+		const size_t offset = pAddr.num & 0xFFF;
+
+		return Paging.mapSpecial(pa, size + offset, PageFlags.present | (readWrite ? PageFlags.writable : PageFlags.none), clear) + offset;
+	}
+
+	///
+	void unmapSpecialAddress(ref VirtAddress vAddr, size_t size) {
+		import arch.amd64.paging : Paging;
+
+		long offset = vAddr.num & 0xFFF;
+		size += offset;
+
+		VirtAddress tmp = vAddr & ~0xFFF;
+		while (offset > 0) {
+			Paging.unmap(tmp, false);
+			tmp += 0x1000;
+			offset -= 0x1000;
+		}
+		vAddr.addr = 0;
+	}
 
 	VirtAddress mapSpecial(PhysAddress pAddr, size_t size, PageFlags flags = PageFlags.present, bool clear = false) {
 		import io.log : Log;
@@ -503,7 +534,7 @@ private static:
 private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
 	import io.vga : VGA, CGAColor, CGASlotColor;
 	import io.log : Log;
-	import data.text : HexInt;
+	import stl.text : HexInt;
 	import arch.amd64.lapic : LAPIC;
 
 	size_t id = LAPIC.getCurrentID();

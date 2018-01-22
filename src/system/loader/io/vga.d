@@ -90,9 +90,9 @@ public static:
 
 	///
 	void write(Args...)(Args args) {
-		import data.address : VirtAddress, PhysAddress, PhysAddress32;
-		import util.trait : Unqual, isNumber, isFloating;
-		import data.text : BinaryInt, HexInt;
+		import stl.address : VirtAddress, PhysAddress, PhysAddress32;
+		import stl.trait : Unqual, isNumber, isFloating;
+		import stl.text : BinaryInt, HexInt;
 
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
@@ -134,6 +134,14 @@ public static:
 	@property CGASlotColor color(CGASlotColor color) {
 		_color = color;
 		return _color;
+	}
+
+	@property ubyte x() {
+		return _x;
+	}
+
+	@property ubyte y() {
+		return _y;
 	}
 
 private static:
@@ -209,15 +217,15 @@ private static:
 			_write(*(str++));
 	}
 
-	void _writeNumber(S = long)(S value, uint base) if (from!"util.trait".isNumber!S) {
-		import data.text : itoa;
+	void _writeNumber(S = long)(S value, uint base) if (from!"stl.trait".isNumber!S) {
+		import stl.text : itoa;
 
 		char[S.sizeof * 8] buf;
 		_write(itoa(value, buf, base));
 	}
 
 	void _writePointer(ulong value) {
-		import data.text : itoa;
+		import stl.text : itoa;
 
 		char[ulong.sizeof * 8] buf;
 		_write("0x");
@@ -228,14 +236,14 @@ private static:
 	}
 
 	void _writeFloating(double value, uint base) {
-		import data.text : dtoa;
+		import stl.text : dtoa;
 
 		char[double.sizeof * 8] buf;
 		_write(dtoa(value, buf, base));
 	}
 
 	void _writeEnum(T)(T value) if (is(T == enum)) {
-		import util.trait : enumMembers;
+		import stl.trait : enumMembers;
 
 		foreach (i, e; enumMembers!T)
 			if (value == e) {

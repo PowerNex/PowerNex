@@ -8,7 +8,7 @@
  */
 module arch.amd64.ioapic;
 
-import data.address;
+import stl.address;
 
 /***
  * > The Intel I/O Advanced Programmable Interrupt Controller is used to distribute external interrupts in a more
@@ -20,33 +20,35 @@ import data.address;
 public static:
 	///
 	void analyze() {
-		import api : getPowerDAPI;
-		import api.cpu : IOAPIC;
+		import powerd.api : getPowerDAPI;
+		import powerd.api.cpu : IOAPIC;
+		import arch.amd64.paging : Paging;
 		import io.log : Log;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
-			VirtAddress vAddr = ioapic.address.mapSpecial(0x20, true);
+			VirtAddress vAddr = Paging.mapSpecialAddress(ioapic.address, 0x20, true);
 			const uint data = _ioapicVer(vAddr);
 			ioapic.version_ = cast(ubyte)(data & 0xFF);
 			ioapic.gsiMaxRedirectCount = cast(ubyte)((data >> 16) & 0xFF) + 1;
 			Log.info("IOAPIC: version: ", ioapic.version_, ", gsiMaxRedirectCount: ", ioapic.gsiMaxRedirectCount);
-			vAddr.unmapSpecial(0x20);
+			Paging.unmapSpecialAddress(vAddr, 0x20);
 		}
 	}
 
 	///
 	void setupLoader() {
-		import api : getPowerDAPI;
-		import api.cpu : IOAPIC;
+		import powerd.api : getPowerDAPI;
+		import powerd.api.cpu : IOAPIC;
+		import arch.amd64.paging : Paging;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
-			VirtAddress vAddr = ioapic.address.mapSpecial(0x20, true);
+			VirtAddress vAddr = Paging.mapSpecialAddress(ioapic.address, 0x20, true);
 			foreach (i; 0 .. ioapic.gsiMaxRedirectCount) {
 				const uint gsi = ioapic.gsi + i;
 
 				_ioRedirectionTable(vAddr, i, _createRedirect(gsi));
 			}
-			vAddr.unmapSpecial(0x20);
+			Paging.unmapSpecialAddress(vAddr, 0x20);
 		}
 	}
 
@@ -81,7 +83,7 @@ private static:
 			level = 1
 		}
 
-		import data.bitfield : bitfield;
+		import stl.bitfield : bitfield;
 
 		private ulong data;
 		// dfmt off
@@ -100,13 +102,13 @@ private static:
 	}
 
 	ref uint _ioregsel(VirtAddress address) {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 
 		return *address.ptr!uint;
 	}
 
 	ref uint _ioregwin(VirtAddress address) {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 
 		return *(address + 0x10).ptr!uint;
 	}
@@ -144,7 +146,7 @@ private static:
 
 	Redirection _createRedirect(uint gsi) {
 		ubyte getIRQ(uint gsi) {
-			import api : getPowerDAPI;
+			import powerd.api : getPowerDAPI;
 
 			foreach (ubyte irq, uint value; getPowerDAPI.cpus.irqMap)
 				if (value == gsi)
@@ -162,8 +164,8 @@ private static:
 			redirection.destinationMode = DestinationMode.physical;
 
 			if (irq != ubyte.max) {
-				import api : getPowerDAPI;
-				import api.cpu : IRQFlags;
+				import powerd.api : getPowerDAPI;
+				import powerd.api.cpu : IRQFlags;
 
 				const IRQFlags flags = getPowerDAPI.cpus.irqFlags[irq];
 				redirection.triggerMode = flags.trigger == IRQFlags.Trigger.level ? TriggerMode.level : TriggerMode.edge;

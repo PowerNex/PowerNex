@@ -8,7 +8,7 @@
  */
 module data.tls;
 
-import data.address;
+import stl.address;
 
 ///
 @safe struct TLSData {

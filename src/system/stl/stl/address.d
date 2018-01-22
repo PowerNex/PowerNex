@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module data.address;
+module stl.address;
 
 //XXX: Functions that cast SHOULD NOT be @safe/@trusted, as this invalidates the whole safeness system
 // It is currently like this because of lazyness
@@ -175,37 +175,11 @@ private mixin template AddressBase(Type = size_t) {
 
 		return this;
 	}
-
-	///
-	void unmapSpecial(size_t size) {
-		import arch.amd64.paging : Paging;
-
-		long offset = this.num & 0xFFF;
-		size += offset;
-
-		VirtAddress tmp = this & ~0xFFF;
-		while (offset > 0) {
-			Paging.unmap(tmp, false);
-			tmp += 0x1000;
-			offset -= 0x1000;
-		}
-		addr = 0;
-	}
 }
 
 /// This represents a physical address
 @safe struct PhysAddress {
 	mixin AddressBase;
-
-	///
-	VirtAddress mapSpecial(size_t size, bool readWrite = false, bool clear = false) {
-		import arch.amd64.paging : Paging, PageFlags;
-
-		const PhysAddress pAddr = this & ~0xFFF;
-		const size_t offset = this.num & 0xFFF;
-
-		return Paging.mapSpecial(pAddr, size + offset, PageFlags.present | (readWrite ? PageFlags.writable : PageFlags.none), clear) + offset;
-	}
 
 	/// WARNING: THIS FUNCTION WILL NOT ALWAYS WORK
 	deprecated("You are living dangerously if you use this function!") VirtAddress toVirtual() {
@@ -256,11 +230,6 @@ private mixin template AddressBase(Type = size_t) {
 ///
 @safe struct PhysMemoryRange {
 	mixin MemoryRange!PhysAddress;
-
-	///
-	VirtAddress mapSpecial(bool readWrite = false, bool clear = false) {
-		return start.mapSpecial(size, readWrite, clear);
-	}
 
 	/// WARNING: THIS FUNCTION WILL NOT ALWAYS WORK
 	deprecated("You are living dangerously if you use this function!") VirtMemoryRange toVirtual() {

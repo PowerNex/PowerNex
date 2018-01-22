@@ -157,7 +157,7 @@ private:
 
 	static void _handleIRQ(alias com)() {
 		import io.ioport : inp;
-		import data.text : BinaryInt;
+		import stl.text : BinaryInt;
 
 		StatusInfo status = cast(StatusInfo)inp!ubyte(cast(ushort)(com.port + PortNumber.interruptIdentifier));
 		while (!(status & StatusInfo.interrupt)) {

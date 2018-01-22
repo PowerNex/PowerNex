@@ -8,7 +8,7 @@
  */
 module memory.heap;
 
-import data.address;
+import stl.address;
 
 ///
 @safe struct BuddyHeader {
@@ -28,12 +28,18 @@ public static:
 
 		_startAddress = _nextFreeAddress = _makeAddress(0, 1, 0, 0);
 
+		{
+			import stl.vector : vectorAllocate, vectorFree;
+			vectorAllocate = &Heap.allocate;
+			vectorFree = &Heap.free;
+		}
+
 		// TODO: Preallocate? _extend();
 	}
 
 	///
 	void[] allocate(size_t wantSize) @trusted {
-		import data.number : log2;
+		import stl.number : log2;
 
 		size_t size = (wantSize + BuddyHeader.sizeof + _minSize - 1) & ~(_minSize - 1);
 		if (size > _maxSize)

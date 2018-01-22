@@ -6,12 +6,12 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module api;
+module powerd.api;
 
-import data.address;
+import stl.address;
 
-public import api.acpi;
-public import api.cpu;
+public import powerd.api.acpi;
+public import powerd.api.cpu;
 
 /// SemVer version format: Major.Minor.Patch
 struct Version {
@@ -44,15 +44,20 @@ struct MemoryMap {
 
 /// The PowerD information container
 @safe struct PowerDAPI {
+	import stl.vector : Vector;
+
 	enum size_t magicValue = 0x3056_4472_6577_6F50UL; /// "PowerDV0" as size_t (backwards because of little-endian)
 	size_t magic = magicValue; /// The magic
 	// TODO: Sync with init32.S somehow
 	Version version_ = Version(0, 0, 0); /// The PowerD version
 
+	ubyte screenX;
+	ubyte screenY;
+
 	size_t ramAmount; ///
 
-	from!"data.vector".Vector!Module modules; ///
-	from!"data.vector".Vector!MemoryMap memoryMaps; ///
+	Vector!Module modules; ///
+	Vector!MemoryMap memoryMaps; ///
 
 	PowerDACPI acpi; ///
 	PowerDCPUs cpus; ///

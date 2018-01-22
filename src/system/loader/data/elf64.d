@@ -1,6 +1,6 @@
 module data.elf64;
 
-import data.address;
+import stl.address;
 
 ///
 @safe struct ELF64Header {
@@ -141,9 +141,9 @@ struct ELF64Symbol {
 
 ///
 @safe struct ELFInstance {
-	import api : getPowerDAPI;
+	import powerd.api : PowerDAPI;
 
-	size_t function() @system main;
+	size_t function(PowerDAPI* powerDAPI) @system main;
 	size_t function() @system[] ctors;
 }
 
@@ -230,7 +230,7 @@ private:
 	}
 
 	const(char)[] _lookUpSectionName(uint nameIdx) @trusted {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		if (!_sectionNameStringTable)
 			return "{No string table!}";
@@ -276,7 +276,7 @@ private:
 			Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", pData, " - ", pData + hdr.memsz, "]");
 			FrameAllocator.markRange(pData, pData + hdr.memsz);
 			for (size_t offset; offset < hdr.memsz; offset += 0x1000) {
-				import data.number : min;
+				import stl.number : min;
 
 				VirtAddress addr = vAddr + offset;
 				PhysAddress pAddr = pData + offset;

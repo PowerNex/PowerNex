@@ -6,9 +6,9 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module api.cpu;
+module powerd.api.cpu;
 
-import data.address;
+import stl.address;
 
 ///
 @safe struct CPUThread {
@@ -47,7 +47,7 @@ import data.address;
 
 ///
 @safe struct IRQFlags {
-	import data.bitfield : bitfield;
+	import stl.bitfield : bitfield;
 
 	///
 	enum Active : ubyte {
@@ -67,7 +67,7 @@ import data.address;
 
 ///
 @safe struct PowerDCPUs {
-	import data.vector : Vector;
+	import stl.vector : Vector;
 	Vector!(CPUThread) cpuThreads; ///
 	Vector!(IOAPIC) ioapics; ///
 

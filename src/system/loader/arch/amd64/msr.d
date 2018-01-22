@@ -9,7 +9,7 @@
  */
 module arch.amd64.msr;
 
-import data.address;
+import stl.address;
 
 enum MSRValue : uint {
 	apicBase = 0x1B,

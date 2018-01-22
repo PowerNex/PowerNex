@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module data.range;
+module stl.range;
 
 ///
 struct MapRange(alias Function, Range) {

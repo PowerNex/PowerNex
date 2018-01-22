@@ -35,13 +35,15 @@ import fs;
 import arch.paging;
 import memory.vmm;
 
+import powerd.api;
+
 private immutable uint _major = __VERSION__ / 1000;
 private immutable uint _minor = __VERSION__ % 1000;
 
 __gshared SharedPtr!FileSystem rootFS;
 
-extern (C) void kmain() {
-	preInit();
+extern (C) void kmain(PowerDAPI* papi) {
+	preInit(papi);
 	welcome();
 	//init(magic, info);
 	//asm pure nothrow {
@@ -75,14 +77,15 @@ void bootTTYToTextmode(size_t start, size_t end) {
 		getScreen.write(scr.buffer[start .. end]);
 }
 
-void preInit() {
+void preInit(PowerDAPI* papi) {
 	import io.textmode;
 
 	COM.init();
 	// TODO: Make sure that it only append on the loader output, not replaces it.
 	scr;
 	scr.onChangedCallback = &bootTTYToTextmode;
-	getScreen.clear();
+	getScreen.setCoord(papi.screenX, papi.screenY);
+	//getScreen.clear();
 
 	scr.writeln("Log initializing...");
 	Log.init();

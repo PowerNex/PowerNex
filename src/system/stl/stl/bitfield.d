@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module data.bitfield;
+module stl.bitfield;
 
 ///
 template bitfield(alias data, args...) {

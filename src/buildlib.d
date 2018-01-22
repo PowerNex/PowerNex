@@ -78,9 +78,9 @@ void registerProject(Project p) {
 }
 
 Project findDependency(string name) {
-	auto p = _globalProjects[name];
+	auto p = name in _globalProjects;
 	assert(p, "Could not find project: " ~ name);
-	return p;
+	return *p;
 }
 
 static struct Processor {
@@ -178,7 +178,7 @@ void exec(Target t) {
 	import std.path : dirName;
 
 	with (t.output)
-	mkdirRecurse(path[$-1] == '/' ? path : dirName(path));
+		mkdirRecurse(path[$ - 1] == '/' ? path : dirName(path));
 
 	normal("Executing: ", cmd, "\n");
 	auto proc = executeShell(cmd);
@@ -276,6 +276,8 @@ void dotGraph(Project project) {
 		printRequirements(target.dependencies);
 	}
 
+	bool[Project] hasWritten;
+	hasWritten[project] = true;
 	with (pipeShell("tee /dev/stderr | /usr/bin/dot -Tx11", Redirect.stdin)) {
 		scope (exit)
 			wait(pid);
@@ -284,13 +286,23 @@ void dotGraph(Project project) {
 		stdin.writefln("\tp_%X[style=filled,fillcolor=pink,label=\"%s\"];", cast(void*)project, project.name);
 		foreach (idx, t; project.outputs)
 			print(stdin, t, project);
-		foreach (Project p; project.dependencies) {
-			stdin.writefln("\tp_%X -> p_%X;", cast(void*)project, cast(void*)p);
 
-			stdin.writefln("\tp_%X[style=filled,fillcolor=red,label=\"%s\"];", cast(void*)p, p.name);
-			foreach (idx, t; p.outputs)
-				print(stdin, t, p);
+		void writeDependencies(Project current) {
+			foreach (Project p; current.dependencies) {
+				stdin.writefln("\tp_%X -> p_%X;", cast(void*)current, cast(void*)p);
+				if (p in hasWritten)
+					continue;
+				hasWritten[p] = true;
+
+				writeDependencies(p);
+
+				stdin.writefln("\tp_%X[style=filled,fillcolor=red,label=\"%s\"];", cast(void*)p, p.name);
+				foreach (idx, t; p.outputs)
+					print(stdin, t, p);
+			}
 		}
+
+		writeDependencies(project);
 		stdin.writeln("}");
 		stdin.flush();
 		stdin.close();

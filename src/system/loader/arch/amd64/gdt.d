@@ -8,7 +8,7 @@
  */
 module arch.amd64.gdt;
 
-//import data.bitfield;
+//import stl.bitfield;
 //import cpu.tss;
 
 ///
@@ -21,7 +21,7 @@ align(1):
 ///
 @trusted struct GDTCodeDescriptor {
 align(1):
-	import data.bitfield;
+	import stl.bitfield;
 
 	ushort limit = 0xFFFF; ///
 	ushort base = 0x0000; ///
@@ -37,7 +37,7 @@ align(1):
 ///
 @trusted struct GDTDataDescriptor {
 align(1):
-	import data.bitfield;
+	import stl.bitfield;
 
 	ushort limit = 0xFFFF; ///
 	ushort base = 0x0000; ///
@@ -52,7 +52,7 @@ align(1):
 ///
 @trusted struct GDTSystemDescriptor {
 align(1):
-	import data.bitfield;
+	import stl.bitfield;
 
 	ushort limitLow; ///
 	ushort baseLow; ///

@@ -1472,7 +1472,7 @@ extern (C) {
 	}
 
 	void _d_arrayboundsp(immutable(char*) file, uint line) {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		_d_arraybounds(file[0 .. strlen(file)], line);
 	}
@@ -1485,7 +1485,7 @@ extern (C) {
 	}
 
 	void _d_assertp(immutable(char)* file, uint line) {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		onAssert("Assertion failure", file[0 .. strlen(file)], line);
 	}
@@ -1507,7 +1507,7 @@ extern (C) {
 	}
 
 	void __assert (const char *msg, immutable(char)*file, int line) {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		onAssert("Switch assertion failure", file[0 .. strlen(file)], line);
 	}

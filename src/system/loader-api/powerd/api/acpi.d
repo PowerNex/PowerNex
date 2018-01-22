@@ -6,9 +6,9 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module api.acpi;
+module powerd.api.acpi;
 
-import data.address;
+import stl.address;
 
 /// The PowerD ACPI information container
 @safe struct PowerDACPI {

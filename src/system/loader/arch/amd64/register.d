@@ -8,7 +8,7 @@
  */
 module arch.amd64.register;
 
-import data.address : VirtAddress;
+import stl.address : VirtAddress;
 
 private extern (C) VirtAddress cpuRetCR0() @safe; //XXX: @safe
 private extern (C) VirtAddress cpuRetCR2() @safe; //XXX: @safe

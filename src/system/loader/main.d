@@ -8,7 +8,7 @@
  */
 module main;
 
-import data.address;
+import stl.address;
 
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
@@ -17,10 +17,10 @@ private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTIO
 	import io.vga : VGA;
 	import io.log : Log;
 	import arch.amd64.msr : MSR;
-	import data.text : HexInt;
+	import stl.text : HexInt;
 
 	if (MSR.fs) {
-		import api.cpu : CPUThread;
+		import powerd.api.cpu : CPUThread;
 
 		if (auto _ = currentThread) {
 			VGA.writeln('<', HexInt(_.id), "> ", args);
@@ -55,8 +55,8 @@ extern (C) VirtAddress newStackAP() @trusted {
 
 ///
 extern (C) ulong mainAP() @safe {
-	import api : getPowerDAPI;
-	import api.cpu : CPUThread;
+	import powerd.api : getPowerDAPI;
+	import powerd.api.cpu : CPUThread;
 	import arch.amd64.lapic : LAPIC;
 	import io.log : Log;
 	import data.tls : TLS;
@@ -82,11 +82,11 @@ extern (C) ulong mainAP() @safe {
 	}
 }
 
-from!"api.cpu".CPUThread* currentThread; /// The current threads structure
+from!"powerd.api.cpu".CPUThread* currentThread; /// The current threads structure
 
 ///
 extern (C) ulong main() @safe {
-	import api : getPowerDAPI;
+	import powerd.api : getPowerDAPI;
 	import arch.amd64.acpi : ACPI;
 	import arch.amd64.gdt : GDT;
 	import arch.amd64.idt : IDT;
@@ -182,8 +182,12 @@ extern (C) ulong main() @safe {
 		Log.fatal("Main is invalid!");
 
 	() @trusted{ //
-		size_t output = kernel.main();
-		outputBoth("Main function returned: ", output.VirtAddress);
+		auto papi = &getPowerDAPI();
+		papi.screenX = VGA.x;
+		papi.screenY = VGA.y;
+		size_t output = kernel.main(papi);
+		//outputBoth("Main function returned: ", output.VirtAddress);
+		assert(0, "Kernel main function returned!");
 	}();
 
 	outputBoth("Reached end of main! Shutting down in 2 seconds.");

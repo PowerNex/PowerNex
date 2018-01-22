@@ -10,8 +10,9 @@
  */
 module arch.amd64.acpi;
 
-import data.address;
+import stl.address;
 import io.log : Log;
+import arch.amd64.paging : Paging;
 
 ///
 @safe align(1) struct RSDPv1 {
@@ -118,7 +119,7 @@ align(1):
 
 ///
 @safe struct PM1ControlBlock {
-	import data.bitfield : bitfield;
+	import stl.bitfield : bitfield;
 
 	private ushort data;
 	mixin(bitfield!(data, "sciEnable", 1));
@@ -470,7 +471,7 @@ align(1):
 @safe static struct ACPI {
 public static: ///
 	void initOld(ubyte[] rsdpData) @trusted {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 
 		RSDPv1* rsdp = &(cast(RSDPv1[])rsdpData)[0];
 		assert(rsdp.revision == 0, "RSDP is not version 1.0!");
@@ -488,26 +489,26 @@ public static: ///
 		foreach (PhysAddress32 pSDT; rsdt.otherSDT) {
 			size_t size;
 			{ // Find the size
-				VirtAddress vAddr = pSDT.toX64.mapSpecial(SDTHeader.sizeof, false);
+				VirtAddress vAddr = Paging.mapSpecialAddress(pSDT.toX64, SDTHeader.sizeof, false);
 				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
 				size = sdt.length;
-				vAddr.unmapSpecial(SDTHeader.sizeof);
+				Paging.unmapSpecialAddress(vAddr, SDTHeader.sizeof);
 			}
 
-			VirtAddress vAddr = pSDT.toX64.mapSpecial(size, false);
+			VirtAddress vAddr = Paging.mapSpecialAddress(pSDT.toX64, size, false);
 			SDTHeader* sdt = vAddr.ptr!SDTHeader;
 
 			if (!sdt.valid)
 				Log.error("SDT [", sdt, "] has an invalid checksum!");
 			sdt.print();
 			_runHandler(sdt);
-			vAddr.unmapSpecial(size);
+			Paging.unmapSpecialAddress(vAddr, size);
 		}
 	}
 
 	///
 	void initNew(ubyte[] rsdpData) @trusted {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 
 		RSDPv2* rsdp = &(cast(RSDPv2[])rsdpData)[0];
 		assert(rsdp.revision >= 2, "RSDP is not >= version 2.0!");
@@ -525,30 +526,30 @@ public static: ///
 		foreach (PhysAddress pSDT; rsdt.otherSDT) {
 			size_t size;
 			{ // Find the size
-				VirtAddress vAddr = pSDT.mapSpecial(SDTHeader.sizeof, false);
+				VirtAddress vAddr = Paging.mapSpecialAddress(pSDT, SDTHeader.sizeof, false);
 				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
 				size = sdt.length;
-				vAddr.unmapSpecial(SDTHeader.sizeof);
+				Paging.unmapSpecialAddress(vAddr, SDTHeader.sizeof);
 			}
 
-			VirtAddress vAddr = pSDT.mapSpecial(size, false);
+			VirtAddress vAddr = Paging.mapSpecialAddress(pSDT, size, false);
 			SDTHeader* sdt = vAddr.ptr!SDTHeader;
 
 			if (!sdt.valid)
 				Log.error("SDT [", sdt, "] has an invalid checksum!");
 			sdt.print();
 			_runHandler(sdt);
-			vAddr.unmapSpecial(size);
+			Paging.unmapSpecialAddress(vAddr, size);
 		}
 	}
 
 	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v1Only)
 	void accept(FADTv1* fadt) {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 		import io.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
-		import data.text : HexInt;
+		import stl.text : HexInt;
 
 		with (getPowerDAPI.acpi) {
 			with (shutdown) {
@@ -583,16 +584,16 @@ public static: ///
 
 			size_t size;
 			{ // Find the size
-				VirtAddress vAddr = pAddr.mapSpecial(SDTHeader.sizeof);
+				VirtAddress vAddr = Paging.mapSpecialAddress(pAddr, SDTHeader.sizeof);
 				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
 				size = sdt.length;
-				vAddr.unmapSpecial(SDTHeader.sizeof);
+				Paging.unmapSpecialAddress(vAddr, SDTHeader.sizeof);
 			}
 
-			VirtAddress vAddr = pAddr.mapSpecial(size);
+			VirtAddress vAddr = Paging.mapSpecialAddress(pAddr, size);
 			DSDT* dsdt = vAddr.ptr!DSDT;
 			if (!dsdt.valid) {
-				vAddr.unmapSpecial(size);
+				Paging.unmapSpecialAddress(vAddr, size);
 				return Log.error("SDT [DSDT] has an invalid checksum!");
 			}
 
@@ -600,15 +601,15 @@ public static: ///
 			dsdt.print();
 			accept(dsdt);
 
-			vAddr.unmapSpecial(size);
+			Paging.unmapSpecialAddress(vAddr, size);
 		}
 	}
 
 	///
 	@SDTIdentifier("FACP", SDTNeedVersion.v2Only)
 	void accept(FADTv2* fadt) {
-		import api : getPowerDAPI;
-		import api.acpi : PowerDACPI;
+		import powerd.api : getPowerDAPI;
+		import powerd.api.acpi : PowerDACPI;
 		import io.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 
@@ -656,16 +657,16 @@ public static: ///
 
 			size_t size;
 			{ // Find the size
-				VirtAddress vAddr = pAddr.mapSpecial(SDTHeader.sizeof);
+				VirtAddress vAddr = Paging.mapSpecialAddress(pAddr, SDTHeader.sizeof);
 				const SDTHeader* sdt = vAddr.ptr!SDTHeader;
 				size = sdt.length;
-				vAddr.unmapSpecial(SDTHeader.sizeof);
+				Paging.unmapSpecialAddress(vAddr, SDTHeader.sizeof);
 			}
 
-			VirtAddress vAddr = pAddr.mapSpecial(size);
+			VirtAddress vAddr = Paging.mapSpecialAddress(pAddr, size);
 			DSDT* dsdt = vAddr.ptr!DSDT;
 			if (!dsdt.valid) {
-				vAddr.unmapSpecial(size);
+				Paging.unmapSpecialAddress(vAddr, size);
 				return Log.error("SDT [DSDT] has an invalid checksum!");
 			}
 
@@ -673,7 +674,7 @@ public static: ///
 			dsdt.print();
 			accept(dsdt);
 
-			vAddr.unmapSpecial(size);
+			Paging.unmapSpecialAddress(vAddr, size);
 		}
 	}
 
@@ -681,9 +682,9 @@ public static: ///
 	/// DSDT is aquired from FADTv1 or FADTv2
 	@SDTIdentifier("DSDT", SDTNeedVersion.any)
 	void accept(DSDT* dsdt) {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 		import arch.amd64.aml : AMLOpcodes;
-		import data.text : indexOf;
+		import stl.text : indexOf;
 
 		ubyte[] data = dsdt.amlData();
 
@@ -721,8 +722,8 @@ public static: ///
 	///
 	@SDTIdentifier("APIC", SDTNeedVersion.any)
 	void accept(MADT* madt) @trusted {
-		import api : getPowerDAPI;
-		import api.cpu : CPUThread, IRQFlags;
+		import powerd.api : getPowerDAPI;
+		import powerd.api.cpu : CPUThread, IRQFlags;
 
 		getPowerDAPI.acpi.lapicAddress = madt.lapicAddress;
 
@@ -770,7 +771,7 @@ public static: ///
 						break;
 
 					case ioapic:
-						import cpu = api.cpu;
+						import cpu = powerd.api.cpu;
 
 						IOAPIC* ioapic = cast(IOAPIC*)entry;
 						Log.info("Type: ", ioapic.type, ", Length: ", ioapic.size, ", ID: ", ioapic.id, ", Address: ",
@@ -819,9 +820,9 @@ public static: ///
 
 	///
 	void shutdown() {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 		import io.ioport : outp, inp;
-		import data.text : HexInt;
+		import stl.text : HexInt;
 		import io.vga : VGA;
 
 		asm @trusted pure nothrow {
@@ -854,7 +855,7 @@ public static: ///
 
 	///
 	void reboot() {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 		import io.ioport : inp, outp;
 
 		asm @trusted pure nothrow {
@@ -870,7 +871,7 @@ public static: ///
 					break;
 				case Action.memory:
 					// Note we will leak memory here, but doesn't matter
-					*where.address.mapSpecial(ubyte.sizeof).ptr!ubyte = value;
+					*Paging.mapSpecialAddress(where.address, ubyte.sizeof).ptr!ubyte = value;
 					break;
 				default:
 					Log.fatal("TODO: '", action, "' rebooting is not implemented!");
@@ -922,7 +923,7 @@ private static:
 		void function(SDTHeader*) func;
 	}
 
-	__gshared SDTLookup[{ return from!"util.trait".getFunctionsWithUDA!(ACPI, SDTIdentifier).length; }()] _lookups;
+	__gshared SDTLookup[{ return from!"stl.trait".getFunctionsWithUDA!(ACPI, SDTIdentifier).length; }()] _lookups;
 
 	void _runHandler(SDTHeader* sdt) @trusted {
 		foreach (lookup; _lookups) {
@@ -932,7 +933,7 @@ private static:
 	}
 
 	void _createLookupTable(SDTNeedVersion versionRequirement) @trusted {
-		import util.trait : getFunctionsWithUDA;
+		import stl.trait : getFunctionsWithUDA;
 
 		size_t lookupID;
 

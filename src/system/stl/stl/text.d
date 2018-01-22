@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module data.text;
+module stl.text;
 
 ///
 @safe struct BinaryInt {
@@ -75,15 +75,15 @@ char[] strip(char[] str) {
 
 ///
 string itoa(S)(S v, char[] buf, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted
-		if (from!"util.trait".isNumber!S) {
+		if (from!"stl.trait".isNumber!S) {
 	auto start = itoa(v, buf.ptr, buf.length, base, padLength, padChar);
 	return cast(string)buf[start .. $];
 }
 
 ///
 size_t itoa(S)(S v, char* buf, ulong len, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted
-		if (from!"util.trait".isNumber!S) {
-	import util.trait : Unqual;
+		if (from!"stl.trait".isNumber!S) {
+	import stl.trait : Unqual;
 
 	assert(1 < base && base <= 16);
 	Unqual!S value = v;

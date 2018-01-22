@@ -1,12 +1,25 @@
-module data.vector;
+module stl.vector;
 
-import memory.heap : Heap;
+alias AllocateFunc = void[]function(size_t wantSize) @safe;
+alias FreeFunc = void function(void[] address) @safe;
+__gshared AllocateFunc vectorAllocate;
+__gshared FreeFunc vectorFree;
 
 @safe struct Vector(T) if (!is(T == class)) {
 public:
-	 ~this() {
+	void[] vectorAllocate(size_t wantSize) @trusted {
+		assert(.vectorAllocate);
+		return .vectorAllocate(wantSize);
+	}
+
+	void vectorFree(void[] address) @trusted {
+		assert(.vectorFree);
+		return .vectorFree(address);
+	}
+
+	~this() {
 		clear();
-		Heap.free(_list);
+		vectorFree(_list);
 	}
 
 	ref T put(T value) {
@@ -110,6 +123,7 @@ public:
 		}
 		return res;
 	}
+
 	int opApply(scope int delegate(const ref T) cb) @trusted {
 		int res;
 		for (size_t i = 0; i < _length; i++) {
@@ -157,9 +171,9 @@ private:
 	size_t _length;
 
 	void _expand() @trusted {
-		T[] newList = cast(T[])Heap.allocate(T.sizeof * (_list.length + _growFactor));
+		T[] newList = cast(T[])vectorAllocate(T.sizeof * (_list.length + _growFactor));
 		newList[0 .. _list.length] = _list[];
-		Heap.free(_list);
+		vectorFree(_list);
 		_list = newList;
 	}
 }

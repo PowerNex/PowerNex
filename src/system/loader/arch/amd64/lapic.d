@@ -8,7 +8,7 @@
  */
 module arch.amd64.lapic;
 
-import data.address;
+import stl.address;
 
 private extern __gshared extern (C) VirtAddress LAPIC_address;
 private extern extern (C) void LAPIC_dummyTimer();
@@ -30,8 +30,8 @@ private extern extern (C) void LAPIC_spuriousTimer();
 public static:
 	///
 	void init() @trusted {
-		import api : getPowerDAPI;
-		import api.cpu : CPUThread;
+		import powerd.api : getPowerDAPI;
+		import powerd.api.cpu : CPUThread;
 		import arch.amd64.msr : MSR;
 		import arch.amd64.idt : IDT;
 		import io.log : Log;
@@ -64,7 +64,9 @@ public static:
 
 		if (!_x2APIC) {
 			if (!_lapicAddress) {
-				_lapicAddress = getPowerDAPI.acpi.lapicAddress.mapSpecial(0x1000, true, false);
+				import arch.amd64.paging : Paging;
+
+				_lapicAddress = Paging.mapSpecialAddress(getPowerDAPI.acpi.lapicAddress, 0x1000, true, false);
 				() @trusted{ LAPIC_address = _lapicAddress; }();
 			}
 			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24));
@@ -73,8 +75,11 @@ public static:
 
 	/*///
 	void cleanup() {
-		if (!_x2APIC)
-			_lapicAddress.unmapSpecial(0x1000);
+		if (!_x2APIC) {
+			import arch.amd64.paging : Paging;
+
+			Paging.unmapSpecialAddress(_lapicAddress, 0x1000);
+		}
 	}*/
 
 	void calibrate() @trusted {
@@ -286,7 +291,7 @@ private static:
 
 	// Register.interruptCommand
 	struct InterruptCommand {
-		import data.bitfield : bitfield;
+		import stl.bitfield : bitfield;
 
 		uint data;
 		// dfmt off
@@ -320,7 +325,7 @@ private static:
 
 	// Register.localVectorTable* (not Timer)
 	struct LocalVectorTable {
-		import data.bitfield : bitfield;
+		import stl.bitfield : bitfield;
 
 		enum LocalVectorTable disabled = () { LocalVectorTable lvt; lvt.mask = true; return lvt; }();
 
@@ -350,7 +355,7 @@ private static:
 
 	// Register.localVectorTableTimer
 	struct LVTTimer {
-		import data.bitfield : bitfield;
+		import stl.bitfield : bitfield;
 
 		enum LVTTimer disabled = () { LVTTimer timer; timer.mask = true; return timer; }();
 
@@ -369,7 +374,7 @@ private static:
 
 	// Register.spurious
 	struct Spurious {
-		import data.bitfield : bitfield;
+		import stl.bitfield : bitfield;
 
 		uint data;
 		// dfmt off

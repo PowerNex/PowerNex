@@ -19,7 +19,7 @@ static assert(IDTBase.sizeof == 10);
 ///
 @safe struct IDTDescriptor {
 align(1):
-	import data.bitfield : bitfield;
+	import stl.bitfield : bitfield;
 
 	ushort targetLow; ///
 	ushort segment; ///
@@ -125,8 +125,8 @@ public static:
 	}
 
 	/// Returns: The address to the old gate function
-	static from!"data.address".VirtAddress registerGate(uint id, from!"data.address".VirtAddress gateFunction) @trusted {
-		import data.address : VirtAddress;
+	static from!"stl.address".VirtAddress registerGate(uint id, from!"stl.address".VirtAddress gateFunction) @trusted {
+		import stl.address : VirtAddress;
 
 		auto d = &desc[id];
 		VirtAddress oldFunction = ((cast(ulong)d.targetHigh << 32UL) | (cast(ulong)d.targetMiddle << 16UL) | cast(ulong)d.targetLow)
@@ -275,7 +275,7 @@ private static:
 			handler(regs);
 		else
 			with (regs) {
-				import data.text : HexInt;
+				import stl.text : HexInt;
 				import arch.amd64.lapic : LAPIC;
 
 				size_t id = LAPIC.getCurrentID();
@@ -321,7 +321,7 @@ private static:
 private void _onGPF(from!"arch.amd64.register".Registers* regs) @safe {
 	import io.vga : VGA, CGASlotColor, CGAColor;
 	import io.log : Log;
-	import data.text : HexInt;
+	import stl.text : HexInt;
 	import arch.amd64.lapic : LAPIC;
 
 	size_t id = LAPIC.getCurrentID();

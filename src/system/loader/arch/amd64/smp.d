@@ -1,6 +1,6 @@
 module arch.amd64.smp;
 
-import data.address;
+import stl.address;
 
 extern (C) extern __gshared ubyte boot16_location, boot16_start, boot16_end;
 
@@ -8,8 +8,8 @@ extern (C) extern __gshared ubyte boot16_location, boot16_start, boot16_end;
 public static:
 	void init() @trusted {
 		import arch.amd64.lapic : LAPIC;
-		import api : getPowerDAPI;
-		import api.cpu : CPUThread;
+		import powerd.api : getPowerDAPI;
+		import powerd.api.cpu : CPUThread;
 		import io.log : Log;
 
 		_setupInit16();

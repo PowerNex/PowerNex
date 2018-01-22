@@ -8,9 +8,9 @@
  */
 module data.multiboot2;
 
-import data.address;
+import stl.address;
 import io.log : Log;
-import data.text : HexInt;
+import stl.text : HexInt;
 import data.elf64 : ELF64SectionHeader;
 
 ///
@@ -95,7 +95,7 @@ align(1):
 
 	///
 	@property char[] cmdLine() @trusted {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		char* str = (VirtAddress(&this) + Multiboot2TagCmdLine.sizeof).ptr!char;
 
@@ -111,7 +111,7 @@ align(1):
 
 	///
 	@property char[] bootLoaderName() @trusted {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		char* str = (VirtAddress(&this) + Multiboot2TagBootLoaderName.sizeof).ptr!char;
 		return str[0 .. str.strlen];
@@ -129,7 +129,7 @@ align(1):
 
 	///
 	@property char[] name() @trusted {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		char* str = (VirtAddress(&this) + Multiboot2TagModule.sizeof).ptr!char;
 		return str[0 .. str.strlen];
@@ -419,7 +419,7 @@ public static:
 			auto t = cast(Multiboot2TagELFSections*)tag;
 
 			char[] lookUpName(uint nameIdx) @trusted {
-				import data.text : strlen;
+				import stl.text : strlen;
 
 				auto tmp = t.sections[t.shndx];
 				char* name = (tmp.addr + nameIdx).ptr!char;
@@ -556,7 +556,7 @@ public static:
 
 	///
 	void accept(Multiboot2TagModule* tag) {
-		import api : getPowerDAPI, Module;
+		import powerd.api : getPowerDAPI, Module;
 
 		Log.debug_("Multiboot2TagModule: start: ", tag.modStart, ", end: ", tag.modEnd, ", name: ", tag.name);
 
@@ -565,7 +565,7 @@ public static:
 
 	///
 	void accept(Multiboot2TagBasicMeminfo* tag) {
-		import api : getPowerDAPI;
+		import powerd.api : getPowerDAPI;
 
 		Log.debug_("Multiboot2TagBasicMeminfo: lower:", tag.memLower, ", upper: ", tag.memUpper);
 
@@ -579,7 +579,7 @@ public static:
 
 	///
 	void accept(Multiboot2TagMMap* tag) {
-		import api : getPowerDAPI, MemoryMap;
+		import powerd.api : getPowerDAPI, MemoryMap;
 		import memory.frameallocator : FrameAllocator;
 
 		Log.debug_("Multiboot2TagMMap: size: ", tag.entrySize, " version: ", tag.entryVersion, ", entries:");
@@ -614,7 +614,7 @@ public static:
 		Log.debug_("Multiboot2TagELFSections: num: ", tag.num, ", entsize: ", tag.entsize, ", shndx: ", tag.shndx, ", sections: ");
 
 		char[] lookUpName(uint nameIdx) @trusted {
-			import data.text : strlen;
+			import stl.text : strlen;
 
 			auto tmp = tag.sections[tag.shndx];
 			char* name = (tmp.addr + nameIdx).ptr!char;
@@ -704,7 +704,7 @@ public static:
 
 	///
 	PhysMemoryRange getModule(string name) {
-		import api : getPowerDAPI, Module;
+		import powerd.api : getPowerDAPI, Module;
 
 		foreach (const ref Module m; getPowerDAPI.modules)
 			if (m.name == name)

@@ -9,7 +9,7 @@
 module io.ioport;
 
 T inp(T)(ushort port) @trusted {
-	import util.trait : isByte, isShort, isInt;
+	import stl.trait : isByte, isShort, isInt;
 
 	T ret;
 	asm pure nothrow {
@@ -38,7 +38,7 @@ T inp(T)(ushort port) @trusted {
 }
 
 void outp(T)(ushort port, T d) @trusted {
-	import util.trait : isByte, isShort, isInt;
+	import stl.trait : isByte, isShort, isInt;
 
 	uint data = d;
 	asm pure nothrow {

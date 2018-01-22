@@ -68,6 +68,11 @@ struct Screen(int w, int h) {
 		_enabled = true;
 	}
 
+	void setCoord(ubyte x, ubyte y) {
+		_x = x;
+		_y = y;
+	}
+
 	void clear() {
 		if (!_enabled)
 			return;
