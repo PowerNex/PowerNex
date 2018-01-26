@@ -66,6 +66,8 @@ extern (C) void kmain(PowerDAPI* papi) {
 	scr.background = Color(255, 255, 0);
 	scr.writeln("kmain functions has exited!");
 	Log.fatal("kmain functions has exited!");
+	while (true) {
+	}
 }
 
 void bootTTYToTextmode(size_t start, size_t end) {

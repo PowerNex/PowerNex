@@ -19,6 +19,7 @@
 .type boot64BSP, %function
 boot64BSP:
 	cli
+
 	mov $0x10, %ax
 	mov %ax, %ds
 	mov %ax, %es

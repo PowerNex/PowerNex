@@ -262,7 +262,6 @@ private static:
 		import io.ioport : outp;
 		import arch.amd64.pic : PIC;
 
-		regs.intNumber &= 0xFF;
 		if (PIC.enabled) {
 			if (irq(0) <= regs.intNumber && regs.intNumber <= irq(16)) {
 				if (regs.intNumber >= irq(8))
@@ -271,17 +270,15 @@ private static:
 			}
 		}
 
-		if (auto handler = handlers[regs.intNumber])
+		if (auto handler = handlers[regs.intNumber]) {
 			handler(regs);
-		else
+		} else
 			with (regs) {
 				import stl.text : HexInt;
 				import arch.amd64.lapic : LAPIC;
 
 				size_t id = LAPIC.getCurrentID();
-
 				Log.Func func = Log.getFuncName(rip);
-
 				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 				VGA.writeln("===> Unhandled interrupt (CPU ", id, ")");
 				VGA.writeln("IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip);
@@ -325,10 +322,8 @@ private void _onGPF(from!"arch.amd64.register".Registers* regs) @safe {
 	import arch.amd64.lapic : LAPIC;
 
 	size_t id = LAPIC.getCurrentID();
-
 	with (regs) {
 		Log.Func func = Log.getFuncName(rip);
-
 		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 		VGA.writeln("===> GeneralProtectionFault (CPU ", id, ")");
 		VGA.writeln("                          | RIP = ", rip);

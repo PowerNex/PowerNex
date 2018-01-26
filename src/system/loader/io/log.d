@@ -48,10 +48,6 @@ public static:
 		return CMOS.timeStamp();*/
 	}
 
-	///
-	void init() {
-		_indent = 0;
-	}
 
 	///
 	void setSymbolMap(ELF64Symbol[] symbols, char[] strings) @trusted {
@@ -72,8 +68,6 @@ public static:
 		import stl.address : VirtAddress, PhysAddress, PhysAddress32;
 
 		char[ulong.sizeof * 8] buf;
-		for (int i = 0; i < _indent; i++)
-			com1.write(' ');
 
 		com1.write('[', itoa(seconds(), buf, 10), ']');
 		com1.write('[', level.toChar, "] ", file /*, ": ", func*/ , '@');
@@ -190,7 +184,6 @@ public static:
 	}
 
 private static:
-	__gshared int _indent;
 	__gshared ELF64Symbol[] _symbols;
 	__gshared char[] _strings;
 

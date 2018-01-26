@@ -99,18 +99,19 @@ extern (C) ulong main() @safe {
 	import data.elf64 : ELF64, ELFInstance;
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
+	import io.com : COM;
 	import io.vga : VGA;
 	import io.log : Log;
 	import memory.frameallocator : FrameAllocator;
 	import memory.heap : Heap;
 
-	GDT.init();
-	IDT.init();
+	COM.init();
+	VGA.init();
 
 	PIT.init();
 
-	Log.init();
-	VGA.init();
+	GDT.init();
+	IDT.init();
 
 	outputBoth("Hello world from D!");
 	outputBoth("\tCompiled using '", __VENDOR__, "', D version ", _major, ".", _minor);
@@ -185,9 +186,9 @@ extern (C) ulong main() @safe {
 		auto papi = &getPowerDAPI();
 		papi.screenX = VGA.x;
 		papi.screenY = VGA.y;
-		size_t output = kernel.main(papi);
+		size_t output = kernel.main(papi); // TODO: Call this and set return address to 0
 		//outputBoth("Main function returned: ", output.VirtAddress);
-		assert(0, "Kernel main function returned!");
+		assert(0, "Kernel main function returned! This should never ever happen!");
 	}();
 
 	outputBoth("Reached end of main! Shutting down in 2 seconds.");

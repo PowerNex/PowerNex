@@ -202,10 +202,6 @@ public static:
 		ic.deliveryMode = DeliveryMode.init;
 		ic.level = assert_ ? Level.assert_ : Level.deassert;
 
-		import io.log : Log;
-
-		Log.debug_("ic.data: ", cast(void*)(ic.data | (cast(ulong)destination << (32UL + 24UL))));
-
 		if (_x2APIC)
 			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
 		else {
@@ -220,10 +216,6 @@ public static:
 		ic.vector = (entrypointPage >> 12).num!ubyte;
 		ic.deliveryMode = DeliveryMode.startup;
 		ic.level = Level.assert_;
-
-		import io.log : Log;
-
-		Log.debug_("ic.data: ", cast(void*)(ic.data | (cast(ulong)destination << (32UL + 24UL))));
 
 		if (_x2APIC)
 			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
@@ -406,8 +398,10 @@ private static:
 
 		if (_x2APIC)
 			return cast(uint)MSR.x2APICRegister(cast(ushort)offset);
-		else
+		else if (_lapicAddress)
 			return *(_lapicAddress + offset * 0x10).ptr!uint;
+		else
+			return 0; // INVALID
 	}
 
 	void _write(Registers offset, uint value) @trusted {
@@ -415,8 +409,10 @@ private static:
 
 		if (_x2APIC)
 			MSR.x2APICRegister(cast(ushort)offset, value);
-		else
+		else if (_lapicAddress)
 			*(_lapicAddress + offset * 0x10).ptr!uint = value;
+		else
+			return; // INVALID
 	}
 
 	ulong _read64(Registers offset) @trusted {

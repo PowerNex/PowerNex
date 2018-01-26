@@ -231,8 +231,11 @@ private static:
 
 		while (rbp) {
 			rip = rbp + ulong.sizeof;
-			if (!*rip.ptr!ulong)
-				break;
+			{
+				auto ptr = rip.ptr!ulong;
+				if (rip < 0x1000 || *ptr < 0x1000)
+					break;
+			}
 
 			com1.write("\t[");
 			///
