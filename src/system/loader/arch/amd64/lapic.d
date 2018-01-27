@@ -210,7 +210,7 @@ public static:
 		ic.level = assert_ ? Level.assert_ : Level.deassert;
 
 		if (_x2APIC)
-			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
 		else {
 			_write(Registers._interruptCommandHigh, destination << 24);
 			_write(Registers.interruptCommand, ic.data);
@@ -225,7 +225,7 @@ public static:
 		ic.level = Level.assert_;
 
 		if (_x2APIC)
-			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
 		else {
 			_write(Registers._interruptCommandHigh, destination << 24);
 			_write(Registers.interruptCommand, ic.data);
