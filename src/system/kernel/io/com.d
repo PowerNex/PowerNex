@@ -1,8 +1,8 @@
 module io.com;
 
 import io.port;
-import cpu.idt;
-import data.register;
+import arch.amd64.idt;
+import stl.register;
 
 ref COM com1() {
 	return comPorts[0];
@@ -128,7 +128,7 @@ private:
 
 	static void _handleIRQ(alias com)() {
 		import data.textbuffer : scr = getBootTTY;
-		import data.util : BinaryInt;
+		import stl.text : BinaryInt;
 
 		StatusInfo status = cast(StatusInfo)inp!ubyte(cast(ushort)(com.port + PortNumber.interruptIdentifier));
 		while (!(status & StatusInfo.interrupt)) {

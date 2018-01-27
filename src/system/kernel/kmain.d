@@ -1,6 +1,6 @@
 module kmain;
 
-import data.util : isVersion;
+import stl.trait : isVersion;
 
 static assert(isVersion!"PowerNex", "\x1B[31;1m\n\n
 +--------------------------------------- ERROR ---------------------------------------+
@@ -13,15 +13,15 @@ static assert(isVersion!"PowerNex", "\x1B[31;1m\n\n
 import memory.allocator;
 import io.com;
 import io.log;
-import cpu.gdt;
-import cpu.idt;
-import cpu.pit;
+import arch.amd64.gdt;
+import arch.amd64.idt;
+import arch.amd64.pit;
 import data.color;
 import data.multiboot;
 import hw.ps2.keyboard;
 import memory.frameallocator;
 import data.linker;
-import data.address;
+import stl.address;
 import memory.kheap;
 import acpi.rsdp;
 import hw.pci.pci;
@@ -43,9 +43,10 @@ private immutable uint _minor = __VERSION__ % 1000;
 __gshared SharedPtr!FileSystem rootFS;
 
 extern (C) void kmain(PowerDAPI* papi) {
+	assert(papi.magic == PowerDAPI.magicValue);
 	preInit(papi);
 	welcome();
-	//init(magic, info);
+	init(papi);
 	//asm pure nothrow {
 	//	sti;
 	//}
@@ -81,6 +82,7 @@ void bootTTYToTextmode(size_t start, size_t end) {
 
 void preInit(PowerDAPI* papi) {
 	import io.textmode;
+	import arch.amd64.lapic : LAPIC;
 
 	COM.init();
 	// TODO: Make sure that it only append on the loader output, not replaces it.
@@ -93,21 +95,21 @@ void preInit(PowerDAPI* papi) {
 	Log.init();
 	Log.info("Log is now enabled!");
 
+	scr.writeln("LAPIC initializing...");
+	Log.info("LAPIC initializing...");
+	LAPIC.init();
+
 	scr.writeln("GDT initializing...");
 	Log.info("GDT initializing...");
 	GDT.init();
 
 	scr.writeln("IDT initializing...");
 	Log.info("IDT initializing...");
-	//IDT.init();
+	IDT.init();
 
 	scr.writeln("Syscall Handler initializing...");
 	Log.info("Syscall Handler initializing...");
 	SyscallHandler.init();
-
-	scr.writeln("PIT initializing...");
-	Log.info("PIT initializing...");
-	//PIT.init();
 }
 
 void welcome() {
@@ -118,8 +120,8 @@ void welcome() {
 	Log.info("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
 }
 
-/+ void init(uint magic, ulong info) {
-	scr.writeln("Multiboot parsing...");
+ void init(PowerDAPI* papi) {
+/+	scr.writeln("Multiboot parsing...");
 	Log.info("Multiboot parsing...");
 	Multiboot.parseHeader(magic, info);
 
@@ -177,7 +179,8 @@ void welcome() {
 	/*scr.writeln("Scheduler initializing...");
 	Log.info("Scheduler initializing...");
 	getScheduler.init();*/
-} +/
+	+/
+}
 
 /+ void loadInitrd() {
 	import fs.tarfs : TarFS;
@@ -224,4 +227,5 @@ void welcome() {
 
 	Log.info("directoryEntries for rootFS!\n---------------------");
 	printData((*rootFS).root);
-} +/
+}
++/

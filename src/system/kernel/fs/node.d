@@ -1,7 +1,7 @@
 module fs.node;
 
-import data.bitfield;
-import data.range;
+import stl.bitfield;
+import stl.range;
 import memory.ptr;
 
 alias FSNodeID = ulong;

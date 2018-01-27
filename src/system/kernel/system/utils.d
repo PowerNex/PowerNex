@@ -1,6 +1,6 @@
 module system.utils;
 __EOF__
-import data.address;
+import stl.address;
 import task.scheduler;
 import memory.paging;
 

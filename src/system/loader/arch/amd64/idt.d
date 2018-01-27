@@ -90,7 +90,7 @@ alias irq = (ubyte x) => cast(ubyte)(0x20 + x);
 ///
 @safe static struct IDT {
 public static:
-	alias InterruptCallback = @safe void function(from!"arch.amd64.register".Registers* regs); ///
+	alias InterruptCallback = @safe void function(from!"stl.register".Registers* regs); ///
 	__gshared IDTBase base; ///
 	__gshared IDTDescriptor[256] desc; ///
 	__gshared InterruptCallback[256] handlers; ///
@@ -256,7 +256,7 @@ private static:
 		}
 	}
 
-	extern (C) void isrHandler(from!"arch.amd64.register".Registers* regs) @trusted {
+	extern (C) void isrHandler(from!"stl.register".Registers* regs) @trusted {
 		import io.vga : VGA, CGASlotColor, CGAColor;
 		import io.log : Log;
 		import io.ioport : outp;
@@ -281,7 +281,7 @@ private static:
 				Log.Func func = Log.getFuncName(rip);
 				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 				VGA.writeln("===> Unhandled interrupt (CPU ", id, ")");
-				VGA.writeln("IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip);
+				VGA.writeln("IRQ = ", intNumber.num!InterruptType, " (", intNumber.HexInt, ") | RIP = ", rip);
 				VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
 				VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
 				VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
@@ -297,7 +297,7 @@ private static:
 
 				// dfmt off
 				Log.error("===> Unhandled interrupt (CPU ", id, ")", "\n",
-					"IRQ = ", cast(InterruptType)intNumber, " (", intNumber.HexInt, ") | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
+					"IRQ = ", intNumber.num!InterruptType, " (", intNumber.HexInt, ") | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
 					"RAX = ", rax, " | RBX = ", rbx, "\n",
 					"RCX = ", rcx, " | RDX = ", rdx, "\n",
 					"RDI = ", rdi, " | RSI = ", rsi, "\n",
@@ -315,7 +315,7 @@ private static:
 	}
 }
 
-private void _onGPF(from!"arch.amd64.register".Registers* regs) @safe {
+private void _onGPF(from!"stl.register".Registers* regs) @safe {
 	import io.vga : VGA, CGASlotColor, CGAColor;
 	import io.log : Log;
 	import stl.text : HexInt;

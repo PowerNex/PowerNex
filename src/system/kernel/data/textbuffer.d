@@ -1,8 +1,8 @@
 module data.textbuffer;
 
 import data.color;
-import data.string_;
-import data.util;
+import stl.text;
+import stl.trait;
 import memory.allocator;
 
 enum SlotFlags : ushort {
@@ -54,7 +54,7 @@ public:
 	}
 
 	void write(Args...)(Args args) {
-		import data.address;
+		import stl.address;
 
 		size_t startPos = _count;
 		Color fg = _defaultFG;
@@ -215,7 +215,7 @@ private:
 }
 
 TextBuffer getBootTTY() {
-	import data.util : inplaceClass;
+	import stl.trait : inplaceClass;
 
 	__gshared TextBuffer textBuffer;
 	__gshared ubyte[__traits(classInstanceSize, TextBuffer)] buf;

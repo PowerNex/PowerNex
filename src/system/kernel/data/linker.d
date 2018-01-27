@@ -1,6 +1,6 @@
 module data.linker;
 
-import data.address;
+import stl.address;
 
 /*
 	You have to do it like this because the linker will put the variable at the address.

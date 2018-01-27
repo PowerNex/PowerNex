@@ -16,7 +16,7 @@ static private immutable uint _minor = __VERSION__ % 1000;
 private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) @trusted {
 	import io.vga : VGA;
 	import io.log : Log;
-	import arch.amd64.msr : MSR;
+	import stl.arch.amd64.msr : MSR;
 	import stl.text : HexInt;
 
 	if (MSR.fs) {

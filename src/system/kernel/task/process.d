@@ -1,9 +1,9 @@
 module task.process;
 
-import data.address;
+import stl.address;
 import data.linkedlist;
 import memory.kheap;
-import data.register;
+import stl.register;
 import data.elf;
 import fs;
 import data.container;

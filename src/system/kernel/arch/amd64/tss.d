@@ -1,7 +1,7 @@
-module cpu.tss;
+module arch.amd64.tss;
 
-import data.bitfield;
-import data.address;
+import stl.bitfield;
+import stl.address;
 
 struct TSS {
 align(1):

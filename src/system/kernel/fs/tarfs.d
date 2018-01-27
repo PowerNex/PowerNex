@@ -2,9 +2,9 @@ module fs.tarfs;
 
 import fs;
 
-import data.address;
+import stl.address;
 import data.container;
-import data.string_;
+import stl.text;
 import memory.ptr;
 import memory.allocator;
 

@@ -1,11 +1,11 @@
 module system.syscallhandler;
 
-import cpu.idt;
-import cpu.msr;
-import data.register;
+import arch.amd64.idt;
+import stl.arch.amd64.msr;
+import stl.register;
 import system.syscall;
 import data.parameters;
-import data.address;
+import stl.address;
 
 extern (C) void onSyscall();
 
@@ -40,12 +40,13 @@ public:
 private:
 	static void _onSyscallHandler(Registers* regs) {
 		import data.textbuffer : scr = getBootTTY;
+
 		/*import task.scheduler : getScheduler;
 
 		auto process = getScheduler.currentProcess;
 
 		(*process).syscallRegisters = *regs;*/
-		with (regs)/*
+		with (regs) /*
 	outer : switch (cast(SyscallID)rax) {
 			foreach (func; __traits(derivedMembers, system.syscall)) {
 				static if (is(typeof(mixin("system.syscall." ~ func)) == function))
@@ -58,8 +59,8 @@ private:
 					}
 			}
 		default:*/
-			scr.writeln("UNKNOWN SYSCALL: ", cast(void*)rax);
-			/*(*process).syscallRegisters.rax = ulong.max;
+			scr.writeln("UNKNOWN SYSCALL: ", rax);
+		/*(*process).syscallRegisters.rax = ulong.max;
 			break;
 		}
 		*regs = (*process).syscallRegisters;*/
@@ -70,7 +71,7 @@ private:
 			assert(0);
 			return "";
 		} else {
-			import data.util : isArray;
+			import stl.trait : isArray;
 
 			enum abi = ["rdi", "rsi", "rdx", "r8", "r9", "r10", "r12", "r13", "r14", "r15"];
 

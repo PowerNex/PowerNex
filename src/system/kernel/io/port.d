@@ -1,6 +1,6 @@
 module io.port;
 
-import data.util;
+import stl.trait;
 
 T inp(T)(ushort port) {
 	T ret;

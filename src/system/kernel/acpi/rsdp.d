@@ -1,6 +1,6 @@
 module acpi.rsdp;
 
-import data.address;
+import stl.address;
 import data.textbuffer : scr = getBootTTY;
 import io.port;
 

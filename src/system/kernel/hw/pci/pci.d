@@ -1,6 +1,6 @@
 module hw.pci.pci;
 
-import data.address;
+import stl.address;
 import io.port;
 import io.log;
 import memory.allocator;

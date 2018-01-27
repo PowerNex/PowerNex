@@ -3,7 +3,7 @@ module data.psf;
 import fs;
 import memory.ptr;
 import data.font;
-import data.utf;
+import stl.utf;
 
 private enum {
 	psf2Magic0 = 0x72,

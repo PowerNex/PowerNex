@@ -2,7 +2,7 @@ module memory.ptr;
 
 import memory.allocator;
 
-import data.util : isClass;
+import stl.trait : isClass;
 
 struct PtrCounter {
 public:

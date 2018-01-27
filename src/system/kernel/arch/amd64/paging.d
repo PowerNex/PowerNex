@@ -1,8 +1,8 @@
 module arch.amd64.paging;
 
 import arch.paging;
-import data.address;
-import data.util;
+import stl.address;
+import stl.trait;
 import memory.vmm;
 
 /*
@@ -238,7 +238,7 @@ class HWPaging : IHWPaging {
 public:
 	this(PhysAddress pml4Address) {
 		_addr = pml4Address;
-		import cpu.idt : IDT, InterruptType;
+		import arch.amd64.idt : IDT, InterruptType;
 
 		IDT.register(InterruptType.pageFault, &_onPageFault);
 	}
@@ -473,7 +473,7 @@ private:
 
 private extern (C) ulong cpuRetCR3();
 
-private void _onPageFault(from!"data.register".Registers* regs) {
+private void _onPageFault(from!"stl.register".Registers* regs) {
 	import data.textbuffer : scr = getBootTTY;
 	import io.log;
 
@@ -556,21 +556,21 @@ private void _onPageFault(from!"data.register".Registers* regs) {
 
 		scr.foreground = Color(255, 0, 0);
 		scr.writeln("===> PAGE FAULT");
-		scr.writeln("IRQ = ", intNumber, " | RIP = ", cast(void*)rip);
-		scr.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
-		scr.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
-		scr.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
-		scr.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
-		scr.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
-		scr.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
-		scr.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
-		scr.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
-		scr.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
-		scr.writeln(" addr = ", cast(void*)addr, " | CR3 = ", cast(void*)cr3);
-		scr.writeln("Flags: ", cast(void*)flags);
-		scr.writeln("Errorcode: ", cast(void*)errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
-				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
-				(errorCode & (1 << 3) ? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
+		scr.writeln("IRQ = ", intNumber, " | RIP = ", rip);
+		scr.writeln("RAX = ", rax, " | RBX = ", rbx);
+		scr.writeln("RCX = ", rcx, " | RDX = ", rdx);
+		scr.writeln("RDI = ", rdi, " | RSI = ", rsi);
+		scr.writeln("RSP = ", rsp, " | RBP = ", rbp);
+		scr.writeln(" R8 = ", r8, "  |  R9 = ", r9);
+		scr.writeln("R10 = ", r10, " | R11 = ", r11);
+		scr.writeln("R12 = ", r12, " | R13 = ", r13);
+		scr.writeln("R14 = ", r14, " | R15 = ", r15);
+		scr.writeln(" CS = ", cs, "  |  SS = ", ss);
+		scr.writeln(" addr = ", addr, " | CR3 = ", cr3);
+		scr.writeln("Flags: ", flags);
+		scr.writeln("Errorcode: ", errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"), (errorCode & (1 << 1)
+				? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"), (errorCode & (1 << 3)
+				? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
 		scr.writeln("PDP Mode: ", (pml3Flags & VMPageFlags.present) ? "R" : "", (pml3Flags & VMPageFlags.writable) ? "W" : "",
 				(pml3Flags & VMPageFlags.execute) ? "X" : "", (pml3Flags & VMPageFlags.user) ? "-User" : "");
 		scr.writeln("PD Mode: ", (pml2Flags & VMPageFlags.present) ? "R" : "", (pml2Flags & VMPageFlags.writable) ? "W" : "",
@@ -581,19 +581,19 @@ private void _onPageFault(from!"data.register".Registers* regs) {
 				(pageFlags & VMPageFlags.execute) ? "X" : "", (pageFlags & VMPageFlags.user) ? "-User" : "");
 
 		//dfmt off
-		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", cast(void*)rip, "\n",
-			"RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n",
-			"RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n",
-			"RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi, "\n",
-			"RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n",
-			" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9, "\n",
-			"R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11, "\n",
-			"R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13, "\n",
-			"R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15, "\n",
-			" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss, "\n",
-			" addr = ",	cast(void*)addr, " | CR3 = ", cast(void*)cr3, "\n",
-			"Flags: ", cast(void*)flags, "\n",
-			"Errorcode: ", cast(void*)errorCode, " (",
+		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, "\n",
+			"RAX = ", rax, " | RBX = ", rbx, "\n",
+			"RCX = ", rcx, " | RDX = ", rdx, "\n",
+			"RDI = ", rdi, " | RSI = ", rsi, "\n",
+			"RSP = ", rsp, " | RBP = ", rbp, "\n",
+			" R8 = ", r8, "  |  R9 = ", r9, "\n",
+			"R10 = ", r10, " | R11 = ", r11, "\n",
+			"R12 = ", r12, " | R13 = ", r13, "\n",
+			"R14 = ", r14, " | R15 = ", r15, "\n",
+			" CS = ", cs, "  |  SS = ", ss, "\n",
+			" addr = ",	addr, " | CR3 = ", cr3, "\n",
+			"Flags: ", flags, "\n",
+			"Errorcode: ", errorCode, " (",
 				(errorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(errorCode & (1 << 1) ? " Write" : " Read"),
 				(errorCode & (1 << 2) ? " UserMode" : " KernelMode"),

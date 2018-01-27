@@ -1,6 +1,6 @@
 module memory.frameallocator;
 
-import data.address;
+import stl.address;
 import io.log;
 import data.linker;
 import data.multiboot;

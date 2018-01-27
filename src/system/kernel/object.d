@@ -54,7 +54,7 @@ template from(string moduleName) {
 	mixin("import from = " ~ moduleName ~ ";");
 }
 
-import data.string_ : strlen;
+import stl.text : strlen;
 
 void exit(ssize_t code = 0) {
 	asm pure nothrow {
@@ -298,7 +298,7 @@ extern (C) {
 	}
 
 	void __assert (const char *msg, immutable(char)*file, int line) {
-		import data.text : strlen;
+		import stl.text : strlen;
 
 		onAssert("Switch assertion failure", file[0 .. strlen(file)], line);
 	}

@@ -9,7 +9,7 @@
 module arch.amd64.gdt;
 
 //import stl.bitfield;
-//import cpu.tss;
+//import arch.amd64.tss;
 
 ///
 align(1) @trusted struct GDTBase {

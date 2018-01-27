@@ -1,7 +1,7 @@
 module hw.cmos.cmos;
 
 import io.port;
-import cpu.pit;
+import arch.amd64.pit;
 
 private enum {
 	cmosAddress = 0x70,
@@ -59,7 +59,7 @@ public static:
 		if (_centuryReg)
 			rawData[cmosYear] += rawData[_centuryReg] * 100;
 		else {
-			import data.string_;
+			import stl.text;
 
 			string year = __DATE__[$ - 4 .. $];
 			ushort currentYear = cast(ushort)atoi(year);

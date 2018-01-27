@@ -1,8 +1,8 @@
 module io.textmode;
 
 import io.port;
-import data.util;
-import data.string_;
+import stl.trait;
+import stl.text;
 import data.textbuffer;
 
 enum Colors : ubyte {

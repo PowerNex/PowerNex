@@ -2,9 +2,9 @@ module data.elf;
 
 __EOF__
 
-import data.bitfield;
-import data.address;
-import data.string_;
+import stl.bitfield;
+import stl.address;
+import stl.text;
 import fs;
 import io.log;
 import data.textbuffer : scr = getBootTTY;

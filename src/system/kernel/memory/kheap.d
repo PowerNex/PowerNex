@@ -9,7 +9,7 @@ struct BuddyHeader {
 static assert(BuddyHeader.sizeof == 2 * ulong.sizeof);
 
 struct KHeap {
-	import data.address;
+	import stl.address;
 
 static:
 public:
@@ -22,7 +22,7 @@ public:
 	}
 
 	void[] allocate(size_t size) {
-		import data.util : log2;
+		import stl.number : log2;
 
 		size = (size + BuddyHeader.sizeof + _minSize - 1) & ~(_minSize - 1);
 		if (size > _maxSize)

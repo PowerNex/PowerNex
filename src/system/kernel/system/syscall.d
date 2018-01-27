@@ -1,8 +1,8 @@
 module system.syscall;
 
-import data.address;
-import data.string_;
-import data.register;
+import stl.address;
+import stl.text;
+import stl.register;
 import system.utils;
 import task.process;
 import data.container;
@@ -300,7 +300,7 @@ void read(size_t id, ubyte[] data, size_t offset) {
 @SyscallEntry(SyscallID.getTimestamp)
 void getTimestamp() {
 	assert(0);
-	/*import cpu.pit;
+	/*import arch.amd64.pit;
 	import hw.cmos.cmos;
 
 	auto scheduler = getScheduler;

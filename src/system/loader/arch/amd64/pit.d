@@ -41,7 +41,7 @@ private static:
 	__gshared uint _hz;
 	__gshared size_t _counter;
 
-	void _onTick(from!"arch.amd64.register".Registers* regs) @trusted {
+	void _onTick(from!"stl.register".Registers* regs) @trusted {
 		_counter++;
 	}
 }

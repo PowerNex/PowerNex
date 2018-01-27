@@ -615,8 +615,8 @@ public static: ///
 
 		with (getPowerDAPI.acpi) {
 			with (shutdown) {
-				pm1aControlBlock = cast(ushort)fadt.xPM1aControlBlock.address;
-				pm1bControlBlock = cast(ushort)fadt.xPM1bControlBlock.address;
+				pm1aControlBlock = fadt.xPM1aControlBlock.address.num!ushort;
+				pm1bControlBlock = fadt.xPM1bControlBlock.address.num!ushort;
 			}
 
 			with (reboot) {
@@ -633,15 +633,15 @@ public static: ///
 		}
 		// Enabling ACPI (if possible)
 		if (fadt.smiCommandPort && fadt.acpiEnable && fadt.acpiDisable
-				&& !inp!PM1ControlBlock(cast(ushort)fadt.xPM1aControlBlock.address).sciEnable) {
+				&& !inp!PM1ControlBlock(fadt.xPM1aControlBlock.address.num!ushort).sciEnable) {
 			outp!ubyte(cast(ushort)fadt.smiCommandPort, fadt.acpiEnable);
 
 			size_t counter;
-			while (!inp!PM1ControlBlock(cast(ushort)fadt.xPM1aControlBlock.address).sciEnable && counter++ < 300)
+			while (!inp!PM1ControlBlock(fadt.xPM1aControlBlock.address.num!ushort).sciEnable && counter++ < 300)
 				PIT.earlySleep(10);
 
 			if (fadt.xPM1bControlBlock.address)
-				while (!inp!PM1ControlBlock(cast(ushort)fadt.xPM1bControlBlock.address).sciEnable && counter++ < 300)
+				while (!inp!PM1ControlBlock(fadt.xPM1bControlBlock.address.num!ushort).sciEnable && counter++ < 300)
 					PIT.earlySleep(10);
 
 			if (counter >= 300)

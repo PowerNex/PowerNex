@@ -1,8 +1,8 @@
 module hw.ps2.keyboard;
 
-import cpu.idt;
-import data.register;
-import data.bitfield;
+import arch.amd64.idt;
+import stl.register;
+import stl.bitfield;
 import io.log;
 import io.port;
 import hw.ps2.kbset;

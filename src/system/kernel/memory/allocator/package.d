@@ -168,7 +168,7 @@ __gshared IAllocator kernelAllocator = null;
 
 void initKernelAllocator() {
 	import memory.allocator.kheapallocator;
-	import data.util : inplaceClass;
+	import stl.trait : inplaceClass;
 
 	__gshared ubyte[__traits(classInstanceSize, KHeapAllocator)] data;
 	kernelAllocator = inplaceClass!KHeapAllocator(data);

@@ -6,9 +6,9 @@ version (X86_64) {
 	static assert(0, "Paging is not implemented for the architecture!");
 }
 
-import data.address;
+import stl.address;
 import memory.vmm;
-import data.util : TypeTuple;
+import stl.trait : AliasSeq;
 
 //TODO: Change to HWPaging, using hack to allocator class!
 __gshared IHWPaging kernelHWPaging;
@@ -59,9 +59,9 @@ interface IHWPaging { // Hardware implementation of paging
 }
 
 void initKernelHWPaging() {
-	import data.util : inplaceClass;
+	import stl.trait : inplaceClass;
 	import data.linker : Linker;
-	import data.address : PhysAddress;
+	import stl.address : PhysAddress;
 
 	immutable ulong KERNEL_VMA = 0xFFFFFFFF80000000; // From boot.S
 

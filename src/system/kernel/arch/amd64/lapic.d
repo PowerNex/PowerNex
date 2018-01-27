@@ -36,55 +36,31 @@ public static:
 		import arch.amd64.idt : IDT;
 		import io.log : Log;
 
-		{ // check cpuid for x2apic
-			enum x2APICFlag = 1 << 21;
-			uint ecxValue = void;
-			asm pure nothrow @trusted {
-				mov EAX, 1;
-				cpuid;
-				mov ecxValue, ECX;
-			}
+		_x2APIC = getPowerDAPI.cpus.x2APIC;
+		_cpuBusFreq = getPowerDAPI.cpus.cpuBusFreq;
 
-			_x2APIC = !!(ecxValue & x2APICFlag);
-			_x2APIC = false; //TODO: X2APIC breaks booting of APs
-			getPowerDAPI.cpus.x2APIC = _x2APIC;
-			Log.info("X2APIC support: ", _x2APIC);
+		if (!_x2APIC && !_lapicAddress) {
+			const ulong specialID = 510;
+			import memory.vmm : VMPageFlags;
+			import arch.amd64.paging : kernelHWPaging, _makeAddress;
+
+			_lapicAddress = getPowerDAPI.cpus.lapicAddress;
+			() @trusted{ LAPIC_address = _lapicAddress; }();
 		}
 
-		{ // Enable lapic
-			enum xAPICEnableFlag = 1 << 11;
-			enum x2APICEnableFlag = 1 << 10;
-			ulong apicBase = MSR.apic;
-
-			apicBase |= xAPICEnableFlag;
-			if (_x2APIC)
-				apicBase |= x2APICEnableFlag;
-
-			MSR.apic = apicBase;
-		}
-
-		if (!_x2APIC) {
-			if (!_lapicAddress) {
-				import arch.amd64.paging : Paging;
-
-				_lapicAddress = Paging.mapSpecialAddress(getPowerDAPI.acpi.lapicAddress, 0x1000, true, false);
-				() @trusted{ LAPIC_address = _lapicAddress; }();
-				getPowerDAPI.cpus.lapicAddress = _lapicAddress;
-			}
-			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24));
-		}
+		setup();
 	}
 
 	/*///
 	void cleanup() {
 		if (!_x2APIC) {
-			import arch.amd64.paging : Paging;
+			import arch.amd64.paging : kernelHWPaging;
 
-			Paging.unmapSpecialAddress(_lapicAddress, 0x1000);
+			kernelHWPaging.unmapSpecialAddress(_lapicAddress, 0x1000);
 		}
 	}*/
 
-	void calibrate() @trusted {
+	/+ void calibrate() @trusted {
 		import arch.amd64.idt : IDT, irq;
 		import stl.arch.amd64.msr : MSR;
 		import io.log : Log;
@@ -158,16 +134,11 @@ public static:
 			_cpuBusFreq = uint.max - counterValue + 1;
 			_cpuBusFreq *= divitionPower;
 			_cpuBusFreq *= pitHZ;
-
-			{
-				import powerd.api : getPowerDAPI;
-				getPowerDAPI.cpus.cpuBusFreq = _cpuBusFreq;
-			}
 		}
 
 		IDT.registerGate(255, oldIRQ255);
 		IDT.registerGate(irq(0), oldIRQ0);
-	}
+	}+/
 
 	void setup() @trusted {
 		import arch.amd64.idt : IDT, irq;

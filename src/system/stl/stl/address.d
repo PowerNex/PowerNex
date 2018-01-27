@@ -47,6 +47,11 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
+	bool opCast(T : bool)() {
+		return !!addr;
+	}
+
+	///
 	Self opBinary(string op)(void* other) const {
 		return Self(mixin("addr" ~ op ~ "cast(Type)other"));
 	}
@@ -195,11 +200,6 @@ private mixin template AddressBase(Type = size_t) {
 	@property PhysAddress toX64() {
 		return addr.PhysAddress;
 	}
-
-	///
-	PhysAddress opCast(T : PhysAddress)() {
-		return addr.PhysAddress;
-	}
 }
 
 @safe mixin template MemoryRange(Address) {
@@ -243,11 +243,6 @@ private mixin template AddressBase(Type = size_t) {
 
 	///
 	@property PhysMemoryRange toX64() {
-		return PhysMemoryRange(start.toX64, end.toX64);
-	}
-
-	///
-	PhysMemoryRange opCast(T : PhysMemoryRange)() {
 		return PhysMemoryRange(start.toX64, end.toX64);
 	}
 }

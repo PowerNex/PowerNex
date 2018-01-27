@@ -16,7 +16,7 @@ public:
 
 	bool addKeyboardInput(dchar ch) {
 		import task.scheduler;
-		import data.utf;
+		import stl.utf;
 
 		if (kbEnd + 1 == kbStart)
 			return false;

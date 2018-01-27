@@ -3,7 +3,7 @@ module data.multiboot;
 import data.linker;
 import data.textbuffer : scr = getBootTTY;
 import io.log;
-import data.address;
+import stl.address;
 
 enum MultibootTagType {
 	align_ = 8,

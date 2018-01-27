@@ -1,7 +1,7 @@
-module cpu.idt;
+module arch.amd64.idt;
 
-import data.register;
-import data.bitfield;
+import stl.register;
+import stl.bitfield;
 import io.port;
 
 align(1) struct IDTBase {
@@ -73,7 +73,7 @@ enum InterruptStackType : ushort {
 	mce
 }
 
-alias irq = (x) => 0x20 + x;
+alias irq = (ubyte x) => cast(ubyte) (0x20 + x);
 
 static struct IDT {
 public:
@@ -90,7 +90,7 @@ public:
 	}
 
 	static void flush() {
-		void* baseAddr = cast(void*)(&base);
+		void* baseAddr = (&base);
 		asm pure nothrow {
 			mov RAX, baseAddr;
 			lidt [RAX];
@@ -129,9 +129,9 @@ private:
 			static void isr` ~ id.stringof[0 .. $ - 2] ~ `() {
 				asm pure nothrow {
 					naked;
-					` ~ (hasError ? ""
-				: "push 0UL;") ~ `
-					push ` ~ id.stringof ~ `;
+					` ~ (hasError ? "" : "push 0UL;") ~ `
+					push `
+				~ id.stringof ~ `;
 
 					jmp isrCommon;
 				}
@@ -149,7 +149,7 @@ private:
 	static template _addJump(ulong id) {
 		enum _addJump = `
 			_add(` ~ id.stringof[0 .. $ - 2] ~ `, SystemSegmentType.interruptGate, cast(ulong)&isr`
-			~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
+				~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
 	}
 
 	static template _addJumps(ulong from, ulong to) {
@@ -240,29 +240,25 @@ private:
 
 				scr.foreground = Color(255, 0, 0);
 				scr.writeln("===> UNCAUGHT INTERRUPT");
-				scr.writeln("IRQ = ", cast(InterruptType)intNumber, " | RIP = ", cast(void*)rip);
-				scr.writeln("RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx);
-				scr.writeln("RCX = ", cast(void*)rcx, " | RDX = ", cast(void*)rdx);
-				scr.writeln("RDI = ", cast(void*)rdi, " | RSI = ", cast(void*)rsi);
-				scr.writeln("RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp);
-				scr.writeln(" R8 = ", cast(void*)r8, "  |  R9 = ", cast(void*)r9);
-				scr.writeln("R10 = ", cast(void*)r10, " | R11 = ", cast(void*)r11);
-				scr.writeln("R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13);
-				scr.writeln("R14 = ", cast(void*)r14, " | R15 = ", cast(void*)r15);
-				scr.writeln(" CS = ", cast(void*)cs, "  |  SS = ", cast(void*)ss);
-				scr.writeln(" CR2 = ", cast(void*)cr2);
-				scr.writeln("Flags: ", cast(void*)flags);
-				scr.writeln("Errorcode: ", cast(void*)errorCode);
+				scr.writeln("IRQ = ", intNumber.num!InterruptType, " | RIP = ", rip);
+				scr.writeln("RAX = ", rax, " | RBX = ", rbx);
+				scr.writeln("RCX = ", rcx, " | RDX = ", rdx);
+				scr.writeln("RDI = ", rdi, " | RSI = ", rsi);
+				scr.writeln("RSP = ", rsp, " | RBP = ", rbp);
+				scr.writeln(" R8 = ", r8, "  |  R9 = ", r9);
+				scr.writeln("R10 = ", r10, " | R11 = ", r11);
+				scr.writeln("R12 = ", r12, " | R13 = ", r13);
+				scr.writeln("R14 = ", r14, " | R15 = ", r15);
+				scr.writeln(" CS = ", cs, "  |  SS = ", ss);
+				scr.writeln(" CR2 = ", cr2);
+				scr.writeln("Flags: ", flags);
+				scr.writeln("Errorcode: ", errorCode);
 
-				Log.fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", cast(InterruptType)intNumber, " | RIP = ",
-						cast(void*)rip, "\n", "RAX = ", cast(void*)rax, " | RBX = ", cast(void*)rbx, "\n", "RCX = ",
-						cast(void*)rcx, " | RDX = ", cast(void*)rdx, "\n", "RDI = ", cast(void*)rdi, " | RSI = ",
-						cast(void*)rsi, "\n", "RSP = ", cast(void*)rsp, " | RBP = ", cast(void*)rbp, "\n", " R8 = ",
-						cast(void*)r8, "  |  R9 = ", cast(void*)r9, "\n", "R10 = ", cast(void*)r10, " | R11 = ",
-						cast(void*)r11, "\n", "R12 = ", cast(void*)r12, " | R13 = ", cast(void*)r13, "\n", "R14 = ",
-						cast(void*)r14, " | R15 = ", cast(void*)r15, "\n", " CS = ", cast(void*)cs, "  |  SS = ",
-						cast(void*)ss, "\n", " CR2 = ", cast(void*)cr2, "\n", "Flags: ", cast(void*)flags, "\n",
-						"Errorcode: ", cast(void*)errorCode);
+				Log.fatal("===> UNCAUGHT INTERRUPT", "\n", "IRQ = ", intNumber.num!InterruptType, " | RIP = ", rip, "\n",
+						"RAX = ", rax, " | RBX = ", rbx, "\n", "RCX = ", rcx, " | RDX = ", rdx, "\n", "RDI = ", rdi, " | RSI = ",
+						rsi, "\n", "RSP = ", rsp, " | RBP = ", rbp, "\n", " R8 = ", r8, "  |  R9 = ", r9, "\n", "R10 = ", r10,
+						" | R11 = ", r11, "\n", "R12 = ", r12, " | R13 = ", r13, "\n", "R14 = ", r14, " | R15 = ", r15, "\n",
+						" CS = ", cs, "  |  SS = ", ss, "\n", " CR2 = ", cr2, "\n", "Flags: ", flags, "\n", "Errorcode: ", errorCode);
 			}
 	}
 }

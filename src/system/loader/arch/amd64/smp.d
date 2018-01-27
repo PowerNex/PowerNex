@@ -54,7 +54,7 @@ public static:
 				counter++;
 			}
 			if (counter >= 1000)
-				Log.error("cpuThreads[", idx, "] failed to boot!");
+				Log.fatal("cpuThreads[", idx, "] failed to boot!");
 		}
 	}
 

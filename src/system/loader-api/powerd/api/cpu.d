@@ -79,4 +79,8 @@ import stl.address;
 		return o;
 	}();
 	IRQFlags[16] irqFlags; /// Mapping flags. See irqMap.
+
+	VirtAddress lapicAddress;
+	bool x2APIC;
+	ulong cpuBusFreq;
 }

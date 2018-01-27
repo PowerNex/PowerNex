@@ -43,7 +43,7 @@ char toChar(LogLevel level) @trusted {
 		ubyte info; ///
 		ubyte other; ///
 		ushort shndx; ///
-		from!"data.address".VirtAddress value; ///
+		from!"stl.address".VirtAddress value; ///
 		ulong size; ///
 	}
 
@@ -76,9 +76,9 @@ public static:
 	///
 	void log(Args...)(LogLevel level, string file, string func, int line, Args args) {
 		import io.com : com1;
-		import data.text : itoa, BinaryInt, HexInt;
+		import stl.text : itoa, BinaryInt, HexInt;
 		import util.trait : Unqual, enumMembers, isNumber, isFloating;
-		import data.address : VirtAddress, PhysAddress, PhysAddress32;
+		import stl.address : VirtAddress, PhysAddress, PhysAddress32;
 
 		char[ulong.sizeof * 8] buf;
 		for (int i = 0; i < _indent; i++)
@@ -160,7 +160,7 @@ public static:
 
 	///
 	void printStackTrace(size_t skipLevels = 0) @trusted {
-		import data.address : VirtAddress;
+		import stl.address : VirtAddress;
 
 		VirtAddress rbp;
 		asm pure nothrow {
@@ -177,8 +177,8 @@ public static:
 	}
 
 	///
-	Func getFuncName(from!"data.address".VirtAddress addr) @trusted {
-		import data.text : strlen;
+	Func getFuncName(from!"stl.address".VirtAddress addr) @trusted {
+		import stl.text : strlen;
 
 		if (!_symbols)
 			return Func("No symbol map loaded", 0);
@@ -217,8 +217,8 @@ private static:
 		return str;
 	}
 
-	void _printStackTrace(from!"data.address".VirtAddress rbp, size_t skipLevels = 0) {
-		import data.address : VirtAddress;
+	void _printStackTrace(from!"stl.address".VirtAddress rbp, size_t skipLevels = 0) {
+		import stl.address : VirtAddress;
 		import io.com : com1;
 
 		com1.write("\r\nSTACKTRACE:\r\n");
@@ -249,7 +249,7 @@ private static:
 			}
 
 			{
-				import data.text : itoa;
+				import stl.text : itoa;
 
 				char[ulong.sizeof * 8] buf;
 				com1.write("0x");
@@ -262,7 +262,7 @@ private static:
 
 			com1.write(f.name);
 			if (f.diff) {
-				import data.text : itoa;
+				import stl.text : itoa;
 
 				char[ulong.sizeof * 8] buf;
 				com1.write("+0x");

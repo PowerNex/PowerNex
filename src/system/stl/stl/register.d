@@ -6,14 +6,9 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module arch.amd64.register;
+module stl.register;
 
 import stl.address : VirtAddress;
-
-private extern (C) VirtAddress cpuRetCR0() @safe; //XXX: @safe
-private extern (C) VirtAddress cpuRetCR2() @safe; //XXX: @safe
-private extern (C) VirtAddress cpuRetCR3() @safe; //XXX: @safe
-private extern (C) VirtAddress cpuRetCR4() @safe; //XXX: @safe
 
 @safe struct Registers {
 align(1):
@@ -23,18 +18,38 @@ align(1):
 	VirtAddress rip, cs, flags, rsp, ss;
 
 	@property VirtAddress cr0() const {
-		return cpuRetCR0();
+		ulong val = void;
+		asm @trusted pure nothrow @nogc {
+			db 0x0f, 0x20, 0xc0; // mov %cr0, %rax
+			mov val, RAX;
+		}
+		return VirtAddress(val);
 	}
 
 	@property VirtAddress cr2() const {
-		return cpuRetCR2();
+		ulong val = void;
+		asm @trusted pure nothrow @nogc {
+			db 0x0f, 0x20, 0xd0; // mov %cr2, %rax
+			mov val, RAX;
+		}
+		return VirtAddress(val);
 	}
 
 	@property VirtAddress cr3() const {
-		return cpuRetCR3();
+		ulong val = void;
+		asm @trusted pure nothrow @nogc {
+			db 0x0f, 0x20, 0xd8; // mov %cr3, %rax
+			mov val, RAX;
+		}
+		return VirtAddress(val);
 	}
 
 	@property VirtAddress cr4() const {
-		return cpuRetCR4();
+		ulong val = void;
+		asm @trusted pure nothrow @nogc {
+			db 0x0f, 0x20, 0xe0; // mov %cr4, %rax
+			mov val, RAX;
+		}
+		return VirtAddress(val);
 	}
 }

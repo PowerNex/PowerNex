@@ -1,6 +1,6 @@
 module memory.vmm;
 
-import data.address;
+import stl.address;
 import data.container;
 import memory.ptr;
 import memory.allocator;

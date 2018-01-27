@@ -7,7 +7,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module arch.amd64.msr;
+module stl.arch.amd64.msr;
 
 import stl.address;
 
@@ -43,6 +43,36 @@ public static:
 	///
 	@property void apic(ulong value) @trusted {
 		return _set(MSRValue.apicBase, value);
+	}
+
+	///
+	@property ulong star() @trusted {
+		return _get(MSRValue.star);
+	}
+
+	///
+	@property void star(ulong value) @trusted {
+		return _set(MSRValue.star, value);
+	}
+
+	///
+	@property ulong lStar() @trusted {
+		return _get(MSRValue.lStar);
+	}
+
+	///
+	@property void lStar(ulong value) @trusted {
+		return _set(MSRValue.lStar, value);
+	}
+
+	///
+	@property ulong sfMask() @trusted {
+		return _get(MSRValue.sfMask);
+	}
+
+	///
+	@property void sfMask(ulong value) @trusted {
+		return _set(MSRValue.sfMask, value);
 	}
 
 	///

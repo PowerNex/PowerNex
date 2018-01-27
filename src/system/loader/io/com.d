@@ -145,12 +145,12 @@ enum StatusInfo : ubyte {
 	}
 
 private:
-	static void _handleIRQ3(from!"arch.amd64.register".Registers*) {
+	static void _handleIRQ3(from!"stl.register".Registers*) {
 		_handleIRQ!com2();
 		_handleIRQ!com4();
 	}
 
-	static void _handleIRQ4(from!"arch.amd64.register".Registers*) {
+	static void _handleIRQ4(from!"stl.register".Registers*) {
 		_handleIRQ!com1();
 		_handleIRQ!com3();
 	}

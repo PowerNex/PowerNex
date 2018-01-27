@@ -531,7 +531,7 @@ private static:
 	}
 }
 
-private void _onPageFault(from!"arch.amd64.register".Registers* regs) @safe {
+private void _onPageFault(from!"stl.register".Registers* regs) @safe {
 	import io.vga : VGA, CGAColor, CGASlotColor;
 	import io.log : Log;
 	import stl.text : HexInt;

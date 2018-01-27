@@ -46,7 +46,7 @@ public static:
 		tlsData.size = size;
 
 		{
-			import arch.amd64.msr : MSR;
+			import stl.arch.amd64.msr : MSR;
 
 			MSR.fs = tlsData.VirtAddress;
 		}

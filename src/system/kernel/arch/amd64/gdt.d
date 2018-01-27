@@ -1,6 +1,6 @@
-module cpu.gdt;
-import data.bitfield;
-import cpu.tss;
+module arch.amd64.gdt;
+import stl.bitfield;
+import arch.amd64.tss;
 
 align(1) struct GDTBase {
 align(1):
