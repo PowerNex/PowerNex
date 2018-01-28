@@ -3,45 +3,37 @@ module memory.frameallocator;
 import stl.address;
 import io.log;
 import data.linker;
-import data.multiboot;
+import powerd.api.memory;
 
+///
 static struct FrameAllocator {
-public:
-	static void init() {
-		_neverFreeBelow = PhysAddress((Linker.kernelEnd - Linker.kernelStart + Linker.kernelPhysStart.num).num);
-		Log.warning("_neverFreeBelow: ", _neverFreeBelow);
+public static:
+	void init(ref PowerDMemory memory) {
+		_maxFrames = memory.maxFrames;
+		_usedFrames = memory.usedFrames;
+		_bitmaps[] = memory.bitmaps[];
+		_currentBitmapIdx = memory.currentBitmapIdx;
 
-		_maxFrames = Multiboot.memorySize / 4;
 		foreach (ref ulong frame; _preallocated)
 			frame = ulong.max;
-
-		const ulong kernelUsedAmount = _neverFreeBelow.num / 0x1000;
-		for (ulong i = 0; i < (kernelUsedAmount / 64) + 1; i++) {
-			_bitmaps[i] = ulong.max;
-			_usedFrames += 64;
-		}
-
-		auto maps = Multiboot.memoryMap;
-		for (ulong i = 0; i < Multiboot.memoryMapCount; i++) {
-			auto m = maps[i];
-			if (m.type != MultibootMemoryType.available) {
-				Log.debug_("Address: ", cast(void*)m.address, " Size: ", m.length, " Frames: ", m.length / 0x1000);
-				for (ulong j = 0; j < m.length / 0x1000; j++)
-					markFrame(m.address / 0x1000 + j);
-			}
-		}
-
-		// Mark ACPI frames
-		for (ulong i = 0xE0000; i < 0x100000; i += 0x1000)
-			markFrame(i / 0x1000);
-
-		foreach (mod; Multiboot.modules[0 .. Multiboot.modulesCount])
-			for (ulong i = mod.modStart; i < mod.modEnd; i += 0x1000)
-				markFrame(i / 0x1000);
-
 		_allocPreAlloc(); // Add some nodes to _preallocated
 	}
 
+	///
+	void markRange(PhysAddress start, PhysAddress end) @trusted {
+		ulong curFrame = start / 0x1000;
+		const ulong endFrame = end / 0x1000;
+
+		while (endFrame - curFrame > 64) {
+			_bitmaps[curFrame / 64] = ulong.max;
+			curFrame += 64;
+		}
+
+		for (; curFrame < endFrame; curFrame++)
+			markFrame(curFrame);
+	}
+
+	///
 	static void markFrame(ulong idx) {
 		foreach (ref ulong frame; _preallocated)
 			if (frame == idx) {
@@ -62,7 +54,8 @@ public:
 		}
 	}
 
-	static ulong getFrame() {
+	///
+	ulong getFrame() {
 		ulong getFrameImpl(bool tryAgain) {
 			foreach (idx, ref ulong frame; _preallocated) {
 				if (frame != ulong.max) {
@@ -77,14 +70,14 @@ public:
 				return getFrameImpl(false);
 			}
 
-			bool hasSpacePrealloc = false;
+			bool hasSpacePrealloc;
 
 			foreach (ulong frame; _preallocated)
 				hasSpacePrealloc |= frame != ulong.max;
 
-			bool hasSpaceBitmap = false;
+			bool hasSpaceBitmap;
 
-			for (ulong i = 0; i < _maxFrames && !hasSpaceBitmap; i++) {
+			for (ulong i; i < _maxFrames && !hasSpaceBitmap; i++) {
 				const ulong bitmapIdx = i / 64;
 				assert(bitmapIdx < _bitmaps.length);
 				const ulong bitIdx = i % 64;
@@ -151,8 +144,7 @@ public:
 	}
 
 	static void free(PhysAddress memory) {
-		if (memory > _neverFreeBelow)
-			freeFrame(memory.num / 0x1000);
+		freeFrame(memory.num / 0x1000);
 	}
 
 	@property static ulong maxFrames() {
@@ -166,7 +158,6 @@ public:
 private:
 	enum ulong _maxmem = 0x100_0000_0000 - 1; //pow(2, 40)
 
-	__gshared PhysAddress _neverFreeBelow;
 	__gshared ulong _maxFrames;
 	__gshared ulong _usedFrames;
 	__gshared ulong[((_maxmem / 8) / 0x1000) / 64 + 1] _bitmaps;
@@ -174,7 +165,7 @@ private:
 	__gshared ulong[1] _preallocated;
 
 	static void _allocPreAlloc() {
-		bool reseted = false;
+		bool reseted;
 		foreach (ref ulong frame; _preallocated) {
 			if (frame != ulong.max)
 				continue;
@@ -191,7 +182,7 @@ private:
 			}
 
 			ulong* bitmap = &(_bitmaps[_currentBitmapIdx]);
-			for (ulong i = 0; i < 64; i++) {
+			for (ulong i; i < 64; i++) {
 				if (!(*bitmap & (1UL << i))) {
 					const ulong frameID = _currentBitmapIdx * 64 + i;
 					if (frameID < _maxFrames) {

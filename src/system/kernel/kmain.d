@@ -17,13 +17,11 @@ import arch.amd64.gdt;
 import arch.amd64.idt;
 import arch.amd64.pit;
 import data.color;
-import data.multiboot;
 import hw.ps2.keyboard;
 import memory.frameallocator;
 import data.linker;
 import stl.address;
 import memory.kheap;
-import acpi.rsdp;
 import hw.pci.pci;
 import hw.cmos.cmos;
 import system.syscallhandler;
@@ -47,9 +45,9 @@ extern (C) void kmain(PowerDAPI* papi) {
 	preInit(papi);
 	welcome();
 	init(papi);
-	//asm pure nothrow {
-	//	sti;
-	//}
+	asm pure nothrow {
+		sti;
+	}
 
 	/*string initFile = "/bin/init";
 	ELF init = new ELF((*rootFS).root.findNode(initFile));
@@ -66,7 +64,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 	scr.foreground = Color(255, 0, 255);
 	scr.background = Color(255, 255, 0);
 	scr.writeln("kmain functions has exited!");
-	Log.fatal("kmain functions has exited!");
+	Log.error("kmain functions has exited!");
 	while (true) {
 	}
 }
@@ -120,14 +118,10 @@ void welcome() {
 	Log.info("Compiled using '", __VENDOR__, "', D version ", _major, ".", _minor, "\n");
 }
 
- void init(PowerDAPI* papi) {
-/+	scr.writeln("Multiboot parsing...");
-	Log.info("Multiboot parsing...");
-	Multiboot.parseHeader(magic, info);
-
+void init(PowerDAPI* papi) {
 	scr.writeln("FrameAllocator initializing...");
 	Log.info("FrameAllocator initializing...");
-	FrameAllocator.init();
+	FrameAllocator.init(papi.memory);
 
 	scr.writeln("KernelHWPaging initializing...");
 	Log.info("KernelHWPaging initializing...");
@@ -143,25 +137,22 @@ void welcome() {
 	KHeap.init();
 	initKernelAllocator();
 
-	scr.writeln("ACPI initializing...");
-	Log.info("ACPI initializing...");
-	rsdp.init();
-
 	scr.writeln("CMOS initializing...");
 	Log.info("CMOS initializing...");
-	CMOS.init(rsdp.fadtInstance.century);
+	CMOS.init(papi.acpi.century);
 
 	scr.writeln("Keyboard initializing...");
 	Log.info("Keyboard initializing...");
 	PS2Keyboard.init();
 
 	{
-		VirtAddress[2] symmap = Multiboot.getModule("symmap");
-		if (symmap[0]) {
-			//Log.setSymbolMap(symmap[0]);
+		// TODO: Get symbolmap from ELF file
+		Module* symmap = papi.getModule("kernel");
+		if (symmap) {
+			//Log.setSymbolMap(symmap);
 			Log.info("Successfully loaded symbols!");
 		} else
-			Log.fatal("No module called symmap!");
+			Log.error("No module called symmap!");
 	}
 
 	scr.writeln("PCI initializing...");
@@ -170,7 +161,7 @@ void welcome() {
 
 	scr.writeln("Initrd initializing...");
 	Log.info("Initrd initializing...");
-	loadInitrd();
+	loadInitrd(papi);
 
 	scr.writeln("Starting ConsoleManager...");
 	Log.info("Starting ConsoleManager...");
@@ -179,20 +170,19 @@ void welcome() {
 	/*scr.writeln("Scheduler initializing...");
 	Log.info("Scheduler initializing...");
 	getScheduler.init();*/
-	+/
 }
 
-/+ void loadInitrd() {
+void loadInitrd(PowerDAPI* papi) {
 	import fs.tarfs : TarFS;
 	import fs.iofs : IOFS;
 
-	VirtAddress[2] tarfsLoc = Multiboot.getModule("tarfs");
-	if (!tarfsLoc[0]) {
-		Log.fatal("No module called tarfs!");
+	Module* tarfsLoc = papi.getModule("tarfs");
+	if (!tarfsLoc) {
+		Log.error("No module called tarfs!");
 		return;
 	}
 
-	ubyte[] tarfsData = VirtAddress().ptr!ubyte[tarfsLoc[0].num .. tarfsLoc[1].num];
+	ubyte[] tarfsData = tarfsLoc.memory.toVirtual.array!ubyte; // TODO:
 	rootFS = cast(SharedPtr!FileSystem)kernelAllocator.makeSharedPtr!TarFS(tarfsData);
 
 	SharedPtr!FileSystem iofs = cast(SharedPtr!FileSystem)kernelAllocator.makeSharedPtr!IOFS();
@@ -228,4 +218,3 @@ void welcome() {
 	Log.info("directoryEntries for rootFS!\n---------------------");
 	printData((*rootFS).root);
 }
-+/

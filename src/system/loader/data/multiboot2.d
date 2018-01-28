@@ -560,7 +560,13 @@ public static:
 
 		Log.debug_("Multiboot2TagModule: start: ", tag.modStart, ", end: ", tag.modEnd, ", name: ", tag.name);
 
-		getPowerDAPI().modules.put(Module(tag.name, PhysMemoryRange32(tag.modStart, tag.modEnd).toX64));
+		char[] nameRef = tag.name;
+		import memory.heap : Heap;
+
+		char[] name;
+		() @trusted{ name = cast(char[])Heap.allocate(nameRef.length); }();
+		name[] = nameRef[];
+		getPowerDAPI().modules.put(Module(name, PhysMemoryRange32(tag.modStart, tag.modEnd).toX64));
 	}
 
 	///
@@ -706,7 +712,7 @@ public static:
 	PhysMemoryRange getModule(string name) {
 		import powerd.api : getPowerDAPI, Module;
 
-		foreach (const ref Module m; getPowerDAPI.modules)
+		foreach (ref const Module m; getPowerDAPI.modules)
 			if (m.name == name)
 				return m.memory;
 

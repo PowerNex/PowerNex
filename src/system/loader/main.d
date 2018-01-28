@@ -186,6 +186,7 @@ extern (C) ulong main() @safe {
 		auto papi = &getPowerDAPI();
 		papi.screenX = VGA.x;
 		papi.screenY = VGA.y;
+		FrameAllocator.setupAPI();
 		size_t output = kernel.main(papi); // TODO: Call this and set return address to 0
 		//outputBoth("Main function returned: ", output.VirtAddress);
 		assert(0, "Kernel main function returned! This should never ever happen!");

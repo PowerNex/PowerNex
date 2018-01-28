@@ -64,6 +64,7 @@ void initLoaderAPI() {
 		auto dFiles = files!("src/system/loader-api/",
 			"powerd/api/acpi.d",
 			"powerd/api/cpu.d",
+			"powerd/api/memory.d",
 			"powerd/api/package.d"
 		);
 		// dfmt on
@@ -146,7 +147,6 @@ void initKernel() {
 
 		// dfmt off
 		auto dFiles = files!("src/system/kernel/",
-			"acpi/rsdp.d",
 			"arch/amd64/lapic.d",
 			"arch/amd64/paging.d",
 			"arch/amd64/gdt.d",
@@ -166,7 +166,6 @@ void initKernel() {
 			"data/textbuffer.d",
 			"data/bmpimage.d",
 			"data/elf.d",
-			"data/multiboot.d",
 			"fs/iofs/package.d",
 			"fs/iofs/stdionode.d",
 			"fs/mountnode.d",

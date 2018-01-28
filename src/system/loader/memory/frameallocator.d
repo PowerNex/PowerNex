@@ -77,14 +77,14 @@ public static:
 				return getFrameImpl(false);
 			}
 
-			bool hasSpacePrealloc = false;
+			bool hasSpacePrealloc;
 
 			foreach (ulong frame; _preallocated)
 				hasSpacePrealloc |= frame != ulong.max;
 
-			bool hasSpaceBitmap = false;
+			bool hasSpaceBitmap;
 
-			for (ulong i = 0; i < _maxFrames && !hasSpaceBitmap; i++) {
+			for (ulong i; i < _maxFrames && !hasSpaceBitmap; i++) {
 				const ulong bitmapIdx = i / 64;
 				assert(bitmapIdx < _bitmaps.length);
 				const ulong bitIdx = i % 64;
@@ -158,6 +158,17 @@ public static:
 	}
 
 	///
+	void setupAPI() @trusted {
+		import powerd.api : getPowerDAPI;
+		with (getPowerDAPI.memory) {
+			maxFrames = _maxFrames;
+			usedFrames = _usedFrames;
+			bitmaps = _bitmaps[];
+			currentBitmapIdx = _currentBitmapIdx;
+		}
+	}
+
+	///
 	@property ulong maxFrames() @trusted {
 		return _maxFrames;
 	}
@@ -182,7 +193,7 @@ private static:
 	__gshared ulong[1] _preallocated;
 
 	void _allocPreAlloc() @trusted {
-		bool reseted = false;
+		bool reseted;
 		foreach (ref ulong frame; _preallocated) {
 			if (frame != ulong.max)
 				continue;
@@ -199,7 +210,7 @@ private static:
 			}
 
 			ulong* bitmap = &(_bitmaps[_currentBitmapIdx]);
-			for (ulong i = 0; i < 64; i++) {
+			for (ulong i; i < 64; i++) {
 				if (!(*bitmap & (1UL << i))) {
 					const ulong frameID = _currentBitmapIdx * 64 + i;
 					if (frameID < _maxFrames) {

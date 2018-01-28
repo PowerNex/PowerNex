@@ -4,14 +4,6 @@
 #8*0x1000 = 32KiB
 .SET KERNEL_STACK_SIZE, 8
 
-.section .data
-.global multiboot_magic
-multiboot_magic:
-	.int 0
-.global multiboot_ptr
-multiboot_ptr:
-	.int 0
-
 .section .rodata
 # TODO: Define name the constants
 .global gdt

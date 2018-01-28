@@ -65,28 +65,6 @@ void exit(ssize_t code = 0) {
 	}
 }
 
-__gshared multiboot_info* bootInfo;
-
-struct multiboot_info {
-	uint flags;
-	uint mem_lower;
-	uint mem_upper;
-	uint boot_devide;
-	uint cmdline;
-	uint mods_addr;
-	uint somethingInAInion;
-
-	uint memoryMapBytes;
-	uint memoryMapAddress;
-}
-
-struct multiboot_memory_map {
-	uint size;
-	uint base_addr_low, base_addr_hight;
-	uint length_low, length_high;
-	uint type;
-}
-
 extern (C) {
 	inout(TypeInfo) unqualify(inout(TypeInfo) cti) pure nothrow @nogc {
 		TypeInfo ti = cast()cti;

@@ -58,14 +58,13 @@ interface IHWPaging { // Hardware implementation of paging
 	VMZoneInformation getZoneInfo(VirtAddress address);
 }
 
+private extern (C) ulong cpuRetCR3();
 void initKernelHWPaging() {
 	import stl.trait : inplaceClass;
 	import data.linker : Linker;
 	import stl.address : PhysAddress;
 
-	immutable ulong KERNEL_VMA = 0xFFFFFFFF80000000; // From boot.S
-
-	PhysAddress pml4 = PhysAddress(Linker.pml4.num - KERNEL_VMA);
+	PhysAddress pml4 = cpuRetCR3();
 
 	__gshared ubyte[__traits(classInstanceSize, HWPaging)] classData;
 	kernelHWPaging = cast(IHWPaging)inplaceClass!HWPaging(classData, pml4);

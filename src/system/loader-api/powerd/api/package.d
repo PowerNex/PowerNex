@@ -12,6 +12,7 @@ import stl.address;
 
 public import powerd.api.acpi;
 public import powerd.api.cpu;
+public import powerd.api.memory;
 
 /// SemVer version format: Major.Minor.Patch
 struct Version {
@@ -22,13 +23,13 @@ struct Version {
 }
 
 ///
-struct Module {
+@safe struct Module {
 	char[] name; ///
 	PhysMemoryRange memory; ///
 }
 
 ///
-struct MemoryMap {
+@safe struct MemoryMap {
 	/// Copy of MultibootMemoryType
 	enum Type {
 		available = 1,
@@ -61,6 +62,14 @@ struct MemoryMap {
 
 	PowerDACPI acpi; ///
 	PowerDCPUs cpus; ///
+	PowerDMemory memory; ///
+
+	Module* getModule(string name) {
+		foreach (ref Module m; modules)
+			if (m.name[] == name)
+				return &m;
+		return null;
+	}
 }
 
 ref PowerDAPI getPowerDAPI() @trusted {
