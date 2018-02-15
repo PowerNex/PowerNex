@@ -289,10 +289,9 @@ int main(string[] args) {
 
 	mkdirRecurse(toolchainFolder ~ "/bin");
 	if (newDMD || clean) {
-		downloadProgress("DMD", "https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/master/" ~ newVI.dmdVersion.to!string ~ "/artifact/powernex-dmd",
-				toolchainFolder ~ "/bin/powernex-dmd");
-		normal("Fixing permissions...\n");
-		executeShell("chmod +x " ~ toolchainFolder ~ "/bin/powernex-dmd");
+		downloadProgress!ProcessPipe("DMD",
+				"https://ci.vild.io/job/PowerNex/job/powernex-dmd/job/master/" ~ newVI.dmdVersion.to!string ~ "/artifact/powernex-dmd.tar.xz",
+				"tar xkJ --no-same-owner -C " ~ toolchainFolder, No.IgnoreStdOut, Yes.IgnoreStdErr);
 	}
 
 	if (newBinutils || clean) {
