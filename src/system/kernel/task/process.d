@@ -84,6 +84,7 @@ enum SignalType {
 }
 
 struct Process {
+	@disable this(this);
 	~this() {
 		if (!pid)
 			return;
@@ -117,7 +118,7 @@ struct Process {
 	SharedPtr!(Vector!(SharedPtr!Process)) children;
 
 	ProcessState state;
-	ulong returnCode; //TODO: Change to ssize_t
+	ulong returnCode; //TODO: Change to ptrdiff_t
 
 	WaitReason wait;
 	ulong waitData;

@@ -11,8 +11,8 @@ module arch.amd64.pit;
 @safe static struct PIT {
 public static:
 	void init(uint hz = 1000) @trusted {
-		import arch.amd64.idt : IDT, irq;
-		import io.ioport : outp;
+		import stl.arch.amd64.idt : IDT, irq;
+		import stl.arch.amd64.ioport : outp;
 
 		IDT.register(irq(0), &_onTick);
 		_hz = hz;

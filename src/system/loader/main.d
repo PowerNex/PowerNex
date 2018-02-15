@@ -15,7 +15,7 @@ static private immutable uint _minor = __VERSION__ % 1000;
 
 private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) @trusted {
 	import io.vga : VGA;
-	import io.log : Log;
+	import stl.io.log : Log;
 	import stl.arch.amd64.msr : MSR;
 	import stl.text : HexInt;
 
@@ -45,7 +45,7 @@ extern (C) VirtAddress newStackAP() @trusted {
 	apStackLoc += 0x1000 * 2; // As protection
 
 	{
-		import arch.amd64.lapic : LAPIC;
+		import stl.arch.amd64.lapic : LAPIC;
 
 		size_t id = LAPIC.getCurrentID();
 		outputBoth("AP ", id, " stack is: ", stack);
@@ -57,11 +57,11 @@ extern (C) VirtAddress newStackAP() @trusted {
 extern (C) ulong mainAP() @safe {
 	import powerd.api : getPowerDAPI;
 	import powerd.api.cpu : CPUThread;
-	import arch.amd64.lapic : LAPIC;
-	import io.log : Log;
+	import stl.arch.amd64.lapic : LAPIC;
+	import stl.io.log : Log;
 	import data.tls : TLS;
-	import arch.amd64.gdt : GDT;
-	import arch.amd64.idt : IDT;
+	import stl.arch.amd64.gdt : GDT;
+	import stl.arch.amd64.idt : IDT;
 	import arch.amd64.paging : Paging;
 
 	GDT.flush();
@@ -88,20 +88,20 @@ from!"powerd.api.cpu".CPUThread* currentThread; /// The current threads structur
 extern (C) ulong main() @safe {
 	import powerd.api : getPowerDAPI;
 	import arch.amd64.acpi : ACPI;
-	import arch.amd64.gdt : GDT;
-	import arch.amd64.idt : IDT;
-	import arch.amd64.lapic : LAPIC;
-	import arch.amd64.ioapic : IOAPIC;
+	import stl.arch.amd64.gdt : GDT;
+	import stl.arch.amd64.idt : IDT;
+	import stl.arch.amd64.lapic : LAPIC;
+	import stl.arch.amd64.ioapic : IOAPIC;
 	import arch.amd64.paging : Paging;
 	import arch.amd64.pic : PIC;
 	import arch.amd64.pit : PIT;
 	import arch.amd64.smp : SMP;
-	import data.elf64 : ELF64, ELFInstance;
+	import stl.elf64 : ELF64, ELFInstance;
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
-	import io.com : COM;
+	import stl.arch.amd64.com : COM;
 	import io.vga : VGA;
-	import io.log : Log;
+	import stl.io.log : Log;
 	import memory.frameallocator : FrameAllocator;
 	import memory.heap : Heap;
 
@@ -147,7 +147,7 @@ extern (C) ulong main() @safe {
 	auto kernelModule = Multiboot2.getModule("kernel");
 	outputBoth("Kernel module: [", kernelModule.start, "-", kernelModule.end, "]");
 	ELF64 kernelELF = ELF64(kernelModule);
-	ELFInstance kernel = kernelELF.aquireInstance();
+	ELFInstance kernel;// = kernelELF.aquireInstance();
 
 	outputBoth("kernel.main: ", VirtAddress(kernel.main));
 	outputBoth("kernel.ctors: ");

@@ -6,8 +6,9 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module io.com;
+module stl.arch.amd64.com;
 
+import stl.register;
 ///
 ref COM com1() @trusted {
 	return comPorts[0];
@@ -80,8 +81,8 @@ enum StatusInfo : ubyte {
 
 	///
 	static void init() @trusted {
-		import io.ioport : outp;
-		import arch.amd64.idt : IDT, irq;
+		import stl.arch.amd64.ioport : outp;
+		import stl.arch.amd64.idt : IDT, irq;
 
 		enum divisor = 115200;
 		ushort speed = divisor / 115200;
@@ -118,14 +119,14 @@ enum StatusInfo : ubyte {
 
 	///
 	bool canSend() {
-		import io.ioport : inp;
+		import stl.arch.amd64.ioport : inp;
 
 		return !!(inp!ubyte(cast(ushort)(port + 5)) & 0x20);
 	}
 
 	///
 	void write(ubyte d) {
-		import io.ioport : outp;
+		import stl.arch.amd64.ioport : outp;
 
 		while (!canSend()) { //XXX: fix deadlock
 		}
@@ -145,18 +146,18 @@ enum StatusInfo : ubyte {
 	}
 
 private:
-	static void _handleIRQ3(from!"stl.register".Registers*) {
+	static void _handleIRQ3(Registers*) {
 		_handleIRQ!com2();
 		_handleIRQ!com4();
 	}
 
-	static void _handleIRQ4(from!"stl.register".Registers*) {
+	static void _handleIRQ4(Registers*) {
 		_handleIRQ!com1();
 		_handleIRQ!com3();
 	}
 
 	static void _handleIRQ(alias com)() {
-		import io.ioport : inp;
+		import stl.arch.amd64.ioport : inp;
 		import stl.text : BinaryInt;
 
 		StatusInfo status = cast(StatusInfo)inp!ubyte(cast(ushort)(com.port + PortNumber.interruptIdentifier));

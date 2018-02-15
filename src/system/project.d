@@ -33,23 +33,39 @@ void initSTL() {
 	with (loader) {
 		// dfmt off
 		auto dFiles = files!("src/system/stl/",
-			"stl/arch/amd64/msr.d",
 			"stl/address.d",
 			"stl/bitfield.d",
 			"stl/number.d",
 			"stl/range.d",
+			"stl/vector.d",
 			"stl/register.d",
+			"stl/utf.d",
+			"stl/elf64.d",
+			"stl/arch/amd64/msr.d",
+			"stl/arch/amd64/ioport.d",
+			"stl/arch/amd64/com.d",
+			"stl/arch/amd64/idt.d",
+			"stl/arch/amd64/gdt.d",
+			"stl/arch/amd64/ioapic.d",
+			"stl/arch/amd64/lapic.d",
+			"stl/vmm/paging.d",
+			"stl/io/log.d",
 			"stl/text.d",
 			"stl/trait.d",
-			"stl/utf.d",
-			"stl/vector.d"
+			"stl/spinlock.d",
+			"object.d"
+		);
+
+		auto aFiles = files!("src/system/stl/",
+			"stl/spinlock_asm.S"
 		);
 		// dfmt on
 
-		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs);
+		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs ~ " -Isrc/system/loader" ~ " -Isrc/system/loader-api");
+		auto aCompiler = Processor.combine(aCompilerPath ~ aCompilerArgs);
 		auto archive = Processor.combine(archivePath ~ archiveArgs);
 
-		outputs["libstl"] = archive("libstl.a", false, [dCompiler("dcode.o", false, dFiles)]);
+		outputs["libstl"] = archive("libstl.a", false, [dCompiler("dcode.o", false, dFiles), aCompiler("acode.o", false, aFiles)]);
 	}
 	registerProject(loader);
 }
@@ -57,9 +73,6 @@ void initSTL() {
 void initLoaderAPI() {
 	Project loader = new Project("LoaderAPI", SemVer(0, 1, 337));
 	with (loader) {
-		auto stl = findDependency("STL");
-		dependencies ~= stl;
-
 		// dfmt off
 		auto dFiles = files!("src/system/loader-api/",
 			"powerd/api/acpi.d",
@@ -69,10 +82,10 @@ void initLoaderAPI() {
 		);
 		// dfmt on
 
-		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs ~ " -Isrc/system/loader-api");
+		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs ~ " -Isrc/system/loader" ~ " -Isrc/system/loader-api");
 		auto archive = Processor.combine(archivePath ~ archiveArgs);
 
-		outputs["libloader-api"] = archive("libloader-api.a", false, [dCompiler("dcode.o", false, dFiles), stl.outputs["libstl"]]);
+		outputs["libloader-api"] = archive("libloader-api.a", false, [dCompiler("dcode.o", false, dFiles)]);
 	}
 	registerProject(loader);
 }
@@ -87,35 +100,24 @@ void initLoader() {
 
 		// dfmt off
 		auto dFiles = files!("src/system/loader/",
-			"arch/amd64/aml.d",
-			"arch/amd64/gdt.d",
-			"arch/amd64/paging.d",
-			"arch/amd64/pit.d",
 			"arch/amd64/acpi.d",
-			"arch/amd64/ioapic.d",
+			"arch/amd64/aml.d",
+			"arch/amd64/paging.d",
 			"arch/amd64/pic.d",
-			"arch/amd64/idt.d",
-			"arch/amd64/lapic.d",
+			"arch/amd64/pit.d",
 			"arch/amd64/smp.d",
 			"data/multiboot2.d",
 			"data/tls.d",
-			"data/elf64.d",
-			"io/com.d",
-			"io/ioport.d",
 			"io/vga.d",
-			"io/log.d",
-			"util/spinlock.d",
 			"invariant.d",
 			"memory/frameallocator.d",
 			"memory/heap.d",
-			"object.d",
 			"utils.d",
 			"main.d"
 		);
 
 		auto aFiles = files!("src/system/loader/",
 			"arch/amd64/wrappers.S",
-			"util/spinlock_asm.S",
 			"init16.S",
 			"init64.S",
 			"init32.S",
@@ -180,7 +182,6 @@ void initKernel() {
 			"invariant.d",
 			"io/com.d",
 			"io/consolemanager.d",
-			"io/port.d",
 			"io/log.d",
 			"io/textmode.d",
 			"memory/allocator/kheapallocator.d",
@@ -197,7 +198,6 @@ void initKernel() {
 			"task/scheduler.d",
 			"task/process.d",
 			"util/trait.d",
-			"object.d",
 			"kmain.d"
 		);
 

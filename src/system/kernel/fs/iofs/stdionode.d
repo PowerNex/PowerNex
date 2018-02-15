@@ -77,7 +77,7 @@ public:
 	override IOStatus read(ref NodeContext fd, ubyte[] buffer) {
 		import task.scheduler;
 
-		ssize_t read;
+		ptrdiff_t read;
 
 		if (kbStart == kbEnd)
 			return -IOStatus.notFound;//getScheduler.waitFor(WaitReason.keyboard, cast(ulong)kbBuffer.ptr);

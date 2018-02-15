@@ -1,6 +1,6 @@
 module stl.utf;
 
-// import io.log;
+// import stl.io.log;
 
 dchar parseUTF8(ubyte[] data, ref size_t bytesUsed) {
 	__gshared immutable ubyte[] maskNeeded = [0b0111_1111, 0b0011_1111, 0b0001_1111, 0b0000_1111, 0b0000_0111];

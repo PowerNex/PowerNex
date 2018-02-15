@@ -1,7 +1,7 @@
 module hw.pci.pci;
 
 import stl.address;
-import io.port;
+import stl.arch.amd64.ioport;
 import io.log;
 import memory.allocator;
 import data.textbuffer : scr = getBootTTY;

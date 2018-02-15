@@ -47,10 +47,10 @@ struct TarHeader {
 	@property bool checksumValid() {
 		import io.log : Log;
 
-		ssize_t oldChecksum = checksum.toNumber;
+		ptrdiff_t oldChecksum = checksum.toNumber;
 
 		{
-			ssize_t chksum;
+			ptrdiff_t chksum;
 			foreach (b; (cast(ubyte*)&this)[0 .. checksum.offsetof])
 				chksum += b;
 			foreach (b; 0 .. checksum.length)
@@ -76,15 +76,15 @@ struct TarHeader {
 }
 
 struct PaxHeader {
-	ssize_t fileSize;
+	ptrdiff_t fileSize;
 }
 
 private enum size_t _tarHeaderSize = 512;
 private enum char[6] _tarMagic = "ustar\0";
 private enum char[2] _tarVersion = "00";
 
-private ssize_t toNumber(const(char)[] num) {
-	ssize_t result;
+private ptrdiff_t toNumber(const(char)[] num) {
+	ptrdiff_t result;
 	foreach (char c; num) {
 		if (c < '0' || c > '9')
 			break;
@@ -479,7 +479,7 @@ private:
 				break;
 			}
 
-			ssize_t size = paxHeader.fileSize ? paxHeader.fileSize : header.size.toNumber;
+			ptrdiff_t size = paxHeader.fileSize ? paxHeader.fileSize : header.size.toNumber;
 
 			switch (header.typeFlag) with (TarHeader.TypeFlag) {
 			case paxExtendedHeader:
@@ -498,9 +498,9 @@ private:
 				while (pax.length) {
 					char[] line = pax[0 .. pax.indexOf('\n')];
 
-					//ssize_t lineLength = line[0 .. line.indexOf(' ')].toNumber;
+					//ptrdiff_t lineLength = line[0 .. line.indexOf(' ')].toNumber;
 					//TODO: use lineLength to validate input
-					ssize_t space = line.indexOf(' ');
+					ptrdiff_t space = line.indexOf(' ');
 
 					size_t eq = line.indexOf('=');
 

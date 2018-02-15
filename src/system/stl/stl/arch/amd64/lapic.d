@@ -6,9 +6,10 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module arch.amd64.lapic;
+module stl.arch.amd64.lapic;
 
 import stl.address;
+import stl.register;
 
 private extern __gshared extern (C) VirtAddress LAPIC_address;
 private extern extern (C) void LAPIC_dummyTimer();
@@ -33,37 +34,61 @@ public static:
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : CPUThread;
 		import stl.arch.amd64.msr : MSR;
-		import arch.amd64.idt : IDT;
-		import io.log : Log;
+		import stl.arch.amd64.idt : IDT;
+		import stl.io.log : Log;
 
-		_x2APIC = getPowerDAPI.cpus.x2APIC;
-		_cpuBusFreq = getPowerDAPI.cpus.cpuBusFreq;
+		{ // check cpuid for x2apic
+			enum x2APICFlag = 1 << 21;
+			uint ecxValue = void;
+			asm pure nothrow @trusted {
+				mov EAX, 1;
+				cpuid;
+				mov ecxValue, ECX;
+			}
 
-		if (!_x2APIC && !_lapicAddress) {
-			const ulong specialID = 510;
-			import memory.vmm : VMPageFlags;
-			import arch.amd64.paging : kernelHWPaging, _makeAddress;
-
-			_lapicAddress = getPowerDAPI.cpus.lapicAddress;
-			() @trusted{ LAPIC_address = _lapicAddress; }();
+			_x2APIC = !!(ecxValue & x2APICFlag);
+			_x2APIC = false; //TODO: X2APIC breaks booting of APs
+			getPowerDAPI.cpus.x2APIC = _x2APIC;
+			Log.info("X2APIC support: ", _x2APIC);
 		}
 
-		setup();
+		{ // Enable lapic
+			enum xAPICEnableFlag = 1 << 11;
+			enum x2APICEnableFlag = 1 << 10;
+			ulong apicBase = MSR.apic;
+
+			apicBase |= xAPICEnableFlag;
+			if (_x2APIC)
+				apicBase |= x2APICEnableFlag;
+
+			MSR.apic = apicBase;
+		}
+
+		if (!_x2APIC) {
+			if (!_lapicAddress) {
+				import vmm.paging : getPaging;
+
+				_lapicAddress = getPaging.mapSpecialAddress(getPowerDAPI.acpi.lapicAddress, 0x1000, true, false);
+				() @trusted{ LAPIC_address = _lapicAddress; }();
+				getPowerDAPI.cpus.lapicAddress = _lapicAddress;
+			}
+			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24));
+		}
 	}
 
 	/*///
 	void cleanup() {
 		if (!_x2APIC) {
-			import arch.amd64.paging : kernelHWPaging;
+			import vmm.paging : getPaging;
 
-			kernelHWPaging.unmapSpecialAddress(_lapicAddress, 0x1000);
+			getPaging.unmapSpecialAddress(_lapicAddress, 0x1000);
 		}
 	}*/
 
-	/+ void calibrate() @trusted {
-		import arch.amd64.idt : IDT, irq;
+	void calibrate() @trusted {
+		import stl.arch.amd64.idt : IDT, irq;
 		import stl.arch.amd64.msr : MSR;
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		VirtAddress oldIRQ0;
 		if (_x2APIC)
@@ -134,18 +159,23 @@ public static:
 			_cpuBusFreq = uint.max - counterValue + 1;
 			_cpuBusFreq *= divitionPower;
 			_cpuBusFreq *= pitHZ;
+
+			{
+				import powerd.api : getPowerDAPI;
+				getPowerDAPI.cpus.cpuBusFreq = _cpuBusFreq;
+			}
 		}
 
 		IDT.registerGate(255, oldIRQ255);
 		IDT.registerGate(irq(0), oldIRQ0);
-	}+/
+	}
 
 	void setup() @trusted {
-		import arch.amd64.idt : IDT, irq;
+		import stl.arch.amd64.idt : IDT, irq;
 
-		IDT.register(irq(0), &_onTick);
-		IDT.register(254, &_onError);
-		IDT.register(255, &_onSpurious);
+		IDT.register(irq(0), cast(IDT.InterruptCallback)&_onTick);
+		IDT.register(cast(ubyte)254, cast(IDT.InterruptCallback)&_onError);
+		IDT.register(cast(ubyte)255, cast(IDT.InterruptCallback)&_onSpurious);
 
 		_write(Registers.spurious, () { Spurious s; s.vector = 255; s.enabled = true; return s.data; }());
 		_write(Registers.taskPriority, 0);
@@ -181,7 +211,7 @@ public static:
 		ic.level = assert_ ? Level.assert_ : Level.deassert;
 
 		if (_x2APIC)
-			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
 		else {
 			_write(Registers._interruptCommandHigh, destination << 24);
 			_write(Registers.interruptCommand, ic.data);
@@ -196,7 +226,7 @@ public static:
 		ic.level = Level.assert_;
 
 		if (_x2APIC)
-			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << (32UL + 24UL)));
+			_write64(Registers.interruptCommand, ic.data | (cast(ulong)destination << 32UL));
 		else {
 			_write(Registers._interruptCommandHigh, destination << 24);
 			_write(Registers.interruptCommand, ic.data);
@@ -421,24 +451,24 @@ private static:
 		_write(Registers.timerInitialCount, initialCount);
 	}
 
-	void _onTick(from!"stl.register".Registers* regs) @trusted {
-		import io.log : Log;
+	void _onTick(Registers* regs) @trusted {
+		import stl.io.log : Log;
 
 		_write(Registers.endOfInterrupt, 0);
 
 		_counter++;
 	}
 
-	void _onError(from!"stl.register".Registers* regs) @trusted {
-		import io.log : Log;
+	void _onError(Registers* regs) @trusted {
+		import stl.io.log : Log;
 
 		_write(Registers.endOfInterrupt, 0);
 
 		Log.error("onError");
 	}
 
-	void _onSpurious(from!"stl.register".Registers* regs) @trusted {
-		import io.log : Log;
+	void _onSpurious(Registers* regs) @trusted {
+		import stl.io.log : Log;
 
 		//_write(Registers.endOfInterrupt, 0);
 

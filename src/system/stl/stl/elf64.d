@@ -1,4 +1,4 @@
-module data.elf64;
+module stl.elf64;
 
 import stl.address;
 
@@ -169,7 +169,7 @@ public:
 		// _printSectionHeaders();
 	}
 
-	ELFInstance aquireInstance() {
+	/*ELFInstance aquireInstance() {
 		ELFInstance instance;
 		instance.main = () @trusted{ return cast(typeof(instance.main))_header.entry.ptr; }();
 
@@ -178,7 +178,7 @@ public:
 		instance.ctors = _getCtors();
 
 		return instance;
-	}
+	}*/
 
 private:
 	PhysMemoryRange _elfDataPhys;
@@ -189,7 +189,7 @@ private:
 	ELF64SectionHeader* _sectionNameStringTable;
 
 	void _verify() {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		if (_header.ident.magic != ELF64Header.Ident.magicValue)
 			Log.fatal("Kernel is not an ELF");
@@ -211,7 +211,7 @@ private:
 	}
 
 	void _printProgramHeaders() {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		foreach (const ref ELF64ProgramHeader programHeader; _programHeaders)
 			with (programHeader)
@@ -240,7 +240,7 @@ private:
 	}
 
 	void _printSectionHeaders() {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		foreach (const ref ELF64SectionHeader sectionHeader; _sectionHeaders)
 			with (sectionHeader)
@@ -260,8 +260,9 @@ private:
 				// dfmt on
 	}
 
+	/*
 	void _mapping() {
-		import io.log : Log;
+		import stl.io.log : Log;
 		import memory.frameallocator : FrameAllocator;
 		import arch.amd64.paging : Paging, PageFlags;
 
@@ -312,5 +313,5 @@ private:
 			if (_lookUpSectionName(section.name) == ".ctors")
 				return VirtMemoryRange(section.addr, section.addr + section.size).array!(size_t function() @system);
 		return null;
-	}
+	}*/
 }

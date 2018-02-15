@@ -1,4 +1,4 @@
-module io.port;
+module stl.arch.amd64.ioport;
 
 import stl.trait;
 

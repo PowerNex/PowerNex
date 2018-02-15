@@ -6,7 +6,9 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module io.log;
+module stl.io.log;
+
+import stl.address;
 
 ///
 enum LogLevel {
@@ -36,8 +38,7 @@ char toChar(LogLevel level) @trusted {
 
 ///
 @trusted static struct Log {
-	import data.elf64 : ELF64Symbol;
-
+	import stl.elf64 : ELF64Symbol;
 public static:
 
 	/// XXX: Page fault if this is not wrapped like this!
@@ -62,7 +63,7 @@ public static:
 
 	///
 	void log(Args...)(LogLevel level, string file, string func, int line, Args args) {
-		import io.com : com1;
+		import stl.arch.amd64.com : com1;
 		import stl.text : itoa, BinaryInt, HexInt;
 		import stl.trait : Unqual, enumMembers, isNumber, isFloating;
 		import stl.address : VirtAddress, PhysAddress, PhysAddress32;
@@ -162,7 +163,7 @@ public static:
 	}
 
 	///
-	Func getFuncName(from!"stl.address".VirtAddress addr) @trusted {
+	Func getFuncName(VirtAddress addr) @trusted {
 		import stl.text : strlen;
 
 		if (!_symbols)
@@ -201,9 +202,9 @@ private static:
 		return str;
 	}
 
-	void _printStackTrace(from!"stl.address".VirtAddress rbp, size_t skipLevels = 0) {
+	void _printStackTrace(VirtAddress rbp, size_t skipLevels = 0) {
 		import stl.address : VirtAddress;
-		import io.com : com1;
+		import stl.arch.amd64.com : com1;
 
 		com1.write("\r\nSTACKTRACE:\r\n");
 		VirtAddress rip;

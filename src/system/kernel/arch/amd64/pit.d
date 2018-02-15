@@ -4,7 +4,7 @@ struct PIT {
 public:
 	static void init(uint hz = 1000) {
 		import arch.amd64.idt : IDT, irq;
-		import io.port : outp;
+		import stl.arch.amd64.ioport : outp;
 
 		IDT.register(irq(0), &_onTick);
 		_hz = hz;

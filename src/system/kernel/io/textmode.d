@@ -1,6 +1,6 @@
 module io.textmode;
 
-import io.port;
+import stl.arch.amd64.ioport;
 import stl.trait;
 import stl.text;
 import data.textbuffer;

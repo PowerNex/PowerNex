@@ -6,7 +6,10 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module arch.amd64.idt;
+module stl.arch.amd64.idt;
+
+import stl.register;
+import stl.address;
 
 ///
 @safe align(1) struct IDTBase {
@@ -90,7 +93,7 @@ alias irq = (ubyte x) => cast(ubyte)(0x20 + x);
 ///
 @safe static struct IDT {
 public static:
-	alias InterruptCallback = @safe void function(from!"stl.register".Registers* regs); ///
+	alias InterruptCallback = void function(Registers* regs) @trusted; ///
 	__gshared IDTBase base; ///
 	__gshared IDTDescriptor[256] desc; ///
 	__gshared InterruptCallback[256] handlers; ///
@@ -120,12 +123,12 @@ public static:
 	}
 
 	///
-	void register(uint id, InterruptCallback cb) @trusted {
+	void register(ubyte id, InterruptCallback cb) @trusted {
 		handlers[id] = cb;
 	}
 
 	/// Returns: The address to the old gate function
-	static from!"stl.address".VirtAddress registerGate(uint id, from!"stl.address".VirtAddress gateFunction) @trusted {
+	static VirtAddress registerGate(uint id, VirtAddress gateFunction) @trusted {
 		import stl.address : VirtAddress;
 
 		auto d = &desc[id];
@@ -256,30 +259,31 @@ private static:
 		}
 	}
 
-	extern (C) void isrHandler(from!"stl.register".Registers* regs) @trusted {
-		import io.vga : VGA, CGASlotColor, CGAColor;
-		import io.log : Log;
-		import io.ioport : outp;
-		import arch.amd64.pic : PIC;
+	extern (C) void isrHandler(Registers* regs) @trusted {
+		//import io.vga : VGA, CGASlotColor, CGAColor;
+		import stl.io.log : Log;
 
-		if (PIC.enabled) {
+		//import arch.amd64.pic : PIC;
+
+		/*if (PIC.enabled) {
 			if (irq(0) <= regs.intNumber && regs.intNumber <= irq(16)) {
+				//import stl.arch.amd64.ioport : outp;
 				if (regs.intNumber >= irq(8))
 					outp!ubyte(0xA0, 0x20);
 				outp!ubyte(0x20, 0x20);
 			}
-		}
+		}*/
 
 		if (auto handler = handlers[regs.intNumber]) {
 			handler(regs);
 		} else
 			with (regs) {
 				import stl.text : HexInt;
-				import arch.amd64.lapic : LAPIC;
+				import stl.arch.amd64.lapic : LAPIC;
 
 				size_t id = LAPIC.getCurrentID();
 				Log.Func func = Log.getFuncName(rip);
-				VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+				/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 				VGA.writeln("===> Unhandled interrupt (CPU ", id, ")");
 				VGA.writeln("IRQ = ", intNumber.num!InterruptType, " (", intNumber.HexInt, ") | RIP = ", rip);
 				VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
@@ -293,7 +297,7 @@ private static:
 				VGA.writeln(" CS = ", cs, " |  SS = ", ss);
 				VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
 				VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
-				VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
+				VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);*/
 
 				// dfmt off
 				Log.error("===> Unhandled interrupt (CPU ", id, ")", "\n",
@@ -315,16 +319,16 @@ private static:
 	}
 }
 
-private void _onGPF(from!"stl.register".Registers* regs) @safe {
-	import io.vga : VGA, CGASlotColor, CGAColor;
-	import io.log : Log;
+private void _onGPF(Registers* regs) @safe {
+	//import io.vga : VGA, CGASlotColor, CGAColor;
+	import stl.io.log : Log;
 	import stl.text : HexInt;
-	import arch.amd64.lapic : LAPIC;
+	import stl.arch.amd64.lapic : LAPIC;
 
 	size_t id = LAPIC.getCurrentID();
 	with (regs) {
 		Log.Func func = Log.getFuncName(rip);
-		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+		/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 		VGA.writeln("===> GeneralProtectionFault (CPU ", id, ")");
 		VGA.writeln("                          | RIP = ", rip);
 		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
@@ -338,7 +342,7 @@ private void _onGPF(from!"stl.register".Registers* regs) @safe {
 		VGA.writeln(" CS = ", cs, " |  SS = ", ss);
 		VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
 		VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
-		VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
+		VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);*/
 
 		// dfmt off
 		Log.error("===> GeneralProtectionFault (CPU ", id, ")", "\n",

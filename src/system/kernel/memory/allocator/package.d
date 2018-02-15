@@ -1,6 +1,7 @@
 module memory.allocator;
 
 import memory.ptr;
+import stl.address;
 
 // Based on https://github.com/dlang/phobos/blob/master/std/experimental/allocator/package.d#L259
 interface IAllocator {
@@ -35,7 +36,7 @@ auto make(T, Allocator, A...)(auto ref Allocator alloc, auto ref A args) {
 	auto result = cast(ReturnType)chunk.ptr;
 
 	memset(chunk.ptr, 0, size);
-	auto init = typeid(T).init;
+	auto init = typeid(T).initializer;
 	if (init.ptr)
 		chunk[0 .. init.length] = init[];
 
@@ -90,7 +91,7 @@ bool expandArray(T, Allocator)(auto ref Allocator alloc, ref T[] arr, size_t del
 
 	arr = cast(T[])buf;
 
-	auto init = typeid(T).init;
+	auto init = typeid(T).initializer;
 	if (init.ptr)
 		for (size_t i = 0; i < deltaSize; i++) {
 			size_t loc = i * T.sizeof;

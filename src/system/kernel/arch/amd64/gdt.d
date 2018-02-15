@@ -108,7 +108,7 @@ public:
 	}
 
 	static void setCode(size_t index, bool conforming, ubyte dpl_, bool present) {
-		descriptors[index].code = GDTCodeDescriptor.init;
+		descriptors[index].code = GDTCodeDescriptor();
 		with (descriptors[index].code) {
 			c = conforming;
 			dpl = dpl_;
@@ -119,7 +119,7 @@ public:
 	}
 
 	static void setData(uint index, bool present, ubyte dpl_) {
-		descriptors[index].data = GDTDataDescriptor.init;
+		descriptors[index].data = GDTDataDescriptor();
 		with (descriptors[index].data) {
 			p = present;
 			dpl = dpl_;
@@ -132,8 +132,8 @@ public:
 	}
 
 	void setSystem(uint index, uint limit, ulong base, GDTSystemType segType, ubyte dpl_, bool present, bool avail, bool granularity) {
-		descriptors[index].systemLow = GDTSystemDescriptor.init;
-		descriptors[index + 1].systemHigh = GDTSystemExtension.init;
+		descriptors[index].systemLow = GDTSystemDescriptor();
+		descriptors[index + 1].systemHigh = GDTSystemExtension();
 
 		with (descriptors[index].systemLow) {
 			baseLow = (base & 0xFFFF);

@@ -4,7 +4,7 @@ import arch.amd64.idt;
 import stl.register;
 import stl.bitfield;
 import io.log;
-import io.port;
+import stl.arch.amd64.ioport;
 import hw.ps2.kbset;
 
 /// This is a class for controlling the 8042 PS/2 controller

@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module util.spinlock;
+module stl.spinlock;
 
 private extern (C) void mutexSpinlock(ulong* value) @trusted;
 private extern (C) ulong mutexTrylock(ulong* value) @trusted;

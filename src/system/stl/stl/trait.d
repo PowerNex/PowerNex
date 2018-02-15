@@ -56,7 +56,7 @@ T inplaceClass(T, Args...)(void[] chunk, auto ref Args args) if (is(T == class))
 	//assert((cast(size_t)chunk.ptr) % classInstanceAlignment!T == 0, "emplace: Chunk is not aligned.");
 	auto result = cast(T)chunk.ptr;
 
-	chunk[0 .. classSize] = typeid(T).init[];
+	chunk[0 .. classSize] = typeid(T).initializer[];
 
 	static if (is(typeof(result.__ctor(args))))
 		result.__ctor(args);

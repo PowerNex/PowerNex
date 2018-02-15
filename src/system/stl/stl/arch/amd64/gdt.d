@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module arch.amd64.gdt;
+module stl.arch.amd64.gdt;
 
 //import stl.bitfield;
 //import arch.amd64.tss;
@@ -133,7 +133,7 @@ public static:
 
 	///
 	void setCode(size_t index, bool conforming, ubyte dpl_, bool present) {
-		gdtDescriptors[index].code = GDTCodeDescriptor.init;
+		gdtDescriptors[index].code = GDTCodeDescriptor();
 		with (gdtDescriptors[index].code) {
 			c = conforming;
 			dpl = dpl_;
@@ -145,7 +145,7 @@ public static:
 
 	///
 	void setData(uint index, bool present, ubyte dpl_) {
-		gdtDescriptors[index].data = GDTDataDescriptor.init;
+		gdtDescriptors[index].data = GDTDataDescriptor();
 		with (gdtDescriptors[index].data) {
 			p = present;
 			dpl = dpl_;
@@ -160,8 +160,8 @@ public static:
 
 	///
 	void setSystem(uint index, uint limit, ulong base, GDTSystemType segType, ubyte dpl_, bool present, bool avail, bool granularity) {
-		gdtDescriptors[index].systemLow = GDTSystemDescriptor.init;
-		gdtDescriptors[index + 1].systemHigh = GDTSystemExtension.init;
+		gdtDescriptors[index].systemLow = GDTSystemDescriptor();
+		gdtDescriptors[index + 1].systemHigh = GDTSystemExtension();
 
 		with (gdtDescriptors[index].systemLow) {
 			baseLow = (base & 0xFFFF);

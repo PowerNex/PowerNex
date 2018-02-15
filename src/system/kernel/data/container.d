@@ -2,6 +2,7 @@ module data.container;
 
 import stl.range;
 import memory.allocator;
+import stl.address;
 
 struct Nullable(T) {
 	this(T value) {
@@ -96,13 +97,13 @@ public:
 		_length--;
 
 		static if (is(E == struct)) {
-			auto initData = typeid(E).init;
+			auto initData = typeid(E).initializer;
 			if (initData.ptr)
 				(cast(void*)&_list[_length])[0 .. initData.length] = initData[];
 			else
 				memset(&_list[_length], 0, E.sizeof);
 		} else static if (is(E == class)) {
-			auto initData = origCI.init;
+			auto initData = origCI.initializer;
 			(cast(void*)&_list[_length])[0 .. initData.length] = initData[];
 		} else
 			_list[_length] = E.init;

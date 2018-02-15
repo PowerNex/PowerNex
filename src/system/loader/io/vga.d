@@ -152,7 +152,7 @@ private static:
 	__gshared int _blockCursor;
 
 	void _moveCursor() {
-		import io.ioport : outp;
+		import stl.arch.amd64.ioport : outp;
 
 		if (_blockCursor > 0)
 			return;

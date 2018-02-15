@@ -1,6 +1,6 @@
 module hw.cmos.cmos;
 
-import io.port;
+import stl.arch.amd64.ioport;
 import arch.amd64.pit;
 
 private enum {

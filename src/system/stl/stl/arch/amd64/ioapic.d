@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module arch.amd64.ioapic;
+module stl.arch.amd64.ioapic;
 
 import stl.address;
 
@@ -22,16 +22,16 @@ public static:
 	void analyze() {
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : IOAPIC;
-		import arch.amd64.paging : Paging;
-		import io.log : Log;
+		import vmm.paging : getPaging;
+		import stl.io.log : Log;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
-			VirtAddress vAddr = Paging.mapSpecialAddress(ioapic.address, 0x20, true);
+			VirtAddress vAddr = getPaging.mapSpecialAddress(ioapic.address, 0x20, true);
 			const uint data = _ioapicVer(vAddr);
 			ioapic.version_ = cast(ubyte)(data & 0xFF);
 			ioapic.gsiMaxRedirectCount = cast(ubyte)((data >> 16) & 0xFF) + 1;
 			Log.info("IOAPIC: version: ", ioapic.version_, ", gsiMaxRedirectCount: ", ioapic.gsiMaxRedirectCount);
-			Paging.unmapSpecialAddress(vAddr, 0x20);
+			getPaging.unmapSpecialAddress(vAddr, 0x20);
 		}
 	}
 
@@ -39,16 +39,16 @@ public static:
 	void setupLoader() {
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : IOAPIC;
-		import arch.amd64.paging : Paging;
+		import vmm.paging : getPaging;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
-			VirtAddress vAddr = Paging.mapSpecialAddress(ioapic.address, 0x20, true);
+			VirtAddress vAddr = getPaging.mapSpecialAddress(ioapic.address, 0x20, true);
 			foreach (i; 0 .. ioapic.gsiMaxRedirectCount) {
 				const uint gsi = ioapic.gsi + i;
 
 				_ioRedirectionTable(vAddr, i, _createRedirect(gsi));
 			}
-			Paging.unmapSpecialAddress(vAddr, 0x20);
+			getPaging.unmapSpecialAddress(vAddr, 0x20);
 		}
 	}
 

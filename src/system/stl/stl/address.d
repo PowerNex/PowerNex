@@ -250,3 +250,47 @@ private mixin template AddressBase(Type = size_t) {
 static assert(VirtAddress.sizeof == size_t.sizeof);
 static assert(PhysAddress.sizeof == size_t.sizeof);
 static assert(PhysAddress32.sizeof == uint.sizeof);
+
+pure void* memset(return void* s, ubyte c, size_t n) @trusted {
+	ubyte* p = cast(ubyte*)s;
+	foreach (ref b; p[0 .. n])
+		b = c;
+	return s;
+}
+
+pure void* memcpy(return void* s1, scope const void* s2, size_t n) @trusted {
+	ubyte* p1 = cast(ubyte*)s1;
+	const(ubyte)* p2 = cast(const(ubyte)*)s2;
+	if (n)
+		do {
+			*p1++ = *p2++;
+		}
+	while (--n);
+	return s1;
+}
+
+pure void* memmove(return void* s1, scope const void* s2, size_t n) @trusted {
+	ubyte* p1 = cast(ubyte*)s1;
+	const(ubyte)* p2 = cast(const(ubyte)*)s2;
+
+	if (p2 < p1 && p1 < p2 + n) {
+		/* do a descending copy */
+		p2 += n;
+		p1 += n;
+		while (n-- != 0)
+			*--p1 = *--p2;
+	} else
+		while (n-- != 0)
+			*p1++ = *p2++;
+
+	return s1;
+}
+
+pure int memcmp(scope const void* s1, scope const void* s2, size_t n) @trusted nothrow {
+	auto p1 = cast(const(ubyte)*)s1;
+	auto p2 = cast(const(ubyte)*)s2;
+	for (; n; n--, p1++, p2++)
+		if (*p1 != *p2)
+			return *p1 - *p2;
+	return 0;
+}

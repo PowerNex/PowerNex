@@ -1,6 +1,6 @@
 module io.com;
 
-import io.port;
+import stl.arch.amd64.ioport;
 import arch.amd64.idt;
 import stl.register;
 

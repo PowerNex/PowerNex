@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module io.ioport;
+module stl.arch.amd64.ioport;
 
 T inp(T)(ushort port) @trusted {
 	import stl.trait : isByte, isShort, isInt;

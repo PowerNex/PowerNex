@@ -29,7 +29,7 @@ public static:
 
 	/// Aquire a TLS context for the current thread
 	void aquireTLS() @trusted {
-		import io.log : Log;
+		import stl.io.log : Log;
 		import memory.heap : Heap;
 
 		// TODO: check allocation is 0x10 aligned!

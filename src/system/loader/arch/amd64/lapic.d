@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module arch.amd64.lapic;
+module stl.arch.amd64.lapic;
 
 import stl.address;
 
@@ -33,8 +33,8 @@ public static:
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : CPUThread;
 		import stl.arch.amd64.msr : MSR;
-		import arch.amd64.idt : IDT;
-		import io.log : Log;
+		import stl.arch.amd64.idt : IDT;
+		import stl.io.log : Log;
 
 		{ // check cpuid for x2apic
 			enum x2APICFlag = 1 << 21;
@@ -85,9 +85,9 @@ public static:
 	}*/
 
 	void calibrate() @trusted {
-		import arch.amd64.idt : IDT, irq;
+		import stl.arch.amd64.idt : IDT, irq;
 		import stl.arch.amd64.msr : MSR;
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		VirtAddress oldIRQ0;
 		if (_x2APIC)
@@ -116,7 +116,7 @@ public static:
 		_write(Registers.timerDivide, divition);
 
 		{
-			import io.ioport : outp, inp;
+			import stl.arch.amd64.ioport : outp, inp;
 
 			enum ushort ch2IOPort = 0x61;
 			enum ushort dataPort = 0x42;
@@ -170,7 +170,7 @@ public static:
 	}
 
 	void setup() @trusted {
-		import arch.amd64.idt : IDT, irq;
+		import stl.arch.amd64.idt : IDT, irq;
 
 		IDT.register(irq(0), &_onTick);
 		IDT.register(254, &_onError);
@@ -451,7 +451,7 @@ private static:
 	}
 
 	void _onTick(from!"stl.register".Registers* regs) @trusted {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		_write(Registers.endOfInterrupt, 0);
 
@@ -459,7 +459,7 @@ private static:
 	}
 
 	void _onError(from!"stl.register".Registers* regs) @trusted {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		_write(Registers.endOfInterrupt, 0);
 
@@ -467,7 +467,7 @@ private static:
 	}
 
 	void _onSpurious(from!"stl.register".Registers* regs) @trusted {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		//_write(Registers.endOfInterrupt, 0);
 

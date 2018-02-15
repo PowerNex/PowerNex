@@ -2,7 +2,7 @@ module arch.amd64.idt;
 
 import stl.register;
 import stl.bitfield;
-import io.port;
+import stl.arch.amd64.ioport;
 
 align(1) struct IDTBase {
 align(1):

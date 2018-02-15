@@ -8,6 +8,8 @@
  */
 module stl.text;
 
+import stl.trait;
+
 ///
 @safe struct BinaryInt {
 	ulong number; ///
@@ -74,15 +76,14 @@ char[] strip(char[] str) {
 }
 
 ///
-string itoa(S)(S v, char[] buf, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted
-		if (from!"stl.trait".isNumber!S) {
+string itoa(S)(S v, char[] buf, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted if (isNumber!S) {
 	auto start = itoa(v, buf.ptr, buf.length, base, padLength, padChar);
 	return cast(string)buf[start .. $];
 }
 
 ///
 size_t itoa(S)(S v, char* buf, ulong len, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted
-		if (from!"stl.trait".isNumber!S) {
+		if (isNumber!S) {
 	import stl.trait : Unqual;
 
 	assert(1 < base && base <= 16);
@@ -94,12 +95,13 @@ size_t itoa(S)(S v, char* buf, ulong len, uint base = 10, size_t padLength = 1, 
 	if (padLength > len)
 		padLength = len;
 
-	if (value < 0) {
-		sign = true;
-		value = -value;
-		if (padLength)
-			padLength--;
-	}
+	static if (S.min < 0)
+		if (value < 0) {
+			sign = true;
+			value = -value;
+			if (padLength)
+				padLength--;
+		}
 
 	do {
 		buf[--pos] = baseChars[value % base];

@@ -9,9 +9,9 @@
 module data.multiboot2;
 
 import stl.address;
-import io.log : Log;
+import stl.io.log : Log;
 import stl.text : HexInt;
-import data.elf64 : ELF64SectionHeader;
+import stl.elf64 : ELF64SectionHeader;
 
 ///
 enum Multiboot2TagType : uint {
@@ -447,7 +447,7 @@ public static:
 					strtab = &section;
 			}
 			() @trusted{
-				import data.elf64 : ELF64Symbol;
+				import stl.elf64 : ELF64Symbol;
 
 				ELF64Symbol[] symbols = symtab.addr.ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
 				char[] strings = strtab.addr.ptr!char[0 .. strtab.size];

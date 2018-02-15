@@ -38,7 +38,7 @@ enum NodeType {
  * return -IOStatus.unknownError; // Everything except the success needs to have a minus '-' before it.
  * --------------------
  */
-enum IOStatus : ssize_t {
+enum IOStatus : ptrdiff_t {
 	success = 0,
 	unknownError,
 	notImplemented,

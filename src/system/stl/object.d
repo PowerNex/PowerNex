@@ -15,6 +15,7 @@ template from(string moduleName) {
 
 alias string = immutable(char)[];
 alias size_t = ulong;
+alias ptrdiff_t = long;
 alias hash_t = size_t;
 
 ///
@@ -99,7 +100,7 @@ const:
 		}
 		if (true || flags & MIname) // always available for now
 		{
-			import utils : strlen;
+			import stl.text : strlen;
 
 			if (flag == MIname)
 				return p;
@@ -163,7 +164,7 @@ const:
 	@property string name() nothrow pure {
 		if (true || flags & MIname) // always available for now
 		{
-			import utils : strlen;
+			import stl.text : strlen;
 
 			auto p = cast(immutable char*)addrOf(MIname);
 			return p[0 .. strlen(p)];
@@ -220,7 +221,7 @@ class Object {
 
 	/// Test whether this is equal to o. The default implementation only compares by identity (using the is operator).
 	/// Generally, overrides for opEquals should attempt to compare objects by their contents.
-	bool opEquals(Object o) {
+	bool opEquals(Object o) nothrow {
 		return this is o;
 	}
 
@@ -616,7 +617,7 @@ class TypeInfo_Struct : TypeInfo {
 	}
 
 	override bool equals(in void* p1, in void* p2) @trusted pure nothrow const {
-		import utils : memcmp;
+		import stl.address : memcmp;
 
 		if (!p1 || !p2)
 			return false;
@@ -629,7 +630,7 @@ class TypeInfo_Struct : TypeInfo {
 	}
 
 	override int compare(in void* p1, in void* p2) @trusted pure nothrow const {
-		import utils : memcmp;
+		import stl.address : memcmp;
 
 		if (p1 != p2) {
 			if (p1) {
@@ -971,7 +972,7 @@ class TypeInfo_StaticArray : TypeInfo {
 	}
 
 	override void swap(void* p1, void* p2) const {
-		import utils : memcpy;
+		import stl.address : memcpy;
 
 		void* tmp;
 		size_t sz = value.tsize;
@@ -1126,7 +1127,7 @@ class TypeInfo_Ag : TypeInfo_Array {
 	}
 
 	override bool equals(in void* p1, in void* p2) const {
-		import utils : memcmp;
+		import stl.address : memcmp;
 
 		byte[] s1 = *cast(byte[]*)p1;
 		byte[] s2 = *cast(byte[]*)p2;
@@ -1166,7 +1167,8 @@ class TypeInfo_Ah : TypeInfo_Ag {
 	}
 
 	override int compare(in void* p1, in void* p2) const {
-		import utils : memcmp, strlen;
+		import stl.address : memcmp;
+		import stl.text : strlen;
 
 		size_t s1Len = strlen(cast(char*)p1);
 		size_t s2Len = strlen(cast(char*)p2);
@@ -1302,7 +1304,7 @@ class TypeInfo_Al : TypeInfo_Array {
 	}
 
 	override bool equals(in void* p1, in void* p2) const {
-		import utils : memcmp;
+		import stl.address : memcmp;
 
 		long[] s1 = *cast(long[]*)p1;
 		long[] s2 = *cast(long[]*)p2;
@@ -1506,20 +1508,23 @@ extern (C) {
 		onAssert("Switch assertion failure", m.name, line);
 	}
 
-	void __assert (const char *msg, immutable(char)*file, int line) {
+	void __assert(const char* msg, immutable(char)* file, int line) {
 		import stl.text : strlen;
 
 		onAssert("Switch assertion failure", file[0 .. strlen(file)], line);
 	}
 
 	private void onAssert(string msg, string file, uint line) {
-		import io.log : Log, LogLevel;
+		import stl.io.log : Log, LogLevel;
 
 		Log.log(LogLevel.fatal, file, "", line, msg);
 	}
 
+	void[] _d_arraysetlengthiT(const TypeInfo ti, size_t newlength, void[]* p) {
+		assert(0);
+	}
 	void[] _d_arraycast(size_t newTypeSize, size_t curTypeSize, void[] arr) {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		auto len = curTypeSize * arr.length;
 
@@ -1531,6 +1536,14 @@ extern (C) {
 	}
 
 	deprecated Object _d_newclass(const ClassInfo ci) {
+		assert(0);
+	}
+
+	deprecated extern (C) void[] _d_newarrayT(const TypeInfo ti, size_t length) {
+		assert(0);
+	}
+
+	deprecated extern (C) void[] _d_newarrayiT(const TypeInfo ti, size_t length) pure nothrow {
 		assert(0);
 	}
 
@@ -1669,4 +1682,81 @@ extern (C) {
 		}
 		return to;
 	}
+}
+
+bool __equals(T1, T2)(T1[] lhs, T2[] rhs) @trusted {
+	if (lhs.length != rhs.length)
+		return false;
+
+	import stl.trait : Unqual;
+
+	if (!is(Unqual!T1 == Unqual!T2))
+		return false;
+
+	for (size_t i; i < lhs.length; i++)
+		if (lhs.ptr[i] != rhs.ptr[i])
+			return false;
+	return true;
+}
+
+extern (C) int* _memset32(int* p, int value, size_t count) {
+	foreach (ref int a; p[0 .. count])
+		a = value;
+	return p;
+}
+
+void __switch_error()(string file = __FILE__, size_t line = __LINE__) {
+	assert(0);
+}
+
+bool _xopEquals(const(void*) _param_0, const(void*) _param_1) {
+	assert(0, "TypeInfo.equals is not implemented");
+}
+
+bool _xopCmp(const(void*) _param_0, const(void*) _param_1) {
+	assert(0, "TypeInfo.compare is not implemented");
+}
+
+extern (C) void _except_handler2() {
+	assert(false);
+}
+
+extern (C) void _except_handler3() {
+	assert(false);
+}
+
+extern (C) void _cpp_framehandler() {
+	assert(false);
+}
+
+extern (C) void _d_framehandler() {
+	assert(false);
+}
+
+extern (C) void _d_local_unwind2() {
+	assert(false);
+}
+
+extern (C) void _local_unwind2() {
+	assert(false);
+}
+
+extern (C) void _Unwind_Resume() {
+	assert(false);
+}
+
+extern (C) void __dmd_personality_v0() {
+	assert(false);
+}
+
+extern (C) void __dmd_begin_catch() {
+	assert(false);
+}
+
+extern (C) void __cxa_begin_catch() {
+	assert(false);
+}
+
+extern (C) void __cxa_end_catch() {
+	assert(false);
 }

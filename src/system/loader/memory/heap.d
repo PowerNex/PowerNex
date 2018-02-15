@@ -91,7 +91,7 @@ public static:
 
 	///
 	void free(void[] address) @trusted {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		if (address.VirtAddress < _startAddress) // Can't free memory that hasn't been allocated with KHeap, or invalid memory
 			return;
@@ -146,7 +146,7 @@ public static:
 
 	///
 	void print() @trusted {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		Log.info("Printing KHeap!");
 		foreach (ubyte factor; _lowerFactor .. _upperFactor + 1) {

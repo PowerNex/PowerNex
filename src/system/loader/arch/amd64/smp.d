@@ -7,10 +7,10 @@ extern (C) extern __gshared ubyte boot16_location, boot16_start, boot16_end;
 @safe static struct SMP {
 public static:
 	void init() @trusted {
-		import arch.amd64.lapic : LAPIC;
+		import stl.arch.amd64.lapic : LAPIC;
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : CPUThread;
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		_setupInit16();
 
@@ -60,7 +60,7 @@ public static:
 
 private static:
 	void _setupInit16() @trusted {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		Log.info("memcpy(", _location, ", ", _start, ", ", _end - _start, ");");
 		_location.memcpy(_start, (_end - _start).num);

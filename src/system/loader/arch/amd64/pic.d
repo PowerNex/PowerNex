@@ -19,7 +19,7 @@ public static:
 
 	///
 	void disable() {
-		import io.ioport : outp;
+		import stl.arch.amd64.ioport : outp;
 
 		enum masterPort = 0x21;
 		enum slavePort = 0xA1;

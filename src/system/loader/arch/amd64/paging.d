@@ -244,7 +244,7 @@ VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe {
 @safe static struct Paging {
 public static:
 	void init() {
-		import arch.amd64.idt : IDT, InterruptType;
+		import stl.arch.amd64.idt : IDT, InterruptType;
 
 		IDT.register(InterruptType.pageFault, &_onPageFault);
 	}
@@ -283,7 +283,7 @@ public static:
 	}
 
 	VirtAddress mapSpecial(PhysAddress pAddr, size_t size, PageFlags flags = PageFlags.present, bool clear = false) {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		const size_t pagesNeeded = ((size + 0xFFF) & ~0xFFF) / 0x1000;
 
@@ -325,7 +325,7 @@ public static:
 	}
 
 	bool map(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags = PageFlags.present, bool clear = false) {
-		import io.log : Log;
+		import stl.io.log : Log;
 
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry) {
@@ -533,9 +533,9 @@ private static:
 
 private void _onPageFault(from!"stl.register".Registers* regs) @safe {
 	import io.vga : VGA, CGAColor, CGASlotColor;
-	import io.log : Log;
+	import stl.io.log : Log;
 	import stl.text : HexInt;
-	import arch.amd64.lapic : LAPIC;
+	import stl.arch.amd64.lapic : LAPIC;
 
 	size_t id = LAPIC.getCurrentID();
 

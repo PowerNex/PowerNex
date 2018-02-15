@@ -483,7 +483,7 @@ private:
 	}
 }
 
-enum PageFaultStatus : ssize_t {
+enum PageFaultStatus : ptrdiff_t {
 	success = 0,
 	unknownError = -1
 }

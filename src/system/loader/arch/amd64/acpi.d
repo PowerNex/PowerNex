@@ -11,7 +11,7 @@
 module arch.amd64.acpi;
 
 import stl.address;
-import io.log : Log;
+import stl.io.log : Log;
 import arch.amd64.paging : Paging;
 
 ///
@@ -547,7 +547,7 @@ public static: ///
 	@SDTIdentifier("FACP", SDTNeedVersion.v1Only)
 	void accept(FADTv1* fadt) {
 		import powerd.api : getPowerDAPI;
-		import io.ioport : outp, inp;
+		import stl.arch.amd64.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 		import stl.text : HexInt;
 
@@ -610,7 +610,7 @@ public static: ///
 	void accept(FADTv2* fadt) {
 		import powerd.api : getPowerDAPI;
 		import powerd.api.acpi : PowerDACPI;
-		import io.ioport : outp, inp;
+		import stl.arch.amd64.ioport : outp, inp;
 		import arch.amd64.pit : PIT;
 
 		with (getPowerDAPI.acpi) {
@@ -821,7 +821,7 @@ public static: ///
 	///
 	void shutdown() {
 		import powerd.api : getPowerDAPI;
-		import io.ioport : outp, inp;
+		import stl.arch.amd64.ioport : outp, inp;
 		import stl.text : HexInt;
 		import io.vga : VGA;
 
@@ -856,7 +856,7 @@ public static: ///
 	///
 	void reboot() {
 		import powerd.api : getPowerDAPI;
-		import io.ioport : inp, outp;
+		import stl.arch.amd64.ioport : inp, outp;
 
 		asm @trusted pure nothrow {
 			cli;

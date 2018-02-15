@@ -58,10 +58,3 @@ boot64AP:
 		hlt
 		jmp 1b
 .size boot64AP, .-boot64AP
-
-.global __dmd_personality_v0
-.type __dmd_personality_v0, %function
-__dmd_personality_v0:
-	hlt
-	jmp __dmd_personality_v0
-.size __dmd_personality_v0, .-__dmd_personality_v0
