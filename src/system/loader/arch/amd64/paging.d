@@ -10,6 +10,7 @@
 module arch.amd64.paging;
 
 import stl.address;
+import stl.register;
 
 /*
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
@@ -531,7 +532,7 @@ private static:
 	}
 }
 
-private void _onPageFault(from!"stl.register".Registers* regs) @safe {
+private void _onPageFault(Registers* regs) @safe {
 	import io.vga : VGA, CGAColor, CGASlotColor;
 	import stl.io.log : Log;
 	import stl.text : HexInt;

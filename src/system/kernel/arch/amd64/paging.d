@@ -2,6 +2,7 @@ module arch.amd64.paging;
 
 import arch.paging;
 import stl.address;
+import stl.register;
 import stl.trait;
 import memory.vmm;
 
@@ -473,7 +474,7 @@ private:
 
 private extern (C) ulong cpuRetCR3();
 
-private void _onPageFault(from!"stl.register".Registers* regs) {
+private void _onPageFault(Registers* regs) {
 	import data.textbuffer : scr = getBootTTY;
 	import io.log;
 

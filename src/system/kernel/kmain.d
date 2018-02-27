@@ -1,15 +1,5 @@
 module kmain;
 
-import stl.trait : isVersion;
-
-static assert(isVersion!"PowerNex", "\x1B[31;1m\n\n
-+--------------------------------------- ERROR ---------------------------------------+
-|                                                                                     |
-|  You need to follow the build steps that are specified inside the README.org file!  |
-|                                                                                     |
-+-------------------------------------------------------------------------------------+
-\n\n\x1B[0m");
-
 import memory.allocator;
 import io.com;
 import io.log;

@@ -8,6 +8,8 @@
  */
 module io.log;
 
+import stl.address;
+
 ///
 enum LogLevel {
 	verbose = 0,
@@ -43,7 +45,7 @@ char toChar(LogLevel level) @trusted {
 		ubyte info; ///
 		ubyte other; ///
 		ushort shndx; ///
-		from!"stl.address".VirtAddress value; ///
+		VirtAddress value; ///
 		ulong size; ///
 	}
 
@@ -160,8 +162,6 @@ public static:
 
 	///
 	void printStackTrace(size_t skipLevels = 0) @trusted {
-		import stl.address : VirtAddress;
-
 		VirtAddress rbp;
 		asm pure nothrow {
 			mov rbp, RBP;
@@ -177,7 +177,7 @@ public static:
 	}
 
 	///
-	Func getFuncName(from!"stl.address".VirtAddress addr) @trusted {
+	Func getFuncName(VirtAddress addr) @trusted {
 		import stl.text : strlen;
 
 		if (!_symbols)
@@ -217,7 +217,7 @@ private static:
 		return str;
 	}
 
-	void _printStackTrace(from!"stl.address".VirtAddress rbp, size_t skipLevels = 0) {
+	void _printStackTrace(VirtAddress rbp, size_t skipLevels = 0) {
 		import stl.address : VirtAddress;
 		import io.com : com1;
 

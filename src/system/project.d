@@ -12,7 +12,7 @@ import build;
 import src.buildlib;
 
 immutable {
-	string dCompilerArgs = " -m64 -dip25 -dip1000 -fPIC -betterC -dw -color=on -debug -c -g -of$out$ $in$ -version=bare_metal -debug=allocations -defaultlib= -debuglib= -Isrc/system/stl";
+	string dCompilerArgs = " -m64 -dip25 -dip1000 -dip1008 -fPIC -betterC -dw -color=on -debug -c -g -of$out$ $in$ -version=bare_metal -debug=allocations -defaultlib= -debuglib= -Isrc/system/stl";
 	string aCompilerArgs = " --divide --64 -o $out$ $in$";
 	string linkerArgs = " -o $out$ -z max-page-size=0x1000 $in$ -nostdlib";
 	string archiveArgs = " rcs $out$ $in$";

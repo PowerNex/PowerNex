@@ -9,6 +9,8 @@
  */
 module io.vga;
 
+import stl.trait;
+
 ///
 enum CGAColor {
 	black = 0, ///
@@ -217,7 +219,7 @@ private static:
 			_write(*(str++));
 	}
 
-	void _writeNumber(S = long)(S value, uint base) if (from!"stl.trait".isNumber!S) {
+	void _writeNumber(S = long)(S value, uint base) if (isNumber!S) {
 		import stl.text : itoa;
 
 		char[S.sizeof * 8] buf;

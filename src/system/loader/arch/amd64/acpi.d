@@ -923,7 +923,11 @@ private static:
 		void function(SDTHeader*) func;
 	}
 
-	__gshared SDTLookup[{ return from!"stl.trait".getFunctionsWithUDA!(ACPI, SDTIdentifier).length; }()] _lookups;
+	__gshared SDTLookup[{ //
+		import stl.trait : getFunctionsWithUDA;
+
+		return getFunctionsWithUDA!(ACPI, SDTIdentifier).length;
+	}()] _lookups;
 
 	void _runHandler(SDTHeader* sdt) @trusted {
 		foreach (lookup; _lookups) {

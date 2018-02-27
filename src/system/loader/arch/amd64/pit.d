@@ -8,6 +8,8 @@
  */
 module arch.amd64.pit;
 
+import stl.register;
+
 @safe static struct PIT {
 public static:
 	void init(uint hz = 1000) @trusted {
@@ -41,7 +43,7 @@ private static:
 	__gshared uint _hz;
 	__gshared size_t _counter;
 
-	void _onTick(from!"stl.register".Registers* regs) @trusted {
+	void _onTick(Registers* regs) @trusted {
 		_counter++;
 	}
 }

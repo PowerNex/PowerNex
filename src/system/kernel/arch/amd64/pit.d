@@ -29,10 +29,12 @@ public:
 	}
 
 private:
+	import stl.register;
+
 	__gshared bool _enabled;
 	__gshared uint _hz;
 	__gshared ulong _counter;
-	static void _onTick(from!"stl.register".Registers* regs) {
+	static void _onTick(Registers* regs) {
 		_counter++;
 	}
 }

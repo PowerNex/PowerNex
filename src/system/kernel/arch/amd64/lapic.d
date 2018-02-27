@@ -9,6 +9,7 @@
 module arch.amd64.lapic;
 
 import stl.address;
+import stl.register;
 
 private extern __gshared extern (C) VirtAddress LAPIC_address;
 private extern extern (C) void LAPIC_dummyTimer();
@@ -421,7 +422,7 @@ private static:
 		_write(Registers.timerInitialCount, initialCount);
 	}
 
-	void _onTick(from!"stl.register".Registers* regs) @trusted {
+	void _onTick(Registers* regs) @trusted {
 		import io.log : Log;
 
 		_write(Registers.endOfInterrupt, 0);
@@ -429,7 +430,7 @@ private static:
 		_counter++;
 	}
 
-	void _onError(from!"stl.register".Registers* regs) @trusted {
+	void _onError(Registers* regs) @trusted {
 		import io.log : Log;
 
 		_write(Registers.endOfInterrupt, 0);
@@ -437,7 +438,7 @@ private static:
 		Log.error("onError");
 	}
 
-	void _onSpurious(from!"stl.register".Registers* regs) @trusted {
+	void _onSpurious(Registers* regs) @trusted {
 		import io.log : Log;
 
 		//_write(Registers.endOfInterrupt, 0);

@@ -10,6 +10,8 @@ module main;
 
 import stl.address;
 
+import arch.amd64.paging;
+
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
 
@@ -33,11 +35,9 @@ private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTIO
 	Log.info!(file, func, line)(args);
 }
 
-__gshared VirtAddress apStackLoc = from!"arch.amd64.paging"._makeAddress(0, 2, 0, 0);
+__gshared VirtAddress apStackLoc = _makeAddress(0, 2, 0, 0);
 
 extern (C) VirtAddress newStackAP() @trusted {
-	import arch.amd64.paging : Paging, PageFlags;
-
 	if (!Paging.map(apStackLoc, PhysAddress(), PageFlags.present | PageFlags.writable | PageFlags.execute))
 		return VirtAddress();
 
@@ -82,7 +82,9 @@ extern (C) ulong mainAP() @safe {
 	}
 }
 
-from!"powerd.api.cpu".CPUThread* currentThread; /// The current threads structure
+import powerd.api.cpu : CPUThread;
+
+CPUThread* currentThread; /// The current threads structure
 
 ///
 extern (C) ulong main() @safe {
@@ -147,7 +149,7 @@ extern (C) ulong main() @safe {
 	auto kernelModule = Multiboot2.getModule("kernel");
 	outputBoth("Kernel module: [", kernelModule.start, "-", kernelModule.end, "]");
 	ELF64 kernelELF = ELF64(kernelModule);
-	ELFInstance kernel;// = kernelELF.aquireInstance();
+	ELFInstance kernel; // = kernelELF.aquireInstance();
 
 	outputBoth("kernel.main: ", VirtAddress(kernel.main));
 	outputBoth("kernel.ctors: ");
