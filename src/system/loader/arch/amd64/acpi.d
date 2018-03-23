@@ -823,7 +823,7 @@ public static: ///
 		import powerd.api : getPowerDAPI;
 		import stl.arch.amd64.ioport : outp, inp;
 		import stl.text : HexInt;
-		import io.vga : VGA;
+		import stl.io.vga : VGA;
 
 		asm @trusted pure nothrow {
 			cli;
@@ -844,7 +844,7 @@ public static: ///
 		}
 
 		{
-			import io.vga : VGA, CGAColor, CGASlotColor;
+			import stl.io.vga : VGA, CGAColor, CGASlotColor;
 
 			string resetMessage = "All attempts to shutdown have failed. Please shutdown the PC manually!";
 			VGA.color = CGASlotColor(CGAColor.black, CGAColor.red);
@@ -897,7 +897,7 @@ public static: ///
 		outp!ubyte(ps2PortControl, systemReset);
 
 		{
-			import io.vga : VGA, CGAColor, CGASlotColor;
+			import stl.io.vga : VGA, CGAColor, CGASlotColor;
 
 			string resetMessage = "All attempts to reboot have failed. Please reset the PC manually!";
 			VGA.color = CGASlotColor(CGAColor.black, CGAColor.red);

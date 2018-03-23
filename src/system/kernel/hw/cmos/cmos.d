@@ -1,7 +1,7 @@
 module hw.cmos.cmos;
 
 import stl.arch.amd64.ioport;
-import arch.amd64.pit;
+import stl.arch.amd64.lapic;
 
 private enum {
 	cmosAddress = 0x70,
@@ -40,7 +40,7 @@ public static:
 				|| last[cmosMonth] != rawData[cmosMonth] || last[cmosYear] != rawData[cmosYear]
 				|| last[cmosYear] != rawData[cmosYear] || (_centuryReg && last[_centuryReg] != rawData[_centuryReg]));
 
-		PIT.clear();
+		LAPIC.clear();
 
 		if (!(rawData[cmosRegb] & 0x04)) { // If rawData is BCD
 			rawData[cmosSecond] = _fromBCD(rawData[cmosSecond]);
@@ -75,7 +75,7 @@ public static:
 	}
 
 	@property ulong timeStamp() {
-		return _timestamp + PIT.seconds;
+		return _timestamp + LAPIC.seconds;
 	}
 
 private static:

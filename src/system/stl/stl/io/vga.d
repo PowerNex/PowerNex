@@ -7,7 +7,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module io.vga;
+module stl.io.vga;
 
 import stl.trait;
 
@@ -138,11 +138,11 @@ public static:
 		return _color;
 	}
 
-	@property ubyte x() {
+	@property ref ubyte x() {
 		return _x;
 	}
 
-	@property ubyte y() {
+	@property ref ubyte y() {
 		return _y;
 	}
 

@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module memory.heap;
+module stl.vmm.heap;
 
 import stl.address;
 
@@ -19,13 +19,15 @@ import stl.address;
 
 static assert(BuddyHeader.sizeof == 2 * ulong.sizeof);
 
+private VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe {
+	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
+}
+
 ///
 @safe static struct Heap {
 public static:
 	///
 	void init() @trusted {
-		import arch.amd64.paging : _makeAddress;
-
 		_startAddress = _nextFreeAddress = _makeAddress(0, 1, 0, 0);
 
 		{
@@ -181,9 +183,9 @@ private static:
 	}
 
 	void _extend() @trusted {
-		import arch.amd64.paging : Paging, PageFlags;
+		import stl.vmm.paging;
 
-		assert(Paging.map(_nextFreeAddress, PhysAddress(), PageFlags.present | PageFlags.writable, false), "Map failed!");
+		assert(mapAddress(_nextFreeAddress, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false), "Map failed!");
 		BuddyHeader* newBuddy = _nextFreeAddress.ptr!BuddyHeader;
 		newBuddy.next = _getFreeFactors(_upperFactor);
 		newBuddy.factor = _upperFactor;

@@ -11,21 +11,14 @@ module arch.amd64.paging;
 
 import stl.address;
 import stl.register;
+import stl.vmm.paging;
+import stl.vmm.vmm;
 
 /*
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
 */
 
 private const _pageSize = 0x1000; //TODO: Is needed?
-
-/// Bitmap enum containing the flags for controlling what properties the map should have
-enum PageFlags {
-	none = 0, /// Empty flags
-	present = 1, /// The map is active
-	writable = 2, /// The map is writable
-	user = 4, /// User mode can access it
-	execute = 8 /// Allow code from execution
-}
 
 /// Page table level
 @safe struct PTLevel(NextLevel) {
@@ -196,22 +189,22 @@ enum PageFlags {
 				return (((VirtAddress(&this) & ~0xFFF) << 9) | (id << 12)).ptr!NextLevel;
 			}
 
-		@property PageFlags vmFlags() const {
-			PageFlags flags;
+		@property VMPageFlags vmFlags() const {
+			VMPageFlags flags;
 			if (!present)
-				return PageFlags.none;
+				return VMPageFlags.none;
 
-			flags |= PageFlags.present;
+			flags |= VMPageFlags.present;
 			if (readWrite)
-				flags |= PageFlags.writable;
+				flags |= VMPageFlags.writable;
 			if (user)
-				flags |= PageFlags.user;
+				flags |= VMPageFlags.user;
 			if (!noExecute) //NOTE '!'
-				flags |= PageFlags.execute;
+				flags |= VMPageFlags.execute;
 			return flags;
 		}
 
-		@property void vmFlags(PageFlags flags) {
+		@property void vmFlags(VMPageFlags flags) {
 			present = !!(flags & flags.present);
 			readWrite = !!(flags & flags.writable);
 			user = !!(flags & flags.user);
@@ -248,31 +241,27 @@ public static:
 
 	///
 	VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) {
-		import arch.amd64.paging : Paging, PageFlags;
-
 		const PhysAddress pa = pAddr & ~0xFFF;
 		const size_t offset = pAddr.num & 0xFFF;
 
-		return Paging.mapSpecial(pa, size + offset, PageFlags.present | (readWrite ? PageFlags.writable : PageFlags.none), clear) + offset;
+		return mapSpecial(pa, size + offset, VMPageFlags.present | (readWrite ? VMPageFlags.writable : VMPageFlags.none), clear) + offset;
 	}
 
 	///
 	void unmapSpecialAddress(ref VirtAddress vAddr, size_t size) {
-		import arch.amd64.paging : Paging;
-
 		long offset = vAddr.num & 0xFFF;
 		size += offset;
 
 		VirtAddress tmp = vAddr & ~0xFFF;
 		while (offset > 0) {
-			Paging.unmap(tmp, false);
+			unmap(tmp, false);
 			tmp += 0x1000;
 			offset -= 0x1000;
 		}
 		vAddr.addr = 0;
 	}
 
-	VirtAddress mapSpecial(PhysAddress pAddr, size_t size, PageFlags flags = PageFlags.present, bool clear = false) {
+	VirtAddress mapSpecial(PhysAddress pAddr, size_t size, VMPageFlags flags = VMPageFlags.present, bool clear = false) {
 		import stl.io.log : Log;
 
 		const size_t pagesNeeded = ((size + 0xFFF) & ~0xFFF) / 0x1000;
@@ -302,7 +291,7 @@ public static:
 			PML1.TableEntry* entry = &special.entries[freePage + i];
 
 			entry.address = pAddr + i * 0x1000;
-			entry.vmFlags = flags | (clear ? PageFlags.writable : PageFlags.none);
+			entry.vmFlags = flags | (clear ? VMPageFlags.writable : VMPageFlags.none);
 			_flush(vAddr);
 
 			if (clear) {
@@ -314,7 +303,7 @@ public static:
 		return vAddr;
 	}
 
-	bool map(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags = PageFlags.present, bool clear = false) {
+	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags = VMPageFlags.present, bool clear = false) {
 		import stl.io.log : Log;
 
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
@@ -329,7 +318,7 @@ public static:
 		}
 
 		entry.address = pAddr ? pAddr : getNextFreePage();
-		entry.vmFlags = flags | (clear ? PageFlags.writable : PageFlags.none);
+		entry.vmFlags = flags | (clear ? VMPageFlags.writable : VMPageFlags.none);
 		_flush(vAddr);
 
 		if (clear) {
@@ -351,7 +340,7 @@ public static:
 		* --------------------
 		*/
 
-	bool remap(VirtAddress vAddr, PhysAddress pAddr, PageFlags flags) {
+	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry)
 			return false;
@@ -373,13 +362,13 @@ public static:
 			return false;
 
 		if (freePage) {
-			import memory.frameallocator : FrameAllocator;
+			import stl.vmm.frameallocator : FrameAllocator;
 
 			FrameAllocator.free(entry.address);
 		}
 
 		entry.address = PhysAddress();
-		entry.vmFlags = PageFlags.none;
+		entry.vmFlags = VMPageFlags.none;
 		_flush(vAddr);
 		return true;
 	}
@@ -419,13 +408,13 @@ public static:
 	}
 
 	PhysAddress getNextFreePage() {
-		import memory.frameallocator : FrameAllocator;
+		import stl.vmm.frameallocator : FrameAllocator;
 
 		return FrameAllocator.alloc();
 	}
 
 	void freePage(PhysAddress page) {
-		import memory.frameallocator : FrameAllocator;
+		import stl.vmm.frameallocator : FrameAllocator;
 
 		return FrameAllocator.free(page);
 	}
@@ -522,7 +511,7 @@ private static:
 }
 
 extern (C) void onPageFault(Registers* regs) @safe {
-	import io.vga : VGA, CGAColor, CGASlotColor;
+	import stl.io.vga : VGA, CGAColor, CGASlotColor;
 	import stl.io.log : Log;
 	import stl.text : HexInt;
 	import stl.arch.amd64.lapic : LAPIC;
@@ -576,10 +565,10 @@ extern (C) void onPageFault(Registers* regs) @safe {
 		}
 
 	tableEntriesDone:
-		PageFlags pml3Flags;
-		PageFlags pml2Flags;
-		PageFlags pml1Flags;
-		PageFlags pageFlags;
+		VMPageFlags pml3Flags;
+		VMPageFlags pml2Flags;
+		VMPageFlags pml1Flags;
+		VMPageFlags VMPageFlags;
 
 		if (!pml4Entry)
 			goto flagsDone;
@@ -595,7 +584,7 @@ extern (C) void onPageFault(Registers* regs) @safe {
 
 		if (!pml1Entry)
 			goto flagsDone;
-		pageFlags = pml1Entry.vmFlags;
+		VMPageFlags = pml1Entry.vmFlags;
 
 	flagsDone:
 		Log.Func func = Log.getFuncName(rip);
@@ -618,14 +607,14 @@ extern (C) void onPageFault(Registers* regs) @safe {
 		VGA.writeln("Errorcode: ", errorCode.num.HexInt, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
 				(errorCode & (1 << 3) ? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		VGA.writeln("PDP Mode: ", (pml3Flags & PageFlags.present) ? "R" : "", (pml3Flags & PageFlags.writable) ? "W" : "",
-				(pml3Flags & PageFlags.execute) ? "X" : "", (pml3Flags & PageFlags.user) ? "-User" : "");
-		VGA.writeln("PD Mode: ", (pml2Flags & PageFlags.present) ? "R" : "", (pml2Flags & PageFlags.writable) ? "W" : "",
-				(pml2Flags & PageFlags.execute) ? "X" : "", (pml2Flags & PageFlags.user) ? "-User" : "");
-		VGA.writeln("PT Mode: ", (pml1Flags & PageFlags.present) ? "R" : "", (pml1Flags & PageFlags.writable) ? "W" : "",
-				(pml1Flags & PageFlags.execute) ? "X" : "", (pml1Flags & PageFlags.user) ? "-User" : "");
-		VGA.writeln("Page Mode: ", (pageFlags & PageFlags.present) ? "R" : "", (pageFlags & PageFlags.writable) ? "W" : "",
-				(pageFlags & PageFlags.execute) ? "X" : "", (pageFlags & PageFlags.user) ? "-User" : "");
+		VGA.writeln("PDP Mode: ", (pml3Flags & VMPageFlags.present) ? "R" : "", (pml3Flags & VMPageFlags.writable) ? "W" : "",
+				(pml3Flags & VMPageFlags.execute) ? "X" : "", (pml3Flags & VMPageFlags.user) ? "-User" : "");
+		VGA.writeln("PD Mode: ", (pml2Flags & VMPageFlags.present) ? "R" : "", (pml2Flags & VMPageFlags.writable) ? "W" : "",
+				(pml2Flags & VMPageFlags.execute) ? "X" : "", (pml2Flags & VMPageFlags.user) ? "-User" : "");
+		VGA.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
+				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
+		VGA.writeln("Page Mode: ", (VMPageFlags & VMPageFlags.present) ? "R" : "", (VMPageFlags & VMPageFlags.writable) ? "W" : "",
+				(VMPageFlags & VMPageFlags.execute) ? "X" : "", (VMPageFlags & VMPageFlags.user) ? "-User" : "");
 		//dfmt off
 		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
 			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
@@ -649,25 +638,25 @@ extern (C) void onPageFault(Registers* regs) @safe {
 				(errorCode & (1 << 4) ? " InstructionFetch" : ""),
 			" )", "\n",
 			"PDP Mode: ",
-				(pml3Flags & PageFlags.present) ? "R" : "",
-				(pml3Flags & PageFlags.writable) ? "W" : "",
-				(pml3Flags & PageFlags.execute) ? "X" : "",
-				(pml3Flags & PageFlags.user) ? "-User" : "", "\n",
+				(pml3Flags & VMPageFlags.present) ? "R" : "",
+				(pml3Flags & VMPageFlags.writable) ? "W" : "",
+				(pml3Flags & VMPageFlags.execute) ? "X" : "",
+				(pml3Flags & VMPageFlags.user) ? "-User" : "", "\n",
 			"PD Mode: ",
-				(pml2Flags & PageFlags.present) ? "R" : "",
-				(pml2Flags & PageFlags.writable) ? "W" : "",
-				(pml2Flags & PageFlags.execute) ? "X" : "",
-				(pml2Flags & PageFlags.user) ? "-User" : "", "\n",
+				(pml2Flags & VMPageFlags.present) ? "R" : "",
+				(pml2Flags & VMPageFlags.writable) ? "W" : "",
+				(pml2Flags & VMPageFlags.execute) ? "X" : "",
+				(pml2Flags & VMPageFlags.user) ? "-User" : "", "\n",
 			"PT Mode: ",
-				(pml1Flags & PageFlags.present) ? "R" : "",
-				(pml1Flags & PageFlags.writable) ? "W" : "",
-				(pml1Flags & PageFlags.execute) ? "X" : "",
-				(pml1Flags & PageFlags.user) ? "-User" : "", "\n",
+				(pml1Flags & VMPageFlags.present) ? "R" : "",
+				(pml1Flags & VMPageFlags.writable) ? "W" : "",
+				(pml1Flags & VMPageFlags.execute) ? "X" : "",
+				(pml1Flags & VMPageFlags.user) ? "-User" : "", "\n",
 			"Page Mode: ",
-				(pageFlags & PageFlags.present) ? "R" : "",
-				(pageFlags & PageFlags.writable) ? "W" : "",
-				(pageFlags & PageFlags.execute) ? "X" : "",
-				(pageFlags & PageFlags.user) ? "-User" : "");
+				(VMPageFlags & VMPageFlags.present) ? "R" : "",
+				(VMPageFlags & VMPageFlags.writable) ? "W" : "",
+				(VMPageFlags & VMPageFlags.execute) ? "X" : "",
+				(VMPageFlags & VMPageFlags.user) ? "-User" : "");
 		//dfmt on
 	}
 }
@@ -678,4 +667,12 @@ extern (C) VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool re
 
 extern (C) void unmapSpecialAddress(ref VirtAddress vAddr, size_t size) @trusted {
 	Paging.unmapSpecialAddress(vAddr, size);
+}
+
+extern (C) bool mapAddress(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) @trusted {
+	return Paging.map(vAddr, pAddr, flags, clear);
+}
+
+extern (C) bool unmap(VirtAddress vAddr, bool freePage = false) @trusted {
+	return Paging.unmap(vAddr, freePage);
 }

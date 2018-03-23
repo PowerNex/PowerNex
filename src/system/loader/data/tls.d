@@ -30,7 +30,7 @@ public static:
 	/// Aquire a TLS context for the current thread
 	void aquireTLS() @trusted {
 		import stl.io.log : Log;
-		import memory.heap : Heap;
+		import stl.vmm.heap : Heap;
 
 		// TODO: check allocation is 0x10 aligned!
 		size_t size = ((tdataSize + tbssSize + 0xF) & ~0xF) + TLSData.sizeof;

@@ -1,11 +1,11 @@
-module memory.vmm;
+module stl.vmm.vmm;
 
 import stl.address;
-import data.container;
-import memory.ptr;
-import memory.allocator;
-import task.process;
-import arch.paging;
+import stl.vector;
+//import task.process;
+import stl.vmm.paging;
+
+alias Process = void*;
 
 // https://www.freebsd.org/cgi/man.cgi?query=vm_map&sektion=9&apropos=0&manpath=FreeBSD+11-current
 // https://www.freebsd.org/doc/en/articles/vm-design/vm-objects.html
@@ -79,15 +79,14 @@ struct VMZoneInformation {
 struct VMProcess {
 public:
 	Vector!(VMObject*) objects; /// All the object that is associated with the process
-	Paging* backend; /// The paging backend
+	/*Paging* backend; /// The paging backend
 	@disable this();
 	this(Paging* backend) {
-		objects = kernelAllocator.make!(Vector!(VMObject*))(kernelAllocator);
 		backend = backend;
-	}
+	}*/
 
 	~this() {
-		// Don't unmap anything, it will just waste power. This VMProcess is dead when this is called.
+		/+// Don't unmap anything, it will just waste power. This VMProcess is dead when this is called.
 		void freeObject(VMObject* o) {
 			if (!o)
 				return;
@@ -117,16 +116,16 @@ public:
 		foreach (obj; objects)
 			freeObject(obj);
 
-		kernelAllocator.dispose(objects);
+		kernelAllocator.dispose(objects);+/
 	}
 
 	void bind() {
-		backend.bind();
+		//backend.bind();
 	}
 
 	//TODO: Return better error
-	bool addMemoryZone(VirtAddress zoneStart, VirtAddress zoneEnd, bool isManual = false) {
-		// Verify that it won't be inside another zone or contain another zone
+	bool addMemoryZone(VirtAddress zoneStaProcessrt, VirtAddress zoneEnd, bool isManual = false) {
+		/+// Verify that it won't be inside another zone or contain another zone
 		//dfmt off
 		foreach (ref VMObject* object; objects)
 			if ((object.zoneStart <= zoneStart && object.zoneEnd >= zoneStart) ||	// If zoneStart is inside a existing zone
@@ -144,12 +143,12 @@ public:
 		obj.parent = null;
 		obj.refCounter = 1;
 
-		objects.put(obj);
+		objects.put(obj);+/
 		return true;
 	}
 
 	PageFaultStatus onPageFault(scope Process process, VirtAddress vAddr, bool present, bool write, bool user) {
-		auto backend = this.backend;
+		/+auto backend = this.backend;
 		vAddr &= ~0xFFF;
 
 		VMObject** rootObject = _getObjectForZone(vAddr);
@@ -281,12 +280,12 @@ public:
 
 			page.pAddr = backend.getNextFreePage();
 			backend.map(page, true);
-		}
+		}+/
 		return PageFaultStatus.success;
 	}
 
-	SharedPtr!VMProcess fork(scope Process process) {
-		SharedPtr!VMProcess newProcess = kernelAllocator.makeSharedPtr!VMProcess(backend);
+	VMProcess* fork(scope Process process) {
+		/+SharedPtr!VMProcess newProcess = kernelAllocator.makeSharedPtr!VMProcess(backend);
 		if (!newProcess) {
 			process.signal(SignalType.noMemory, "Out of memory");
 			return SharedPtr!VMProcess();
@@ -329,11 +328,12 @@ public:
 			(*newProcess).objects.put(obj);
 		}
 
-		return newProcess;
+		return newProcess;+/
+		return null;
 	}
 
 	VMMappingError mapFreeMemory(scope Process process, VirtAddress vAddr, VMPageFlags flags) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
+		/+VMObject** rootObject = _getObjectForZone(vAddr);
 		if (!rootObject)
 			return VMMappingError.noMemoryZoneAllocated;
 		else if ((*rootObject).state == VMObjectState.manual)
@@ -361,12 +361,12 @@ public:
 		p.pAddr = PhysAddress(0);
 		p.flags = flags;
 
-		(*rootObject).pages.put(p);
+		(*rootObject).pages.put(p);+/
 		return VMMappingError.success;
 	}
 
 	VMMappingError mapManual(scope Process process, VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
+		/+VMObject** rootObject = _getObjectForZone(vAddr);
 		if (!rootObject)
 			return VMMappingError.noMemoryZoneAllocated;
 		else if ((*rootObject).state != VMObjectState.manual)
@@ -381,12 +381,12 @@ public:
 		p.pAddr = pAddr;
 		p.flags = flags;
 
-		(*rootObject).pages.put(p);
+		(*rootObject).pages.put(p);+/
 		return VMMappingError.success;
 	}
 
 	VMMappingError remap(scope Process process, VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
+		/+VMObject** rootObject = _getObjectForZone(vAddr);
 		if (!rootObject)
 			return VMMappingError.noMemoryZoneAllocated;
 
@@ -431,12 +431,12 @@ public:
 		p.pAddr = page.pAddr;
 		p.flags = flags;
 
-		(*rootObject).pages.put(p);
+		(*rootObject).pages.put(p);+/
 		return VMMappingError.success;
 	}
 
 	VMMappingError unmap(scope Process process, VirtAddress vAddr) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
+		/+VMObject** rootObject = _getObjectForZone(vAddr);
 		if (!rootObject)
 			return VMMappingError.noMemoryZoneAllocated;
 
@@ -480,15 +480,15 @@ public:
 		p.flags = VMPageFlags.none;
 		p.refCounter = 0;
 
-		(*rootObject).pages.put(p);
+		(*rootObject).pages.put(p);+/
 		return VMMappingError.success;
 	}
 
 private:
 	VMObject** _getObjectForZone(VirtAddress addr) {
-		foreach (ref VMObject* object; objects)
+		/+foreach (ref VMObject* object; objects)
 			if (object.zoneStart <= addr && object.zoneEnd >= addr)
-				return &object;
+				return &object;+/
 		return null;
 	}
 }

@@ -263,7 +263,7 @@ private:
 	/*
 	void _mapping() {
 		import stl.io.log : Log;
-		import memory.frameallocator : FrameAllocator;
+		import stl.vmm.frameallocator : FrameAllocator;
 		import arch.amd64.paging : Paging, PageFlags;
 
 		foreach (ref ELF64ProgramHeader hdr; _programHeaders) {

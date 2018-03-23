@@ -260,7 +260,7 @@ private static:
 	}
 
 	extern (C) void isrHandler(Registers* regs) @trusted {
-		//import io.vga : VGA, CGASlotColor, CGAColor;
+		//import stl.io.vga : VGA, CGASlotColor, CGAColor;
 		import stl.io.log : Log;
 
 		//import arch.amd64.pic : PIC;
@@ -320,7 +320,7 @@ private static:
 }
 
 private void _onGPF(Registers* regs) @safe {
-	//import io.vga : VGA, CGASlotColor, CGAColor;
+	//import stl.io.vga : VGA, CGASlotColor, CGAColor;
 	import stl.io.log : Log;
 	import stl.text : HexInt;
 	import stl.arch.amd64.lapic : LAPIC;

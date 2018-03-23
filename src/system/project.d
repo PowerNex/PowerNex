@@ -33,36 +33,42 @@ void initSTL() {
 	with (loader) {
 		// dfmt off
 		auto dFiles = files!("src/system/stl/",
-			"stl/address.d",
 			"stl/bitfield.d",
 			"stl/number.d",
 			"stl/range.d",
 			"stl/vector.d",
 			"stl/register.d",
-			"stl/utf.d",
-			"stl/elf64.d",
 			"stl/arch/amd64/msr.d",
-			"stl/arch/amd64/ioport.d",
 			"stl/arch/amd64/com.d",
-			"stl/arch/amd64/idt.d",
 			"stl/arch/amd64/gdt.d",
+			"stl/arch/amd64/idt.d",
 			"stl/arch/amd64/ioapic.d",
+			"stl/arch/amd64/ioport.d",
 			"stl/arch/amd64/lapic.d",
-			"stl/vmm/paging.d",
+			"stl/address.d",
+			"stl/elf64.d",
 			"stl/io/log.d",
+			"stl/io/vga.d",
+			"stl/spinlock.d",
 			"stl/text.d",
 			"stl/trait.d",
-			"stl/spinlock.d",
+			"stl/utf.d",
+			"stl/vmm/paging.d",
+			"stl/vmm/vmm.d",
+			"stl/vmm/frameallocator.d",
+			"stl/vmm/heap.d",
 			"object.d",
 			"invariant.d"
 		);
 
 		auto aFiles = files!("src/system/stl/",
+			"stl/arch/amd64/lapic_asm.S",
 			"stl/spinlock_asm.S"
 		);
 		// dfmt on
 
-		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs ~ " -Isrc/system/loader" ~ " -Isrc/system/loader-api");
+		auto dCompiler = Processor.combine(
+				dCompilerPath ~ dCompilerArgs ~ " -version=Target_" ~ name ~ " -Isrc/system/loader" ~ " -Isrc/system/loader-api");
 		auto aCompiler = Processor.combine(aCompilerPath ~ aCompilerArgs);
 		auto archive = Processor.combine(archivePath ~ archiveArgs);
 
@@ -83,7 +89,7 @@ void initLoaderAPI() {
 		);
 		// dfmt on
 
-		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs ~ " -Isrc/system/loader" ~ " -Isrc/system/loader-api");
+		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs ~ " -version=Target_" ~ name ~ " -Isrc/system/loader" ~ " -Isrc/system/loader-api");
 		auto archive = Processor.combine(archivePath ~ archiveArgs);
 
 		outputs["libloader-api"] = archive("libloader-api.a", false, [dCompiler("dcode.o", false, dFiles)]);
@@ -101,17 +107,14 @@ void initLoader() {
 
 		// dfmt off
 		auto dFiles = files!("src/system/loader/",
-			"arch/amd64/acpi.d",
 			"arch/amd64/aml.d",
-			"arch/amd64/paging.d",
 			"arch/amd64/pic.d",
-			"arch/amd64/pit.d",
 			"arch/amd64/smp.d",
+			"arch/amd64/acpi.d",
+			"arch/amd64/paging.d",
+			"arch/amd64/pit.d",
 			"data/multiboot2.d",
 			"data/tls.d",
-			"io/vga.d",
-			"memory/frameallocator.d",
-			"memory/heap.d",
 			"utils.d",
 			"main.d"
 		);
@@ -119,8 +122,8 @@ void initLoader() {
 		auto aFiles = files!("src/system/loader/",
 			"arch/amd64/wrappers.S",
 			"init16.S",
-			"init64.S",
 			"init32.S",
+			"init64.S"
 		);
 
 		auto consoleFont = files!("data/disk/data/fonts/",
@@ -129,7 +132,7 @@ void initLoader() {
 		);
 		// dfmt on
 
-		auto dCompiler = Processor.combine(dCompilerLoader);
+		auto dCompiler = Processor.combine(dCompilerLoader ~ " -version=Target_" ~ name);
 		auto aCompiler = Processor.combine(aCompilerLoader);
 		auto linker = Processor.combine(linkerLoader);
 
@@ -149,64 +152,18 @@ void initKernel() {
 
 		// dfmt off
 		auto dFiles = files!("src/system/kernel/",
-			"arch/amd64/lapic.d",
-			"arch/amd64/paging.d",
-			"arch/amd64/gdt.d",
-			"arch/amd64/pit.d",
 			"arch/amd64/tss.d",
-			"arch/amd64/idt.d",
+			"arch/amd64/paging.d",
 			"arch/paging.d",
-			"bin/consolefont.d",
-			"data/color.d",
-			"data/container.d",
-			"data/font.d",
-			"data/linkedlist.d",
-			"data/linker.d",
-			"data/parameters.d",
-			"data/psf.d",
-			"data/screen.d",
-			"data/textbuffer.d",
-			"data/bmpimage.d",
-			"data/elf.d",
-			"fs/iofs/package.d",
-			"fs/iofs/stdionode.d",
-			"fs/mountnode.d",
-			"fs/node.d",
-			"fs/nullfs.d",
-			"fs/package.d",
-			"fs/tarfs.d",
 			"hw/cmos/cmos.d",
 			"hw/pci/pci.d",
 			"hw/ps2/kbset.d",
 			"hw/ps2/keyboard.d",
-			"io/com.d",
-			"io/consolemanager.d",
-			"io/log.d",
-			"io/textmode.d",
-			"memory/allocator/kheapallocator.d",
-			"memory/allocator/package.d",
-			"memory/vmm.d",
-			"memory/ptr.d",
-			"memory/frameallocator.d",
-			"memory/kheap.d",
-			"system/syscallhandler.d",
-			"system/utils.d",
-			"system/syscall.d",
-			"task/mutex/schedulemutex.d",
-			"task/mutex/spinlockmutex.d",
-			"task/scheduler.d",
-			"task/process.d",
-			"util/trait.d",
 			"kmain.d"
 		);
 
 		auto aFiles = files!("src/system/kernel/",
-			"extra.S",
-			"arch/amd64/wrappers.S",
-			"system/syscallhelper.S",
-			"task/mutex/assembly.S",
-			"task/task.S",
-			"boot.S"
+			"extra.S"
 		);
 
 		auto consoleFont = files!("disk/data/font/",
@@ -215,7 +172,7 @@ void initKernel() {
 		);
 		// dfmt on
 
-		auto dCompiler = Processor.combine(dCompilerKernel);
+		auto dCompiler = Processor.combine(dCompilerKernel ~ " -version=Target_" ~ name);
 		auto aCompiler = Processor.combine(aCompilerKernel);
 		auto linker = Processor.combine(linkerKernel);
 

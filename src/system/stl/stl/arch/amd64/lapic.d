@@ -66,7 +66,7 @@ public static:
 
 		if (!_x2APIC) {
 			if (!_lapicAddress) {
-				import vmm.paging : mapSpecialAddress;
+				import stl.vmm.paging : mapSpecialAddress;
 
 				_lapicAddress = mapSpecialAddress(getPowerDAPI.acpi.lapicAddress, 0x1000, true, false);
 				() @trusted{ LAPIC_address = _lapicAddress; }();
@@ -79,7 +79,7 @@ public static:
 	/*///
 	void cleanup() {
 		if (!_x2APIC) {
-			import vmm.paging : unmapSpecialAddress;
+			import stl.vmm.paging : unmapSpecialAddress;
 
 			unmapSpecialAddress(_lapicAddress, 0x1000);
 		}
@@ -162,6 +162,7 @@ public static:
 
 			{
 				import powerd.api : getPowerDAPI;
+
 				getPowerDAPI.cpus.cpuBusFreq = _cpuBusFreq;
 			}
 		}
@@ -203,6 +204,14 @@ public static:
 
 		while (_counter < endAt) {
 		}
+	}
+
+	void clear() @trusted {
+		_counter = 0;
+	}
+
+	@property size_t seconds() @trusted {
+		return _counter / 1000;
 	}
 
 	void init(uint destination, bool assert_) @trusted {

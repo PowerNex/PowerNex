@@ -1,5 +1,4 @@
 /**
- * Here we have a couple of helper functions that can't be written in D.
  *
  * Copyright: © 2015-2017, Dan Printzell
  * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
@@ -9,21 +8,6 @@
 
 .text
 .code64
-
-
-.global cpuRetCR0
-.type cpuRetCR0, %function
-cpuRetCR0:
-	mov %CR0, %RAX
-	ret
-.size cpuRetCR0, .-cpuRetCR0
-
-.global cpuRetCR4
-.type cpuRetCR4, %function
-cpuRetCR4:
-	mov %CR4, %RAX
-	ret
-.size cpuRetCR4, .-cpuRetCR4
 
 .global LAPIC_dummyTimer
 .type LAPIC_dummyTimer, %function

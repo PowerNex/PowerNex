@@ -2,9 +2,9 @@ module hw.pci.pci;
 
 import stl.address;
 import stl.arch.amd64.ioport;
-import io.log;
-import memory.allocator;
-import data.textbuffer : scr = getBootTTY;
+import stl.io.log;
+import stl.io.vga;
+import stl.vector;
 
 private enum {
 	configAddress = 0xCF8,
@@ -43,7 +43,6 @@ static assert(PCIDevice.sizeof == 64);
 static struct PCI {
 public static:
 	void init() {
-		_devices = makeArray!PCIDevice(kernelAllocator, 16);
 		_scanForDevices();
 	}
 
@@ -55,15 +54,14 @@ public static:
 	}
 
 	PCIDevice* getDevice(ushort deviceID, ushort vendorID) {
-		foreach (ref device; _devices[0 .. _deviceCount])
+		foreach (ref PCIDevice device; _devices)
 			if (device.deviceID == deviceID && device.vendorID == vendorID)
 				return &device;
 		return null;
 	}
 
 private static:
-	__gshared PCIDevice[] _devices;
-	__gshared size_t _deviceCount;
+	__gshared Vector!PCIDevice _devices;
 
 	void _scanForDevices() {
 		for (ubyte bus = 0; bus < 255; bus++)
@@ -74,22 +72,15 @@ private static:
 				if ((readData(bus, slot, 0, 0x0C) & 0xFF) == 0xFF)
 					continue;
 
-				if (_deviceCount == _devices.length)
-					if (!expandArray!PCIDevice(kernelAllocator, _devices, 16))
-						Log.fatal("Can't expand PCIDevices array!");
-
-				PCIDevice* device = &_devices[_deviceCount];
-
-				*device = PCIDevice(bus, slot);
+				_devices.put(PCIDevice(bus, slot));
+				PCIDevice* device = &_devices[$ - 1];
 
 				Log.info("Found device at ", cast(void*)bus, ":", cast(void*)slot);
 				Log.info("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
 						device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
-				scr.writeln("Found device at ", cast(void*)bus, ":", cast(void*)slot);
-				scr.writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
+				VGA.writeln("Found device at ", cast(void*)bus, ":", cast(void*)slot);
+				VGA.writeln("\tdeviceID: ", cast(void*)device.deviceID, " vendorID: ", cast(void*)device.vendorID, " type: ",
 						device.headerType & 0x7E, " mf?: ", !!device.headerType & 0x80);
-
-				_deviceCount++;
 			}
 	}
 

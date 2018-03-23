@@ -22,7 +22,7 @@ public static:
 	void analyze() {
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : IOAPIC;
-		import vmm.paging : mapSpecialAddress, unmapSpecialAddress;
+		import stl.vmm.paging : mapSpecialAddress, unmapSpecialAddress;
 		import stl.io.log : Log;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
@@ -38,7 +38,8 @@ public static:
 	///
 	void setupLoader() {
 		import powerd.api : getPowerDAPI;
-		import powerd.api.cpu : IOAPIC;import vmm.paging : mapSpecialAddress, unmapSpecialAddress;
+		import powerd.api.cpu : IOAPIC;
+		import stl.vmm.paging : mapSpecialAddress, unmapSpecialAddress;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
 			VirtAddress vAddr = mapSpecialAddress(ioapic.address, 0x20, true);

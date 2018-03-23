@@ -93,6 +93,10 @@ public:
 		return _length;
 	}
 
+	size_t opDollar(size_t pos : 0)() const {
+		return _length;
+	}
+
 	void opIndexAssign(T val, size_t index) {
 		assert(index < _length);
 		_list[index] = val;
@@ -174,7 +178,7 @@ private:
 
 	void _expand() @trusted {
 		T[] newList = cast(T[])vectorAllocate(T.sizeof * (_list.length + _growFactor));
-		memcpy(&newList[0], &_list[0], _list.length * T.sizeof);
+		_list = newList;
 		vectorFree(_list);
 		_list = newList;
 	}

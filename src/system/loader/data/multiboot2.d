@@ -395,7 +395,7 @@ private extern extern (C) __gshared Multiboot2TagsHeader* multibootPointer;
 public static:
 	//
 	void earlyParse() @trusted {
-		import memory.frameallocator : FrameAllocator;
+		import stl.vmm.frameallocator : FrameAllocator;
 
 		_tags = TagRange(multibootPointer.VirtAddress + Multiboot2TagsHeader.sizeof);
 
@@ -561,7 +561,7 @@ public static:
 		Log.debug_("Multiboot2TagModule: start: ", tag.modStart, ", end: ", tag.modEnd, ", name: ", tag.name);
 
 		char[] nameRef = tag.name;
-		import memory.heap : Heap;
+		import stl.vmm.heap : Heap;
 
 		char[] name;
 		() @trusted{ name = cast(char[])Heap.allocate(nameRef.length); }();
@@ -586,7 +586,7 @@ public static:
 	///
 	void accept(Multiboot2TagMMap* tag) {
 		import powerd.api : getPowerDAPI, MemoryMap;
-		import memory.frameallocator : FrameAllocator;
+		import stl.vmm.frameallocator : FrameAllocator;
 
 		Log.debug_("Multiboot2TagMMap: size: ", tag.entrySize, " version: ", tag.entryVersion, ", entries:");
 		foreach (const ref Multiboot2MMapEntry entry; tag.entries) {

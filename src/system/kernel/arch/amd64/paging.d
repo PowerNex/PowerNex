@@ -6,7 +6,7 @@ import arch.paging;
 import stl.address;
 import stl.register;
 import stl.trait;
-import memory.vmm;
+import stl.vmm.vmm;
 
 /*
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
@@ -24,7 +24,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// If the map is active
-		@property bool present() {
+		@property bool present() const {
 			return cast(bool)((_data >> 0x0UL) & 0x1UL);
 		}
 		/// ditto
@@ -33,7 +33,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		// If the page is R/W instead of R/O
-		@property bool readWrite() {
+		@property bool readWrite() const {
 			return cast(bool)((_data >> 0x1UL) & 0x1UL);
 		}
 		/// ditto
@@ -42,7 +42,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// If userspace can access this page
-		@property bool user() {
+		@property bool user() const {
 			return cast(bool)((_data >> 0x2UL) & 0x1UL);
 		}
 		/// ditto
@@ -51,7 +51,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// If the map should bypass the cache and write directly to memory
-		@property bool writeThrough() {
+		@property bool writeThrough() const {
 			return cast(bool)((_data >> 0x3UL) & 0x1UL);
 		}
 		/// ditto
@@ -60,7 +60,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// If the map should bypass the read cache and read directly from memory
-		@property bool cacheDisable() {
+		@property bool cacheDisable() const {
 			return cast(bool)((_data >> 0x4UL) & 0x1UL);
 		}
 		/// ditto
@@ -69,7 +69,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// Is set when page has been accessed
-		@property bool accessed() {
+		@property bool accessed() const {
 			return cast(bool)((_data >> 0x5UL) & 0x1UL);
 		}
 		/// ditto
@@ -79,7 +79,7 @@ struct PTLevel(NextLevel) {
 
 		/// Is set when page has been written to
 		/// NOTE: Only valid if hugeMap is 1, else this value should be zero
-		@property bool dirty() {
+		@property bool dirty() const {
 			return cast(bool)((_data >> 0x6UL) & 0x1UL);
 		}
 		/// ditto
@@ -98,7 +98,7 @@ struct PTLevel(NextLevel) {
 			See_Also:
 				hugeMap, pat
 		*/
-		@property bool hugeMap() {
+		@property bool hugeMap() const {
 			return cast(bool)((_data >> 0x7UL) & 0x1UL);
 		}
 		/// ditto
@@ -115,7 +115,7 @@ struct PTLevel(NextLevel) {
 			See_Also:
 				hugeMap
 		*/
-		@disable @property bool pat() {
+		@disable @property bool pat() const {
 			return cast(bool)((_data >> 0x7UL) & 0x1UL);
 		}
 		/// ditto
@@ -124,7 +124,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// Is not cleared from the cache on a PML4 switch
-		@property bool global() {
+		@property bool global() const {
 			return cast(bool)((_data >> 0x8UL) & 0x1UL);
 		}
 		/// ditto
@@ -133,7 +133,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// For future PowerNex usage (3bits)
-		@property ubyte osSpecific() {
+		@property ubyte osSpecific() const {
 			return cast(ubyte)((_data >> 0x9UL) & 0x7UL);
 		}
 		/// ditto
@@ -142,7 +142,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// The address to the next level in the page tables, or the final map address
-		@property ulong data() {
+		@property ulong data() const {
 			return cast(ulong)((_data >> 0xCUL) & 0xFFFFFFFFFFUL);
 		}
 		/// ditto
@@ -151,7 +151,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// For future PowerNex usage (10bits)
-		@property ushort osSpecific2() {
+		@property ushort osSpecific2() const {
 			return cast(ushort)((_data >> 0x34UL) & 0x7FFUL);
 		}
 		/// ditto
@@ -160,7 +160,7 @@ struct PTLevel(NextLevel) {
 		}
 
 		/// Forbids execution in the map
-		@property bool noExecute() {
+		@property bool noExecute() const {
 			return cast(bool)((_data >> 0x3FUL) & 0x1UL);
 		}
 		/// ditto
@@ -168,7 +168,7 @@ struct PTLevel(NextLevel) {
 			_data = (_data & ~(0x1UL << 0x3FUL)) | ((val & 0x1UL) << 0x3FUL);
 		}
 
-		@property PhysAddress address() {
+		@property PhysAddress address() const {
 			return PhysAddress(data << 12);
 		}
 
@@ -183,7 +183,7 @@ struct PTLevel(NextLevel) {
 				return (((VirtAddress(&this) & ~0xFFF) << 9) | (id << 12)).ptr!NextLevel;
 			}
 
-		@property VMPageFlags vmFlags() {
+		@property VMPageFlags vmFlags() const {
 			VMPageFlags flags;
 			if (!present)
 				return VMPageFlags.none;
@@ -245,6 +245,70 @@ public:
 
 	//TODO: maybe? void removeUserspace();
 
+	///
+	VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) {
+		const PhysAddress pa = pAddr & ~0xFFF;
+		const size_t offset = pAddr.num & 0xFFF;
+
+		return mapSpecial(pa, size + offset, VMPageFlags.present | (readWrite ? VMPageFlags.writable : VMPageFlags.none), clear) + offset;
+	}
+
+	///
+	void unmapSpecialAddress(ref VirtAddress vAddr, size_t size) {
+		long offset = vAddr.num & 0xFFF;
+		size += offset;
+
+		VirtAddress tmp = vAddr & ~0xFFF;
+		while (offset > 0) {
+			unmap(tmp, false);
+			tmp += 0x1000;
+			offset -= 0x1000;
+		}
+		vAddr.addr = 0;
+	}
+
+	VirtAddress mapSpecial(PhysAddress pAddr, size_t size, VMPageFlags flags = VMPageFlags.present, bool clear = false) {
+		import stl.io.log : Log;
+
+		const size_t pagesNeeded = ((size + 0xFFF) & ~0xFFF) / 0x1000;
+
+		const ulong specialID = 510; // XXX: Find this from somewhere else
+		PML1* special = _getSpecial();
+
+		size_t freePage = size_t.max;
+		size_t amountFree;
+		foreach (idx, const ref PML1.TableEntry entry; special.entries) {
+			if (!entry.present) {
+				if (!amountFree)
+					freePage = idx;
+				amountFree++;
+				if (pagesNeeded == amountFree)
+					break;
+			} else
+				amountFree = 0;
+		}
+
+		if (freePage == size_t.max || pagesNeeded != amountFree)
+			Log.fatal("Special PML1 is full!");
+
+		VirtAddress vAddr = _makeAddress(specialID, 0, 0, freePage);
+		Log.info("Mapping [", vAddr, " - ", vAddr + pagesNeeded * 0x1000 - 1, "]");
+		foreach (i; 0 .. pagesNeeded) {
+			PML1.TableEntry* entry = &special.entries[freePage + i];
+
+			entry.address = pAddr + i * 0x1000;
+			entry.vmFlags = flags | (clear ? VMPageFlags.writable : VMPageFlags.none);
+			_flush(vAddr);
+
+			if (clear) {
+				vAddr.memset(0, _pageSize);
+				entry.readWrite = !!(flags & flags.writable);
+				_flush(vAddr);
+			}
+		}
+		return vAddr;
+	}
+
 	bool mapVMPage(VMPage* page, bool clear = false) {
 		return mapAddress(page.vAddr, page.pAddr, page.flags, clear);
 	}
@@ -305,7 +369,7 @@ public:
 			return false;
 
 		if (freePage) {
-			import memory.frameallocator : FrameAllocator;
+			import stl.vmm.frameallocator : FrameAllocator;
 
 			FrameAllocator.free(entry.address);
 		}
@@ -350,14 +414,14 @@ public:
 		return to.address;
 	}
 
-	PhysAddress getNextFreePage() {
-		import memory.frameallocator : FrameAllocator;
+	PhysAddress getNextFreePage() const {
+		import stl.vmm.frameallocator : FrameAllocator;
 
 		return FrameAllocator.alloc();
 	}
 
 	void freePage(PhysAddress page) {
-		import memory.frameallocator : FrameAllocator;
+		import stl.vmm.frameallocator : FrameAllocator;
 
 		return FrameAllocator.free(page);
 	}
@@ -471,14 +535,12 @@ private:
 private extern (C) ulong cpuRetCR3();
 
 extern (C) void onPageFault(Registers* regs) {
-	import data.textbuffer : scr = getBootTTY;
-	import io.log;
+	import stl.io.vga;
+	import stl.io.log;
 
-	AMD64Paging paging = AMD64Paging(cpuRetCR3);
+	AMD64Paging paging = AMD64Paging(cpuRetCR3.PhysAddress);
 
 	with (regs) {
-		import data.color;
-
 		auto addr = cr2;
 
 		const ulong virtAddr = addr.num;
@@ -551,30 +613,30 @@ extern (C) void onPageFault(Registers* regs) {
 	flagsDone:
 		ulong cr3 = cpuRetCR3();
 
-		scr.foreground = Color(255, 0, 0);
-		scr.writeln("===> PAGE FAULT");
-		scr.writeln("IRQ = ", intNumber, " | RIP = ", rip);
-		scr.writeln("RAX = ", rax, " | RBX = ", rbx);
-		scr.writeln("RCX = ", rcx, " | RDX = ", rdx);
-		scr.writeln("RDI = ", rdi, " | RSI = ", rsi);
-		scr.writeln("RSP = ", rsp, " | RBP = ", rbp);
-		scr.writeln(" R8 = ", r8, "  |  R9 = ", r9);
-		scr.writeln("R10 = ", r10, " | R11 = ", r11);
-		scr.writeln("R12 = ", r12, " | R13 = ", r13);
-		scr.writeln("R14 = ", r14, " | R15 = ", r15);
-		scr.writeln(" CS = ", cs, "  |  SS = ", ss);
-		scr.writeln(" addr = ", addr, " | CR3 = ", cr3);
-		scr.writeln("Flags: ", flags);
-		scr.writeln("Errorcode: ", errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"), (errorCode & (1 << 1)
+		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+		VGA.writeln("===> PAGE FAULT");
+		VGA.writeln("IRQ = ", intNumber, " | RIP = ", rip);
+		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
+		VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
+		VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
+		VGA.writeln("RSP = ", rsp, " | RBP = ", rbp);
+		VGA.writeln(" R8 = ", r8, "  |  R9 = ", r9);
+		VGA.writeln("R10 = ", r10, " | R11 = ", r11);
+		VGA.writeln("R12 = ", r12, " | R13 = ", r13);
+		VGA.writeln("R14 = ", r14, " | R15 = ", r15);
+		VGA.writeln(" CS = ", cs, "  |  SS = ", ss);
+		VGA.writeln(" addr = ", addr, " | CR3 = ", cr3);
+		VGA.writeln("Flags: ", flags);
+		VGA.writeln("Errorcode: ", errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"), (errorCode & (1 << 1)
 				? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"), (errorCode & (1 << 3)
 				? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		scr.writeln("PDP Mode: ", (pml3Flags & VMPageFlags.present) ? "R" : "", (pml3Flags & VMPageFlags.writable) ? "W" : "",
+		VGA.writeln("PDP Mode: ", (pml3Flags & VMPageFlags.present) ? "R" : "", (pml3Flags & VMPageFlags.writable) ? "W" : "",
 				(pml3Flags & VMPageFlags.execute) ? "X" : "", (pml3Flags & VMPageFlags.user) ? "-User" : "");
-		scr.writeln("PD Mode: ", (pml2Flags & VMPageFlags.present) ? "R" : "", (pml2Flags & VMPageFlags.writable) ? "W" : "",
+		VGA.writeln("PD Mode: ", (pml2Flags & VMPageFlags.present) ? "R" : "", (pml2Flags & VMPageFlags.writable) ? "W" : "",
 				(pml2Flags & VMPageFlags.execute) ? "X" : "", (pml2Flags & VMPageFlags.user) ? "-User" : "");
-		scr.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
+		VGA.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
 				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
-		scr.writeln("Page Mode: ", (pageFlags & VMPageFlags.present) ? "R" : "", (pageFlags & VMPageFlags.writable) ? "W" : "",
+		VGA.writeln("Page Mode: ", (pageFlags & VMPageFlags.present) ? "R" : "", (pageFlags & VMPageFlags.writable) ? "W" : "",
 				(pageFlags & VMPageFlags.execute) ? "X" : "", (pageFlags & VMPageFlags.user) ? "-User" : "");
 
 		//dfmt off

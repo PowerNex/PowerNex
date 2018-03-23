@@ -1,9 +1,9 @@
 module hw.ps2.keyboard;
 
-import arch.amd64.idt;
+import stl.arch.amd64.idt;
 import stl.register;
 import stl.bitfield;
-import io.log;
+import stl.io.log;
 import stl.arch.amd64.ioport;
 import hw.ps2.kbset;
 
@@ -13,8 +13,8 @@ public:
 	static void init() {
 		ubyte result;
 
-		IDT.register(irq(1), &_onIRQ);
-		IDT.register(irq(2), &_ignore);
+		IDT.register(irq(1), cast(IDT.InterruptCallback)&_onIRQ);
+		IDT.register(irq(2), cast(IDT.InterruptCallback)&_ignore);
 
 		_sendCtlCmd(0xAD /* Disable port 1 */ );
 		_sendCtlCmd(0xA7 /* Disable port 2 */ );
@@ -200,8 +200,6 @@ private:
 	}
 
 	static void _onIRQ(Registers* regs) {
-		import io.consolemanager;
-
 		ubyte data = _get(false);
 		if (!_enabled)
 			return;
@@ -231,7 +229,7 @@ private:
 			if (ch != dchar.init) {
 				const bool ctrl = _state.isSet(KeyCode.leftCtrl) || _state.isSet(KeyCode.rightCtrl);
 				const bool alt = _state.isSet(KeyCode.leftAlt) || _state.isSet(KeyCode.rightAlt);
-				ConsoleManager.addKeyboardInput(ch, ctrl, alt, shift);
+				//ConsoleManager.addKeyboardInput(ch, ctrl, alt, shift);
 				//Keyboard.Push(ch);
 			}
 		}

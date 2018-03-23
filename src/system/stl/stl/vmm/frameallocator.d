@@ -1,19 +1,37 @@
-module memory.frameallocator;
+/**
+ * A module for keeping track of which physical pages are in use and which are free.
+ *
+ * Copyright: © 2015-2017, Dan Printzell
+ * License: $(LINK2 https://www.mozilla.org/en-US/MPL/2.0/, Mozilla Public License Version 2.0)
+ *  (See accompanying file LICENSE)
+ * Authors: $(LINK2 https://vild.io/, Dan Printzell)
+ */
+module stl.vmm.frameallocator;
 
 import stl.address;
-import io.log;
-import data.linker;
-import powerd.api.memory;
 
 ///
-static struct FrameAllocator {
+@safe static struct FrameAllocator {
 public static:
-	void init(ref PowerDMemory memory) {
-		_maxFrames = memory.maxFrames;
-		_usedFrames = memory.usedFrames;
-		_bitmaps[] = memory.bitmaps[];
-		_currentBitmapIdx = memory.currentBitmapIdx;
+	///
+	void init() {
+		// Mark ACPI frames
+		markRange(PhysAddress(0xE0000), PhysAddress(0x100000));
+	}
 
+	///
+	void init(ulong maxFrames, ulong usedFrames, ulong[] bitmaps, ulong currentBitmapIdx) @trusted {
+		import stl.address : memcpy;
+		_maxFrames = maxFrames;
+		_usedFrames = usedFrames;
+		memcpy(&_bitmaps[0], &bitmaps[0], ulong.sizeof * _bitmaps.length);
+		_currentBitmapIdx = currentBitmapIdx;
+
+		preAllocateFrames();
+	}
+
+	///
+	void preAllocateFrames() @trusted {
 		foreach (ref ulong frame; _preallocated)
 			frame = ulong.max;
 		_allocPreAlloc(); // Add some nodes to _preallocated
@@ -34,7 +52,7 @@ public static:
 	}
 
 	///
-	static void markFrame(ulong idx) {
+	void markFrame(ulong idx) @trusted {
 		foreach (ref ulong frame; _preallocated)
 			if (frame == idx) {
 				frame = ulong.max;
@@ -56,7 +74,7 @@ public static:
 
 	///
 	ulong getFrame() {
-		ulong getFrameImpl(bool tryAgain) {
+		ulong getFrameImpl(bool tryAgain) @trusted {
 			foreach (idx, ref ulong frame; _preallocated) {
 				if (frame != ulong.max) {
 					const ulong ret = frame;
@@ -91,7 +109,8 @@ public static:
 		return getFrameImpl(true);
 	}
 
-	static void freeFrame(ulong idx) {
+	///
+	void freeFrame(ulong idx) @trusted {
 		if (idx == 0)
 			return;
 		foreach (ref ulong frame; _preallocated)
@@ -112,12 +131,13 @@ public static:
 			_currentBitmapIdx = bitmapIdx;
 	}
 
-	static PhysAddress alloc() {
+	///
+	PhysAddress alloc() {
 		return PhysAddress(getFrame() << 12);
 	}
 
 	/// Allocates 512 frames, returns the first one
-	static PhysAddress alloc512() {
+	PhysAddress alloc512() @trusted {
 		ulong firstGood;
 		ulong count;
 		while (_currentBitmapIdx < _maxFrames) {
@@ -143,28 +163,44 @@ public static:
 		return PhysAddress((firstGood * 64) << 12);
 	}
 
-	static void free(PhysAddress memory) {
+	///
+	void free(PhysAddress memory) @trusted {
 		freeFrame(memory.num / 0x1000);
 	}
 
-	@property static ulong maxFrames() {
+	///
+	@property ulong maxFrames() @trusted {
 		return _maxFrames;
 	}
+	@property void maxFrames(ulong maxFrames) @trusted {
+		_maxFrames = maxFrames;
+	}
 
-	@property static ulong usedFrames() {
+	///
+	@property ulong usedFrames() @trusted {
 		return _usedFrames;
 	}
 
-private:
+	///
+	@property ulong[] bitmaps() @trusted {
+		return _bitmaps[];
+	}
+
+	///
+	@property ulong currentBitmapIdx() @trusted {
+		return _currentBitmapIdx;
+	}
+
+private static:
 	enum ulong _maxmem = 0x100_0000_0000 - 1; //pow(2, 40)
 
-	__gshared ulong _maxFrames;
+	__gshared ulong _maxFrames = ulong.max;
 	__gshared ulong _usedFrames;
 	__gshared ulong[((_maxmem / 8) / 0x1000) / 64 + 1] _bitmaps;
 	__gshared ulong _currentBitmapIdx;
 	__gshared ulong[1] _preallocated;
 
-	static void _allocPreAlloc() {
+	void _allocPreAlloc() @trusted {
 		bool reseted;
 		foreach (ref ulong frame; _preallocated) {
 			if (frame != ulong.max)

@@ -11,12 +11,13 @@ module main;
 import stl.address;
 
 import arch.amd64.paging;
+import stl.vmm.paging;
 
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
 
 private void outputBoth(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) @trusted {
-	import io.vga : VGA;
+	import stl.io.vga : VGA;
 	import stl.io.log : Log;
 	import stl.arch.amd64.msr : MSR;
 	import stl.text : HexInt;
@@ -38,7 +39,7 @@ private void outputBoth(Args...)(Args args, string file = __MODULE__, string fun
 __gshared VirtAddress apStackLoc = _makeAddress(0, 2, 0, 0);
 
 extern (C) VirtAddress newStackAP() @trusted {
-	if (!Paging.map(apStackLoc, PhysAddress(), PageFlags.present | PageFlags.writable | PageFlags.execute))
+	if (!Paging.map(apStackLoc, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.execute))
 		return VirtAddress();
 
 	auto stack = apStackLoc + 0x1000;
@@ -101,10 +102,10 @@ extern (C) ulong main() @safe {
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
 	import stl.arch.amd64.com : COM;
-	import io.vga : VGA;
+	import stl.io.vga : VGA;
 	import stl.io.log : Log;
-	import memory.frameallocator : FrameAllocator;
-	import memory.heap : Heap;
+	import stl.vmm.frameallocator : FrameAllocator;
+	import stl.vmm.heap : Heap;
 
 	COM.init();
 	VGA.init();
@@ -186,7 +187,15 @@ extern (C) ulong main() @safe {
 		auto papi = &getPowerDAPI();
 		papi.screenX = VGA.x;
 		papi.screenY = VGA.y;
-		FrameAllocator.setupAPI();
+
+		{
+			with (papi.memory) {
+				maxFrames = FrameAllocator.maxFrames;
+				usedFrames = FrameAllocator.usedFrames;
+				bitmaps = FrameAllocator.bitmaps[];
+				currentBitmapIdx = FrameAllocator.currentBitmapIdx;
+			}
+		}
 		size_t output = kernel.main(papi); // TODO: Call this and set return address to 0
 		//outputBoth("Main function returned: ", output.VirtAddress);
 		assert(0, "Kernel main function returned! This should never ever happen!");
