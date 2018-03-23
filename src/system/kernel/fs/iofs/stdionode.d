@@ -1,5 +1,7 @@
 module fs.iofs.stdionode;
 
+__EOF__
+
 import fs;
 import memory.ptr;
 

@@ -1,5 +1,7 @@
 module fs.nullfs;
 
+__EOF__
+
 import fs;
 
 import data.container;

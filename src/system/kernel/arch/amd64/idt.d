@@ -73,7 +73,7 @@ enum InterruptStackType : ushort {
 	mce
 }
 
-alias irq = (ubyte x) => cast(ubyte) (0x20 + x);
+alias irq = (ubyte x) => cast(ubyte)(0x20 + x);
 
 static struct IDT {
 public:
@@ -83,6 +83,8 @@ public:
 	__gshared InterruptCallback[256] handlers;
 
 	static void init() {
+		import stl.paging : onPageFault;
+
 		base.limit = (IDTDescriptor.sizeof * desc.length) - 1;
 		base.offset = cast(ulong)desc.ptr;
 
@@ -120,6 +122,8 @@ private:
 		_add(3, SystemSegmentType.interruptGate, cast(ulong)&isr3, 3, InterruptStackType.debug_);
 		_add(8, SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
 		_add(0x80, SystemSegmentType.interruptGate, cast(ulong)&isr128, 3, InterruptStackType.registerStack);
+
+		IDT.register(InterruptType.pageFault, &onPageFault);
 
 		flush();
 	}

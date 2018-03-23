@@ -1,71 +1,32 @@
 module arch.paging;
 
 version (X86_64) {
-	public import arch.amd64.paging;
-} else {
-	static assert(0, "Paging is not implemented for the architecture!");
-}
+	import arch.amd64.paging;
+	import stl.address;
 
-import stl.address;
-import memory.vmm;
-import stl.trait : AliasSeq;
+	alias Paging = AMD64Paging;
 
-//TODO: Change to HWPaging, using hack to allocator class!
-__gshared IHWPaging kernelHWPaging;
+	private extern (C) ulong cpuRetCR3();
+	void initKernelPaging() {
+		import arch.amd64.paging : AMD64Paging;
+		import stl.address : PhysAddress;
 
-interface IHWPaging { // Hardware implementation of paging
-	/// Map virtual address $(PARAM page.vAddr) to physical address $(PARAM page.pAddr) with the flags $(PARAM page.flags).
-	/// $(PARAM clear) specifies if the memory should be cleared.
-	bool map(VMPage* page, bool clear = false);
-	/// Map virtual address $(PARAM vAddr) to physical address $(PARAM pAddr) with the flags $(PARAM flags).
-	/// $(PARAM clear) specifies if the memory should be cleared.
-	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false);
-
-	/**
-		* Changes a mappings properties
-		* Pseudocode:
-		* --------------------
-		* if (pAddr)
-		* 	map.pAddr = pAddr;
-		* if (flags) // TODO: What if you want to clear the flags?
-		* 	map.flags = flags;
-		* --------------------
-		*/
-	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags);
-	/// Remove a mapping
-	bool unmap(VirtAddress vAddr, bool freePage = false);
-
-	/// Clone a physical page with all it's data
-	PhysAddress clonePage(PhysAddress page);
-
-	/// Get the next free page
-	PhysAddress getNextFreePage();
-
-	/// Free the page $(PARAM page)
-	void freePage(PhysAddress page);
-
-	/// Bind the paging
-	void bind();
-
-	/// Information for the VMObject for a specified address
-	struct VMZoneInformation {
-		VirtAddress zoneStart; /// See VMObject.zoneStart
-		VirtAddress zoneEnd; /// See VMObject.zoneEnd
-		HWZoneIdentifier hwZoneID; /// See VMObject.hwZoneID
+		__gshared PhysAddress pml4 = cpuRetCR3();
+		_kernelPaging = AMD64Paging(pml4);
 	}
 
-	/// Get information about a zone where $(PARAM address) exists.
-	VMZoneInformation getZoneInfo(VirtAddress address);
-}
+	private __gshared AMD64Paging _kernelPaging;
+	extern (C) AMD64Paging* getKernelPaging() @trusted {
+		return &_kernelPaging;
+	}
 
-private extern (C) ulong cpuRetCR3();
-void initKernelHWPaging() {
-	import stl.trait : inplaceClass;
-	import data.linker : Linker;
-	import stl.address : PhysAddress;
+	extern (C) VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) @trusted {
+		_kernelPaging.mapSpecialAddress(pAddr, size, readWrite, clear);
+	}
 
-	PhysAddress pml4 = cpuRetCR3();
-
-	__gshared ubyte[__traits(classInstanceSize, HWPaging)] classData;
-	kernelHWPaging = cast(IHWPaging)inplaceClass!HWPaging(classData, pml4);
+	extern (C) void unmapSpecialAddress(ref VirtAddress vAddr, size_t size) @trusted {
+		_kernelPaging.unmapSpecialAddress(vAddr, size);
+	}
+} else {
+	static assert(0, "Paging is not implemented for the architecture!");
 }

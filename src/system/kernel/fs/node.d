@@ -1,5 +1,7 @@
 module fs.node;
 
+__EOF__
+
 import stl.bitfield;
 import stl.range;
 import memory.ptr;

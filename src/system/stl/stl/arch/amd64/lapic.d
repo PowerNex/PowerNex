@@ -66,9 +66,9 @@ public static:
 
 		if (!_x2APIC) {
 			if (!_lapicAddress) {
-				import vmm.paging : getPaging;
+				import vmm.paging : mapSpecialAddress;
 
-				_lapicAddress = getPaging.mapSpecialAddress(getPowerDAPI.acpi.lapicAddress, 0x1000, true, false);
+				_lapicAddress = mapSpecialAddress(getPowerDAPI.acpi.lapicAddress, 0x1000, true, false);
 				() @trusted{ LAPIC_address = _lapicAddress; }();
 				getPowerDAPI.cpus.lapicAddress = _lapicAddress;
 			}
@@ -79,9 +79,9 @@ public static:
 	/*///
 	void cleanup() {
 		if (!_x2APIC) {
-			import vmm.paging : getPaging;
+			import vmm.paging : unmapSpecialAddress;
 
-			getPaging.unmapSpecialAddress(_lapicAddress, 0x1000);
+			unmapSpecialAddress(_lapicAddress, 0x1000);
 		}
 	}*/
 

@@ -53,7 +53,8 @@ void initSTL() {
 			"stl/text.d",
 			"stl/trait.d",
 			"stl/spinlock.d",
-			"object.d"
+			"object.d",
+			"invariant.d"
 		);
 
 		auto aFiles = files!("src/system/stl/",
@@ -109,7 +110,6 @@ void initLoader() {
 			"data/multiboot2.d",
 			"data/tls.d",
 			"io/vga.d",
-			"invariant.d",
 			"memory/frameallocator.d",
 			"memory/heap.d",
 			"utils.d",
@@ -179,7 +179,6 @@ void initKernel() {
 			"hw/pci/pci.d",
 			"hw/ps2/kbset.d",
 			"hw/ps2/keyboard.d",
-			"invariant.d",
 			"io/com.d",
 			"io/consolemanager.d",
 			"io/log.d",

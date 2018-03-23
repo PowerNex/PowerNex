@@ -1,5 +1,7 @@
 module fs.tarfs;
 
+__EOF__
+
 import fs;
 
 import stl.address;

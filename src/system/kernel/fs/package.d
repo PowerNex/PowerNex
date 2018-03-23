@@ -1,5 +1,7 @@
 module fs;
 
+__EOF__
+
 public {
 	import fs.node;
 }

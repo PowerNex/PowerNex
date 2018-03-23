@@ -1,5 +1,9 @@
 module data.bmpimage;
 
+struct BMPImage {}
+
+__EOF__
+
 import data.color;
 import io.log;
 import fs;
@@ -35,7 +39,7 @@ align(1):
 	uint alphaMask;
 }
 
-class BMPImage {
+struct BMPImage {
 public:
 	this(SharedPtr!VNode file) {
 		NodeContext nc;

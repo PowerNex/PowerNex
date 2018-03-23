@@ -1,5 +1,7 @@
 module arch.amd64.paging;
 
+import stl.vmm.paging;
+
 import arch.paging;
 import stl.address;
 import stl.register;
@@ -235,25 +237,19 @@ VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) {
 	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
 }
 
-class HWPaging : IHWPaging {
+struct AMD64Paging {
 public:
 	this(PhysAddress pml4Address) {
 		_addr = pml4Address;
-		import arch.amd64.idt : IDT, InterruptType;
-
-		IDT.register(InterruptType.pageFault, &_onPageFault);
-	}
-
-	~this() {
 	}
 
 	//TODO: maybe? void removeUserspace();
 
-	bool map(VMPage* page, bool clear = false) {
-		return map(page.vAddr, page.pAddr, page.flags, clear);
+	bool mapVMPage(VMPage* page, bool clear = false) {
+		return mapAddress(page.vAddr, page.pAddr, page.flags, clear);
 	}
 
-	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) {
+	bool mapAddress(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) {
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry)
 			return false;
@@ -474,11 +470,11 @@ private:
 
 private extern (C) ulong cpuRetCR3();
 
-private void _onPageFault(Registers* regs) {
+extern (C) void onPageFault(Registers* regs) {
 	import data.textbuffer : scr = getBootTTY;
 	import io.log;
 
-	HWPaging paging = cast(HWPaging)kernelHWPaging;
+	AMD64Paging paging = AMD64Paging(cpuRetCR3);
 
 	with (regs) {
 		import data.color;

@@ -1,5 +1,7 @@
 module fs.mountnode;
 
+__EOF__
+
 import fs;
 import memory.allocator;
 import memory.ptr;

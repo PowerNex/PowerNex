@@ -15,7 +15,7 @@ import arch.amd64.paging;
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
 
-private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) @trusted {
+private void outputBoth(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) @trusted {
 	import io.vga : VGA;
 	import stl.io.log : Log;
 	import stl.arch.amd64.msr : MSR;
@@ -26,13 +26,13 @@ private void outputBoth(string file = __MODULE__, string func = __PRETTY_FUNCTIO
 
 		if (auto _ = currentThread) {
 			VGA.writeln('<', HexInt(_.id), "> ", args);
-			Log.info!(file, func, line)('<', HexInt(_.id), "> ", args);
+			Log.info!(char, HexInt, char[2], Args)('<', HexInt(_.id), "> ", args, file, func, line);
 			return;
 		}
 	}
 
 	VGA.writeln(args);
-	Log.info!(file, func, line)(args);
+	Log.info!(Args)(args, file, func, line);
 }
 
 __gshared VirtAddress apStackLoc = _makeAddress(0, 2, 0, 0);
@@ -66,7 +66,6 @@ extern (C) ulong mainAP() @safe {
 
 	GDT.flush();
 	IDT.flush();
-	Paging.init();
 
 	LAPIC.setup();
 
@@ -129,7 +128,6 @@ extern (C) ulong main() @safe {
 	Multiboot2.earlyParse();
 	FrameAllocator.preAllocateFrames();
 
-	Paging.init();
 	Heap.init();
 	TLS.aquireTLS();
 

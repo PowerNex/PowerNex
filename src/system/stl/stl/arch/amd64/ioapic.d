@@ -22,33 +22,32 @@ public static:
 	void analyze() {
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : IOAPIC;
-		import vmm.paging : getPaging;
+		import vmm.paging : mapSpecialAddress, unmapSpecialAddress;
 		import stl.io.log : Log;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
-			VirtAddress vAddr = getPaging.mapSpecialAddress(ioapic.address, 0x20, true);
+			VirtAddress vAddr = mapSpecialAddress(ioapic.address, 0x20, true);
 			const uint data = _ioapicVer(vAddr);
 			ioapic.version_ = cast(ubyte)(data & 0xFF);
 			ioapic.gsiMaxRedirectCount = cast(ubyte)((data >> 16) & 0xFF) + 1;
 			Log.info("IOAPIC: version: ", ioapic.version_, ", gsiMaxRedirectCount: ", ioapic.gsiMaxRedirectCount);
-			getPaging.unmapSpecialAddress(vAddr, 0x20);
+			unmapSpecialAddress(vAddr, 0x20);
 		}
 	}
 
 	///
 	void setupLoader() {
 		import powerd.api : getPowerDAPI;
-		import powerd.api.cpu : IOAPIC;
-		import vmm.paging : getPaging;
+		import powerd.api.cpu : IOAPIC;import vmm.paging : mapSpecialAddress, unmapSpecialAddress;
 
 		foreach (ref IOAPIC ioapic; getPowerDAPI.cpus.ioapics) {
-			VirtAddress vAddr = getPaging.mapSpecialAddress(ioapic.address, 0x20, true);
+			VirtAddress vAddr = mapSpecialAddress(ioapic.address, 0x20, true);
 			foreach (i; 0 .. ioapic.gsiMaxRedirectCount) {
 				const uint gsi = ioapic.gsi + i;
 
 				_ioRedirectionTable(vAddr, i, _createRedirect(gsi));
 			}
-			getPaging.unmapSpecialAddress(vAddr, 0x20);
+			unmapSpecialAddress(vAddr, 0x20);
 		}
 	}
 

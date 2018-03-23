@@ -49,6 +49,9 @@ struct VMPage {
 	size_t refCounter; /// Reference counter for shared memory between processes
 }
 
+///
+@safe alias HWZoneIdentifier = ushort;
+
 /// This represents a allocated memory region
 struct VMObject {
 	VMObjectState state; /// If the object is a parent of another object, aka this object can't be changed!
@@ -65,13 +68,20 @@ struct VMObject {
 	size_t refCounter; /// Reference counter, for when the pages can be freed
 }
 
+/// Information for the VMObject for a specified address
+struct VMZoneInformation {
+	VirtAddress zoneStart; /// See VMObject.zoneStart
+	VirtAddress zoneEnd; /// See VMObject.zoneEnd
+	HWZoneIdentifier hwZoneID; /// See VMObject.hwZoneID
+}
+
 /// This represents one or more process address spaces
 struct VMProcess {
 public:
 	Vector!(VMObject*) objects; /// All the object that is associated with the process
-	IHWPaging backend; /// The paging backend
+	Paging* backend; /// The paging backend
 	@disable this();
-	this(IHWPaging backend) {
+	this(Paging* backend) {
 		objects = kernelAllocator.make!(Vector!(VMObject*))(kernelAllocator);
 		backend = backend;
 	}

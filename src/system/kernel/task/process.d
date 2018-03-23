@@ -56,7 +56,7 @@ struct ImageInformation {
 	VirtAddress kernelStack;
 	ubyte[] defaultTLS;
 	char*[] arguments;
-	SharedPtr!VNode file;
+	//SharedPtr!VNode file;
 	//XXX: ELF elf;
 
 	//TODO: fill in
@@ -103,19 +103,19 @@ struct Process {
 
 	ThreadState threadState;
 	ImageInformation image;
-	SharedPtr!VMProcess vmProcess;
+	//SharedPtr!VMProcess vmProcess;
 	bool kernelProcess;
 	Registers syscallRegisters;
-	SharedPtr!IAllocator allocator;
-	SharedPtr!VNode currentDirectory;
+	//SharedPtr!IAllocator allocator;
+	//SharedPtr!VNode currentDirectory;
 
 	//--TODO: Add pointer to entry in tree, To make it faster to find it children if the scheduler want to switch to a child.
 	// Maybe isn't needed because it won't really care unless it needs to find the children.
 
 	//TODO: These should be two types of children, one which share the same memory space (These will have higher priority
 	// when the scheduler wants to switch) and one doesn't.
-	SharedPtr!Process parent; // Is this even needed to be saved? Only used in two places currently.
-	SharedPtr!(Vector!(SharedPtr!Process)) children;
+	//SharedPtr!Process parent; // Is this even needed to be saved? Only used in two places currently.
+	//SharedPtr!(Vector!(SharedPtr!Process)) children;
 
 	ProcessState state;
 	ulong returnCode; //TODO: Change to ptrdiff_t
@@ -123,7 +123,7 @@ struct Process {
 	WaitReason wait;
 	ulong waitData;
 
-	SharedPtr!(Map!(size_t, SharedPtr!NodeContext)) fileDescriptors;
+	//SharedPtr!(Map!(size_t, SharedPtr!NodeContext)) fileDescriptors;
 
 	size_t fdIDCounter;
 

@@ -1,5 +1,9 @@
 module data.psf;
 
+struct PSF{}
+
+__EOF__
+
 import fs;
 import memory.ptr;
 import data.font;

@@ -11,7 +11,7 @@ module stl.io.log;
 import stl.address;
 
 ///
-enum LogLevel {
+@safe enum LogLevel {
 	verbose = 0,
 	debug_,
 	info,
@@ -39,6 +39,7 @@ char toChar(LogLevel level) @trusted {
 ///
 @trusted static struct Log {
 	import stl.elf64 : ELF64Symbol;
+
 public static:
 
 	/// XXX: Page fault if this is not wrapped like this!
@@ -49,7 +50,6 @@ public static:
 		return CMOS.timeStamp();*/
 	}
 
-
 	///
 	void setSymbolMap(ELF64Symbol[] symbols, char[] strings) @trusted {
 		_symbols = symbols;
@@ -57,12 +57,7 @@ public static:
 	}
 
 	///
-	void opCall(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(LogLevel level, Args args) {
-		log(level, file, func, line, args);
-	}
-
-	///
-	void log(Args...)(LogLevel level, string file, string func, int line, Args args) {
+	void log(Args...)(LogLevel level, Args args, string file, string func, int line) {
 		import stl.arch.amd64.com : com1;
 		import stl.text : itoa, BinaryInt, HexInt;
 		import stl.trait : Unqual, enumMembers, isNumber, isFloating;
@@ -142,7 +137,8 @@ public static:
 	}
 
 	///
-	mixin(_helperFunctions());
+	enum _helperFunctionsResult = _helperFunctions!();
+	mixin(_helperFunctionsResult);
 
 	///
 	void printStackTrace(size_t skipLevels = 0) @trusted {
@@ -188,18 +184,23 @@ private static:
 	__gshared ELF64Symbol[] _symbols;
 	__gshared char[] _strings;
 
-	static string _helperFunctions() {
-		if (!__ctfe)
-			return "";
+	static template _helperFunctions() {
 		import stl.trait : enumMembers;
 
-		string str;
-		foreach (level; enumMembers!LogLevel)
-			str ~= "///\n\tvoid " ~ __traits(allMembers, LogLevel)[level]
-				~ "(string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__, Args...)(Args args) { log(LogLevel." ~ __traits(allMembers,
-						LogLevel)[level] ~ ", file, func, line, args); }\n\n\t";
+		template data(LogLevel entry) {
+			enum data = "///\n\tvoid " ~ __traits(allMembers, LogLevel)[entry]
+					~ "(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) { log!Args(LogLevel." ~ __traits(allMembers,
+							LogLevel)[entry] ~ ", args, file, func, line); }\n\n\t";
+		}
 
-		return str;
+		template generateWrapper(ulong idx, Trest...) {
+			static if (idx == Trest.length)
+				enum generateWrapper = "";
+			else
+				enum generateWrapper = generateWrapper!(idx + 1, Trest) ~ data!(Trest[idx]);
+		}
+
+		enum _helperFunctions = generateWrapper!(enumMembers!LogLevel);
 	}
 
 	void _printStackTrace(VirtAddress rbp, size_t skipLevels = 0) {

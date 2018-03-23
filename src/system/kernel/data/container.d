@@ -30,30 +30,9 @@ private:
 	bool _isNull = true;
 }
 
-interface IContainer(E) : OutputRange!E {
-	bool remove(size_t index);
-	bool remove(E obj);
-	void clear();
-	ref E get(size_t index);
-	ref const(E) get(size_t index) const;
-	ref E opIndex(size_t index);
-	ref const(E) opIndex(size_t index) const;
-
-	@property size_t length() const;
-	alias opDollar = length;
-
-	void opIndexAssign(E val, size_t index);
-	//	RandomFiniteAssignable!E opIndex();
-	E[] opIndex();
-	E[] opSlice(size_t start, size_t end);
-
-	int opApply(scope int delegate(const E) cb) const;
-	int opApply(scope int delegate(ref E) cb);
-	int opApply(scope int delegate(size_t, const E) cb) const;
-	int opApply(scope int delegate(size_t, ref E) cb);
-}
-
-class Vector(E) : IContainer!E {
+public import stl.vector : Vector;
+/+
+struct Vector(E) {
 public:
 	this(IAllocator allocator) {
 		_allocator = allocator;
@@ -361,3 +340,4 @@ private:
 }
 
 //TODO: Implement some sort of tree.
++/

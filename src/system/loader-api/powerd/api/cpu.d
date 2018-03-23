@@ -10,6 +10,7 @@ module powerd.api.cpu;
 
 import stl.address;
 
+
 ///
 @safe struct CPUThread {
 	///

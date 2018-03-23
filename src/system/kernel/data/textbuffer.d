@@ -28,7 +28,7 @@ struct Slot {
 
 static assert(Slot.sizeof == 16);
 
-class TextBuffer {
+struct TextBuffer {
 public:
 	alias OnChangedCallbackType = void function(size_t start, size_t end);
 
@@ -214,14 +214,11 @@ private:
 	}
 }
 
-TextBuffer getBootTTY() {
+TextBuffer* getBootTTY() {
 	import stl.trait : inplaceClass;
 
-	__gshared TextBuffer textBuffer;
-	__gshared ubyte[__traits(classInstanceSize, TextBuffer)] buf;
 	__gshared Slot[0x1000] slotBuffer;
+	__gshared TextBuffer textBuffer = TextBuffer(slotBuffer);
 
-	if (!textBuffer)
-		textBuffer = inplaceClass!TextBuffer(buf, slotBuffer);
-	return textBuffer;
+	return &textBuffer;
 }

@@ -1,5 +1,7 @@
 module stl.vector;
 
+import stl.address : memmove, memcpy;
+
 alias AllocateFunc = void[]function(size_t wantSize) @safe;
 alias FreeFunc = void function(void[] address) @safe;
 __gshared AllocateFunc vectorAllocate;
@@ -40,10 +42,10 @@ public:
 		if (index >= _length)
 			return false;
 
-		static if (is(T == struct))
-			typeid(T).destroy(&_list[index]);
+		static if (is(typeof({ T a; a.__dtor(); })))
+			_list[index].__dtor;
 
-		_list[index .. $ - 1] = _list[index + 1 .. $];
+		memmove(&_list[index], &_list[index + 1], T.sizeof * (_length - index - 1));
 		_length--;
 
 		return true;
@@ -61,9 +63,9 @@ public:
 	}
 
 	void clear() @trusted {
-		static if (is(T == struct))
+		static if (is(typeof({ T a; a.__dtor(); })))
 			foreach (ref obj; _list[0 .. _length])
-				typeid(T).destroy(&obj);
+				obj.__dtor();
 		_length = 0;
 	}
 
@@ -172,7 +174,7 @@ private:
 
 	void _expand() @trusted {
 		T[] newList = cast(T[])vectorAllocate(T.sizeof * (_list.length + _growFactor));
-		newList[0 .. _list.length] = _list[];
+		memcpy(&newList[0], &_list[0], _list.length * T.sizeof);
 		vectorFree(_list);
 		_list = newList;
 	}

@@ -244,18 +244,7 @@ VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe {
 
 @safe static struct Paging {
 public static:
-	void init() {
-		import stl.arch.amd64.idt : IDT, InterruptType;
-
-		IDT.register(InterruptType.pageFault, &_onPageFault);
-	}
-
 	//TODO: maybe? void removeUserspace();
-
-	///
-	VirtAddress mapSpecialAddress(PhysMemoryRange range, bool readWrite = false, bool clear = false) {
-		return mapSpecialAddress(range.start, range.size, readWrite, clear);
-	}
 
 	///
 	VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) {
@@ -532,7 +521,7 @@ private static:
 	}
 }
 
-private void _onPageFault(Registers* regs) @safe {
+extern (C) void onPageFault(Registers* regs) @safe {
 	import io.vga : VGA, CGAColor, CGASlotColor;
 	import stl.io.log : Log;
 	import stl.text : HexInt;
@@ -681,4 +670,12 @@ private void _onPageFault(Registers* regs) @safe {
 				(pageFlags & PageFlags.user) ? "-User" : "");
 		//dfmt on
 	}
+}
+
+extern (C) VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) @trusted {
+	return Paging.mapSpecialAddress(pAddr, size, readWrite, clear);
+}
+
+extern (C) void unmapSpecialAddress(ref VirtAddress vAddr, size_t size) @trusted {
+	Paging.unmapSpecialAddress(vAddr, size);
 }

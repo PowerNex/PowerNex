@@ -1,5 +1,7 @@
 module fs.iofs;
 
+__EOF__
+
 import fs;
 import data.container;
 import memory.allocator;
