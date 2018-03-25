@@ -100,6 +100,7 @@ public static:
 
 	///
 	void init() @trusted {
+		import stl.vmm.paging : onPageFault;
 		base.limit = (IDTDescriptor.sizeof * desc.length) - 1;
 		base.offset = cast(ulong)desc.ptr;
 
@@ -107,6 +108,7 @@ public static:
 		flush();
 
 		register(0xD, &_onGPF);
+		register(0xE, cast(InterruptCallback)&onPageFault);
 
 		asm {
 			sti;

@@ -12,6 +12,7 @@ import stl.address;
 
 import arch.amd64.paging;
 import stl.vmm.paging;
+import stl.elf64;
 
 static private immutable uint _major = __VERSION__ / 1000;
 static private immutable uint _minor = __VERSION__ % 1000;
@@ -21,16 +22,6 @@ private void outputBoth(Args...)(Args args, string file = __MODULE__, string fun
 	import stl.io.log : Log;
 	import stl.arch.amd64.msr : MSR;
 	import stl.text : HexInt;
-
-	if (MSR.fs) {
-		import powerd.api.cpu : CPUThread;
-
-		if (auto _ = currentThread) {
-			VGA.writeln('<', HexInt(_.id), "> ", args);
-			Log.info!(char, HexInt, char[2], Args)('<', HexInt(_.id), "> ", args, file, func, line);
-			return;
-		}
-	}
 
 	VGA.writeln(args);
 	Log.info!(Args)(args, file, func, line);
@@ -86,6 +77,67 @@ import powerd.api.cpu : CPUThread;
 
 CPUThread* currentThread; /// The current threads structure
 
+ELFInstance instantiateELF(ref ELF64 elf) @safe {
+	import stl.io.log : Log;
+	import stl.vmm.frameallocator : FrameAllocator;
+	import arch.amd64.paging : Paging, VMPageFlags;
+
+	ELFInstance instance;
+	instance.main = () @trusted{ return cast(typeof(instance.main))elf.header.entry.ptr; }();
+
+	foreach (ref ELF64ProgramHeader hdr; elf.programHeaders) {
+		if (hdr.type != ELF64ProgramHeader.Type.load)
+			continue;
+
+		VirtAddress vAddr = hdr.vAddr;
+		VirtAddress data = elf.elfData.start + hdr.offset;
+		PhysAddress pData = elf.elfDataPhys.start + hdr.offset;
+
+		Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", pData, " - ", pData + hdr.memsz, "]");
+		FrameAllocator.markRange(pData, pData + hdr.memsz);
+		for (size_t offset; offset < hdr.memsz; offset += 0x1000) {
+			import stl.number : min;
+
+			VirtAddress addr = vAddr + offset;
+			PhysAddress pAddr = pData + offset;
+
+			// Map with writable
+			if (!Paging.map(addr, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false))
+				Log.fatal("Failed to map ", addr, "( to ", pAddr, ")");
+
+			// Copying the data over, and zeroing the excess
+			size_t dataLen = (offset > hdr.filesz) ? 0 : min(hdr.filesz - offset, 0x1000);
+			size_t zeroLen = min(0x1000 - dataLen, hdr.memsz - offset);
+
+			addr.memcpy(data + offset, dataLen);
+			(addr + dataLen).memset(0, zeroLen);
+
+			// Remapping with correct flags
+			VMPageFlags flags;
+			if (hdr.flags & ELF64ProgramHeader.Flags.r)
+				flags |= VMPageFlags.present;
+			if (hdr.flags & ELF64ProgramHeader.Flags.w)
+				flags |= VMPageFlags.writable;
+			if (hdr.flags & ELF64ProgramHeader.Flags.x)
+				flags |= VMPageFlags.execute;
+
+			if (!Paging.remap(addr, PhysAddress(), flags))
+				Log.fatal("Failed to remap ", addr);
+		}
+	}
+
+	alias getCtors = () {
+		foreach (ref ELF64SectionHeader section; elf.sectionHeaders)
+			if (elf.lookUpSectionName(section.name) == ".ctors")
+				return VirtMemoryRange(section.addr, section.addr + section.size).array!(size_t function() @system);
+		return null;
+	};
+
+	instance.ctors = getCtors();
+
+	return instance;
+}
+
 ///
 extern (C) ulong main() @safe {
 	import powerd.api : getPowerDAPI;
@@ -106,6 +158,7 @@ extern (C) ulong main() @safe {
 	import stl.io.log : Log;
 	import stl.vmm.frameallocator : FrameAllocator;
 	import stl.vmm.heap : Heap;
+	import stl.arch.amd64.msr : MSR;
 
 	COM.init();
 	VGA.init();
@@ -129,7 +182,7 @@ extern (C) ulong main() @safe {
 	Multiboot2.earlyParse();
 	FrameAllocator.preAllocateFrames();
 
-	Heap.init();
+	Heap.init(makeAddress(0, 1, 0, 0));
 	TLS.aquireTLS();
 
 	Multiboot2.parse();
@@ -141,19 +194,12 @@ extern (C) ulong main() @safe {
 	else
 		Log.fatal("No RSDP entry in the multiboot2 structure!");
 
+	() @trusted{ Log.warning("ct: ", &(getPowerDAPI.cpus.cpuThreads[0])); }();
 	currentThread = &getPowerDAPI.cpus.cpuThreads[0];
 
+	() @trusted{ Log.warning("currentThread: ", currentThread); }();
+
 	IOAPIC.analyze();
-
-	auto kernelModule = Multiboot2.getModule("kernel");
-	outputBoth("Kernel module: [", kernelModule.start, "-", kernelModule.end, "]");
-	ELF64 kernelELF = ELF64(kernelModule);
-	ELFInstance kernel; // = kernelELF.aquireInstance();
-
-	outputBoth("kernel.main: ", VirtAddress(kernel.main));
-	outputBoth("kernel.ctors: ");
-	foreach (idx, ctor; kernel.ctors)
-		outputBoth("\t", idx, ": ", VirtAddress(ctor));
 
 	LAPIC.init();
 	IOAPIC.setupLoader();
@@ -166,6 +212,17 @@ extern (C) ulong main() @safe {
 	// Init data
 	SMP.init();
 	outputBoth("SMP.init DONE!!!!!!!");
+
+	auto kernelModule = Multiboot2.getModule("kernel");
+	outputBoth("Kernel module: [", kernelModule.start, "-", kernelModule.end, "]");
+
+	getPowerDAPI.kernelELF = ELF64(kernelModule);
+	ELFInstance kernel = getPowerDAPI.kernelELF.instantiateELF();
+
+	outputBoth("kernel.main: ", VirtAddress(kernel.main));
+	outputBoth("kernel.ctors: ");
+	foreach (idx, ctor; kernel.ctors)
+		outputBoth("\t", idx, ": ", VirtAddress(ctor));
 
 	// Setup more info data
 	// freeData = Heap.lastAddress(); ?
@@ -183,8 +240,10 @@ extern (C) ulong main() @safe {
 	if (VirtAddress(kernel.main) < 0xFFFFFFFF_80000000)
 		Log.fatal("Main is invalid!");
 
+	outputBoth("Transferring control to the kernel, Good luck!");
 	() @trusted{ //
 		auto papi = &getPowerDAPI();
+
 		papi.screenX = VGA.x;
 		papi.screenY = VGA.y;
 

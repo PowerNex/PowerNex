@@ -712,9 +712,11 @@ public static:
 	PhysMemoryRange getModule(string name) {
 		import powerd.api : getPowerDAPI, Module;
 
-		foreach (ref const Module m; getPowerDAPI.modules)
+		foreach (ref const Module m; getPowerDAPI.modules) {
+			Log.info(name, " == ", m.name);
 			if (m.name == name)
 				return m.memory;
+		}
 
 		return PhysMemoryRange();
 	}

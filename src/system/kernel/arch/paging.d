@@ -23,6 +23,10 @@ version (X86_64) {
 		return &_kernelPaging;
 	}
 
+	extern (C) bool validAddress(VirtAddress vAddr) @trusted {
+		return _kernelPaging.isValid(vAddr);
+	}
+
 	extern (C) VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) @trusted {
 		return _kernelPaging.mapSpecialAddress(pAddr, size, readWrite, clear);
 	}

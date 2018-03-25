@@ -19,16 +19,12 @@ import stl.address;
 
 static assert(BuddyHeader.sizeof == 2 * ulong.sizeof);
 
-private VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe {
-	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
-}
-
 ///
 @safe static struct Heap {
 public static:
 	///
-	void init() @trusted {
-		_startAddress = _nextFreeAddress = _makeAddress(0, 1, 0, 0);
+	void init(VirtAddress startAddress) @trusted {
+		_startAddress = _nextFreeAddress = startAddress;
 
 		{
 			import stl.vector : vectorAllocate, vectorFree;

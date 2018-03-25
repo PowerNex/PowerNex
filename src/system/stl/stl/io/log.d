@@ -93,11 +93,7 @@ public static:
 			} else static if (is(T : V*, V)) {
 				com1.write("0x");
 				string val = itoa(cast(ulong)arg, buf, 16, 16);
-				foreach (idx; 0 .. 4) {
-					if (idx)
-						com1.write('_');
-					com1.write(val[idx * 4 .. (idx + 1) * 4]);
-				}
+				com1.write(val[0 .. 8], '_', val[8 .. 16]);
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
 				com1.write("0x");
 				string val = itoa(cast(ulong)arg.num, buf, 16, 16);
@@ -161,6 +157,10 @@ public static:
 	///
 	Func getFuncName(VirtAddress addr) @trusted {
 		import stl.text : strlen;
+		import stl.vmm.paging : validAddress;
+
+		if (!validAddress(addr))
+			return Func("Address is not invalid", 0);
 
 		if (!_symbols)
 			return Func("No symbol map loaded", 0);
@@ -206,18 +206,21 @@ private static:
 	void _printStackTrace(VirtAddress rbp, size_t skipLevels = 0) {
 		import stl.address : VirtAddress;
 		import stl.arch.amd64.com : com1;
+		import stl.vmm.paging : validAddress;
 
 		com1.write("\r\nSTACKTRACE:\r\n");
 		VirtAddress rip;
 
 		while (skipLevels--) {
 			rip = rbp + ulong.sizeof;
+			if (!(*rip.ptr!VirtAddress).validAddress)
+				return;
 			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
 
 		while (rbp) {
 			rip = rbp + ulong.sizeof;
-			if (!*rip.ptr!ulong)
+			if (!(*rip.ptr!VirtAddress).validAddress)
 				break;
 
 			com1.write("\t[");

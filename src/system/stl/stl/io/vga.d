@@ -72,9 +72,10 @@ enum CGAColor {
 ///
 @trusted static struct VGA {
 public static:
-	void init() {
+	void init(ubyte x = 0, ubyte y = 0) {
 		_screen = cast(CGAVideoSlot[80 * 25]*)0xB8000;
-		_y = 1; // Because of the line that was written from init32.S
+		_x = x;
+		_y = y;
 		_color = CGASlotColor(CGAColor.yellow, CGAColor.black);
 	}
 	///

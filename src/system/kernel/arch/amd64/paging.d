@@ -7,6 +7,7 @@ import stl.address;
 import stl.register;
 import stl.trait;
 import stl.vmm.vmm;
+import stl.io.log;
 
 /*
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
@@ -315,11 +316,15 @@ public:
 
 	bool mapAddress(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) {
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
-		if (!entry)
+		if (!entry) {
+			Log.fatal("Table entry not found: ", vAddr);
 			return false;
+		}
 
-		if (entry.present)
+		if (entry.present) {
+			Log.fatal("Address is already mapped: ", vAddr);
 			return false;
+		}
 
 		entry.address = pAddr ? pAddr : getNextFreePage();
 		entry.vmFlags(flags | (clear ? VMPageFlags.writable : VMPageFlags.none));
@@ -439,6 +444,10 @@ public:
 		return VMZoneInformation(zoneStart, zoneEnd, hwZoneID);
 	}
 
+	@property bool isValid(VirtAddress vAddr) {
+		return !!_getTableEntry(vAddr, false);
+	}
+
 private:
 	PhysAddress _addr;
 
@@ -534,7 +543,7 @@ private:
 
 private extern (C) ulong cpuRetCR3();
 
-extern (C) void onPageFault(Registers* regs) {
+extern (C) void onPageFault(Registers* regs) @trusted {
 	import stl.io.vga;
 	import stl.io.log;
 

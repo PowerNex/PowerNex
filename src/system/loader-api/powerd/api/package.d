@@ -46,14 +46,17 @@ struct Version {
 /// The PowerD information container
 @safe struct PowerDAPI {
 	import stl.vector : Vector;
+	import stl.elf64 : ELF64;
 
 	enum size_t magicValue = 0x3056_4472_6577_6F50UL; /// "PowerDV0" as size_t (backwards because of little-endian)
 	size_t magic = magicValue; /// The magic
 	// TODO: Sync with init32.S somehow
 	Version version_ = Version(0, 0, 0); /// The PowerD version
 
-	ubyte screenX;
-	ubyte screenY;
+	ELF64 kernelELF; ///
+
+	ubyte screenX; ///
+	ubyte screenY; ///
 
 	size_t ramAmount; ///
 

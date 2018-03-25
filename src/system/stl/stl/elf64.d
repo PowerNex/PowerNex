@@ -165,20 +165,43 @@ public:
 		if (_header.sectionHeaderStringIndex)
 			_sectionNameStringTable = &_sectionHeaders[_header.sectionHeaderStringIndex];
 
-		// _printProgramHeaders();
-		// _printSectionHeaders();
+		//_printProgramHeaders();
+		//_printSectionHeaders();
 	}
 
-	/*ELFInstance aquireInstance() {
-		ELFInstance instance;
-		instance.main = () @trusted{ return cast(typeof(instance.main))_header.entry.ptr; }();
+	const(char)[] lookUpSectionName(uint nameIdx) @trusted {
+		import stl.text : strlen;
 
-		_mapping();
+		if (!_sectionNameStringTable)
+			return "{No string table!}";
 
-		instance.ctors = _getCtors();
+		const(char)* name = (_elfData.start + _sectionNameStringTable.offset + nameIdx).ptr!(const(char));
+		return name[0 .. name.strlen];
+	}
 
-		return instance;
-	}*/
+	@property PhysMemoryRange elfDataPhys() {
+		return _elfDataPhys;
+	}
+
+	@property VirtMemoryRange elfData() {
+		return _elfData;
+	}
+
+	@property ELF64Header* header() {
+		return _header;
+	}
+
+	@property ELF64ProgramHeader[] programHeaders() {
+		return _programHeaders;
+	}
+
+	@property ELF64SectionHeader[] sectionHeaders() {
+		return _sectionHeaders;
+	}
+
+	@property ELF64SectionHeader* sectionNameStringTable() {
+		return _sectionNameStringTable;
+	}
 
 private:
 	PhysMemoryRange _elfDataPhys;
@@ -229,16 +252,6 @@ private:
 				// dfmt on
 	}
 
-	const(char)[] _lookUpSectionName(uint nameIdx) @trusted {
-		import stl.text : strlen;
-
-		if (!_sectionNameStringTable)
-			return "{No string table!}";
-
-		const(char)* name = (_elfData.start + _sectionNameStringTable.offset + nameIdx).ptr!(const(char));
-		return name[0 .. name.strlen];
-	}
-
 	void _printSectionHeaders() {
 		import stl.io.log : Log;
 
@@ -246,7 +259,7 @@ private:
 			with (sectionHeader)
 				// dfmt off
 				Log.debug_("ELF64SectionHeader:",
-					"\n\tname: '", _lookUpSectionName(name), "' (", name, ")",
+					"\n\tname: '", lookUpSectionName(name), "' (", name, ")",
 					"\n\ttype: ", type,
 					"\n\tflags: ", flags,
 					"\n\taddr: ", addr,
@@ -259,59 +272,4 @@ private:
 				);
 				// dfmt on
 	}
-
-	/*
-	void _mapping() {
-		import stl.io.log : Log;
-		import stl.vmm.frameallocator : FrameAllocator;
-		import arch.amd64.paging : Paging, PageFlags;
-
-		foreach (ref ELF64ProgramHeader hdr; _programHeaders) {
-			if (hdr.type != ELF64ProgramHeader.Type.load)
-				continue;
-
-			VirtAddress vAddr = hdr.vAddr;
-			VirtAddress data = _elfData.start + hdr.offset;
-			PhysAddress pData = _elfDataPhys.start + hdr.offset;
-
-			Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", pData, " - ", pData + hdr.memsz, "]");
-			FrameAllocator.markRange(pData, pData + hdr.memsz);
-			for (size_t offset; offset < hdr.memsz; offset += 0x1000) {
-				import stl.number : min;
-
-				VirtAddress addr = vAddr + offset;
-				PhysAddress pAddr = pData + offset;
-
-				// Map with writable
-				if (!Paging.map(addr, PhysAddress(), PageFlags.present | PageFlags.writable, false))
-					Log.fatal("Failed to map ", addr, "( to ", pAddr, ")");
-
-				// Copying the data over, and zeroing the excess
-				size_t dataLen = (offset > hdr.filesz) ? 0 : min(hdr.filesz - offset, 0x1000);
-				size_t zeroLen = min(0x1000 - dataLen, hdr.memsz - offset);
-
-				addr.memcpy(data + offset, dataLen);
-				(addr + dataLen).memset(0, zeroLen);
-
-				// Remapping with correct flags
-				PageFlags flags;
-				if (hdr.flags & ELF64ProgramHeader.Flags.r)
-					flags |= PageFlags.present;
-				if (hdr.flags & ELF64ProgramHeader.Flags.w)
-					flags |= PageFlags.writable;
-				if (hdr.flags & ELF64ProgramHeader.Flags.x)
-					flags |= PageFlags.execute;
-
-				if (!Paging.remap(addr, PhysAddress(), flags))
-					Log.fatal("Failed to remap ", addr);
-			}
-		}
-	}
-
-	auto _getCtors() {
-		foreach (ref ELF64SectionHeader section; _sectionHeaders)
-			if (_lookUpSectionName(section.name) == ".ctors")
-				return VirtMemoryRange(section.addr, section.addr + section.size).array!(size_t function() @system);
-		return null;
-	}*/
 }

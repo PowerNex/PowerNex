@@ -10,6 +10,7 @@ import hw.ps2.keyboard;
 import stl.vmm.frameallocator;
 import stl.address;
 import stl.vmm.heap;
+import stl.vmm.paging;
 import hw.pci.pci;
 import hw.cmos.cmos;
 import arch.paging;
@@ -50,12 +51,38 @@ extern (C) void kmain(PowerDAPI* papi) {
 
 void preInit(PowerDAPI* papi) {
 	COM.init();
-	VGA.x = papi.screenX;
-	VGA.y = papi.screenY;
+	VGA.init(papi.screenX, papi.screenY);
+	VGA.color = CGASlotColor(CGAColor.lightCyan, CGAColor.black);
 
-	VGA.writeln("Log initializing...");
-	//Log.init();
-	Log.info("Log is now enabled!");
+	// dfmt off
+	VGA.writeln("
+\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBB
+\xBA Welcome to the PowerNex Kernel \xBA
+\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC");
+	Log.info("
+╔════════════════════════════════╗
+║ Welcome to the PowerNex Kernel ║
+╚════════════════════════════════╝");
+	// dfmt on
+
+	{
+		import stl.elf64;
+
+		auto elf = &papi.kernelELF;
+		const(ELF64SectionHeader)* symtab, strtab;
+		foreach (const ref ELF64SectionHeader section; elf.sectionHeaders) {
+			if (elf.lookUpSectionName(section.name) == ".symtab")
+				symtab = &section;
+			else if (elf.lookUpSectionName(section.name) == ".strtab")
+				strtab = &section;
+		}
+
+		// TODO: probably allocate space for these. These will break when the loader is unmapped! (probably)
+		ELF64Symbol[] symbols = (elf.elfData.start + symtab.offset).ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
+		char[] strings = (elf.elfData.start + strtab.offset).ptr!char[0 .. strtab.size];
+
+		Log.setSymbolMap(symbols, strings);
+	}
 
 	VGA.writeln("LAPIC initializing...");
 	Log.info("LAPIC initializing...");
@@ -68,6 +95,7 @@ void preInit(PowerDAPI* papi) {
 	VGA.writeln("IDT initializing...");
 	Log.info("IDT initializing...");
 	IDT.init();
+	IDT.register(irq(0), cast(IDT.InterruptCallback)(Registers* regs) @trusted {}); // Ignore timer interrupt
 }
 
 void welcome() {
@@ -94,7 +122,7 @@ void init(PowerDAPI* papi) {
 	VGA.writeln("Heap initializing...");
 	Log.info("Heap initializing...");
 
-	Heap.init();
+	Heap.init(makeAddress(500, 0, 0, 0));
 
 	VGA.writeln("CMOS initializing...");
 	Log.info("CMOS initializing...");
@@ -103,16 +131,6 @@ void init(PowerDAPI* papi) {
 	VGA.writeln("Keyboard initializing...");
 	Log.info("Keyboard initializing...");
 	PS2Keyboard.init();
-
-	{
-		// TODO: Get symbolmap from ELF file
-		Module* symmap = papi.getModule("kernel");
-		if (symmap) {
-			//Log.setSymbolMap(symmap);
-			Log.info("Successfully loaded symbols!");
-		} else
-			Log.error("No module called symmap!");
-	}
 
 	VGA.writeln("PCI initializing...");
 	Log.info("PCI initializing...");

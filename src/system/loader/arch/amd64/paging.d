@@ -13,6 +13,7 @@ import stl.address;
 import stl.register;
 import stl.vmm.paging;
 import stl.vmm.vmm;
+import stl.io.log;
 
 /*
 	Recursive mapping info is from http://os.phil-opp.com/modifying-page-tables.html
@@ -262,8 +263,6 @@ public static:
 	}
 
 	VirtAddress mapSpecial(PhysAddress pAddr, size_t size, VMPageFlags flags = VMPageFlags.present, bool clear = false) {
-		import stl.io.log : Log;
-
 		const size_t pagesNeeded = ((size + 0xFFF) & ~0xFFF) / 0x1000;
 
 		const ulong specialID = 510; // XXX: Find this from somewhere else
@@ -304,8 +303,6 @@ public static:
 	}
 
 	bool map(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags = VMPageFlags.present, bool clear = false) {
-		import stl.io.log : Log;
-
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry) {
 			Log.fatal("Entry does not exist!");
@@ -419,6 +416,10 @@ public static:
 		return FrameAllocator.free(page);
 	}
 
+	@property bool isValid(VirtAddress vAddr) {
+		return !!_getTableEntry(vAddr, false);
+	}
+
 private static:
 	void _flush(VirtAddress vAddr) {
 		cpuFlushPage(vAddr.num);
@@ -510,7 +511,7 @@ private static:
 	}
 }
 
-extern (C) void onPageFault(Registers* regs) @safe {
+extern (C) void onPageFault(Registers* regs) @trusted {
 	import stl.io.vga : VGA, CGAColor, CGASlotColor;
 	import stl.io.log : Log;
 	import stl.text : HexInt;
@@ -613,8 +614,8 @@ extern (C) void onPageFault(Registers* regs) @safe {
 				(pml2Flags & VMPageFlags.execute) ? "X" : "", (pml2Flags & VMPageFlags.user) ? "-User" : "");
 		VGA.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
 				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
-		VGA.writeln("Page Mode: ", (VMPageFlags & VMPageFlags.present) ? "R" : "", (VMPageFlags & VMPageFlags.writable) ? "W" : "",
-				(VMPageFlags & VMPageFlags.execute) ? "X" : "", (VMPageFlags & VMPageFlags.user) ? "-User" : "");
+		VGA.writeln("Page Mode: ", (VMPageFlags & VMPageFlags.present) ? "R" : "", (VMPageFlags & VMPageFlags.writable) ? "W"
+				: "", (VMPageFlags & VMPageFlags.execute) ? "X" : "", (VMPageFlags & VMPageFlags.user) ? "-User" : "");
 		//dfmt off
 		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
 			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
@@ -659,6 +660,10 @@ extern (C) void onPageFault(Registers* regs) @safe {
 				(VMPageFlags & VMPageFlags.user) ? "-User" : "");
 		//dfmt on
 	}
+}
+
+extern (C) bool validAddress(VirtAddress vAddr) @trusted {
+	return Paging.isValid(vAddr);
 }
 
 extern (C) VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) @trusted {
