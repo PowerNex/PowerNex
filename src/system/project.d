@@ -53,6 +53,7 @@ void initSTL() {
 			"stl/text.d",
 			"stl/trait.d",
 			"stl/utf.d",
+			"stl/vtable.d",
 			"stl/vmm/paging.d",
 			"stl/vmm/vmm.d",
 			"stl/vmm/frameallocator.d",
@@ -159,6 +160,11 @@ void initKernel() {
 			"hw/pci/pci.d",
 			"hw/ps2/kbset.d",
 			"hw/ps2/keyboard.d",
+			"fs/package.d",
+			"fs/block.d",
+			"fs/node.d",
+			"fs/supernode.d",
+			"fs/tfs/package.d",
 			"kmain.d"
 		);
 

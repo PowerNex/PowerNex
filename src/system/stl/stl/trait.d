@@ -130,4 +130,11 @@ template parameters(func...) {
 			alias parameters = P;
 		else
 			static assert(0, "argument has no parameters");
+	else static if (is(typeof(*func[0]) Fsym : Fsym) && is(Fsym == function)) {
+		static if (is(Fsym P == function))
+			alias parameters = P;
+		else
+			static assert(0, "argument has no parameters");
+	} else
+		static assert(0, ":(");
 }
