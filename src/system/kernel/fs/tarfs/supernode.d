@@ -17,15 +17,15 @@ import stl.vmm.heap;
 import stl.vector;
 
 // dfmt off
-__gshared const FSSuperNodeVTable TarFSSuperNodeVTable = {
-	getNode: VTablePtr!(typeof(FSSuperNodeVTable.getNode))(&TarFSSuperNode.getNode),
-	saveNode: VTablePtr!(typeof(FSSuperNodeVTable.saveNode))(&TarFSSuperNode.saveNode),
-	addNode: VTablePtr!(typeof(FSSuperNodeVTable.addNode))(&TarFSSuperNode.addNode),
-	removeNode: VTablePtr!(typeof(FSSuperNodeVTable.removeNode))(&TarFSSuperNode.removeNode),
-	getFreeNodeID: VTablePtr!(typeof(FSSuperNodeVTable.getFreeNodeID))(&TarFSSuperNode.getFreeNodeID),
-	getFreeBlockID: VTablePtr!(typeof(FSSuperNodeVTable.getFreeBlockID))(&TarFSSuperNode.getFreeBlockID),
-	setBlockUsed: VTablePtr!(typeof(FSSuperNodeVTable.setBlockUsed))(&TarFSSuperNode.setBlockUsed),
-	setBlockFree: VTablePtr!(typeof(FSSuperNodeVTable.setBlockFree))(&TarFSSuperNode.setBlockFree)
+private __gshared const FSSuperNode.VTable TarFSSuperNodeVTable = {
+	getNode: VTablePtr!(typeof(FSSuperNode.VTable.getNode))(&TarFSSuperNode.getNode),
+	saveNode: VTablePtr!(typeof(FSSuperNode.VTable.saveNode))(&TarFSSuperNode.saveNode),
+	addNode: VTablePtr!(typeof(FSSuperNode.VTable.addNode))(&TarFSSuperNode.addNode),
+	removeNode: VTablePtr!(typeof(FSSuperNode.VTable.removeNode))(&TarFSSuperNode.removeNode),
+	getFreeNodeID: VTablePtr!(typeof(FSSuperNode.VTable.getFreeNodeID))(&TarFSSuperNode.getFreeNodeID),
+	getFreeBlockID: VTablePtr!(typeof(FSSuperNode.VTable.getFreeBlockID))(&TarFSSuperNode.getFreeBlockID),
+	setBlockUsed: VTablePtr!(typeof(FSSuperNode.VTable.setBlockUsed))(&TarFSSuperNode.setBlockUsed),
+	setBlockFree: VTablePtr!(typeof(FSSuperNode.VTable.setBlockFree))(&TarFSSuperNode.setBlockFree)
 };
 // dfmt on
 
@@ -103,8 +103,6 @@ private:
 				Log.warning("Invalid tar entry header!: ", (curLoc - data.start));
 				break;
 			}
-
-			ptrdiff_t size = paxHeader.fileSize ? paxHeader.fileSize : header.size.toNumber;
 
 			switch (header.typeFlag) with (TarHeader.TypeFlag) {
 			case paxExtendedHeader:

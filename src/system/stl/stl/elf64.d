@@ -151,13 +151,13 @@ struct ELF64Symbol {
 @safe struct ELF64 {
 public:
 	///
-	this(PhysMemoryRange kernelModule) {
-		// I can do this due to 1-to-1 mapping, and the loader + modules sizes are less than 1GiB
-		_elfDataPhys = kernelModule;
-		_elfData = kernelModule.toVirtual;
+	this(VirtMemoryRange kernelModule) {
+		_elfData = kernelModule;
 		_header = _elfData.start.ptr!ELF64Header;
 
 		_verify();
+		if (!_isValid)
+			return;
 
 		_programHeaders = (_elfData.start + _header.programHeaderOffset).array!ELF64ProgramHeader(_header.programHeaderCount);
 		_sectionHeaders = (_elfData.start + _header.sectionHeaderOffset).array!ELF64SectionHeader(_header.sectionHeaderCount);
@@ -179,8 +179,8 @@ public:
 		return name[0 .. name.strlen];
 	}
 
-	@property PhysMemoryRange elfDataPhys() {
-		return _elfDataPhys;
+	@property bool isValid() {
+		return _isValid;
 	}
 
 	@property VirtMemoryRange elfData() {
@@ -204,7 +204,7 @@ public:
 	}
 
 private:
-	PhysMemoryRange _elfDataPhys;
+	bool _isValid;
 	VirtMemoryRange _elfData;
 	ELF64Header* _header;
 	ELF64ProgramHeader[] _programHeaders;
@@ -215,22 +215,23 @@ private:
 		import stl.io.log : Log;
 
 		if (_header.ident.magic != ELF64Header.Ident.magicValue)
-			Log.fatal("Kernel is not an ELF");
+			Log.fatal("File is not an ELF");
 		if (_header.ident.class_ != ELF64Header.Ident.Class.class64)
-			Log.fatal("Kernel is not an ELF64");
+			Log.fatal("File is not an ELF64");
 		if (_header.ident.data != ELF64Header.Ident.Data.twoLittleEndian)
-			Log.fatal("Kernel is not 2LSB");
+			Log.fatal("File is not 2LSB");
 		if (_header.ident.version_ != ELF64Header.Ident.Version.current)
-			Log.fatal("Kernels ELFVersion isn't current");
+			Log.fatal("Files ELFVersion isn't current");
 		if (_header.ident.osABI != ELF64Header.Ident.OSABI.sysv && _header.ident.abiVersion == 0)
-			Log.fatal("Kernel is not a SysV version 0");
+			Log.fatal("File is not a SysV version 0");
 		if (_header.programHeaderEntrySize != ELF64ProgramHeader.sizeof)
 			Log.fatal("_header.programHeaderEntrySize != ELF64ProgramHeader.sizeof: ", _header.programHeaderEntrySize,
 					" != ", ELF64ProgramHeader.sizeof);
 		if (_header.sectionHeaderEntrySize != ELF64SectionHeader.sizeof)
 			Log.fatal("_header.sectionHeaderEntrySize != ELF64SectionHeader.sizeof: ", _header.sectionHeaderEntrySize,
 					" != ", ELF64SectionHeader.sizeof);
-		Log.info("Kernel is valid!");
+		Log.info("File is valid!");
+		_isValid = true;
 	}
 
 	void _printProgramHeaders() {

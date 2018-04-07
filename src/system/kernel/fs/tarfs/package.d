@@ -14,7 +14,7 @@ public import fs.tarfs.node;
 public import fs.tarfs.supernode;
 
 /// Tar header for the POSIX ustar version
-@safe struct TarHeader {
+@safe package struct TarHeader {
 	enum size_t HeaderSize = 512;
 	enum char[6] Magic = "ustar\0";
 	enum char[2] Version = "00";
@@ -87,7 +87,7 @@ public import fs.tarfs.supernode;
 	}
 }
 
-@safe struct PaxHeader {
+@safe package struct PaxHeader {
 	ptrdiff_t fileSize;
 }
 

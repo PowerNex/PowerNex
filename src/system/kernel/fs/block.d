@@ -29,42 +29,44 @@ import stl.vmm.heap;
 	ubyte[blockSize] data;
 }
 
-@safe struct FSBlockDeviceVTable {
-	/**
-	 * Prototype of FSBlockDevice.readBlock
-	 * See_Also:
-	 *  FSBlockDevice.readBlock
-	 */
-	void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, ref FSBlock block) readBlock;
-
-	/**
-	 * Prototype of FSBlockDevice.writeBlock
-	 * See_Also:
-	 *  FSBlockDevice.writeBlock
-	 */
-	void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, const ref FSBlock block) writeBlock;
-
-	/**
-	 * Prototype of FSBlockDevice.getBlockCount
-	 * See_Also:
-	 *  FSBlockDevice.getBlockCount
-	 */
-	size_t function(ref FSBlockDevice bd) getBlockCount;
-}
-
 /**
  * Helper class for writing and reading blocks from the file.
  */
 @safe struct FSBlockDevice {
+	/// The vtable for FSBlockDevice.
+	struct VTable {
+		/**
+		* Prototype of FSBlockDevice.readBlock
+		* See_Also:
+		*  FSBlockDevice.readBlock
+		*/
+		void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, ref FSBlock block) readBlock;
+
+		/**
+		* Prototype of FSBlockDevice.writeBlock
+		* See_Also:
+		*  FSBlockDevice.writeBlock
+		*/
+		void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, const ref FSBlock block) writeBlock;
+
+		/**
+		* Prototype of FSBlockDevice.getBlockCount
+		* See_Also:
+		*  FSBlockDevice.getBlockCount
+		*/
+		size_t function(ref FSBlockDevice bd) getBlockCount;
+	}
+
+
 	/**
 	 * The block index type.
 	 */
 	alias BlockID = ulong;
 
-	const(FSBlockDeviceVTable)* vtable;
+	const(VTable)* vtable;
 
 	@disable this();
-	this(const(FSBlockDeviceVTable)* vtable) {
+	this(const(VTable)* vtable) {
 		this.vtable = vtable;
 	}
 
@@ -76,7 +78,6 @@ pragma(inline, true):
 	 *      idx The blocks index
 	 *      block Where to write the block to
 	 * See_Also:
-	 *    FSBlockDevice
 	 *    FSBlock
 	 */
 	void readBlock(FSBlockDevice.BlockID idx, ref FSBlock block) {
@@ -90,7 +91,6 @@ pragma(inline, true):
 	 *      idx The blocks index
 	 *      block The block
 	 * See_Also:
-	 *    FSBlockDevice
 	 *    FSBlock
 	 */
 	void writeBlock(FSBlockDevice.BlockID idx, const ref FSBlock block) {
@@ -100,8 +100,6 @@ pragma(inline, true):
 
 	/**
 	 * Prototype of FSBlockDevice.getBlockCount
-	 * See_Also:
-	 *  FSBlockDevice.getBlockCount
 	 */
 	size_t getBlockCount() {
 		assert(vtable.getBlockCount, "vtable.getBlockCount is null!");
@@ -110,8 +108,6 @@ pragma(inline, true):
 
 	/**
 	 * Prototype of FSBlockDevice.getBlockCount
-	 * See_Also:
-	 *  FSBlockDevice.getBlockCount
 	 */
 	size_t getSuperNode() {
 		assert(vtable.getBlockCount, "vtable.getBlockCount is null!");

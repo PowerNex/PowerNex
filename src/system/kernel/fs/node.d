@@ -11,51 +11,49 @@ module fs.node;
 import fs;
 
 /**
- * The vtable for FSNode
- * See_Also:
- *    FSNode
- */
-@safe struct FSNodeVTable {
-	/**
-	 * Prototype of FSNode.readData.
-	 * See_Also:
-	 *  FSNode.readData
-	 */
-	ulong function(ref FSNode node, ref ubyte[] buffer, ulong offset) readData;
-
-	/**
-	 * Prototype of FSNode.writeData.
-	 * See_Also:
-	 *  FSNode.writeData
-	 */
-	ulong function(ref FSNode node, const ref ubyte[] buffer, ulong offset) writeData;
-
-	/**
-	 * Prototype of FSNode.directoryEntries.
-	 * See_Also:
-	 *  FSNode.directoryEntries
-	 */
-	FSDirectoryEntry[]function(ref FSNode node) directoryEntries;
-
-	/**
-	 * Prototype of FSNode.findNode.
-	 * See_Also:
-	 *  FSNode.findNode
-	 */
-	FSNode* function(ref FSNode node, string path) findNode;
-
-	/**
-	 * Prototype of FSNode.link.
-	 * See_Also:
-	 *  FSNode.link
-	 */
-	void function(ref FSNode node, string name, FSNode.ID id) link;
-}
-
-/**
  * The node type.
  */
 @safe struct FSNode {
+	/**
+	 * The vtable for FSNode
+	 */
+	struct VTable {
+		/**
+		 * Prototype of FSNode.readData.
+		 * See_Also:
+		 *  FSNode.readData
+		 */
+		ulong function(ref FSNode node, ref ubyte[] buffer, ulong offset) readData;
+
+		/**
+		 * Prototype of FSNode.writeData.
+		 * See_Also:
+		 *  FSNode.writeData
+		 */
+		ulong function(ref FSNode node, const ref ubyte[] buffer, ulong offset) writeData;
+
+		/**
+		 * Prototype of FSNode.directoryEntries.
+		 * See_Also:
+		 *  FSNode.directoryEntries
+		 */
+		FSDirectoryEntry[]function(ref FSNode node) directoryEntries;
+
+		/**
+		 * Prototype of FSNode.findNode.
+		 * See_Also:
+		 *  FSNode.findNode
+		 */
+		FSNode* function(ref FSNode node, string path) findNode;
+
+		/**
+		 * Prototype of FSNode.link.
+		 * See_Also:
+		 *  FSNode.link
+		 */
+		void function(ref FSNode node, string name, FSNode.ID id) link;
+	}
+
 	/**
 	 * The node index type.
 	 * See_Also:
@@ -89,7 +87,7 @@ import fs;
 	}
 
 	/// Internal vtable stuff
-	const(FSNodeVTable)* vtable;
+	const(VTable)* vtable;
 
 	/// The owner
 	FSSuperNode* superNode;
@@ -108,7 +106,7 @@ import fs;
 	ulong blockCount;
 
 	@disable this();
-	this(const(FSNodeVTable)* vtable) {
+	this(const(VTable)* vtable) {
 		this.vtable = vtable;
 	}
 
@@ -118,8 +116,6 @@ import fs;
 	 *      buffer Where to write the data to
 	 *      offset Where to start in the node
 	 * Returns: The amount of data read
-	 * See_Also:
-	 *    FSNode
 	 */
 	ulong readData(ref ubyte[] buffer, ulong offset) {
 		assert(vtable.readData, "vtable.readData is null!");
@@ -132,8 +128,6 @@ import fs;
 	 *      buffer Where to read the data from
 	 *      offset Where to start in the node
 	 * Returns: The amount of data written
-	 * See_Also:
-	 *    FSNode
 	 */
 	ulong writeData(const ref ubyte[] buffer, ulong offset) {
 		assert(vtable.writeData, "vtable.writeData is null!");
@@ -145,8 +139,6 @@ import fs;
 	 * Params:
 	 *      amount Returns how big the array is
 	 * Returns: The directory entry array, if the node is of the type FSNode.Type.directory, else NULL
-	 * See_Also:
-	 *    FSNode
 	 */
 	FSDirectoryEntry[] directoryEntries() {
 		assert(vtable.directoryEntries, "vtable.directoryEntries is null!");
@@ -159,8 +151,6 @@ import fs;
 	 * Params:
 	 *      path The path to be searched
 	 * Returns: The node it found else NULL
-	 * See_Also:
-	 *    FSNode
 	 */
 	FSNode* findNode(string path) {
 		assert(vtable.findNode, "vtable.findNode is null!");
@@ -172,8 +162,6 @@ import fs;
 	 * Params:
 	 *      name The name of the link
 	 *      id The node id
-	 * See_Also:
-	 *    FSNode
 	 */
 	void link(string name, FSNode.ID id) {
 		assert(vtable.link, "vtable.link is null!");
@@ -191,6 +179,7 @@ import fs;
 
 	@property string nameStr() const {
 		import stl.text : fromStringz;
+
 		return name.fromStringz;
 	}
 }

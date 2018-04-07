@@ -17,12 +17,12 @@ import stl.vmm.heap;
 import stl.vector;
 
 // dfmt off
-__gshared const FSNodeVTable TarFSNodeVTable = {
-	readData: VTablePtr!(typeof(FSNodeVTable.readData))(&TarFSNode.readData),
-	writeData: VTablePtr!(typeof(FSNodeVTable.writeData))(&TarFSNode.writeData),
-	directoryEntries: VTablePtr!(typeof(FSNodeVTable.directoryEntries))(&TarFSNode.directoryEntries),
-	findNode: VTablePtr!(typeof(FSNodeVTable.findNode))(&TarFSNode.findNode),
-	link: VTablePtr!(typeof(FSNodeVTable.link))(&TarFSNode.link)
+private __gshared const FSNode.VTable TarFSNodeVTable = {
+	readData: VTablePtr!(typeof(FSNode.VTable.readData))(&TarFSNode.readData),
+	writeData: VTablePtr!(typeof(FSNode.VTable.writeData))(&TarFSNode.writeData),
+	directoryEntries: VTablePtr!(typeof(FSNode.VTable.directoryEntries))(&TarFSNode.directoryEntries),
+	findNode: VTablePtr!(typeof(FSNode.VTable.findNode))(&TarFSNode.findNode),
+	link: VTablePtr!(typeof(FSNode.VTable.link))(&TarFSNode.link)
 };
 // dfmt on
 
@@ -124,10 +124,14 @@ __gshared const FSNodeVTable TarFSNodeVTable = {
 		}
 	}
 
+	@property const(ubyte)[] data() {
+		return _data;
+	}
+
 private:
 	TarHeader* _header;
 	PaxHeader _paxHeader;
 
-	ubyte[] _data;
+	const(ubyte)[] _data;
 	Vector!FSDirectoryEntry _dirEntries;
 }

@@ -15,21 +15,17 @@ import hw.pci.pci;
 import hw.cmos.cmos;
 import arch.paging;
 import stl.vmm.vmm;
+import fs.tarfs;
 
 import powerd.api;
 
 private immutable uint _major = __VERSION__ / 1000;
 private immutable uint _minor = __VERSION__ % 1000;
 
-void testTarFS(Module* disk) @trusted {
-	import fs;
-	import fs.tarfs;
-	import stl.vmm.heap;
-	TarFSBlockDevice bd = TarFSBlockDevice(disk.memory.toVirtual);
-	TarFSSuperNode* sn = newStruct!TarFSSuperNode(&bd);
-
-	freeStruct(sn);
-}
+private __gshared TarFSBlockDevice _blockDevice;
+private __gshared TarFSSuperNode* _superNode;
+/// The initrd
+__gshared FSNode* initrdFS;
 
 extern (C) void kmain(PowerDAPI* papi) {
 	assert(papi.magic == PowerDAPI.magicValue);
@@ -39,19 +35,21 @@ extern (C) void kmain(PowerDAPI* papi) {
 	asm pure nothrow {
 		sti;
 	}
-	testTarFS(papi.getModule("tarfs"));
+	initFS(papi.getModule("tarfs"));
 
-	/*string initFile = "/bin/init";
-	ELF init = new ELF((*rootFS).root.findNode(initFile));
-	if (init.valid) {
-		VGA.writeln(initFile, " is valid! Loading...");
-		VGA.writeln();
-		VGA.foreground = Color(255, 255, 0);
-		init.mapAndRun([initFile]);
-	} else {
-		VGA.writeln("Invalid ELF64 file");
-		Log.fatal("Invalid ELF64 file!");
-	}*/
+	string initFile = "/bin/init";
+	TarFSNode* initNode = cast(TarFSNode*)initrdFS.findNode(initFile);
+	if (!initNode)
+		Log.fatal("'", initFile, "' is missing, boot halted!");
+
+	{
+		import stl.elf64;
+
+		ELF64 init = ELF64(VirtMemoryRange.fromArray(initNode.data));
+
+		if (!init.isValid)
+			Log.fatal("'", initFile, "' is not a ELF, boot halted!");
+	}
 
 	VGA.color = CGASlotColor(CGAColor.red, CGAColor.yellow);
 	VGA.writeln("kmain functions has exited!");
@@ -146,4 +144,11 @@ void init(PowerDAPI* papi) {
 	VGA.writeln("PCI initializing...");
 	Log.info("PCI initializing...");
 	PCI.init();
+}
+
+void initFS(Module* disk) @trusted {
+	_blockDevice = TarFSBlockDevice(disk.memory.toVirtual);
+	_superNode = newStruct!TarFSSuperNode(&_blockDevice);
+
+	initrdFS = _superNode.base.getNode(0);
 }

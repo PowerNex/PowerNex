@@ -91,7 +91,7 @@ ELFInstance instantiateELF(ref ELF64 elf) @safe {
 
 		VirtAddress vAddr = hdr.vAddr;
 		VirtAddress data = elf.elfData.start + hdr.offset;
-		PhysAddress pData = elf.elfDataPhys.start + hdr.offset;
+		PhysAddress pData = PhysAddress(elf.elfData.start) + hdr.offset;
 
 		Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", pData, " - ", pData + hdr.memsz, "]");
 		FrameAllocator.markRange(pData, pData + hdr.memsz);
@@ -216,8 +216,11 @@ extern (C) ulong main() @safe {
 	auto kernelModule = Multiboot2.getModule("kernel");
 	outputBoth("Kernel module: [", kernelModule.start, "-", kernelModule.end, "]");
 
-	getPowerDAPI.kernelELF = ELF64(kernelModule);
-	ELFInstance kernel = getPowerDAPI.kernelELF.instantiateELF();
+	auto kELF = &getPowerDAPI.kernelELF;
+	*kELF = ELF64(kernelModule.toVirtual);
+	if (!kELF.isValid)
+		Log.fatal("Kernel ELF is not valid!");
+	ELFInstance kernel = instantiateELF(*kELF);
 
 	outputBoth("kernel.main: ", VirtAddress(kernel.main));
 	outputBoth("kernel.ctors: ");

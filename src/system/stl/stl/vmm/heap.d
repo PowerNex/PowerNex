@@ -29,6 +29,8 @@ T* newStruct(T, Args...)(Args args) @trusted {
 	return p;
 }
 
+/// T has to be the original type, can't be a VTable'd object
+/// That will not call the correct destructor
 void freeStruct(T)(T* t) {
 	static if (__traits(hasMember, T, "__xdtor"))
 		t.__xdtor();

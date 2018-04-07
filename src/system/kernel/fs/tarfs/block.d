@@ -16,10 +16,10 @@ import stl.io.log;
 import stl.vmm.heap;
 
 // dfmt off
-__gshared const FSBlockDeviceVTable TarFSBlockDeviceVTable = {
-	readBlock: VTablePtr!(typeof(FSBlockDeviceVTable.readBlock))(&TarFSBlockDevice.readBlock),
-	writeBlock: VTablePtr!(typeof(FSBlockDeviceVTable.writeBlock))(&TarFSBlockDevice.writeBlock),
-	getBlockCount: VTablePtr!(typeof(FSBlockDeviceVTable.getBlockCount))(&TarFSBlockDevice.getBlockCount)
+private __gshared const FSBlockDevice.VTable TarFSBlockDeviceVTable = {
+	readBlock: VTablePtr!(typeof(FSBlockDevice.VTable.readBlock))(&TarFSBlockDevice.readBlock),
+	writeBlock: VTablePtr!(typeof(FSBlockDevice.VTable.writeBlock))(&TarFSBlockDevice.writeBlock),
+	getBlockCount: VTablePtr!(typeof(FSBlockDevice.VTable.getBlockCount))(&TarFSBlockDevice.getBlockCount)
 };
 // dfmt on
 

@@ -209,6 +209,15 @@ private mixin template AddressBase(Type = size_t) {
 @safe struct VirtMemoryRange {
 	mixin MemoryRange!VirtAddress;
 
+	static VirtMemoryRange fromArray(T)(T[] arr) @trusted {
+		VirtMemoryRange vmr;
+		with (vmr) {
+			start = VirtAddress(cast(size_t)arr.ptr);
+			end = start + arr.length * T.sizeof;
+		}
+		return vmr;
+	}
+
 	///
 	@property T[] array(T = void)() @trusted {
 		return start.ptr!T[0 .. (end.num - start.num) / (is(T == void) ? 1 : T.sizeof)];
