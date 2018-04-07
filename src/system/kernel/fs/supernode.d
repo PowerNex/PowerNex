@@ -77,19 +77,17 @@ import fs;
  * The supernode type.
  */
 @safe struct FSSuperNode {
-	pragma(inline, true):
-
 	/// Internal vtable stuff
-	const FSSuperNodeVTable* vtable;
+	const(FSSuperNodeVTable)* vtable;
 
-	/// Where to get the data from
-	FSBlockDevice* blockdevice;
+	FSNode*[] activeMountPoints;
 
 	@disable this();
-	this(const FSSuperNodeVTable* vtable) {
+	this(const(FSSuperNodeVTable)* vtable) {
 		this.vtable = vtable;
 	}
 
+pragma(inline, true):
 	/**
 	 * Get the node corresponding to the \a id.
 	 * Params:
@@ -99,6 +97,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	FSNode* getNode(FSNode.ID id) {
+		assert(vtable.getNode, "vtable.getNode is null!");
 		return vtable.getNode(this, id);
 	}
 
@@ -110,6 +109,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	void saveNode(const ref FSNode node) {
+		assert(vtable.saveNode, "vtable.saveNode is null!");
 		vtable.saveNode(this, node);
 	}
 
@@ -124,6 +124,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	FSNode* addNode(ref FSNode parent, FSNode.Type type, string name) {
+		assert(vtable.addNode, "vtable.addNode is null!");
 		return vtable.addNode(this, parent, type, name);
 	}
 
@@ -137,6 +138,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	bool removeNode(ref FSNode parent, FSNode.ID id) {
+		assert(vtable.removeNode, "vtable.removeNode is null!");
 		return vtable.removeNode(this, parent, id);
 	}
 
@@ -148,6 +150,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	FSNode.ID getFreeNodeID() {
+		assert(vtable.getFreeNodeID, "vtable.getFreeNodeID is null!");
 		return vtable.getFreeNodeID(this);
 	}
 
@@ -159,6 +162,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	FSBlockDevice.BlockID getFreeBlockID() {
+		assert(vtable.getFreeBlockID, "vtable.getFreeBlockID is null!");
 		return vtable.getFreeBlockID(this);
 	}
 
@@ -170,6 +174,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	void setBlockUsed(FSBlockDevice.BlockID id) {
+		assert(vtable.setBlockUsed, "vtable.setBlockUsed is null!");
 		return vtable.setBlockUsed(this, id);
 	}
 
@@ -181,6 +186,7 @@ import fs;
 	 *    FSSuperNode
 	 */
 	void setBlockFree(FSBlockDevice.BlockID id) {
+		assert(vtable.setBlockFree, "vtable.setBlockFree is null!");
 		return vtable.setBlockFree(this, id);
 	}
 }

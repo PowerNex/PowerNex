@@ -10,6 +10,11 @@ module fs.block;
 
 import fs;
 
+import stl.vtable;
+import stl.address;
+import stl.io.log;
+import stl.vmm.heap;
+
 /**
  * The block representation struct.
  * It contains a byte array that define how big each block is.
@@ -18,7 +23,7 @@ import fs;
 	/**
 	 * The size of each block.
 	 */
-	enum blockSize = 0x1000 / 4;
+	enum blockSize = 0x1000;
 
 	/// The data
 	ubyte[blockSize] data;
@@ -26,36 +31,44 @@ import fs;
 
 @safe struct FSBlockDeviceVTable {
 	/**
-	 * Prototype of FSBlockDevice.readD
+	 * Prototype of FSBlockDevice.readBlock
 	 * See_Also:
-	 *  FSBlockDevice.read
+	 *  FSBlockDevice.readBlock
 	 */
-	void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, ref FSBlock block) read;
+	void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, ref FSBlock block) readBlock;
 
 	/**
-	 * Prototype of FSBlockDevice.readD
+	 * Prototype of FSBlockDevice.writeBlock
 	 * See_Also:
-	 *  FSBlockDevice.read
+	 *  FSBlockDevice.writeBlock
 	 */
-	void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, const ref FSBlock block) write;
+	void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, const ref FSBlock block) writeBlock;
+
+	/**
+	 * Prototype of FSBlockDevice.getBlockCount
+	 * See_Also:
+	 *  FSBlockDevice.getBlockCount
+	 */
+	size_t function(ref FSBlockDevice bd) getBlockCount;
 }
 
 /**
  * Helper class for writing and reading blocks from the file.
  */
 @safe struct FSBlockDevice {
-pragma(inline, true):
 	/**
 	 * The block index type.
 	 */
 	alias BlockID = ulong;
 
-	const FSBlockDeviceVTable* vtable;
+	const(FSBlockDeviceVTable)* vtable;
 
 	@disable this();
-	this(const FSBlockDeviceVTable* vtable) {
+	this(const(FSBlockDeviceVTable)* vtable) {
 		this.vtable = vtable;
 	}
+
+pragma(inline, true):
 
 	/**
 	 * This functions reads a block at the index \a idx from the blockdevice and writes the data to \a block.
@@ -66,8 +79,9 @@ pragma(inline, true):
 	 *    FSBlockDevice
 	 *    FSBlock
 	 */
-	void read(FSBlockDevice.BlockID idx, ref FSBlock block) {
-		vtable.read(this, idx, block);
+	void readBlock(FSBlockDevice.BlockID idx, ref FSBlock block) {
+		assert(vtable.readBlock, "vtable.readBlock is null!");
+		vtable.readBlock(this, idx, block);
 	}
 
 	/**
@@ -79,7 +93,28 @@ pragma(inline, true):
 	 *    FSBlockDevice
 	 *    FSBlock
 	 */
-	void write(FSBlockDevice.BlockID idx, const ref FSBlock block) {
-		vtable.write(this, idx, block);
+	void writeBlock(FSBlockDevice.BlockID idx, const ref FSBlock block) {
+		assert(vtable.writeBlock, "vtable.writeBlock is null!");
+		vtable.writeBlock(this, idx, block);
+	}
+
+	/**
+	 * Prototype of FSBlockDevice.getBlockCount
+	 * See_Also:
+	 *  FSBlockDevice.getBlockCount
+	 */
+	size_t getBlockCount() {
+		assert(vtable.getBlockCount, "vtable.getBlockCount is null!");
+		return vtable.getBlockCount(this);
+	}
+
+	/**
+	 * Prototype of FSBlockDevice.getBlockCount
+	 * See_Also:
+	 *  FSBlockDevice.getBlockCount
+	 */
+	size_t getSuperNode() {
+		assert(vtable.getBlockCount, "vtable.getBlockCount is null!");
+		return vtable.getBlockCount(this);
 	}
 }

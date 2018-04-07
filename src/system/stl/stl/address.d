@@ -117,18 +117,6 @@ private mixin template AddressBase(Type = size_t) {
 		this.addr = addr;
 		return addr;
 	}
-
-	///
-	@property Func func(Func)(Func func) @trusted if (is(Func == function)) {
-		this.addr = cast(Type)func;
-		return cast(Func)addr;
-	}
-
-	///
-	@property T array(T)(T array_) {
-		this.addr = cast(Type)array_.ptr;
-		return array_;
-	}
 }
 
 /// This represents a virtual address
@@ -156,13 +144,13 @@ private mixin template AddressBase(Type = size_t) {
 	}
 
 	///
-	@property T array(T : X[], X)(size_t length) @trusted {
-		return ptr!X[0 .. length];
+	@property T[] array(T)(size_t length) @trusted {
+		return ptr!T[0 .. length];
 	}
 
 	///
-	@property T array(T : X[], X)(size_t length) @trusted const {
-		return ptr!X[0 .. length];
+	@property T[] array(T)(size_t length) @trusted const {
+		return ptr!T[0 .. length];
 	}
 
 	///

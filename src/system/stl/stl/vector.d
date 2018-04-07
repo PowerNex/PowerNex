@@ -2,26 +2,26 @@ module stl.vector;
 
 import stl.address : memmove, memcpy;
 
-alias AllocateFunc = void[]function(size_t wantSize) @safe;
-alias FreeFunc = void function(void[] address) @safe;
+alias AllocateFunc = ubyte[]function(size_t wantSize) @safe;
+alias FreeFunc = void function(ubyte[] address) @safe;
 __gshared AllocateFunc vectorAllocate;
 __gshared FreeFunc vectorFree;
 
 @safe struct Vector(T) if (!is(T == class)) {
 public:
-	void[] vectorAllocate(size_t wantSize) @trusted {
+	ubyte[] vectorAllocate(size_t wantSize) @trusted {
 		assert(.vectorAllocate);
 		return .vectorAllocate(wantSize);
 	}
 
-	void vectorFree(void[] address) @trusted {
+	void vectorFree(ubyte[] address) @trusted {
 		assert(.vectorFree);
 		return .vectorFree(address);
 	}
 
-	~this() {
+	~this() @trusted {
 		clear();
-		vectorFree(_list);
+		vectorFree(cast(ubyte[])_list);
 	}
 
 	ref T put(T value) {
@@ -42,8 +42,10 @@ public:
 		if (index >= _length)
 			return false;
 
-		static if (is(typeof({ T a; a.__dtor(); })))
-			_list[index].__dtor;
+		static if (__traits(hasMember, T, "__xdtor"))
+			_list[index].__xdtor();
+		else static if (__traits(hasMember, T, "__dtor"))
+			_list[index].__dtor();
 
 		memmove(&_list[index], &_list[index + 1], T.sizeof * (_length - index - 1));
 		_length--;
@@ -63,9 +65,13 @@ public:
 	}
 
 	void clear() @trusted {
-		static if (is(typeof({ T a; a.__dtor(); })))
-			foreach (ref obj; _list[0 .. _length])
+		static if (__traits(hasMember, T, "__xdtor"))
+			foreach_reverse (ref obj; _list[0 .. _length])
+				obj.__xdtor();
+		else static if (__traits(hasMember, T, "__dtor"))
+			foreach_reverse (ref obj; _list[0 .. _length])
 				obj.__dtor();
+
 		_length = 0;
 	}
 
@@ -178,8 +184,10 @@ private:
 
 	void _expand() @trusted {
 		T[] newList = cast(T[])vectorAllocate(T.sizeof * (_list.length + _growFactor));
-		_list = newList;
-		vectorFree(_list);
+		if (_list) {
+			memcpy(&newList[0], &_list[0], _list.length * T.sizeof);
+			vectorFree(cast(ubyte[])_list);
+		}
 		_list = newList;
 	}
 }

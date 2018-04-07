@@ -164,7 +164,10 @@ void initKernel() {
 			"fs/block.d",
 			"fs/node.d",
 			"fs/supernode.d",
-			"fs/tfs/package.d",
+			"fs/tarfs/package.d",
+			"fs/tarfs/block.d",
+			"fs/tarfs/node.d",
+			"fs/tarfs/supernode.d",
 			"kmain.d"
 		);
 

@@ -21,6 +21,16 @@ import powerd.api;
 private immutable uint _major = __VERSION__ / 1000;
 private immutable uint _minor = __VERSION__ % 1000;
 
+void testTarFS(Module* disk) @trusted {
+	import fs;
+	import fs.tarfs;
+	import stl.vmm.heap;
+	TarFSBlockDevice bd = TarFSBlockDevice(disk.memory.toVirtual);
+	TarFSSuperNode* sn = newStruct!TarFSSuperNode(&bd);
+
+	freeStruct(sn);
+}
+
 extern (C) void kmain(PowerDAPI* papi) {
 	assert(papi.magic == PowerDAPI.magicValue);
 	preInit(papi);
@@ -29,6 +39,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 	asm pure nothrow {
 		sti;
 	}
+	testTarFS(papi.getModule("tarfs"));
 
 	/*string initFile = "/bin/init";
 	ELF init = new ELF((*rootFS).root.findNode(initFile));
@@ -95,7 +106,7 @@ void preInit(PowerDAPI* papi) {
 	VGA.writeln("IDT initializing...");
 	Log.info("IDT initializing...");
 	IDT.init();
-	IDT.register(irq(0), cast(IDT.InterruptCallback)(Registers* regs) @trusted {}); // Ignore timer interrupt
+	IDT.register(irq(0), cast(IDT.InterruptCallback)(Registers* regs) @trusted{  }); // Ignore timer interrupt
 }
 
 void welcome() {

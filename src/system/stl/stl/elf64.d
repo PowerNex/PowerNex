@@ -159,8 +159,8 @@ public:
 
 		_verify();
 
-		_programHeaders = (_elfData.start + _header.programHeaderOffset).array!(ELF64ProgramHeader[])(_header.programHeaderCount);
-		_sectionHeaders = (_elfData.start + _header.sectionHeaderOffset).array!(ELF64SectionHeader[])(_header.sectionHeaderCount);
+		_programHeaders = (_elfData.start + _header.programHeaderOffset).array!ELF64ProgramHeader(_header.programHeaderCount);
+		_sectionHeaders = (_elfData.start + _header.sectionHeaderOffset).array!ELF64SectionHeader(_header.sectionHeaderCount);
 
 		if (_header.sectionHeaderStringIndex)
 			_sectionNameStringTable = &_sectionHeaders[_header.sectionHeaderStringIndex];

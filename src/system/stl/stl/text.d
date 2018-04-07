@@ -25,8 +25,10 @@ nothrow pure size_t strlen(const(char)* str) @trusted {
 	if (!str)
 		return 0;
 	size_t len = 0;
-	while (*(str++))
+	while (*str && *str != char.init) {
 		len++;
+		str++;
+	}
 	return len;
 }
 
@@ -34,8 +36,10 @@ nothrow pure size_t strlen(const(char)* str) @trusted {
 size_t strlen(const(char)[] str) @trusted {
 	size_t len = 0;
 	const(char)* s = str.ptr;
-	while (*(s++) && len < str.length)
+	while ((*s && *s != char.init) && len < str.length) {
 		len++;
+		s++;
+	}
 	return len;
 }
 

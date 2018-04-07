@@ -35,7 +35,7 @@ import fs;
 	 * See_Also:
 	 *  FSNode.directoryEntries
 	 */
-	FSDirectoryEntry[] function(ref FSNode node) directoryEntries;
+	FSDirectoryEntry[]function(ref FSNode node) directoryEntries;
 
 	/**
 	 * Prototype of FSNode.findNode.
@@ -45,24 +45,17 @@ import fs;
 	FSNode* function(ref FSNode node, string path) findNode;
 
 	/**
-	 * Prototype of FSNode.getName.
+	 * Prototype of FSNode.link.
 	 * See_Also:
-	 *  FSNode.getName
+	 *  FSNode.link
 	 */
-	string function(ref FSNode node, ref FSNode parent) getName;
-
-	/**
-	 * Prototype of FSNode.getParent.
-	 * See_Also:
-	 *    FSNode.getParent
-	 */
-	FSNode* function(ref FSNode node, ref FSNode directory) getParent;
+	void function(ref FSNode node, string name, FSNode.ID id) link;
 }
 
 /**
  * The node type.
  */
-struct FSNode {
+@safe struct FSNode {
 	/**
 	 * The node index type.
 	 * See_Also:
@@ -70,29 +63,33 @@ struct FSNode {
 	 */
 	alias ID = ulong;
 
-	/// Invalid node id
-	enum ID invalid = 0;
-	/// The id for the root node
-	enum ID root = 1;
-
 	/**
 	 * The different node types.
 	 */
-	enum Type {
-		/// Invalid type
-		invalid = 0,
+	enum Type : ulong {
+		/// These types will be saved to disk
+
+		/// Not in use type
+		notInUse = 0,
 		/// File type
 		file,
 		/// Directory type
 		directory,
+		/// Symbolic link type
+		symbolicLink,
+		/// Hard link type
+		hardLink,
 
-		/// Will never be valid, Only used for node
-		/// See_Also: Node.invalid
-		neverValid
+		/// These types won't be saved to disk
+
+		/// Only valid during runtime
+		mountpoint = 0x1000,
+
+		unknown = ulong.max
 	}
 
 	/// Internal vtable stuff
-	const FSNodeVTable* vtable;
+	const(FSNodeVTable)* vtable;
 
 	/// The owner
 	FSSuperNode* superNode;
@@ -107,94 +104,93 @@ struct FSNode {
 	ulong size;
 
 	/// The amount of nodes it uses
+	/// ulong.max = N/A
 	ulong blockCount;
 
 	@disable this();
-	this(const FSNodeVTable* vtable) {
+	this(const(FSNodeVTable)* vtable) {
 		this.vtable = vtable;
 	}
 
 	/**
- * Read data from the node.
- * Params:
- *      buffer Where to write the data to
- *      offset Where to start in the node
- * Returns: The amount of data read
- * See_Also:
- *    FSNode
- */
+	 * Read data from the node.
+	 * Params:
+	 *      buffer Where to write the data to
+	 *      offset Where to start in the node
+	 * Returns: The amount of data read
+	 * See_Also:
+	 *    FSNode
+	 */
 	ulong readData(ref ubyte[] buffer, ulong offset) {
+		assert(vtable.readData, "vtable.readData is null!");
 		return vtable.readData(this, buffer, offset);
 	}
 
 	/**
- * Write data to the node.
- * Params:
- *      buffer Where to read the data from
- *      offset Where to start in the node
- * Returns: The amount of data written
- * See_Also:
- *    FSNode
- */
+	 * Write data to the node.
+	 * Params:
+	 *      buffer Where to read the data from
+	 *      offset Where to start in the node
+	 * Returns: The amount of data written
+	 * See_Also:
+	 *    FSNode
+	 */
 	ulong writeData(const ref ubyte[] buffer, ulong offset) {
+		assert(vtable.writeData, "vtable.writeData is null!");
 		return vtable.writeData(this, buffer, offset);
 	}
 
 	/**
- * Get a array of all the entries in a directory
- * Params:
- *      amount Returns how big the array is
- * Returns: The directory entry array, if the node is of the type FSNode.Type.directory, else NULL
- * See_Also:
- *    FSNode
- */
+	 * Get a array of all the entries in a directory
+	 * Params:
+	 *      amount Returns how big the array is
+	 * Returns: The directory entry array, if the node is of the type FSNode.Type.directory, else NULL
+	 * See_Also:
+	 *    FSNode
+	 */
 	FSDirectoryEntry[] directoryEntries() {
+		assert(vtable.directoryEntries, "vtable.directoryEntries is null!");
 		return vtable.directoryEntries(this);
 	}
 
 	/**
- * Search for a node based on the \a path.
- * The path be both absolute or relative.
- * Params:
- *      path The path to be searched
- * Returns: The node it found else NULL
- * See_Also:
- *    FSNode
- */
+	 * Search for a node based on the \a path.
+	 * The path be both absolute or relative.
+	 * Params:
+	 *      path The path to be searched
+	 * Returns: The node it found else NULL
+	 * See_Also:
+	 *    FSNode
+	 */
 	FSNode* findNode(string path) {
+		assert(vtable.findNode, "vtable.findNode is null!");
 		return vtable.findNode(this, path);
 	}
 
 	/**
- * Get the name a of node.
- * Params:
- *      parent The parent for that node
- * Returns: The name or NULL
- * See_Also:
- *    FSNode
- */
-	string getName(ref FSNode parent) {
-		return vtable.getName(this, parent);
-	}
-
-	/**
- * Get the parent for a directory node.
- * Params:
- *      directory The directory
- * Returns: The parent for that node
- * See_Also:
- *    FSNode
- */
-	FSNode* getParent(ref FSNode directory) {
-		return vtable.getParent(this, directory);
+	 * Link in a node in directory
+	 * Params:
+	 *      name The name of the link
+	 *      id The node id
+	 * See_Also:
+	 *    FSNode
+	 */
+	void link(string name, FSNode.ID id) {
+		assert(vtable.link, "vtable.link is null!");
+		vtable.link(this, name, id);
 	}
 
 	//TODO: Add resize
 }
 
-struct FSDirectoryEntry {
+@safe struct FSDirectoryEntry {
 	/// The id for the entry
 	FSNode.ID id;
 	/// The name for the entry
 	char[62] name;
+
+	@property string nameStr() const {
+		import stl.text : fromStringz;
+		return name.fromStringz;
+	}
 }

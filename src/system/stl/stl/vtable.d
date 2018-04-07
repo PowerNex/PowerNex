@@ -8,10 +8,16 @@
  */
 module stl.vtable;
 
+/**
+ * VTablePtr verifies that the $(PARAM TInput) function uses the same prototype
+ * as $(PARAM Target), and that the first argument extends the first argument of $(PARAM Target).
+ * Params:
+ *      Target - The function pointer type to be cast to
+ *      TInput - The function pointer type that will be cast
+ *      Input  - The function pointer of type TInput
+ */
 pragma(inline, true) Target VTablePtr(Target, TInput)(TInput Input) {
 	import stl.trait : parameters, Unqual;
-
-	pragma(msg, TInput, " => ", Target);
 
 	alias T = parameters!Target[0];
 	alias I = parameters!TInput[0];
