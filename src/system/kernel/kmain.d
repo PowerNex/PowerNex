@@ -16,6 +16,7 @@ import hw.cmos.cmos;
 import arch.paging;
 import stl.vmm.vmm;
 import fs.tarfs;
+import task.scheduler;
 
 import powerd.api;
 
@@ -46,6 +47,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 		import stl.elf64;
 
 		ELF64 init = ELF64(VirtMemoryRange.fromArray(initNode.data));
+		*VirtAddress(0).ptr!size_t = 0x1337;
 
 		if (!init.isValid)
 			Log.fatal("'", initFile, "' is not a ELF, boot halted!");
@@ -144,6 +146,10 @@ void init(PowerDAPI* papi) {
 	VGA.writeln("PCI initializing...");
 	Log.info("PCI initializing...");
 	PCI.init();
+
+	VGA.writeln("Scheduler initializing...");
+	Log.info("Scheduler initializing...");
+	Scheduler.init();
 }
 
 void initFS(Module* disk) @trusted {

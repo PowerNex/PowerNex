@@ -7,7 +7,16 @@ alias FreeFunc = void function(ubyte[] address) @safe;
 __gshared AllocateFunc vectorAllocate;
 __gshared FreeFunc vectorFree;
 
-@safe struct Vector(T) if (!is(T == class)) {
+template VectorStandardFree(T) {
+	void VectorStandardFree(ref T t) @trusted {
+		static if (__traits(hasMember, T, "__xdtor")) // Calls __xdtor/__dtor on members and then __dtor the object
+			t.__xdtor();
+		else static if (__traits(hasMember, T, "__dtor")) // Call just __dtor on object
+			t.__dtor();
+	}
+}
+
+@safe struct Vector(T, alias ElementFree = VectorStandardFree!T) if (!is(T == class)) {
 public:
 	ubyte[] vectorAllocate(size_t wantSize) @trusted {
 		assert(.vectorAllocate);
@@ -19,22 +28,21 @@ public:
 		return .vectorFree(address);
 	}
 
+	@disable this(this);
+
 	~this() @trusted {
 		clear();
-		vectorFree(cast(ubyte[])_list);
+		vectorFree(cast(ubyte[])_list[0 .. _listLength]);
 	}
 
 	ref T put(T value) {
-		if (_length == _list.length)
-			_expand();
-		_list[_length++] = value;
-		return _list[_length - 1];
+		return put(value);
 	}
 
-	ref T put(ref T value) {
-		if (_length == _list.length)
+	ref T put(ref T value) @trusted {
+		if (_length == _listLength)
 			_expand();
-		_list[_length++] = value;
+		memcpy(&_list[_length++], &value, T.sizeof);
 		return _list[_length - 1];
 	}
 
@@ -42,10 +50,7 @@ public:
 		if (index >= _length)
 			return false;
 
-		static if (__traits(hasMember, T, "__xdtor"))
-			_list[index].__xdtor();
-		else static if (__traits(hasMember, T, "__dtor"))
-			_list[index].__dtor();
+		ElementFree(_list[index]);
 
 		memmove(&_list[index], &_list[index + 1], T.sizeof * (_length - index - 1));
 		_length--;
@@ -53,10 +58,10 @@ public:
 		return true;
 	}
 
-	bool remove(T obj) {
+	bool remove(T obj) @trusted {
 		size_t index;
-		while (index < _length)
-			if (_list[index] == obj)
+		foreach (ref el; _list[0 .. _length])
+			if (el == obj)
 				break;
 			else
 				index++;
@@ -65,32 +70,26 @@ public:
 	}
 
 	void clear() @trusted {
-		static if (__traits(hasMember, T, "__xdtor"))
-			foreach_reverse (ref obj; _list[0 .. _length])
-				obj.__xdtor();
-		else static if (__traits(hasMember, T, "__dtor"))
-			foreach_reverse (ref obj; _list[0 .. _length])
-				obj.__dtor();
+		foreach_reverse (ref obj; _list[0 .. _length])
+			ElementFree(obj);
 
 		_length = 0;
 	}
 
 	ref T get(size_t index) {
-		assert(index < _length);
-		return _list[index];
+		return opIndex(index);
 	}
 
 	ref const(T) get(size_t index) const {
+		return opIndex(index);
+	}
+
+	ref T opIndex(size_t index) @trusted {
 		assert(index < _length);
 		return _list[index];
 	}
 
-	ref T opIndex(size_t index) {
-		assert(index < _length);
-		return _list[index];
-	}
-
-	ref const(T) opIndex(size_t index) const {
+	ref const(T) opIndex(size_t index) @trusted const {
 		assert(index < _length);
 		return cast(const T)_list[index];
 	}
@@ -104,11 +103,15 @@ public:
 	}
 
 	void opIndexAssign(T val, size_t index) {
-		assert(index < _length);
-		_list[index] = val;
+		opIndexAssign(val, index);
 	}
 
-	T[] opIndex() {
+	void opIndexAssign(ref T val, size_t index) @trusted {
+		assert(index < _length);
+		memcpy(&_list[index], &val, T.sizeof);
+	}
+
+	T[] opIndex() @trusted {
 		return _list[0 .. _length];
 	}
 
@@ -116,19 +119,20 @@ public:
 		return opIndex()[start .. end];
 	}
 
-	int opApply(scope int delegate(const T) cb) @trusted const {
-		int res;
-		for (size_t i = 0; i < _length; i++) {
-			res = cb(_list[i]);
-			if (res)
-				break;
+	static if (false && __traits(compiles, () { T a; T b; b = a; }))
+		int opApply(scope int delegate(const T) cb) @trusted const {
+			int res;
+			foreach (i; 0 .. _length) {
+				res = cb(_list[i]);
+				if (res)
+					break;
+			}
+			return res;
 		}
-		return res;
-	}
 
 	int opApply(scope int delegate(ref T) cb) @trusted {
 		int res;
-		for (size_t i = 0; i < _length; i++) {
+		foreach (i; 0 .. _length) {
 			res = cb(_list[i]);
 			if (res)
 				break;
@@ -136,9 +140,9 @@ public:
 		return res;
 	}
 
-	int opApply(scope int delegate(const ref T) cb) @trusted {
+	int opApply(scope int delegate(const ref T) cb) @trusted const {
 		int res;
-		for (size_t i = 0; i < _length; i++) {
+		foreach (i; 0 .. _length) {
 			res = cb(_list[i]);
 			if (res)
 				break;
@@ -146,19 +150,20 @@ public:
 		return res;
 	}
 
-	int opApply(scope int delegate(size_t, const T) cb) @trusted const {
-		int res;
-		for (size_t i = 0; i < _length; i++) {
-			res = cb(i, _list[i]);
-			if (res)
-				break;
+	static if (false && __traits(compiles, () { T a; T b; b = a; }))
+		int opApply(scope int delegate(size_t, const T) cb) @trusted const {
+			int res;
+			foreach (i; 0 .. _length) {
+				res = cb(i, _list[i]);
+				if (res)
+					break;
+			}
+			return res;
 		}
-		return res;
-	}
 
 	int opApply(scope int delegate(size_t, ref T) cb) @trusted {
 		int res;
-		for (size_t i = 0; i < _length; i++) {
+		foreach (i; 0 .. _length) {
 			res = cb(i, _list[i]);
 			if (res)
 				break;
@@ -168,7 +173,7 @@ public:
 
 	int opApply(scope int delegate(size_t, const ref T) cb) @trusted {
 		int res;
-		for (size_t i = 0; i < _length; i++) {
+		foreach (i; 0 .. _length) {
 			res = cb(i, _list[i]);
 			if (res)
 				break;
@@ -176,18 +181,26 @@ public:
 		return res;
 	}
 
+	int opCmp(typeof(this) b) {
+		return cast(int)(cast(long)_length - cast(long)b._length);
+	}
+
 private:
 	enum _growFactor = 16;
 
-	T[] _list;
+	// Can't be T[] as this will create an __equals, which in turn needs TypeInfos;
+	// Hopefully a future DMD will fix this!
+	T* _list;
+	size_t _listLength;
 	size_t _length;
 
 	void _expand() @trusted {
-		T[] newList = cast(T[])vectorAllocate(T.sizeof * (_list.length + _growFactor));
+		T[] newList = cast(T[])vectorAllocate(T.sizeof * (_listLength + _growFactor));
 		if (_list) {
-			memcpy(&newList[0], &_list[0], _list.length * T.sizeof);
-			vectorFree(cast(ubyte[])_list);
+			memcpy(&newList[0], &_list[0], _listLength * T.sizeof);
+			vectorFree(cast(ubyte[])_list[0 .. _listLength]);
 		}
-		_list = newList;
+		_list = newList.ptr;
+		_listLength = newList.length;
 	}
 }

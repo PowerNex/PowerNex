@@ -13,6 +13,7 @@ module stl.address;
 
 pragma(inline, true):
 private mixin template AddressBase(Type = size_t) {
+nothrow:
 	alias Self = typeof(this);
 	Type addr; ///
 
@@ -191,6 +192,7 @@ private mixin template AddressBase(Type = size_t) {
 }
 
 @safe mixin template MemoryRange(Address) {
+nothrow:
 	Address start; ///
 	Address end; ///
 
@@ -248,14 +250,14 @@ static assert(VirtAddress.sizeof == size_t.sizeof);
 static assert(PhysAddress.sizeof == size_t.sizeof);
 static assert(PhysAddress32.sizeof == uint.sizeof);
 
-pure void* memset(return void* s, ubyte c, size_t n) @trusted {
+pure void* memset(return void* s, ubyte c, size_t n) @trusted nothrow {
 	ubyte* p = cast(ubyte*)s;
 	foreach (ref b; p[0 .. n])
 		b = c;
 	return s;
 }
 
-pure void* memcpy(return void* s1, scope const void* s2, size_t n) @trusted {
+pure void* memcpy(return void* s1, scope const void* s2, size_t n) @trusted nothrow {
 	ubyte* p1 = cast(ubyte*)s1;
 	const(ubyte)* p2 = cast(const(ubyte)*)s2;
 	if (n)
@@ -266,7 +268,7 @@ pure void* memcpy(return void* s1, scope const void* s2, size_t n) @trusted {
 	return s1;
 }
 
-pure void* memmove(return void* s1, scope const void* s2, size_t n) @trusted {
+pure void* memmove(return void* s1, scope const void* s2, size_t n) @trusted nothrow {
 	ubyte* p1 = cast(ubyte*)s1;
 	const(ubyte)* p2 = cast(const(ubyte)*)s2;
 

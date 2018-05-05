@@ -16,8 +16,8 @@ import stl.io.log;
 private const _pageSize = 0x1000; //TODO: Is needed?
 
 /// Page table level
-struct PTLevel(NextLevel) {
-	struct TableEntry {
+@safe struct PTLevel(NextLevel) {
+	@safe struct TableEntry {
 		private ulong _data;
 
 		this(TableEntry other) {
@@ -231,20 +231,34 @@ alias PML4 = PTLevel!PML3;
 	*/
 alias HWZoneIdentifier = ushort;
 
-private extern (C) void cpuFlushPage(ulong addr);
-private extern (C) void cpuInstallCR3(PhysAddress addr);
+private extern (C) void cpuFlushPage(ulong addr) @safe;
+private extern (C) void cpuInstallCR3(PhysAddress addr) @safe;
 
-VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) {
+VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe nothrow {
 	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
 }
 
-struct AMD64Paging {
+@safe struct AMD64Paging {
 public:
-	this(PhysAddress pml4Address) {
+	@disable this();
+	this(PhysAddress pml4Address, bool ownsPML4) {
 		_addr = pml4Address;
+		_ownsPML4 = ownsPML4;
 	}
 
+	this(ref AMD64Paging other) {
+		assert(0, "copy");
+	}
+
+	this(this) {
+		_ownsPML4 = false;
+	}
 	//TODO: maybe? void removeUserspace();
+
+	~this() {
+		if (_ownsPML4)
+			freePage(_addr);
+	}
 
 	///
 	VirtAddress mapSpecialAddress(PhysAddress pAddr, size_t size, bool readWrite = false, bool clear = false) {
@@ -448,34 +462,39 @@ public:
 		return !!_getTableEntry(vAddr, false);
 	}
 
+	@property PhysAddress tableAddress() {
+		return _addr;
+	}
+
 private:
 	PhysAddress _addr;
+	bool _ownsPML4;
 
 	void _flush(VirtAddress vAddr) {
 		cpuFlushPage(vAddr.num);
 	}
 
-	PML4* _getPML4() {
+	PML4* _getPML4() nothrow {
 		const ulong fractalID = 509;
 		return _makeAddress(fractalID, fractalID, fractalID, fractalID).ptr!PML4;
 	}
 
-	PML3* _getPML3(ushort pml4) {
+	PML3* _getPML3(ushort pml4) nothrow {
 		const ulong fractalID = 509;
 		return _makeAddress(fractalID, fractalID, fractalID, pml4).ptr!PML3;
 	}
 
-	PML2* _getPML2(ushort pml4, ushort pml3) {
+	PML2* _getPML2(ushort pml4, ushort pml3) nothrow {
 		const ulong fractalID = 509;
 		return _makeAddress(fractalID, fractalID, pml4, pml3).ptr!PML2;
 	}
 
-	PML1* _getPML1(ushort pml4, ushort pml3, ushort pml2) {
+	PML1* _getPML1(ushort pml4, ushort pml3, ushort pml2) nothrow {
 		const ulong fractalID = 509;
 		return _makeAddress(fractalID, pml4, pml3, pml2).ptr!PML1;
 	}
 
-	PML1* _getSpecial() {
+	PML1* _getSpecial() nothrow {
 		const ulong specialID = 510;
 		return _getPML1(specialID, 0, 0);
 	}
@@ -541,13 +560,13 @@ private:
 	}
 }
 
-private extern (C) ulong cpuRetCR3();
+private extern (C) ulong cpuRetCR3() @safe nothrow;
 
 extern (C) void onPageFault(Registers* regs) @trusted {
 	import stl.io.vga;
 	import stl.io.log;
 
-	AMD64Paging paging = AMD64Paging(cpuRetCR3.PhysAddress);
+	AMD64Paging paging = AMD64Paging(cpuRetCR3.PhysAddress, false);
 
 	with (regs) {
 		auto addr = cr2;
@@ -558,68 +577,46 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 		const ushort pml2Idx = (virtAddr >> 21) & 0x1FF;
 		const ushort pml1Idx = (virtAddr >> 12) & 0x1FF;
 
-		PML4.TableEntry* pml4Entry;
+		PML4* pml4 = paging._getPML4();
 		PML3* pml3;
-
-		PML3.TableEntry* pml3Entry;
 		PML2* pml2;
-
-		PML2.TableEntry* pml2Entry;
 		PML1* pml1;
 
-		PML1.TableEntry* pml1Entry;
-
-		PML4* pml4 = paging._getPML4();
-		{
-			pml4Entry = &pml4.entries[pml4Idx];
-			if (!pml4Entry.present)
-				goto tableEntriesDone;
-			pml3 = paging._getPML3(pml4Idx);
-		}
-
-		{
-			pml3Entry = &pml3.entries[pml3Idx];
-			if (!pml3Entry.present)
-				goto tableEntriesDone;
-			pml2 = paging._getPML2(pml4Idx, pml3Idx);
-		}
-
-		{
-			pml2Entry = &pml2.entries[pml2Idx];
-			if (!pml2Entry.present)
-				goto tableEntriesDone;
-			pml1 = paging._getPML1(pml4Idx, pml3Idx, pml2Idx);
-		}
-
-		{
-			pml1Entry = &pml1.entries[pml1Idx];
-			if (!pml1Entry.present)
-				goto tableEntriesDone;
-		}
-
-	tableEntriesDone:
 		VMPageFlags pml3Flags;
 		VMPageFlags pml2Flags;
 		VMPageFlags pml1Flags;
 		VMPageFlags pageFlags;
 
-		if (!pml4Entry)
-			goto flagsDone;
-		pml3Flags = pml4Entry.vmFlags;
+		{
+			auto pml4Entry = &pml4.entries[pml4Idx];
+			if (pml4Entry.present) {
+				pml3 = paging._getPML3(pml4Idx);
+				pml3Flags = pml4Entry.vmFlags;
+			}
+		}
 
-		if (!pml3Entry)
-			goto flagsDone;
-		pml2Flags = pml3Entry.vmFlags;
+		if (pml3) {
+			auto pml3Entry = &pml3.entries[pml3Idx];
+			if (pml3Entry.present) {
+				pml2 = paging._getPML2(pml4Idx, pml3Idx);
+				pml2Flags = pml3Entry.vmFlags;
+			}
+		}
 
-		if (!pml2Entry)
-			goto flagsDone;
-		pml1Flags = pml2Entry.vmFlags;
+		if (pml2) {
+			auto pml2Entry = &pml2.entries[pml2Idx];
+			if (pml2Entry.present) {
+				pml1 = paging._getPML1(pml4Idx, pml3Idx, pml2Idx);
+				pml1Flags = pml2Entry.vmFlags;
+			}
+		}
 
-		if (!pml1Entry)
-			goto flagsDone;
-		pageFlags = pml1Entry.vmFlags;
+		if (pml1) {
+			auto pml1Entry = &pml1.entries[pml1Idx];
+			if (pml1Entry.present)
+				pageFlags = pml1Entry.vmFlags;
+		}
 
-	flagsDone:
 		ulong cr3 = cpuRetCR3();
 
 		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);

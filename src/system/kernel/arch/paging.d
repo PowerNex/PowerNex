@@ -15,10 +15,10 @@ version (X86_64) {
 		import stl.address : PhysAddress;
 
 		PhysAddress pml4 = cpuRetCR3();
-		_kernelPaging = AMD64Paging(pml4);
+		_kernelPaging = AMD64Paging(pml4, false);
 	}
 
-	private __gshared AMD64Paging _kernelPaging;
+	private __gshared AMD64Paging _kernelPaging = void;
 	extern (C) AMD64Paging* getKernelPaging() @trusted {
 		return &_kernelPaging;
 	}

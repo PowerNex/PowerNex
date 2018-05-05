@@ -21,17 +21,19 @@ import stl.io.log : Log;
 static assert(BuddyHeader.sizeof == 2 * ulong.sizeof);
 
 T* newStruct(T, Args...)(Args args) @trusted {
-	T* p = (cast(T[])Heap.allocate(T.sizeof)).ptr;
+	T* p = cast(T*)Heap.allocate(T.sizeof).ptr;
+	if (!p)
+		Log.fatal("Failed to allocated ", T.stringof, " size: ", T.sizeof);
 	static const T init = T.init;
 	memcpy(p, &init, T.sizeof);
-	p.__ctor(args);
+	*p = T(args);
 
 	return p;
 }
 
 /// T has to be the original type, can't be a VTable'd object
 /// That will not call the correct destructor
-void freeStruct(T)(T* t) {
+void freeStruct(T)(T* t) @trusted {
 	static if (__traits(hasMember, T, "__xdtor"))
 		t.__xdtor();
 	else static if (__traits(hasMember, T, "__dtor"))
@@ -167,7 +169,7 @@ public static:
 
 private static:
 	enum ubyte _lowerFactor = 5; // 32B
-	enum ubyte _upperFactor = 12; // 4KiB
+	enum ubyte _upperFactor = 14; // 16KiB
 	enum ulong _minSize = 2 ^^ _lowerFactor;
 	enum ulong _maxSize = 2 ^^ _upperFactor;
 	enum char[3] _magic = ['B', 'D', 'Y'];
@@ -188,6 +190,11 @@ private static:
 		newBuddy.magic = _magic;
 		_getFreeFactors(_upperFactor) = newBuddy;
 		_nextFreeAddress += 0x1000;
+
+		foreach (i; 1 .. _maxSize / 0x1000) {
+			assert(mapAddress(_nextFreeAddress, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false), "Map failed!");
+			_nextFreeAddress += 0x1000;
+		}
 	}
 
 }

@@ -97,6 +97,12 @@ longModeCheck:
 	cpuid
 	test $(1 << 29), %edx
 		jz notX64Capable
+
+	# Check so that SSE3 is supported
+	mov $0x1, %eax
+	cpuid
+	test $(1 << 0), %ecx
+		jz notX64Capable
 	ret
 .size longModeCheck, .-longModeCheck
 
