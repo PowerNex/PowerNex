@@ -476,7 +476,6 @@ private static:
 
 	void _onTick(Registers* regs) @trusted {
 		import stl.io.log : Log;
-
 		_write(Registers.endOfInterrupt, 0);
 
 		_counter++;

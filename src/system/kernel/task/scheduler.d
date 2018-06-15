@@ -48,25 +48,25 @@ public static:
 		_cpuInfo[0].currentThread = _cpuInfo[0].allThread[0];
 		_cpuInfo[0].allThread.remove(0);
 
-		static ulong spinner(ubyte x, ubyte y)(void*) {
-			enum ubyte* pixel = (VirtAddress(0xb8000) + (y * 80 + x) * 2 + 1).ptr!ubyte;
-			asm {
-				naked;
-				mov RAX, pixel;
-			loop:
-				inc byte ptr[RAX];
-				jmp loop;
+		static ulong spinner(ubyte x, ubyte y, ubyte color)(void*) {
+			ubyte* pixel = (VirtAddress(0xb8000) + (y * 80 + x) * 2 + 1).ptr!ubyte;
+			const ubyte first = color | color << 4 | 8;
+			const ubyte second = color | color << 4 | 8 << 4;
+
+			while (true) {
+				*pixel = first;
+				*pixel = second;
 			}
 		}
 
 		static foreach (ubyte x; 0 .. 80) {
-			addKernelTask(&_cpuInfo[0], &spinner!(x, 0), null);
-			addKernelTask(&_cpuInfo[0], &spinner!(x, 24), null);
+			addKernelTask(&_cpuInfo[0], &spinner!(x, 0, 1), null);
+			addKernelTask(&_cpuInfo[1], &spinner!(x, 24, 2), null);
 		}
 
 		static foreach (ubyte y; 1 .. 24) {
-			addKernelTask(&_cpuInfo[0], &spinner!(0, y), null);
-			addKernelTask(&_cpuInfo[0], &spinner!(79, y), null);
+			addKernelTask(&_cpuInfo[2], &spinner!(0, y, 4), null);
+			addKernelTask(&_cpuInfo[3], &spinner!(79, y, 6), null);
 		}
 	}
 
@@ -78,6 +78,7 @@ public static:
 
 		{
 			_cpuInfoMutex.lock;
+			Log.warning("Activate: ", cpuID);
 			_cpuInfo[cpuID].id = cpuID;
 			_cpuInfo[cpuID].enabled = true;
 			_initIdle(&_cpuInfo[cpuID]);
@@ -85,8 +86,6 @@ public static:
 			_coresActive++;
 			_cpuInfoMutex.unlock;
 		}
-
-		Log.warning("Activate: ", cpuID);
 	}
 
 	CPUInfo* getCPUInfo(ProcessorID cpuID) @trusted {
