@@ -8,16 +8,19 @@
  */
 module stl.spinlock;
 
-private extern (C) void mutexSpinlock(ulong* value) @trusted;
-private extern (C) ulong mutexTrylock(ulong* value) @trusted;
-private extern (C) void mutexUnlock(ulong* value) @trusted;
+private extern extern (C) void mutexSpinlock(uint* value) nothrow @nogc @trusted;
+private extern extern (C) ulong mutexTrylock(uint* value) nothrow @nogc @trusted;
+private extern extern (C) void mutexUnlock(uint* value) nothrow @nogc @trusted;
 
 ///
-@safe struct SpinLock {
+@safe align(8) struct SpinLock {
 public:
 	///
 	void lock() {
+		import stl.io.vga : VGA;
+
 		mutexSpinlock(&_value);
+		assert(_value);
 	}
 
 	///
@@ -27,9 +30,15 @@ public:
 
 	///
 	void unlock() {
+		assert(_value);
 		mutexUnlock(&_value);
 	}
 
+	///
+	@property bool isLocked() {
+		return !!_value;
+	}
+
 private:
-	ulong _value;
+	align(8) uint _value;
 }

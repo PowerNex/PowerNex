@@ -24,7 +24,7 @@ T* newStruct(T, Args...)(Args args) @trusted {
 	T* p = cast(T*)Heap.allocate(T.sizeof).ptr;
 	if (!p)
 		Log.fatal("Failed to allocated ", T.stringof, " size: ", T.sizeof);
-	static const T init = T.init;
+	__gshared const T init = T.init;
 	memcpy(p, &init, T.sizeof);
 	*p = T(args);
 

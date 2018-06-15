@@ -9,11 +9,12 @@ import stl.vector;
 
 import arch.paging;
 
-@safe struct SaveState {
+@safe struct ThreadState {
 	VirtAddress basePtr; // rbp;
 	VirtAddress stackPtr; // rsp;
 	VirtAddress instructionPtr; // rip;
 
+	VirtAddress tls;
 	bool fpuEnabled;
 	align(64) ubyte[0x2000] fpuStorage;
 	//TLS* tls;
@@ -45,10 +46,16 @@ import arch.paging;
 
 	VMProcess* process;
 
+	size_t cpuAssigned;
+
 	State state;
+	VirtMemoryRange stack;
+
+	bool kernelTask;
 
 	// on State.active
-	SaveState saveState;
+	ThreadState threadState;
+	Registers syscallRegisters;
 
 	// on State.Sleeping
 	WaitEvent[] waitsFor;

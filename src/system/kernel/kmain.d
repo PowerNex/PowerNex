@@ -28,6 +28,27 @@ private __gshared TarFSSuperNode* _superNode;
 /// The initrd
 __gshared FSNode* initrdFS;
 
+void kmainAP(size_t id) {
+	import task.scheduler : Scheduler;
+
+	asm pure nothrow {
+		sti;
+	}
+
+	GDT.flush(id);
+	IDT.flush();
+	LAPIC.setup();
+
+	Scheduler.addCPUCore(id);
+
+	while (true) {
+		asm @trusted nothrow @nogc {
+			// pause;
+			db 0xf3, 0x90;
+		}
+	}
+}
+
 extern (C) void kmain(PowerDAPI* papi) {
 	assert(papi.magic == PowerDAPI.magicValue);
 	preInit(papi);
@@ -37,6 +58,30 @@ extern (C) void kmain(PowerDAPI* papi) {
 		sti;
 	}
 	initFS(papi.getModule("tarfs"));
+
+	{
+		papi.toLoader.mainAP = &kmainAP;
+		papi.toLoader.done = true;
+		while (true) {
+			LAPIC.sleep(500);
+			asm @trusted nothrow @nogc {
+				// pause;
+				db 0xf3, 0x90;
+			}
+			Scheduler.cpuInfoMutex.lock();
+			bool res = Scheduler.coresActive == papi.cpus.cpuThreads.length;
+			Scheduler.cpuInfoMutex.unlock();
+			if (res)
+				break;
+		}
+	}
+
+	while (true) {
+		asm @trusted nothrow @nogc {
+			// pause;
+			db 0xf3, 0x90;
+		}
+	}
 
 	string initFile = "/bin/init";
 	TarFSNode* initNode = cast(TarFSNode*)initrdFS.findNode(initFile);
@@ -97,7 +142,8 @@ void preInit(PowerDAPI* papi) {
 
 	VGA.writeln("LAPIC initializing...");
 	Log.info("LAPIC initializing...");
-	LAPIC.init();
+	LAPIC.init(papi.cpus.x2APIC, papi.cpus.lapicAddress, papi.cpus.cpuBusFreq);
+	LAPIC.setup();
 
 	VGA.writeln("GDT initializing...");
 	Log.info("GDT initializing...");
@@ -106,7 +152,6 @@ void preInit(PowerDAPI* papi) {
 	VGA.writeln("IDT initializing...");
 	Log.info("IDT initializing...");
 	IDT.init();
-	IDT.register(irq(0), cast(IDT.InterruptCallback)(Registers* regs) @trusted{  }); // Ignore timer interrupt
 }
 
 void welcome() {
@@ -149,7 +194,7 @@ void init(PowerDAPI* papi) {
 
 	VGA.writeln("Scheduler initializing...");
 	Log.info("Scheduler initializing...");
-	Scheduler.init();
+	Scheduler.init(papi.kernelStack);
 }
 
 void initFS(Module* disk) @trusted {

@@ -7,3 +7,4 @@ COM1.log
 *~
 docs/generated
 docs/*.json
+qemu_debug.log

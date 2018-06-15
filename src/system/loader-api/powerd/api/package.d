@@ -59,6 +59,7 @@ struct Version {
 	ubyte screenY; ///
 
 	size_t ramAmount; ///
+	VirtMemoryRange kernelStack;
 
 	Vector!Module modules; ///
 	Vector!MemoryMap memoryMaps; ///
@@ -66,6 +67,13 @@ struct Version {
 	PowerDACPI acpi; ///
 	PowerDCPUs cpus; ///
 	PowerDMemory memory; ///
+
+	struct ToLoader {
+		bool done;
+		void function(size_t cpuID) @system mainAP;
+	}
+
+	ToLoader toLoader;
 
 	Module* getModule(string name) {
 		foreach (ref Module m; modules)

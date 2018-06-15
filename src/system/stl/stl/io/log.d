@@ -63,6 +63,11 @@ public static:
 		import stl.trait : Unqual, enumMembers, isNumber, isFloating;
 		import stl.address : VirtAddress, PhysAddress, PhysAddress32;
 
+		import stl.spinlock;
+
+		__gshared SpinLock mutex;
+		mutex.lock();
+
 		char[ulong.sizeof * 8] buf;
 
 		com1.write('[', itoa(seconds(), buf, 10), ']');
@@ -123,6 +128,9 @@ public static:
 		if (level == LogLevel.fatal) {
 			printStackTrace(2);
 
+			while (!com1.canSend()) {
+			}
+			mutex.unlock();
 			asm pure nothrow @trusted {
 			forever:
 				cli;
@@ -130,6 +138,9 @@ public static:
 				jmp forever;
 			}
 		}
+		while (!com1.canSend()) {
+		}
+		mutex.unlock();
 	}
 
 	///
@@ -220,7 +231,7 @@ private static:
 
 		while (rbp) {
 			rip = rbp + ulong.sizeof;
-			if (!(*rip.ptr!VirtAddress).validAddress)
+			if (!rip.validAddress || !(*rip.ptr!VirtAddress).validAddress)
 				break;
 
 			com1.write("\t[");

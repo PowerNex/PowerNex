@@ -1,9 +1,9 @@
-module arch.amd64.tss;
+module stl.arch.amd64.tss;
 
 import stl.bitfield;
 import stl.address;
 
-struct TSS {
+@safe struct TSS {
 align(1):
 	uint res0;
 	VirtAddress[3] rsp;
@@ -20,7 +20,7 @@ align(1):
 	}
 }
 
-struct TSSDescriptor1 {
+@safe struct TSSDescriptor1 {
 align(1):
 	this(ref TSS tss) {
 		limit0 = 0x67;
@@ -52,7 +52,7 @@ align(1):
 	ubyte base24;
 }
 
-struct TSSDescriptor2 {
+@safe struct TSSDescriptor2 {
 align(1):
 	this(ref TSS tss) {
 		//res2 = 0;

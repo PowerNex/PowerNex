@@ -125,8 +125,10 @@ public static:
 	}
 
 	///
-	void register(ubyte id, InterruptCallback cb) @trusted {
+	InterruptCallback register(ubyte id, InterruptCallback cb) @trusted {
+		auto old = handlers[id];
 		handlers[id] = cb;
+		return old;
 	}
 
 	/// Returns: The address to the old gate function

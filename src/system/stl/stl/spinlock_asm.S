@@ -11,22 +11,30 @@
 
 .global mutexSpinlock
 mutexSpinlock:
-1:
-	mov $1, %RBX;
-	lock cmpxchgq %RBX, (%RDI)
-	jnz 1b
-	ret
+	.tryToSet:
+		lock bts $0, (%RDI)
+			jc .waitForZero
+		ret
+	.waitForZero:
+		pause
+		testl $1, (%RDI)
+			jnz .waitForZero;
+
+		jmp .tryToSet;
+
+
 
 .global mutexTrylock
 mutexTrylock:
-	mov $1, %RBX;
-	lock cmpxchgq %RBX, (%RDI)
-	jnz 1f
-	mov $1, %RAX
-1:
+	xor %RAX, %RAX
+	lock bts $0, (%RDI)
+		jc .return
+
+	inc %RAX
+.return:
 	ret
 
 .global mutexUnlock
 mutexUnlock:
-	movq $1, (%RDI)
+	movl $0, (%RDI)
 	ret

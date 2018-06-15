@@ -29,6 +29,8 @@ private extern extern (C) void LAPIC_spuriousTimer();
  */
 @safe static struct LAPIC {
 public static:
+	alias ExternalTickFunction = void function(Registers* regs) @safe;
+
 	///
 	void init() @trusted {
 		import powerd.api : getPowerDAPI;
@@ -74,6 +76,12 @@ public static:
 			}
 			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24));
 		}
+	}
+
+	void init(bool x2APIC, VirtAddress lapicAddress, ulong cpuBusFreq) @trusted {
+		_x2APIC = x2APIC;
+		_lapicAddress = lapicAddress;
+		_cpuBusFreq = cpuBusFreq;
 	}
 
 	/*///
@@ -251,6 +259,10 @@ public static:
 		return _cpuBusFreq;
 	}
 
+	@property void externalTick(ExternalTickFunction externalTick) @trusted {
+		_externalTick = externalTick;
+	}
+
 private static:
 	enum Registers : ushort {
 		apicID = 0x2,
@@ -410,6 +422,8 @@ private static:
 
 	__gshared size_t _counter;
 
+	__gshared void function(Registers* regs) @safe _externalTick;
+
 	uint _read(Registers offset) @trusted {
 		import stl.arch.amd64.msr : MSR;
 
@@ -466,6 +480,9 @@ private static:
 		_write(Registers.endOfInterrupt, 0);
 
 		_counter++;
+
+		if (_externalTick)
+			_externalTick(regs);
 	}
 
 	void _onError(Registers* regs) @trusted {

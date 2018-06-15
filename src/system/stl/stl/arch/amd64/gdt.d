@@ -9,7 +9,8 @@
 module stl.arch.amd64.gdt;
 
 //import stl.bitfield;
-//import arch.amd64.tss;
+import stl.arch.amd64.tss;
+import stl.address;
 
 ///
 align(1) @trusted struct GDTBase {
@@ -80,8 +81,8 @@ align(1):
 	GDTSystemDescriptor systemLow; ///
 	GDTSystemExtension systemHigh; ///
 
-	//TSSDescriptor1 tss1;///
-	//TSSDescriptor2 tss2;///
+	TSSDescriptor1 tss1; ///
+	TSSDescriptor2 tss2; ///
 
 	ulong value; ///
 }
@@ -103,26 +104,23 @@ private extern (C) void cpuRefreshIREQ();
 ///
 @safe static struct GDT {
 public static:
-	//__gshared TSS tss;///
-	//__gshared ushort tssID;///
-
 	///
 	void init() {
 		gdtBase.limit = cast(ushort)(_setupTable() * GDTDescriptor.sizeof - 1);
 		gdtBase.base = cast(ulong)gdtDescriptors.ptr;
 
-		flush();
+		flush(0);
 	}
 
 	///
-	void flush() @trusted {
+	void flush(size_t cpuID) @trusted {
 		void* baseAddr = cast(void*)(&_gdtBase);
-		//ushort id = cast(ushort)(tssID * GDTDescriptor.sizeof);
+		ushort id = cast(ushort)((_tssID + cpuID * 2) * GDTDescriptor.sizeof);
 		asm pure nothrow {
 			mov RAX, baseAddr;
 			lgdt [RAX];
 			call cpuRefreshIREQ;
-			//ltr id;
+			ltr id;
 		}
 	}
 
@@ -152,11 +150,11 @@ public static:
 		}
 	}
 
-	/*///
+	///
 	void setTSS(uint index, ref TSS tss) {
 		gdtDescriptors[index].tss1 = TSSDescriptor1(tss);
 		gdtDescriptors[index + 1].tss2 = TSSDescriptor2(tss);
-	}*/
+	}
 
 	///
 	void setSystem(uint index, uint limit, ulong base, GDTSystemType segType, ubyte dpl_, bool present, bool avail, bool granularity) {
@@ -189,11 +187,19 @@ public static:
 		return _gdtDescriptors;
 	}
 
-private static:
-	__gshared GDTBase _gdtBase;
-	__gshared GDTDescriptor[8] _gdtDescriptors;
+	void setRSP0(size_t cpuID, VirtAddress rsp0) @trusted {
+		_tss[cpuID].rsp0 = rsp0;
+		setTSS(cast(uint)(_tssID + (cpuID * 2)), _tss[cpuID]);
+	}
 
-	ushort _setupTable() {
+private static:
+	enum size_t _maxCPUCount = 64;
+	__gshared GDTBase _gdtBase;
+	__gshared GDTDescriptor[6 + _maxCPUCount * 2] _gdtDescriptors;
+	__gshared TSS[_maxCPUCount] _tss;
+	__gshared ushort _tssID;
+
+	ushort _setupTable() @trusted {
 		ushort idx = 0;
 		setNull(idx++);
 		// Kernel
@@ -205,9 +211,11 @@ private static:
 		setData(idx++, true, 3);
 		setCode(idx++, true, 3, true); // This is need because (MSR_STAR.SYSRET_CS + 16) is the CS when returning to 64bit mode.
 
-		/*tssID = idx;
-		setTSS(idx, tss); // Uses 2 entries
-		idx += 2;*/
+		_tssID = idx;
+		foreach (ref tss; _tss) {
+			setTSS(idx, tss); // Uses 2 entries
+			idx += 2;
+		}
 		return idx;
 	}
 }

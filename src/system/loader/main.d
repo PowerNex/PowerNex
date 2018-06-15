@@ -30,11 +30,12 @@ private void outputBoth(Args...)(Args args, string file = __MODULE__, string fun
 __gshared VirtAddress apStackLoc = _makeAddress(0, 2, 0, 0);
 
 extern (C) VirtAddress newStackAP() @trusted {
-	if (!Paging.map(apStackLoc, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.execute))
-		return VirtAddress();
+	static foreach (i; 0 .. 0x10)
+		if (!Paging.map(apStackLoc + 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.execute))
+			return VirtAddress();
 
-	auto stack = apStackLoc + 0x1000;
-	apStackLoc += 0x1000 * 2; // As protection
+	auto stack = apStackLoc + 0x10_000;
+	apStackLoc += 0x10_000;
 
 	{
 		import stl.arch.amd64.lapic : LAPIC;
@@ -46,7 +47,7 @@ extern (C) VirtAddress newStackAP() @trusted {
 }
 
 ///
-extern (C) ulong mainAP() @safe {
+extern (C) void mainAP() @safe {
 	import powerd.api : getPowerDAPI;
 	import powerd.api.cpu : CPUThread;
 	import stl.arch.amd64.lapic : LAPIC;
@@ -56,18 +57,30 @@ extern (C) ulong mainAP() @safe {
 	import stl.arch.amd64.idt : IDT;
 	import arch.amd64.paging : Paging;
 
-	GDT.flush();
+	size_t id = LAPIC.getCurrentID();
+	GDT.flush(id);
 	IDT.flush();
 
 	LAPIC.setup();
 
 	TLS.aquireTLS();
-	size_t id = LAPIC.getCurrentID();
 	currentThread = &getPowerDAPI.cpus.cpuThreads[id];
 
 	outputBoth("AP ", id, " has successfully booted!");
 
 	currentThread.state = CPUThread.State.on;
+
+	auto done = &getPowerDAPI().toLoader.done;
+	while (!(*done)) {
+		asm @trusted nothrow @nogc {
+			// pause;
+			db 0xf3, 0x90;
+		}
+	}
+
+	() @trusted{ //
+		getPowerDAPI().toLoader.mainAP(id);
+	}();
 
 	while (true) {
 	}
@@ -244,9 +257,12 @@ extern (C) ulong main() @safe {
 		Log.fatal("Main is invalid!");
 
 	outputBoth("Transferring control to the kernel, Good luck!");
-	() @trusted{ //
-		auto papi = &getPowerDAPI();
 
+	auto main = kernel.main;
+	auto stack = newStackAP().ptr!ubyte;
+	auto papi = () @trusted{ return &getPowerDAPI(); }();
+
+	() @trusted{ //
 		papi.screenX = VGA.x;
 		papi.screenY = VGA.y;
 
@@ -258,15 +274,21 @@ extern (C) ulong main() @safe {
 				currentBitmapIdx = FrameAllocator.currentBitmapIdx;
 			}
 		}
-		size_t output = kernel.main(papi); // TODO: Call this and set return address to 0
-		//outputBoth("Main function returned: ", output.VirtAddress);
-		assert(0, "Kernel main function returned! This should never ever happen!");
+
+		papi.kernelStack = VirtMemoryRange(VirtAddress(stack - 0x10_000), VirtAddress(stack));
 	}();
 
-	outputBoth("Reached end of main! Shutting down in 2 seconds.");
-	LAPIC.sleep(2000);
+	outputBoth("Main: ", cast(void*)main, "\tpAPI: ", cast(void*)papi, "\tStack: ", cast(void*)stack);
 
-	ACPI.shutdown();
-
-	return 0;
+	asm @trusted nothrow @nogc {
+		mov RDI, papi;
+		mov RAX, main;
+		mov RSP, stack;
+		mov RBP, 0;
+		push 0;
+		jmp RAX;
+	}
+	assert(0, "Kernel main function returned! This should never ever happen!");
 }
+
+extern extern (C) void switchStackAndJump(void* func, void* arg0, void* stack) @trusted;

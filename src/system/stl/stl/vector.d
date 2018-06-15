@@ -58,6 +58,18 @@ public:
 		return true;
 	}
 
+	T removeAndGet(size_t index) @trusted {
+		assert(index < _length);
+
+		T ret = void;
+		memmove(&ret, &_list[index], T.sizeof);
+
+		memmove(&_list[index], &_list[index + 1], T.sizeof * (_length - index - 1));
+		_length--;
+
+		return ret;
+	}
+
 	bool remove(T obj) @trusted {
 		size_t index;
 		foreach (ref el; _list[0 .. _length])

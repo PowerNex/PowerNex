@@ -459,7 +459,7 @@ public:
 	}
 
 	@property bool isValid(VirtAddress vAddr) {
-		return !!_getTableEntry(vAddr, false);
+		return vAddr && !!_getTableEntry(vAddr, false);
 	}
 
 	@property PhysAddress tableAddress() {

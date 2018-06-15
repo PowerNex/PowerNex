@@ -45,6 +45,7 @@ void initSTL() {
 			"stl/arch/amd64/ioapic.d",
 			"stl/arch/amd64/ioport.d",
 			"stl/arch/amd64/lapic.d",
+			"stl/arch/amd64/tss.d",
 			"stl/address.d",
 			"stl/elf64.d",
 			"stl/io/log.d",
@@ -153,7 +154,6 @@ void initKernel() {
 
 		// dfmt off
 		auto dFiles = files!("src/system/kernel/",
-			"arch/amd64/tss.d",
 			"arch/amd64/paging.d",
 			"arch/paging.d",
 			"hw/cmos/cmos.d",
@@ -174,7 +174,8 @@ void initKernel() {
 		);
 
 		auto aFiles = files!("src/system/kernel/",
-			"extra.S"
+			"extra.S",
+			"task/helper.S"
 		);
 
 		auto consoleFont = files!("disk/data/font/",
