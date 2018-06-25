@@ -47,7 +47,7 @@ public import stl.vmm.vmm;
 
 }+/
 
-VirtAddress makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe {
+VirtAddress makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe nothrow {
 	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
 }
 

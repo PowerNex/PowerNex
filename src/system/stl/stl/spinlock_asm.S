@@ -11,16 +11,31 @@
 
 .global mutexSpinlock
 mutexSpinlock:
+	pushfq
+	pop %RCX
+	bt $9, %RCX
+	jc .tryToSet
+	sti
+
 	.tryToSet:
 		lock bts $0, (%RDI)
 			jc .waitForZero
-		ret
+
+		bt $9, %RCX
+		jc 1f
+			cli
+		jmp 1f
+
+		1:
+			ret
+
 	.waitForZero:
 		pause
 		testl $1, (%RDI)
-			jnz .waitForZero;
+			jnz .waitForZero
 
-		jmp .tryToSet;
+		jmp .tryToSet
+
 
 
 

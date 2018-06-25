@@ -53,6 +53,12 @@ import arch.paging;
 
 	bool kernelTask;
 
+	size_t niceFactor = 1; // Mean 1 nice factor = 1 time slot.
+	// TODO: Modify this to be more like *nix?
+
+	// on State.running
+	size_t timeSlotsLeft = 1;
+
 	// on State.active
 	ThreadState threadState;
 	Registers syscallRegisters;

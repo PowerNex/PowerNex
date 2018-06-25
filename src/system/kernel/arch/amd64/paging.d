@@ -234,9 +234,6 @@ alias HWZoneIdentifier = ushort;
 private extern (C) void cpuFlushPage(ulong addr) @safe;
 private extern (C) void cpuInstallCR3(PhysAddress addr) @safe;
 
-VirtAddress _makeAddress(ulong pml4, ulong pml3, ulong pml2, ulong pml1) @safe nothrow {
-	return VirtAddress(((pml4 >> 8) & 0x1 ? 0xFFFFUL << 48UL : 0) + (pml4 << 39UL) + (pml3 << 30UL) + (pml2 << 21UL) + (pml1 << 12UL));
-}
 
 @safe struct AMD64Paging {
 public:
@@ -306,7 +303,7 @@ public:
 		if (freePage == size_t.max || pagesNeeded != amountFree)
 			Log.fatal("Special PML1 is full!");
 
-		VirtAddress vAddr = _makeAddress(specialID, 0, 0, freePage);
+		VirtAddress vAddr = makeAddress(specialID, 0, 0, freePage);
 		Log.info("Mapping [", vAddr, " - ", vAddr + pagesNeeded * 0x1000 - 1, "]");
 		foreach (i; 0 .. pagesNeeded) {
 			PML1.TableEntry* entry = &special.entries[freePage + i];
@@ -411,8 +408,8 @@ public:
 
 		PML1.TableEntry* from = &_getSpecial().entries[Position.from];
 		PML1.TableEntry* to = &_getSpecial().entries[Position.to];
-		VirtAddress vFrom = _makeAddress(specialID, 0, 0, Position.from);
-		VirtAddress vTo = _makeAddress(specialID, 0, 0, Position.to);
+		VirtAddress vFrom = makeAddress(specialID, 0, 0, Position.from);
+		VirtAddress vTo = makeAddress(specialID, 0, 0, Position.to);
 
 		from.address = page;
 		from.present = true;
@@ -452,8 +449,8 @@ public:
 	/// Get information about a zone where $(PARAM address) exists.
 	VMZoneInformation getZoneInfo(VirtAddress address) {
 		const HWZoneIdentifier hwZoneID = (address.num >> 39) & 0x1FF; // Aka pml4Idx
-		const VirtAddress zoneStart = _makeAddress(hwZoneID, 0, 0, 0);
-		const VirtAddress zoneEnd = _makeAddress(hwZoneID + 1, 0, 0, 0) - 1;
+		const VirtAddress zoneStart = makeAddress(hwZoneID, 0, 0, 0);
+		const VirtAddress zoneEnd = makeAddress(hwZoneID + 1, 0, 0, 0) - 1;
 
 		return VMZoneInformation(zoneStart, zoneEnd, hwZoneID);
 	}
@@ -476,22 +473,22 @@ private:
 
 	PML4* _getPML4() nothrow {
 		const ulong fractalID = 509;
-		return _makeAddress(fractalID, fractalID, fractalID, fractalID).ptr!PML4;
+		return makeAddress(fractalID, fractalID, fractalID, fractalID).ptr!PML4;
 	}
 
 	PML3* _getPML3(ushort pml4) nothrow {
 		const ulong fractalID = 509;
-		return _makeAddress(fractalID, fractalID, fractalID, pml4).ptr!PML3;
+		return makeAddress(fractalID, fractalID, fractalID, pml4).ptr!PML3;
 	}
 
 	PML2* _getPML2(ushort pml4, ushort pml3) nothrow {
 		const ulong fractalID = 509;
-		return _makeAddress(fractalID, fractalID, pml4, pml3).ptr!PML2;
+		return makeAddress(fractalID, fractalID, pml4, pml3).ptr!PML2;
 	}
 
 	PML1* _getPML1(ushort pml4, ushort pml3, ushort pml2) nothrow {
 		const ulong fractalID = 509;
-		return _makeAddress(fractalID, pml4, pml3, pml2).ptr!PML1;
+		return makeAddress(fractalID, pml4, pml3, pml2).ptr!PML1;
 	}
 
 	PML1* _getSpecial() nothrow {

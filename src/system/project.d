@@ -168,6 +168,10 @@ void initKernel() {
 			"fs/tarfs/block.d",
 			"fs/tarfs/node.d",
 			"fs/tarfs/supernode.d",
+			"syscall/action/package.d",
+			"syscall/action/exit.d",
+			"syscall/action/yield.d",
+			"syscall/package.d",
 			"task/scheduler.d",
 			"task/thread.d",
 			"kmain.d"

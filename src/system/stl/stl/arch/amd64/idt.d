@@ -101,6 +101,7 @@ public static:
 	///
 	void init() @trusted {
 		import stl.vmm.paging : onPageFault;
+
 		base.limit = (IDTDescriptor.sizeof * desc.length) - 1;
 		base.offset = cast(ulong)desc.ptr;
 
@@ -266,6 +267,8 @@ private static:
 	extern (C) void isrHandler(Registers* regs) @trusted {
 		//import stl.io.vga : VGA, CGASlotColor, CGAColor;
 		import stl.io.log : Log;
+
+		regs.intNumber &= 0xFF;
 
 		//import arch.amd64.pic : PIC;
 

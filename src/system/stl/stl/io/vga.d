@@ -10,6 +10,7 @@
 module stl.io.vga;
 
 import stl.trait;
+import stl.spinlock;
 
 ///
 enum CGAColor {
@@ -80,10 +81,14 @@ public static:
 	}
 	///
 	void clear() @trusted {
+		_memLock.lock();
+
 		foreach (ref slot; *_screen)
 			slot = CGAVideoSlot('\x02', _color);
 		_x = _y = 0;
 		_moveCursor();
+
+		_memLock.unlock();
 	}
 
 	///
@@ -96,6 +101,8 @@ public static:
 		import stl.address : VirtAddress, PhysAddress, PhysAddress32;
 		import stl.trait : Unqual, isNumber, isFloating;
 		import stl.text : BinaryInt, HexInt;
+
+		_memLock.lock();
 
 		foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
@@ -126,6 +133,7 @@ public static:
 		}
 
 		_moveCursor();
+		_memLock.unlock();
 	}
 
 	///
@@ -153,6 +161,7 @@ private static:
 	__gshared ubyte _y;
 	__gshared CGASlotColor _color;
 	__gshared int _blockCursor;
+	__gshared SpinLock _memLock;
 
 	void _moveCursor() {
 		import stl.arch.amd64.ioport : outp;
@@ -194,9 +203,9 @@ private static:
 		}
 
 		if (_y >= 25) {
-			for (int yy = 0; yy < 25 - 1; yy++)
-				for (int xx = 0; xx < 80; xx++)
-					(*_screen)[yy * 80 + xx] = (*_screen)[(yy + 1) * 80 + xx];
+			import stl.address : memmove;
+
+			memmove(&(*_screen)[0], &(*_screen)[80], 80 * 24 * CGAVideoSlot.sizeof);
 
 			_y--;
 			for (int xx = 0; xx < 80; xx++) {

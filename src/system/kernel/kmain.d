@@ -17,6 +17,7 @@ import arch.paging;
 import stl.vmm.vmm;
 import fs.tarfs;
 import task.scheduler;
+import syscall;
 
 import powerd.api;
 
@@ -40,6 +41,7 @@ void kmainAP(size_t id) {
 	LAPIC.setup();
 
 	Scheduler.addCPUCore(id);
+	SyscallHandler.init(Scheduler.getCPUInfo(id));
 
 	while (true) {
 		asm @trusted nothrow @nogc {
@@ -76,7 +78,11 @@ extern (C) void kmain(PowerDAPI* papi) {
 		}
 	}
 
+	Scheduler.isEnabled = true;
+
+	size_t counter;
 	while (true) {
+		VGA.writeln("counter: ", counter++);
 		asm @trusted nothrow @nogc {
 			// pause;
 			db 0xf3, 0x90;
@@ -195,6 +201,10 @@ void init(PowerDAPI* papi) {
 	VGA.writeln("Scheduler initializing...");
 	Log.info("Scheduler initializing...");
 	Scheduler.init(papi.kernelStack);
+
+	VGA.writeln("Syscall initializing...");
+	Log.info("Syscall initializing...");
+	SyscallHandler.init(Scheduler.getCPUInfo(0));
 }
 
 void initFS(Module* disk) @trusted {

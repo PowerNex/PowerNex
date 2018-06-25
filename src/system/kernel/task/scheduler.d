@@ -12,7 +12,10 @@ import stl.register;
 import stl.address;
 import stl.io.log : Log;
 
+private import stl.arch.amd64.gdt : maxCPUCount_ = maxCPUCount;
+
 alias ProcessorID = size_t;
+enum ProcessorID maxCPUCount = maxCPUCount_;
 
 extern extern (C) ulong getRIP() @trusted;
 extern extern (C) void fpuEnable() @trusted;
@@ -27,6 +30,12 @@ extern extern (C) void cloneHelper() @trusted;
 	//Vector!(VMProcess*) preferred;
 	Vector!(VMThread*) allThread /*, toRun, doTheSleep*/ ;
 	align(64) ubyte[0x1000] kernelStack;
+}
+
+extern (C) void* getKernelStack() {
+	import stl.arch.amd64.lapic : LAPIC;
+
+	return (Scheduler._cpuInfo[LAPIC.getCurrentID()].kernelStack.ptr.VirtAddress + 0x1000).ptr;
 }
 
 @safe struct Scheduler {
@@ -46,6 +55,7 @@ public static:
 
 		_initKernel(&_cpuInfo[0], kernelStack);
 		_cpuInfo[0].currentThread = _cpuInfo[0].allThread[0];
+		_cpuInfo[0].currentThread.niceFactor = 2;
 		_cpuInfo[0].allThread.remove(0);
 
 		static ulong spinner(ubyte x, ubyte y, ubyte color)(void*) {
@@ -55,7 +65,18 @@ public static:
 
 			while (true) {
 				*pixel = first;
+				asm @trusted nothrow @nogc {
+					mov RAX, 1; // yield
+					//syscall;
+					int 0x80;
+				}
+
 				*pixel = second;
+				asm @trusted nothrow @nogc {
+					mov RAX, 1; // yield
+					int 0x80;
+					//syscall;
+				}
 			}
 		}
 
@@ -71,8 +92,8 @@ public static:
 	}
 
 	void addCPUCore(ProcessorID cpuID) @trusted {
-		if (cpuID >= _maxCPUCount) {
-			Log.warning("Too many CPUs. Trying to activate: ", cpuID, ", max amount is: ", _maxCPUCount);
+		if (cpuID >= maxCPUCount) {
+			Log.warning("Too many CPUs. Trying to activate: ", cpuID, ", max amount is: ", maxCPUCount);
 			return;
 		}
 
@@ -89,20 +110,35 @@ public static:
 	}
 
 	CPUInfo* getCPUInfo(ProcessorID cpuID) @trusted {
-		assert(cpuID < _maxCPUCount);
+		assert(cpuID < maxCPUCount);
 		CPUInfo* info = &_cpuInfo[cpuID];
 		if (info.enabled)
 			return info;
 		return null;
 	}
 
+	VMThread* getCurrentThread() @trusted {
+		import stl.arch.amd64.lapic;
+
+		CPUInfo* cpuInfo = &_cpuInfo[LAPIC.getCurrentID()];
+		if (!cpuInfo.enabled)
+			return null;
+		return cpuInfo.currentThread;
+	}
+
 	void doWork(Registers* registers) @trusted {
-		// Get a new thread to work on!
 		import stl.io.vga;
 		import stl.arch.amd64.lapic;
 
-		//VGA.writeln("TICK: ", LAPIC.getCurrentID());
-		_switchProcess();
+		if (!_isEnabled)
+			return;
+
+		CPUInfo* cpuInfo = &_cpuInfo[LAPIC.getCurrentID()];
+		if (!cpuInfo.enabled)
+			return;
+		VMThread* thread = cpuInfo.currentThread;
+		if (!--(thread.timeSlotsLeft))
+			_switchProcess();
 	}
 
 	void addKernelTask(CPUInfo* cpuInfo, KernelTaskFunction func, void* userdata) {
@@ -125,12 +161,16 @@ public static:
 			rdi = VirtAddress(userdata);
 			rax = 0xDEAD_C0DE;
 		}
+
+		// TODO: Change this to a magic value, to know if the thread wanted to exit instead of just jumping to null?
+		// Probably not a good idea as it is a bug, but idk.
 		set(taskStackPtr, 0); // Jump to null if it forgot to run exit.
+		set(taskStackPtr, 0x1337_DEAD_C0DE_1337);
 
 		with (newThread.syscallRegisters) {
 			rip = VirtAddress(func);
 			cs = 0x8;
-			flags = 0x202;
+			flags = 0x202; // Interrupt Enable Flag
 			rsp = taskStack.end;
 			ss = cs + 0x8;
 		}
@@ -158,12 +198,17 @@ public static:
 		return &_cpuInfoMutex;
 	}
 
+	@property ref bool isEnabled() @trusted {
+		return _isEnabled;
+	}
+
 private static:
-	enum ulong _switchMagic = 0x1111_DEAD_C0DE_1111;
-	enum ProcessorID _maxCPUCount = 64; // Same as GDT
+	enum ulong _switchMagic = 0x1337_DEAD_C0DE_1337;
+
+	__gshared bool _isEnabled;
 
 	__gshared SpinLock _cpuInfoMutex;
-	__gshared CPUInfo[_maxCPUCount] _cpuInfo;
+	__gshared CPUInfo[maxCPUCount] _cpuInfo;
 	__gshared size_t _coresActive;
 
 	//__gshared Vector!(VMThread*) _threads;
@@ -212,16 +257,17 @@ private static:
 		}
 
 		{ // Loading
-			cpuInfo.currentThread = cpuInfo.allThread.length ? cpuInfo.allThread.removeAndGet(0) : cpuInfo.idleThread;
-			cpuInfo.currentThread.state = VMThread.State.running;
+			VMThread* newThread = cpuInfo.currentThread = cpuInfo.allThread.length ? cpuInfo.allThread.removeAndGet(0) : cpuInfo.idleThread;
+			newThread.state = VMThread.State.running;
+			newThread.timeSlotsLeft = newThread.niceFactor;
 
-			ulong storeRBP = cpuInfo.currentThread.threadState.basePtr;
-			ulong storeRSP = cpuInfo.currentThread.threadState.stackPtr;
-			ulong storeRIP = cpuInfo.currentThread.threadState.instructionPtr;
+			ulong storeRBP = newThread.threadState.basePtr;
+			ulong storeRSP = newThread.threadState.stackPtr;
+			ulong storeRIP = newThread.threadState.instructionPtr;
 
-			cpuInfo.currentThread.threadState.paging.bind();
+			newThread.threadState.paging.bind();
 
-			MSR.fs = cpuInfo.currentThread.threadState.tls;
+			MSR.fs = newThread.threadState.tls;
 
 			GDT.setRSP0(cpuInfo.id, cpuInfo.kernelStack.ptr.VirtAddress + 0x1000);
 
@@ -289,33 +335,5 @@ private static:
 			kernelTask = false;
 		}
 		cpuInfo.allThread.put(kernelThread);
-	}
-
-	void _initSpinner(ubyte x, ubyte y)(CPUInfo* cpuInfo) @trusted {
-
-		VMProcess* spinnerProcess = newStruct!VMProcess(getKernelPaging.tableAddress);
-		enum stackSize = 0x1000 - BuddyHeader.sizeof;
-		ubyte[] taskStack_ = Heap.allocate(stackSize);
-		VirtMemoryRange taskStack = VirtMemoryRange(VirtAddress(&taskStack_[0]), VirtAddress(&taskStack_[0]) + stackSize);
-		VMThread* spinnerThread = newStruct!VMThread;
-		with (spinnerThread) {
-			process = spinnerProcess;
-			state = VMThread.State.active;
-			threadState.basePtr = threadState.stackPtr = taskStack.end;
-			threadState.instructionPtr = VirtAddress(&cloneHelper);
-			threadState.paging = &spinnerProcess.backend;
-			stack = taskStack;
-			kernelTask = true;
-
-			with (syscallRegisters) {
-				rip = VirtAddress(&spinner);
-				cs = 0x8;
-				flags = 0x202;
-				rsp = taskStack.end;
-				ss = cs + 0x8;
-			}
-		}
-
-		cpuInfo.allThread.put(spinnerThread);
 	}
 }

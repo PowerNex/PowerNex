@@ -1,7 +1,7 @@
 module arch.paging;
 
-import stl.vmm.paging;
-import stl.vmm.vmm;
+public import stl.vmm.paging;
+public import stl.vmm.vmm;
 
 version (X86_64) {
 	import arch.amd64.paging;

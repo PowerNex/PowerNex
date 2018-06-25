@@ -12,6 +12,8 @@ module stl.arch.amd64.gdt;
 import stl.arch.amd64.tss;
 import stl.address;
 
+enum size_t maxCPUCount = 64;
+
 ///
 align(1) @trusted struct GDTBase {
 align(1):
@@ -193,10 +195,9 @@ public static:
 	}
 
 private static:
-	enum size_t _maxCPUCount = 64;
 	__gshared GDTBase _gdtBase;
-	__gshared GDTDescriptor[6 + _maxCPUCount * 2] _gdtDescriptors;
-	__gshared TSS[_maxCPUCount] _tss;
+	__gshared GDTDescriptor[6 + maxCPUCount * 2] _gdtDescriptors;
+	__gshared TSS[maxCPUCount] _tss;
 	__gshared ushort _tssID;
 
 	ushort _setupTable() @trusted {
