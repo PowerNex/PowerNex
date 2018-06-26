@@ -51,36 +51,39 @@ public static:
 		_cpuInfo[0].currentThread.niceFactor = 2;
 		_cpuInfo[0].allThread.remove(0);
 
-		static ulong spinner(ubyte x, ubyte y, ubyte color)(void*) {
-			ubyte* pixel = (VirtAddress(0xb8000) + (y * 80 + x) * 2 + 1).ptr!ubyte;
-			const ubyte first = color | color << 4 | 8;
-			const ubyte second = color | color << 4 | 8 << 4;
+		static ulong spinner(void* pixel_) {
+			ubyte* pixel = cast(ubyte*)pixel_;
+
+			ubyte rand = cast(ubyte)pixel;
+			ubyte color = cast(ubyte)((rand + (rand & 1) * 3 + (rand % 3 == 0 ? 7 : 2)) % 7);
+			const ubyte first = cast(ubyte)(color | color << 4 | 8);
+			const ubyte second = cast(ubyte)(color | color << 4 | 8 << 4);
 
 			while (true) {
 				*pixel = first;
 				asm @trusted nothrow @nogc {
 					mov RAX, 1; // yield
-					//syscall;
+					//syscall; /// Can't use syscall due to sysret sets CPL=3
 					int 0x80;
 				}
 
 				*pixel = second;
 				asm @trusted nothrow @nogc {
 					mov RAX, 1; // yield
-					int 0x80;
 					//syscall;
+					int 0x80;
 				}
 			}
 		}
 
 		static foreach (ubyte x; 0 .. 80) {
-			addKernelTask(&_cpuInfo[0], &spinner!(x, 0, 1), null);
-			addKernelTask(&_cpuInfo[1], &spinner!(x, 24, 2), null);
+			addKernelTask(&_cpuInfo[0], &spinner, (VirtAddress(0xb8000) + (0 * 80 + x) * 2 + 1).ptr);
+			addKernelTask(&_cpuInfo[1], &spinner, (VirtAddress(0xb8000) + (24 * 80 + x) * 2 + 1).ptr);
 		}
 
 		static foreach (ubyte y; 1 .. 24) {
-			addKernelTask(&_cpuInfo[2], &spinner!(0, y, 4), null);
-			addKernelTask(&_cpuInfo[3], &spinner!(79, y, 6), null);
+			addKernelTask(&_cpuInfo[2], &spinner, (VirtAddress(0xb8000) + (y * 80 + 0) * 2 + 1).ptr);
+			addKernelTask(&_cpuInfo[3], &spinner, (VirtAddress(0xb8000) + (y * 80 + 79) * 2 + 1).ptr);
 		}
 	}
 
