@@ -66,6 +66,11 @@ import arch.paging;
 	// on State.Sleeping
 	WaitEvent[] waitsFor;
 
+	align(64) ubyte[0x1000] kernelStack_;
+	@property VirtAddress kernelStack() @trusted {
+		return kernelStack_.ptr.VirtAddress + 0x1000;
+	}
+
 	void signal(SignalType signal, string error) {
 	}
 }

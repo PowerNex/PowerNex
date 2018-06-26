@@ -29,13 +29,6 @@ extern extern (C) void cloneHelper() @trusted;
 	VMThread* idleThread;
 	//Vector!(VMProcess*) preferred;
 	Vector!(VMThread*) allThread /*, toRun, doTheSleep*/ ;
-	align(64) ubyte[0x1000] kernelStack;
-}
-
-extern (C) void* getKernelStack() {
-	import stl.arch.amd64.lapic : LAPIC;
-
-	return (Scheduler._cpuInfo[LAPIC.getCurrentID()].kernelStack.ptr.VirtAddress + 0x1000).ptr;
 }
 
 @safe struct Scheduler {
@@ -269,8 +262,13 @@ private static:
 
 			MSR.fs = newThread.threadState.tls;
 
-			GDT.setRSP0(cpuInfo.id, cpuInfo.kernelStack.ptr.VirtAddress + 0x1000);
+			GDT.setRSP0(cpuInfo.id, cpuInfo.currentThread.kernelStack);
 
+			{
+				import syscall;
+
+				SyscallHandler.setKernelStack(cpuInfo);
+			}
 			asm {
 				mov RAX, RBP; // RBP will be overritten below
 
@@ -321,7 +319,7 @@ private static:
 		cpuInfo.idleThread = idleThread;
 	}
 
-	void _initKernel(CPUInfo* cpuInfo, VirtMemoryRange kernelStack) @trusted {
+	void _initKernel(CPUInfo* cpuInfo, VirtMemoryRange currentStack) @trusted {
 		VMProcess* kernelProcess = newStruct!VMProcess(getKernelPaging.tableAddress);
 
 		VMThread* kernelThread = newStruct!VMThread;
@@ -330,8 +328,7 @@ private static:
 			cpuAssigned = 0;
 			state = VMThread.State.running;
 			threadState.paging = getKernelPaging();
-			stack = kernelStack;
-
+			stack = currentStack;
 			kernelTask = false;
 		}
 		cpuInfo.allThread.put(kernelThread);

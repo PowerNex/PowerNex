@@ -41,13 +41,17 @@ public static:
 			_storage = vAddr.ptr!SyscallStorage[0 .. 0x1000 / SyscallStorage.sizeof];
 		}
 
-		_storage[cpuInfo.id].kernelStack = (cpuInfo.kernelStack.ptr.VirtAddress + 0x1000).num;
+		setKernelStack(cpuInfo);
 
 		MSR.star = (_kernelCS << 32UL | _userCS << 48UL);
 		MSR.lStar = VirtAddress(onSyscallList[cpuInfo.id]);
 		MSR.sfMask = _eflagsInterrupt;
 
 		IDT.register(0x80, cast(IDT.InterruptCallback)&_onSyscallHandler);
+	}
+
+	void setKernelStack(CPUInfo* cpuInfo) {
+		_storage[cpuInfo.id].kernelStack = cpuInfo.currentThread.kernelStack;
 	}
 
 private static:
