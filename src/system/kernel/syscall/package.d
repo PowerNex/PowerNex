@@ -68,13 +68,13 @@ private static:
 	}();
 
 	void _onSyscall(size_t id)() {
-		enum storageOffset = 0xFF7FBFDFE000 + id * 2 * ulong.sizeof;
+		enum storageOffset = makeAddress(510, 510, 510, 0).num + id * 2 * ulong.sizeof;
 		enum ulong* kernelStack = cast(ulong*)storageOffset;
 		enum ulong* userStack = cast(ulong*)(storageOffset + 8);
 
 		asm @trusted nothrow @nogc {
 			naked;
-			db 0x48, 0x0F, 0x07;
+
 			/// -8[userStack] == Real RAX
 			mov - 8[RSP], RAX;
 
