@@ -134,6 +134,10 @@ public static:
 			_switchProcess();
 	}
 
+	void yield() {
+		_switchProcess();
+	}
+
 	void addKernelTask(CPUInfo* cpuInfo, KernelTaskFunction func, void* userdata) {
 		VMProcess* newProcess = newStruct!VMProcess(getKernelPaging.tableAddress);
 		enum stackSize = 0x1000 - BuddyHeader.sizeof;

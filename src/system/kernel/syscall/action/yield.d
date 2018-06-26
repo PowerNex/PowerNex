@@ -7,7 +7,6 @@ import task.scheduler;
 import task.thread;
 
 @Syscall(1) size_t yield() {
-	VMThread* thread = Scheduler.getCurrentThread();
-	Log.info("[", cast(void*)thread, "] yielding");
+	Scheduler.yield();
 	return 0;
 }
