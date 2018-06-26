@@ -416,6 +416,13 @@ public static:
 		return FrameAllocator.free(page);
 	}
 
+	VMPageFlags getPageFlags(VirtAddress vAddr) {
+		PML1.TableEntry* page = _getTableEntry(vAddr, false);
+		if (page)
+			return page.vmFlags();
+		return VMPageFlags();
+	}
+
 	@property bool isValid(VirtAddress vAddr) {
 		return !!_getTableEntry(vAddr, false);
 	}
@@ -590,7 +597,7 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 	flagsDone:
 		Log.Func func = Log.getFuncName(rip);
 
-		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+		/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 		VGA.writeln("===> PAGE FAULT (CPU ", id, ")");
 		VGA.writeln("                          | RIP = ", rip);
 		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
@@ -615,7 +622,8 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 		VGA.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
 				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
 		VGA.writeln("Page Mode: ", (VMPageFlags & VMPageFlags.present) ? "R" : "", (VMPageFlags & VMPageFlags.writable) ? "W"
-				: "", (VMPageFlags & VMPageFlags.execute) ? "X" : "", (VMPageFlags & VMPageFlags.user) ? "-User" : "");
+				: "", (VMPageFlags & VMPageFlags.execute) ? "X" : "", (VMPageFlags & VMPageFlags.user) ? "-User" : "");*/
+
 		//dfmt off
 		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
 			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",

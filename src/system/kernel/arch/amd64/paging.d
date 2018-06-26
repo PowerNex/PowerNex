@@ -234,7 +234,6 @@ alias HWZoneIdentifier = ushort;
 private extern (C) void cpuFlushPage(ulong addr) @safe;
 private extern (C) void cpuInstallCR3(PhysAddress addr) @safe;
 
-
 @safe struct AMD64Paging {
 public:
 	@disable this();
@@ -455,6 +454,13 @@ public:
 		return VMZoneInformation(zoneStart, zoneEnd, hwZoneID);
 	}
 
+	VMPageFlags getPageFlags(VirtAddress vAddr) {
+		PML1.TableEntry* page = _getTableEntry(vAddr, false);
+		if (page)
+			return page.vmFlags();
+		return VMPageFlags();
+	}
+
 	@property bool isValid(VirtAddress vAddr) {
 		return vAddr && !!_getTableEntry(vAddr, false);
 	}
@@ -616,7 +622,7 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 
 		ulong cr3 = cpuRetCR3();
 
-		VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
+		/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
 		VGA.writeln("===> PAGE FAULT");
 		VGA.writeln("IRQ = ", intNumber, " | RIP = ", rip);
 		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
@@ -640,7 +646,7 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 		VGA.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
 				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
 		VGA.writeln("Page Mode: ", (pageFlags & VMPageFlags.present) ? "R" : "", (pageFlags & VMPageFlags.writable) ? "W" : "",
-				(pageFlags & VMPageFlags.execute) ? "X" : "", (pageFlags & VMPageFlags.user) ? "-User" : "");
+				(pageFlags & VMPageFlags.execute) ? "X" : "", (pageFlags & VMPageFlags.user) ? "-User" : "");*/
 
 		//dfmt off
 		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, "\n",
