@@ -1,4 +1,4 @@
-module src.system.project;
+module src.system.projects;
 
 void setupProject() {
 	initSTL();

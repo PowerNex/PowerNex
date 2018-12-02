@@ -183,7 +183,7 @@ void exec(Target t) {
 	normal("Executing: ", cmd, "\n");
 	auto proc = executeShell(cmd);
 	if (proc.status != 0) {
-		error("\tProgram returned", proc.status, "\n", proc.output);
+		error("====> Program returned: ", proc.status, " <====\n", proc.output);
 		exit(EXIT_FAILURE);
 	} else
 		good(proc.output);

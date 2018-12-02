@@ -22,9 +22,13 @@ shared static this() {
 	import std.format : format;
 
 	{
-		import src.system.project : setupProject;
+		import system = src.system.projects;
+		import libraries = src.libraries.projects;
+		import binaries = src.binaries.projects;
 
-		setupProject();
+		system.setupProject();
+		libraries.setupProject();
+		binaries.setupProject();
 	}
 
 	auto nothing = Processor.combine("");
@@ -33,12 +37,28 @@ shared static this() {
 	{
 		Project initrd = new Project("PowerNexOS-InitRD", SemVer(0, 0, 0));
 		with (initrd) {
+			auto druntime = findDependency("DRuntime");
+			dependencies ~= druntime;
+			auto init = findDependency("Init");
+			dependencies ~= init;
+
 			// dfmt off
 			auto initrdFiles = files!("data/initrd/data/",
 				"dlogo.bmp"
 			);
 			auto initrdDataDir = cp("initrd/data/", false, initrdFiles);
-			auto initrdDir = nothing("initrd", false, null, [initrdDataDir]);
+
+			Target[] libraries = [
+				druntime.outputs["libdruntime"]
+			];
+			Target[] binaries = [
+				init.outputs["init"]
+			];
+
+			auto librariesDir = cp("initrd/libraries/", false, libraries);
+			auto binariesDir = cp("initrd/binaries/", false, binaries);
+
+			auto initrdDir = nothing("initrd", false, null, [initrdDataDir, librariesDir, binariesDir]);
 			// dfmt on
 
 			auto makeInitrd = Processor.combine("tar -c --posix -f $out$ -C $in$ .");
