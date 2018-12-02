@@ -70,65 +70,65 @@ public static:
 
 		char[ulong.sizeof * 8] buf;
 
-		com1.write('[', itoa(seconds(), buf, 10), ']');
-		com1.write('[', level.toChar, "] ", file /*, ": ", func*/ , '@');
+		_write('[', itoa(seconds(), buf, 10), ']');
+		_write('[', level.toChar, "] ", file /*, ": ", func*/ , '@');
 
-		com1.write(itoa(line, buf, 10));
-		com1.write("> ");
+		_write(itoa(line, buf, 10));
+		_write("> ");
 		mainloop: foreach (arg; args) {
 			alias T = Unqual!(typeof(arg));
 			static if (is(T : const char[]))
-				com1.write(arg);
+				_write(arg);
 			else static if (is(T == enum)) {
 				foreach (i, e; enumMembers!T)
 					if (arg == e) {
-						com1.write(__traits(allMembers, T)[i]);
+						_write(__traits(allMembers, T)[i]);
 						continue mainloop;
 					}
-				com1.write("cast(");
-				com1.write(T.stringof);
-				com1.write(")");
-				com1.write(itoa(cast(ulong)arg, buf, 10));
+				_write("cast(");
+				_write(T.stringof);
+				_write(")");
+				_write(itoa(cast(ulong)arg, buf, 10));
 			} else static if (is(T == BinaryInt)) {
-				com1.write("0b");
-				com1.write(itoa(arg.number, buf, 2));
+				_write("0b");
+				_write(itoa(arg.number, buf, 2));
 			} else static if (is(T == HexInt)) {
-				com1.write("0x");
-				com1.write(itoa(arg.number, buf, 16));
+				_write("0x");
+				_write(itoa(arg.number, buf, 16));
 			} else static if (is(T : V*, V)) {
-				com1.write("0x");
+				_write("0x");
 				string val = itoa(cast(ulong)arg, buf, 16, 16);
-				com1.write(val[0 .. 8], '_', val[8 .. 16]);
+				_write(val[0 .. 8], '_', val[8 .. 16]);
 			} else static if (is(T == VirtAddress) || is(T == PhysAddress) || is(T == PhysAddress32)) {
-				com1.write("0x");
+				_write("0x");
 				string val = itoa(cast(ulong)arg.num, buf, 16, 16);
-				com1.write(val[0 .. 8], '_', val[8 .. 16]);
+				_write(val[0 .. 8], '_', val[8 .. 16]);
 			} else static if (is(T == bool))
-				com1.write((arg) ? "true" : "false");
+				_write((arg) ? "true" : "false");
 			else static if (is(T == char))
-				com1.write(arg);
+				_write(arg);
 			else static if (isNumber!T)
-				com1.write(itoa(arg, buf, 10));
+				_write(itoa(arg, buf, 10));
 			else static if (is(T : ubyte[])) {
-				com1.write("[");
+				_write("[");
 				foreach (idx, a; arg) {
 					if (idx)
-						com1.write(", ");
-					com1.write(itoa(a, buf, 16));
+						_write(", ");
+					_write(itoa(a, buf, 16));
 				}
-				com1.write("]");
+				_write("]");
 			} else static if (isFloating!T)
-				com1.write(dtoa(cast(double)arg, buf, 10));
+				_write(dtoa(cast(double)arg, buf, 10));
 			else
-				com1.write("UNKNOWN TYPE '", T.stringof, "'");
+				_write("UNKNOWN TYPE '", T.stringof, "'");
 		}
 
-		com1.write("\r\n");
+		_write("\r\n");
 
 		if (level == LogLevel.fatal) {
 			printStackTrace(2);
 
-			while (!com1.canSend()) {
+			while (!_e9 && !com1.canSend()) {
 			}
 			mutex.unlock();
 			asm pure nothrow @trusted {
@@ -138,7 +138,7 @@ public static:
 				jmp forever;
 			}
 		}
-		while (!com1.canSend()) {
+		while (!_e9 && !com1.canSend()) {
 		}
 		mutex.unlock();
 	}
@@ -157,6 +157,11 @@ public static:
 		}
 
 		_printStackTrace(rbp, skipLevels);
+	}
+
+	///
+	void printStackTrace(VirtAddress rbp) @trusted {
+		_printStackTrace(rbp);
 	}
 
 	///
@@ -192,16 +197,28 @@ public static:
 	}
 
 private static:
+	debug enum _e9 = true;
+	else enum _e9 = false;
 	__gshared ELF64Symbol[] _symbols;
 	__gshared char[] _strings;
+
+	void _write(Args...)(Args args) {
+		import stl.io.e9;
+		import stl.arch.amd64.com : com1;
+
+		if (_e9)
+			E9.write(args);
+		else
+			com1.write(args);
+	}
 
 	static template _helperFunctions() {
 		import stl.trait : enumMembers;
 
 		template data(LogLevel entry) {
 			enum data = "///\n\tvoid " ~ __traits(allMembers, LogLevel)[entry]
-					~ "(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) { log!Args(LogLevel." ~ __traits(allMembers,
-							LogLevel)[entry] ~ ", args, file, func, line); }\n\n\t";
+				~ "(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) { log!Args(LogLevel." ~ __traits(allMembers,
+						LogLevel)[entry] ~ ", args, file, func, line); }\n\n\t";
 		}
 
 		template generateWrapper(ulong idx, Trest...) {
@@ -219,7 +236,7 @@ private static:
 		import stl.arch.amd64.com : com1;
 		import stl.vmm.paging : validAddress;
 
-		com1.write("\r\nSTACKTRACE:\r\n");
+		_write("\r\nSTACKTRACE:\r\n");
 		VirtAddress rip;
 
 		while (skipLevels--) {
@@ -234,30 +251,30 @@ private static:
 			if (!rip.validAddress || !(*rip.ptr!VirtAddress).validAddress)
 				break;
 
-			com1.write("\t[");
+			_write("\t[");
 
 			{
 				import stl.text : itoa;
 
 				char[ulong.sizeof * 8] buf;
-				com1.write("0x");
-				com1.write(itoa(*rip.ptr!ulong, buf, 16));
+				_write("0x");
+				_write(itoa(*rip.ptr!ulong, buf, 16));
 			}
 
-			com1.write("] ");
+			_write("] ");
 
 			Func f = getFuncName(*rip.ptr!VirtAddress);
 
-			com1.write(f.name);
+			_write(f.name);
 			if (f.diff) {
 				import stl.text : itoa;
 
 				char[ulong.sizeof * 8] buf;
-				com1.write("+0x");
-				com1.write(itoa(f.diff, buf, 16));
+				_write("+0x");
+				_write(itoa(f.diff, buf, 16));
 			}
 
-			com1.write("\r\n");
+			_write("\r\n");
 			rbp = VirtAddress(*rbp.ptr!ulong);
 		}
 	}

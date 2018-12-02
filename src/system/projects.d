@@ -48,6 +48,7 @@ void initSTL() {
 			"stl/arch/amd64/tss.d",
 			"stl/address.d",
 			"stl/elf64.d",
+			"stl/io/e9.d",
 			"stl/io/log.d",
 			"stl/io/vga.d",
 			"stl/spinlock.d",
