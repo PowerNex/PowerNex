@@ -25,5 +25,6 @@ mixin(ImportSyscall!());*/
 
 public import syscall.action.exit;
 public import syscall.action.yield;
+public import syscall.action.write;
 
-enum string[] SyscallModules = ["exit", "yield"];
+enum string[] SyscallModules = ["exit", "yield", "write"];

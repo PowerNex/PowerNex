@@ -20,7 +20,8 @@ enum MSRValue : uint {
 	cStar = 0xC0000083,
 	sfMask = 0xC0000084,
 	fsBase = 0xC0000100,
-	gsBase = 0xC0000101
+	gsBase = 0xC0000101,
+	gsKernelBase = 0xC0000102
 }
 
 @safe static struct MSR {
@@ -33,6 +34,26 @@ public static:
 	///
 	@property void fs(VirtAddress value) @trusted {
 		return _set(MSRValue.fsBase, value.num);
+	}
+
+	///
+	@property VirtAddress gs() @trusted {
+		return _get(MSRValue.gsBase).VirtAddress;
+	}
+
+	///
+	@property void gs(VirtAddress value) @trusted {
+		return _set(MSRValue.gsBase, value.num);
+	}
+
+	///
+	@property VirtAddress gsKernel() @trusted {
+		return _get(MSRValue.gsKernelBase).VirtAddress;
+	}
+
+	///
+	@property void gsKernel(VirtAddress value) @trusted {
+		return _set(MSRValue.gsKernelBase, value.num);
 	}
 
 	///
@@ -63,6 +84,16 @@ public static:
 	///
 	@property void lStar(ulong value) @trusted {
 		return _set(MSRValue.lStar, value);
+	}
+
+	///
+	@property ulong cStar() @trusted {
+		return _get(MSRValue.cStar);
+	}
+
+	///
+	@property void cStar(ulong value) @trusted {
+		return _set(MSRValue.cStar, value);
 	}
 
 	///
