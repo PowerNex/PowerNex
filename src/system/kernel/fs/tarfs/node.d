@@ -10,34 +10,30 @@ module fs.tarfs.node;
 
 import fs.tarfs;
 
-import stl.vtable;
 import stl.address;
 import stl.io.log;
 import stl.vmm.heap;
 import stl.vector;
 
-// dfmt off
-private __gshared const FSNode.VTable TarFSNodeVTable = {
-	readData: VTablePtr!(typeof(FSNode.VTable.readData))(&TarFSNode.readData),
-	writeData: VTablePtr!(typeof(FSNode.VTable.writeData))(&TarFSNode.writeData),
-	directoryEntries: VTablePtr!(typeof(FSNode.VTable.directoryEntries))(&TarFSNode.directoryEntries),
-	findNode: VTablePtr!(typeof(FSNode.VTable.findNode))(&TarFSNode.findNode),
-	link: VTablePtr!(typeof(FSNode.VTable.link))(&TarFSNode.link)
-};
-// dfmt on
-
 @safe struct TarFSNode {
-	FSNode base = &TarFSNodeVTable;
+	FSNode base;
 	alias base this;
 
-	this(TarFSSuperNode* superNode, FSNode.ID id, FSNode.ID parent, TarHeader* header, PaxHeader paxHeader) {
-		base.superNode = &superNode.base;
-		base.id = id;
+	this(TarFSSuperNode* superNode_, FSNode.ID id_, FSNode.ID parent, TarHeader* header, PaxHeader paxHeader) {
+		with (base) {
+			readData = &this.readData;
+			writeData = &this.writeData;
+			directoryEntries = &this.directoryEntries;
+			findNode = &this.findNode;
+			link = &this.link;
 
-		base.type = header.typeFlag.toNodeType;
-		base.size = paxHeader.fileSize ? paxHeader.fileSize : header.size.toNumber;
-		base.blockCount = ulong.max;
+			superNode = &superNode_.base;
+			id = id_;
 
+			type = header.typeFlag.toNodeType;
+			size = paxHeader.fileSize ? paxHeader.fileSize : header.size.toNumber;
+			blockCount = ulong.max;
+		}
 		_header = header;
 		_paxHeader = paxHeader;
 
@@ -50,78 +46,91 @@ private __gshared const FSNode.VTable TarFSNodeVTable = {
 			assert(0, "Not implemented for this node type!!!");
 	}
 
-	static private {
-		ulong readData(ref TarFSNode node, ref ubyte[] buffer, ulong offset) {
-			import stl.number : min;
+	ulong readData(ref ubyte[] buffer, ulong offset) {
+		import stl.number : min;
 
-			assert(node.base.type == FSNode.Type.file, "NOT A FILE!");
+		assert(base.type == FSNode.Type.file, "NOT A FILE!");
 
-			size_t len = min(buffer.length, node._data.length - offset);
-			buffer[0 .. len] = node._data[offset .. len];
-			return len;
+		size_t len = min(buffer.length, _data.length - offset);
+		buffer[0 .. len] = _data[offset .. len];
+		return len;
+	}
+
+	ulong writeData(const ref ubyte[] buffer, ulong offset) {
+		assert(base.type == FSNode.Type.file, "NOT A FILE!");
+
+		Log.error("TarFSNode is read-only!");
+		return 0;
+	}
+
+	FSDirectoryEntry[] directoryEntries() {
+		return _dirEntries[];
+	}
+
+	FSNode* findNode(string path) {
+		import stl.text : indexOf;
+
+		if (!path.length)
+			return () @trusted{ return cast(FSNode*)&this; }();
+		//return base.superNode.getNode(base.id);
+		// return &base; // Error: returning `&this.base` escapes a reference to parameter `this`, perhaps annotate with `return`
+
+		if (path[0] == '/')
+			if (auto _ = base.superNode.getNode(0))
+				return _.findNode(path[1 .. $]);
+			else
+				return null;
+
+		long splitIdx = path.indexOf('/');
+		if (splitIdx == -1)
+			splitIdx = path.length;
+
+		auto toFind = path[0 .. splitIdx];
+		if (splitIdx == path.length)
+			splitIdx--;
+
+		size_t discardCount = splitIdx + 1;
+		while (discardCount < path.length && path[discardCount] == '/')
+			discardCount++;
+		path = path[discardCount .. $];
+
+		final switch (base.type) {
+		case FSNode.Type.directory:
+			FSNode* dir;
+			foreach (const ref FSDirectoryEntry de; base.directoryEntries())
+				if (de.nameStr == toFind)
+					dir = base.superNode.getNode(de.id);
+
+			if (!dir)
+				return null;
+
+			if (path.length)
+				dir = dir.findNode(path);
+
+			return dir;
+		case FSNode.Type.file:
+		case FSNode.Type.notInUse:
+		case FSNode.Type.symbolicLink:
+		case FSNode.Type.hardLink:
+		case FSNode.Type.mountpoint:
+		case FSNode.Type.unknown:
+			Log.error("fineNode on type: ", base.type, " is not valid / implemented!");
+			break;
 		}
+		return null;
+	}
 
-		ulong writeData(ref TarFSNode node, const ref ubyte[] buffer, ulong offset) {
-			assert(node.base.type == FSNode.Type.file, "NOT A FILE!");
+	void link(string name, FSNode.ID id) {
+		import stl.number : min;
 
-			Log.error("TarFSNode is read-only!");
-			return 0;
-		}
+		assert(base.type == FSNode.Type.directory);
 
-		FSDirectoryEntry[] directoryEntries(ref TarFSNode node) {
-			return node._dirEntries[];
-		}
+		FSDirectoryEntry de;
+		de.id = id;
+		auto len = min(name.length, de.name.length);
+		de.name[0 .. len] = name[0 .. len];
 
-		FSNode* findNode(ref TarFSNode node, string path) {
-			import stl.text : indexOf;
-
-			long splitIdx = path.indexOf('/');
-			if (splitIdx == -1)
-				splitIdx = path.length;
-
-			auto toFind = path[0 .. splitIdx];
-			if (splitIdx == path.length)
-				splitIdx--;
-			path = path[splitIdx + 1 .. $];
-
-			final switch (node.base.type) {
-			case FSNode.Type.directory:
-				FSNode* dir;
-				foreach (const ref FSDirectoryEntry de; node.base.directoryEntries())
-					if (de.nameStr == toFind)
-						dir = node.base.superNode.getNode(de.id);
-
-				if (!dir)
-					return null;
-
-				if (path.length)
-					dir = dir.findNode(path);
-
-				return dir;
-			case FSNode.Type.file:
-			case FSNode.Type.notInUse:
-			case FSNode.Type.symbolicLink:
-			case FSNode.Type.hardLink:
-			case FSNode.Type.mountpoint:
-			case FSNode.Type.unknown:
-				Log.error("fineNode on type: ", node.base.type, " is not valid / implemented!");
-				break;
-			}
-			return null;
-		}
-
-		void link(ref TarFSNode node, string name, FSNode.ID id) {
-			import stl.number : min;
-
-			assert(node.base.type == FSNode.Type.directory);
-
-			FSDirectoryEntry de;
-			de.id = id;
-			auto len = min(name.length, de.name.length);
-			de.name[0 .. len] = name[0 .. len];
-
-			node._dirEntries.put(de);
-		}
+		_dirEntries.put(de);
 	}
 
 	@property const(ubyte)[] data() {

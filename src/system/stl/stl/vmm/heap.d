@@ -26,7 +26,11 @@ T* newStruct(T, Args...)(Args args) @trusted {
 		Log.fatal("Failed to allocated ", T.stringof, " size: ", T.sizeof);
 	__gshared const T init = T.init;
 	memcpy(p, &init, T.sizeof);
-	*p = T(args);
+
+	static if (__traits(hasMember, p, "__ctor"))
+		(*p).__ctor(args);
+	else
+		*p = T(args);
 
 	return p;
 }

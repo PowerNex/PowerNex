@@ -10,7 +10,6 @@ module fs.block;
 
 import fs;
 
-import stl.vtable;
 import stl.address;
 import stl.io.log;
 import stl.vmm.heap;
@@ -33,44 +32,10 @@ import stl.vmm.heap;
  * Helper class for writing and reading blocks from the file.
  */
 @safe struct FSBlockDevice {
-	/// The vtable for FSBlockDevice.
-	struct VTable {
-		/**
-		* Prototype of FSBlockDevice.readBlock
-		* See_Also:
-		*  FSBlockDevice.readBlock
-		*/
-		void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, ref FSBlock block) readBlock;
-
-		/**
-		* Prototype of FSBlockDevice.writeBlock
-		* See_Also:
-		*  FSBlockDevice.writeBlock
-		*/
-		void function(ref FSBlockDevice bd, FSBlockDevice.BlockID idx, const ref FSBlock block) writeBlock;
-
-		/**
-		* Prototype of FSBlockDevice.getBlockCount
-		* See_Also:
-		*  FSBlockDevice.getBlockCount
-		*/
-		size_t function(ref FSBlockDevice bd) getBlockCount;
-	}
-
-
 	/**
 	 * The block index type.
 	 */
 	alias BlockID = ulong;
-
-	const(VTable)* vtable;
-
-	@disable this();
-	this(const(VTable)* vtable) {
-		this.vtable = vtable;
-	}
-
-pragma(inline, true):
 
 	/**
 	 * This functions reads a block at the index \a idx from the blockdevice and writes the data to \a block.
@@ -80,10 +45,7 @@ pragma(inline, true):
 	 * See_Also:
 	 *    FSBlock
 	 */
-	void readBlock(FSBlockDevice.BlockID idx, ref FSBlock block) {
-		assert(vtable.readBlock, "vtable.readBlock is null!");
-		vtable.readBlock(this, idx, block);
-	}
+	void delegate(FSBlockDevice.BlockID idx, ref FSBlock block) readBlock;
 
 	/**
 	 * This functions writes the block \a block to the index \a idx in the blockdevice.
@@ -93,24 +55,10 @@ pragma(inline, true):
 	 * See_Also:
 	 *    FSBlock
 	 */
-	void writeBlock(FSBlockDevice.BlockID idx, const ref FSBlock block) {
-		assert(vtable.writeBlock, "vtable.writeBlock is null!");
-		vtable.writeBlock(this, idx, block);
-	}
+	void delegate(FSBlockDevice.BlockID idx, const ref FSBlock block) writeBlock;
 
 	/**
-	 * Prototype of FSBlockDevice.getBlockCount
-	 */
-	size_t getBlockCount() {
-		assert(vtable.getBlockCount, "vtable.getBlockCount is null!");
-		return vtable.getBlockCount(this);
-	}
-
-	/**
-	 * Prototype of FSBlockDevice.getBlockCount
-	 */
-	size_t getSuperNode() {
-		assert(vtable.getBlockCount, "vtable.getBlockCount is null!");
-		return vtable.getBlockCount(this);
-	}
+		* Get the number of block the device have.
+		*/
+	size_t delegate() getBlockCount;
 }

@@ -10,44 +10,38 @@ module fs.tarfs.block;
 
 import fs.tarfs;
 
-import stl.vtable;
 import stl.address;
 import stl.io.log;
 import stl.vmm.heap;
 
-// dfmt off
-private __gshared const FSBlockDevice.VTable TarFSBlockDeviceVTable = {
-	readBlock: VTablePtr!(typeof(FSBlockDevice.VTable.readBlock))(&TarFSBlockDevice.readBlock),
-	writeBlock: VTablePtr!(typeof(FSBlockDevice.VTable.writeBlock))(&TarFSBlockDevice.writeBlock),
-	getBlockCount: VTablePtr!(typeof(FSBlockDevice.VTable.getBlockCount))(&TarFSBlockDevice.getBlockCount)
-};
-// dfmt on
-
 @safe struct TarFSBlockDevice {
-	import stl.address: VirtMemoryRange;
+	import stl.address : VirtMemoryRange;
 
-	FSBlockDevice base = &TarFSBlockDeviceVTable;
+	FSBlockDevice base;
 	alias base this;
 
 	VirtMemoryRange data;
 
 	this(VirtMemoryRange range) {
 		data = range;
+		with (base) {
+			readBlock = &this.readBlock;
+			writeBlock = &this.writeBlock;
+			getBlockCount = &this.getBlockCount;
+		}
 	}
 
-	static private {
-		void readBlock(ref TarFSBlockDevice blockDevice, FSBlockDevice.BlockID idx, ref FSBlock block) {
-			Log.error("TarFSBlockDevice.readBlock: ", idx);
-			block = FSBlock();
-		}
+	void readBlock(FSBlockDevice.BlockID idx, ref FSBlock block) {
+		Log.error("TarFSBlockDevice.readBlock: ", idx);
+		block = FSBlock();
+	}
 
-		void writeBlock(ref TarFSBlockDevice blockDevice, FSBlockDevice.BlockID idx, const ref FSBlock block) {
-			Log.error("TarFSBlockDevice.writeBlock: ", idx);
-		}
+	void writeBlock(FSBlockDevice.BlockID idx, const ref FSBlock block) {
+		Log.error("TarFSBlockDevice.writeBlock: ", idx);
+	}
 
-		size_t getBlockCount(ref TarFSBlockDevice blockDevice) {
-			Log.error("TarFSBlockDevice.getBlockCount: ");
-			return 0;
-		}
+	size_t getBlockCount() {
+		Log.error("TarFSBlockDevice.getBlockCount: ");
+		return 0;
 	}
 }

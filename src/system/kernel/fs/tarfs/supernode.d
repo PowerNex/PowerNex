@@ -10,64 +10,59 @@ module fs.tarfs.supernode;
 
 import fs.tarfs;
 
-import stl.vtable;
 import stl.address;
 import stl.io.log;
 import stl.vmm.heap;
 import stl.vector;
 
-// dfmt off
-private __gshared const FSSuperNode.VTable TarFSSuperNodeVTable = {
-	getNode: VTablePtr!(typeof(FSSuperNode.VTable.getNode))(&TarFSSuperNode.getNode),
-	saveNode: VTablePtr!(typeof(FSSuperNode.VTable.saveNode))(&TarFSSuperNode.saveNode),
-	addNode: VTablePtr!(typeof(FSSuperNode.VTable.addNode))(&TarFSSuperNode.addNode),
-	removeNode: VTablePtr!(typeof(FSSuperNode.VTable.removeNode))(&TarFSSuperNode.removeNode),
-	getFreeNodeID: VTablePtr!(typeof(FSSuperNode.VTable.getFreeNodeID))(&TarFSSuperNode.getFreeNodeID),
-	getFreeBlockID: VTablePtr!(typeof(FSSuperNode.VTable.getFreeBlockID))(&TarFSSuperNode.getFreeBlockID),
-	setBlockUsed: VTablePtr!(typeof(FSSuperNode.VTable.setBlockUsed))(&TarFSSuperNode.setBlockUsed),
-	setBlockFree: VTablePtr!(typeof(FSSuperNode.VTable.setBlockFree))(&TarFSSuperNode.setBlockFree)
-};
-// dfmt on
-
 @safe struct TarFSSuperNode {
-	FSSuperNode base = &TarFSSuperNodeVTable;
+	FSSuperNode base;
 	alias base this;
 
 	this(TarFSBlockDevice* blockDevice) {
+		with (base) {
+			getNode = &this.getNode;
+			saveNode = &this.saveNode;
+			addNode = &this.addNode;
+			removeNode = &this.removeNode;
+			getFreeNodeID = &this.getFreeNodeID;
+			getFreeBlockID = &this.getFreeBlockID;
+			setBlockUsed = &this.setBlockUsed;
+			setBlockFree = &this.setBlockFree;
+		}
+
 		_blockDevice = blockDevice;
 
 		_loadTar();
 	}
 
-	static private {
-		FSNode* getNode(ref TarFSSuperNode supernode, FSNode.ID id) {
-			return &supernode._nodes[id].base;
-		}
+	FSNode* getNode(FSNode.ID id) {
+		return &_nodes[id].base;
+	}
 
-		void saveNode(ref TarFSSuperNode supernode, const ref FSNode node) {
-		}
+	void saveNode(const ref FSNode node) {
+	}
 
-		FSNode* addNode(ref TarFSSuperNode supernode, ref FSNode parent, FSNode.Type type, string name) {
-			return null;
-		}
+	FSNode* addNode(ref FSNode parent, FSNode.Type type, string name) {
+		return null;
+	}
 
-		bool removeNode(ref TarFSSuperNode supernode, ref FSNode parent, FSNode.ID id) {
-			return false;
-		}
+	bool removeNode(ref FSNode parent, FSNode.ID id) {
+		return false;
+	}
 
-		FSNode.ID getFreeNodeID(ref TarFSSuperNode supernode) {
-			return 0;
-		}
+	FSNode.ID getFreeNodeID() {
+		return 0;
+	}
 
-		FSBlockDevice.BlockID getFreeBlockID(ref TarFSSuperNode supernode) {
-			return 0;
-		}
+	FSBlockDevice.BlockID getFreeBlockID() {
+		return 0;
+	}
 
-		void setBlockUsed(ref TarFSSuperNode supernode, FSBlockDevice.BlockID id) {
-		}
+	void setBlockUsed(FSBlockDevice.BlockID id) {
+	}
 
-		void setBlockFree(ref TarFSSuperNode supernode, FSBlockDevice.BlockID id) {
-		}
+	void setBlockFree(FSBlockDevice.BlockID id) {
 	}
 
 private:
@@ -100,7 +95,7 @@ private:
 
 			// Checksum needs to be valid
 			if (!header.checksumValid) {
-				Log.warning("Invalid tar entry header!: ", (curLoc - data.start));
+				Log.warning("Invalid tar entry header!: ", (curLoc - data.start), " invalid: ", header.checksum.toNumber);
 				break;
 			}
 
