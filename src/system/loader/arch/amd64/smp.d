@@ -2,7 +2,7 @@ module arch.amd64.smp;
 
 import stl.address;
 
-extern (C) extern __gshared ubyte boot16_location, boot16_start, boot16_end;
+extern (C) extern __gshared ubyte boot16_location, boot16_start, boot16_end, boot16_start_halt, boot16_end_halt;
 
 @safe static struct SMP {
 public static:
@@ -56,6 +56,8 @@ public static:
 			if (counter >= 1000)
 				Log.fatal("cpuThreads[", idx, "] failed to boot!");
 		}
+
+		_setupHaltInit16();
 	}
 
 private static:
@@ -64,6 +66,13 @@ private static:
 
 		Log.info("memcpy(", _location, ", ", _start, ", ", _end - _start, ");");
 		_location.memcpy(_start, (_end - _start).num);
+	}
+
+	void _setupHaltInit16() @trusted {
+		import stl.io.log : Log;
+
+		Log.info("memcpy(", _location, ", ", _startHalt, ", ", _endHalt - _startHalt, ");");
+		_location.memcpy(_startHalt, (_endHalt - _startHalt).num);
 	}
 
 	@property VirtAddress _location() @trusted {
@@ -76,5 +85,13 @@ private static:
 
 	@property VirtAddress _end() @trusted {
 		return VirtAddress(&boot16_end);
+	}
+
+	@property VirtAddress _startHalt() @trusted {
+		return VirtAddress(&boot16_start_halt);
+	}
+
+	@property VirtAddress _endHalt() @trusted {
+		return VirtAddress(&boot16_end_halt);
 	}
 }

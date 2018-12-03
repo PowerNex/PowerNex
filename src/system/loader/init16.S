@@ -6,9 +6,12 @@
 .set boot16_location, 0x1000
 
 .set boot16_offset, boot16_start - boot16_location
+.set boot16_offset_halt, boot16_start_halt - boot16_location
 
 .global boot16_start
 .global boot16_end
+.global boot16_start_halt
+.global boot16_end_halt
 .global start16
 
 boot16_start:
@@ -58,3 +61,11 @@ boot16_trampoline:
 .size boot16_trampoline, .-boot16_trampoline
 
 boot16_end:
+
+boot16_start_halt:
+.type start16_halt, %function
+start16_halt:
+	hlt
+	jmp boot16_location
+.size start16_halt, .-start16_halt
+boot16_end_halt:
