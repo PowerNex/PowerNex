@@ -31,7 +31,7 @@ __gshared VirtAddress apStackLoc = _makeAddress(0, 2, 0, 0);
 
 extern (C) VirtAddress newStackAP() @trusted {
 	static foreach (i; 0 .. 0x10)
-		if (!Paging.map(apStackLoc + 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.execute))
+		if (!Paging.map(apStackLoc + 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable))
 			return VirtAddress();
 
 	auto stack = apStackLoc + 0x10_000;
