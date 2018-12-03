@@ -62,6 +62,7 @@ public static:
 		import stl.text : itoa, BinaryInt, HexInt;
 		import stl.trait : Unqual, enumMembers, isNumber, isFloating;
 		import stl.address : VirtAddress, PhysAddress, PhysAddress32;
+		import stl.arch.amd64.lapic : LAPIC;
 
 		import stl.spinlock;
 
@@ -70,7 +71,8 @@ public static:
 
 		char[ulong.sizeof * 8] buf;
 
-		_write('[', itoa(seconds(), buf, 10), ']');
+		//_write('[', itoa(seconds(), buf, 10), ']');
+		_write('[', itoa(LAPIC.getCurrentID(), buf, 10), ']');
 		_write('[', level.toChar, "] ", file /*, ": ", func*/ , '@');
 
 		_write(itoa(line, buf, 10));

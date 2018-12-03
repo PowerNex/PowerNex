@@ -81,9 +81,13 @@ extern (C) void[] _d_arraycopy(size_t size, void[] from, void[] to) @trusted {
 extern (C) void __assert(const char* msg_, const char* file_, int line) @trusted {
 	import stl.text : fromStringz;
 	import stl.io.log : Log;
+	import stl.io.e9;
 
 	auto msg = msg_.fromStringz;
 	auto file = file_.fromStringz;
+
+	E9.write("assert failed: ", msg, file, '0' + ((line / 1000) % 10), '0' + ((line / 100) % 10), '0' + ((line / 10) % 10),
+			'0' + ((line / 1) % 10));
 
 	Log.fatal!(string, string)("assert failed: ", msg, file, "<UNK>", line);
 }
