@@ -576,7 +576,7 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 		VMPageFlags pml3Flags;
 		VMPageFlags pml2Flags;
 		VMPageFlags pml1Flags;
-		VMPageFlags VMPageFlags;
+		VMPageFlags pageFlags;
 
 		if (!pml4Entry)
 			goto flagsDone;
@@ -592,37 +592,10 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 
 		if (!pml1Entry)
 			goto flagsDone;
-		VMPageFlags = pml1Entry.vmFlags;
+		pageFlags = pml1Entry.vmFlags;
 
 	flagsDone:
 		Log.Func func = Log.getFuncName(rip);
-
-		/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-		VGA.writeln("===> PAGE FAULT (CPU ", id, ")");
-		VGA.writeln("                          | RIP = ", rip);
-		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
-		VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
-		VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
-		VGA.writeln("RSP = ", rsp, " | RBP = ", rbp);
-		VGA.writeln(" R8 = ", r8, " |  R9 = ", r9);
-		VGA.writeln("R10 = ", r10, " | R11 = ", r11);
-		VGA.writeln("R12 = ", r12, " | R13 = ", r13);
-		VGA.writeln("R14 = ", r14, " | R15 = ", r15);
-		VGA.writeln(" CS = ", cs, " |  SS = ", ss);
-		VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
-		VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
-		VGA.writeln("Flags = ", flags.num.HexInt);
-		VGA.writeln("Errorcode: ", errorCode.num.HexInt, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"),
-				(errorCode & (1 << 1) ? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"),
-				(errorCode & (1 << 3) ? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		VGA.writeln("PDP Mode: ", (pml3Flags & VMPageFlags.present) ? "R" : "", (pml3Flags & VMPageFlags.writable) ? "W" : "",
-				(pml3Flags & VMPageFlags.execute) ? "X" : "", (pml3Flags & VMPageFlags.user) ? "-User" : "");
-		VGA.writeln("PD Mode: ", (pml2Flags & VMPageFlags.present) ? "R" : "", (pml2Flags & VMPageFlags.writable) ? "W" : "",
-				(pml2Flags & VMPageFlags.execute) ? "X" : "", (pml2Flags & VMPageFlags.user) ? "-User" : "");
-		VGA.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
-				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
-		VGA.writeln("Page Mode: ", (VMPageFlags & VMPageFlags.present) ? "R" : "", (VMPageFlags & VMPageFlags.writable) ? "W"
-				: "", (VMPageFlags & VMPageFlags.execute) ? "X" : "", (VMPageFlags & VMPageFlags.user) ? "-User" : "");*/
 
 		//dfmt off
 		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
@@ -636,8 +609,8 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 			"R12 = ", r12, " | R13 = ", r13, "\n",
 			"R14 = ", r14, " | R15 = ", r15, "\n",
 			" CS = ", cs,  " |  SS = ", ss, "\n",
-			"CR0 = ",	cr0," | CR2 = ", cr2, "\n",
-			"CR3 = ",	cr3, " | CR4 = ", cr4, "\n",
+			"CR0 = ", cr0," | CR2 = ", cr2, "\n",
+			"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
 			"Flags = ", flags.num.HexInt, "\n",
 			"Errorcode: ", errorCode.num.HexInt, " (",
 				(errorCode & (1 << 0) ? " Present" : " NotPresent"),
@@ -662,10 +635,10 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 				(pml1Flags & VMPageFlags.execute) ? "X" : "",
 				(pml1Flags & VMPageFlags.user) ? "-User" : "", "\n",
 			"Page Mode: ",
-				(VMPageFlags & VMPageFlags.present) ? "R" : "",
-				(VMPageFlags & VMPageFlags.writable) ? "W" : "",
-				(VMPageFlags & VMPageFlags.execute) ? "X" : "",
-				(VMPageFlags & VMPageFlags.user) ? "-User" : "");
+				(pageFlags & VMPageFlags.present) ? "R" : "",
+				(pageFlags & VMPageFlags.writable) ? "W" : "",
+				(pageFlags & VMPageFlags.execute) ? "X" : "",
+				(pageFlags & VMPageFlags.user) ? "-User" : "");
 		//dfmt on
 	}
 }

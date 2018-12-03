@@ -568,13 +568,24 @@ private extern (C) ulong cpuRetCR3() @safe nothrow;
 extern (C) void onPageFault(Registers* regs) @trusted {
 	import stl.io.vga;
 	import stl.io.log;
+	import stl.arch.amd64.lapic : LAPIC;
+	import stl.text : HexInt;
+
+	() @trusted {
+		size_t id = LAPIC.getCurrentID();
+		Log.warning("[PageFault: ", id, "] Validating regs:");
+		foreach (ref ubyte b; (cast(ubyte*)regs)[0 .. Registers.sizeof]) {
+			b = b;
+		}
+		Log.warning("[PageFault: ", id, "] regs is valid!");
+	}();
+
+	size_t id = LAPIC.getCurrentID();
 
 	AMD64Paging paging = AMD64Paging(cpuRetCR3.PhysAddress, false);
 
 	with (regs) {
-		auto addr = cr2;
-
-		const ulong virtAddr = addr.num;
+		const ulong virtAddr = cr2.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pml3Idx = (virtAddr >> 30) & 0x1FF;
 		const ushort pml2Idx = (virtAddr >> 21) & 0x1FF;
@@ -622,45 +633,21 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 
 		ulong cr3 = cpuRetCR3();
 
-		/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-		VGA.writeln("===> PAGE FAULT");
-		VGA.writeln("IRQ = ", intNumber, " | RIP = ", rip);
-		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
-		VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
-		VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
-		VGA.writeln("RSP = ", rsp, " | RBP = ", rbp);
-		VGA.writeln(" R8 = ", r8, "  |  R9 = ", r9);
-		VGA.writeln("R10 = ", r10, " | R11 = ", r11);
-		VGA.writeln("R12 = ", r12, " | R13 = ", r13);
-		VGA.writeln("R14 = ", r14, " | R15 = ", r15);
-		VGA.writeln(" CS = ", cs, "  |  SS = ", ss);
-		VGA.writeln(" addr = ", addr, " | CR3 = ", cr3);
-		VGA.writeln("Flags: ", flags);
-		VGA.writeln("Errorcode: ", errorCode, " (", (errorCode & (1 << 0) ? " Present" : " NotPresent"), (errorCode & (1 << 1)
-				? " Write" : " Read"), (errorCode & (1 << 2) ? " UserMode" : " KernelMode"), (errorCode & (1 << 3)
-				? " ReservedWrite" : ""), (errorCode & (1 << 4) ? " InstructionFetch" : ""), " )");
-		VGA.writeln("PDP Mode: ", (pml3Flags & VMPageFlags.present) ? "R" : "", (pml3Flags & VMPageFlags.writable) ? "W" : "",
-				(pml3Flags & VMPageFlags.execute) ? "X" : "", (pml3Flags & VMPageFlags.user) ? "-User" : "");
-		VGA.writeln("PD Mode: ", (pml2Flags & VMPageFlags.present) ? "R" : "", (pml2Flags & VMPageFlags.writable) ? "W" : "",
-				(pml2Flags & VMPageFlags.execute) ? "X" : "", (pml2Flags & VMPageFlags.user) ? "-User" : "");
-		VGA.writeln("PT Mode: ", (pml1Flags & VMPageFlags.present) ? "R" : "", (pml1Flags & VMPageFlags.writable) ? "W" : "",
-				(pml1Flags & VMPageFlags.execute) ? "X" : "", (pml1Flags & VMPageFlags.user) ? "-User" : "");
-		VGA.writeln("Page Mode: ", (pageFlags & VMPageFlags.present) ? "R" : "", (pageFlags & VMPageFlags.writable) ? "W" : "",
-				(pageFlags & VMPageFlags.execute) ? "X" : "", (pageFlags & VMPageFlags.user) ? "-User" : "");*/
-
 		//dfmt off
-		Log.fatal("===> PAGE FAULT", "\n", "IRQ = ", intNumber, " | RIP = ", rip, "\n",
+		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
+			"IRQ = ", intNumber, " | RIP = ", rip, "\n",
 			"RAX = ", rax, " | RBX = ", rbx, "\n",
 			"RCX = ", rcx, " | RDX = ", rdx, "\n",
 			"RDI = ", rdi, " | RSI = ", rsi, "\n",
 			"RSP = ", rsp, " | RBP = ", rbp, "\n",
-			" R8 = ", r8, "  |  R9 = ", r9, "\n",
+			" R8 = ", r8,  " |  R9 = ", r9, "\n",
 			"R10 = ", r10, " | R11 = ", r11, "\n",
 			"R12 = ", r12, " | R13 = ", r13, "\n",
 			"R14 = ", r14, " | R15 = ", r15, "\n",
-			" CS = ", cs, "  |  SS = ", ss, "\n",
-			" addr = ",	addr, " | CR3 = ", cr3, "\n",
-			"Flags: ", flags, "\n",
+			" CS = ", cs,  " |  SS = ", ss, "\n",
+			"CR0 = ", cr0," | CR2 = ", cr2, "\n",
+			"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
+			"Flags = ", flags.num.HexInt, "\n",
 			"Errorcode: ", errorCode, " (",
 				(errorCode & (1 << 0) ? " Present" : " NotPresent"),
 				(errorCode & (1 << 1) ? " Write" : " Read"),
