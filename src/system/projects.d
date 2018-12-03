@@ -65,6 +65,7 @@ void initSTL() {
 		);
 
 		auto aFiles = files!("src/system/stl/",
+			"stl/arch/amd64/doublefault.S",
 			"stl/arch/amd64/lapic_asm.S",
 			"stl/spinlock_asm.S"
 		);

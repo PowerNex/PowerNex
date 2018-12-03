@@ -90,6 +90,8 @@ enum InterruptStackType : ushort {
 ///
 alias irq = (ubyte x) => cast(ubyte)(0x20 + x);
 
+extern (C) extern void onDoubleFault() @trusted;
+
 ///
 @safe static struct IDT {
 public static:
@@ -106,10 +108,13 @@ public static:
 		base.offset = cast(ulong)desc.ptr;
 
 		_addAllJumps();
-		flush();
 
+		registerGate(0x8, VirtAddress(&onDoubleFault));
+		register(0x8, cast(InterruptCallback)&onDoubleFault);
 		register(0xD, &_onGPF);
 		register(0xE, cast(InterruptCallback)&onPageFault);
+
+		flush();
 
 		asm {
 			sti;
@@ -173,7 +178,7 @@ private static:
 			 void isr` ~ id.stringof[0 .. $ - 2] ~ `() @trusted {
 				asm pure nothrow {
 					naked;
-					` ~ (hasError ? "" : "push 0UL;") ~ `
+					` ~ (hasError ? "" : "push -1UL;") ~ `
 					push ` ~ id.stringof ~ `;
 
 					jmp isrCommon;
@@ -192,7 +197,7 @@ private static:
 	template _addJump(ulong id) {
 		enum _addJump = `
 			_add(` ~ id.stringof[0 .. $ - 2] ~ `, SystemSegmentType.interruptGate, cast(ulong)&isr`
-				~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
+			~ id.stringof[0 .. $ - 2] ~ `, 0, InterruptStackType.registerStack);`;
 	}
 
 	template _addJumps(ulong from, ulong to) {
@@ -215,7 +220,7 @@ private static:
 			nop;
 			nop;
 			nop;
-
+			sti;
 			db 0x48, 0xCF; //iretq;
 		}
 	}
@@ -239,10 +244,12 @@ private static:
 			push R13;
 			push R14;
 			push R15;
+			sti;
 
 			mov RDI, RSP;
 			call isrHandler;
 
+			cli;
 			pop R15;
 			pop R14;
 			pop R13;
@@ -260,6 +267,7 @@ private static:
 			pop RAX;
 
 			add RSP, 16;
+			sti;
 			db 0x48, 0xCF; //iretq;
 		}
 	}
@@ -290,21 +298,6 @@ private static:
 
 				size_t id = LAPIC.getCurrentID();
 				Log.Func func = Log.getFuncName(rip);
-				/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-				VGA.writeln("===> Unhandled interrupt (CPU ", id, ")");
-				VGA.writeln("IRQ = ", intNumber.num!InterruptType, " (", intNumber.HexInt, ") | RIP = ", rip);
-				VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
-				VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
-				VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
-				VGA.writeln("RSP = ", rsp, " | RBP = ", rbp);
-				VGA.writeln(" R8 = ", r8, " |  R9 = ", r9);
-				VGA.writeln("R10 = ", r10, " | R11 = ", r11);
-				VGA.writeln("R12 = ", r12, " | R13 = ", r13);
-				VGA.writeln("R14 = ", r14, " | R15 = ", r15);
-				VGA.writeln(" CS = ", cs, " |  SS = ", ss);
-				VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
-				VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
-				VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);*/
 
 				// dfmt off
 				Log.error("===> Unhandled interrupt (CPU ", id, ")", "\n",
@@ -318,8 +311,8 @@ private static:
 					"R12 = ", r12, " | R13 = ", r13, "\n",
 					"R14 = ", r14, " | R15 = ", r15, "\n",
 					" CS = ", cs,  " |  SS = ", ss, "\n",
-					"CR0 = ",	cr0," | CR2 = ", cr2, "\n",
-					"CR3 = ",	cr3, " | CR4 = ", cr4, "\n",
+					"CR0 = ", cr0, " | CR2 = ", cr2, "\n",
+					"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
 					"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 				// dfmt on
 			}
@@ -332,27 +325,21 @@ private void _onGPF(Registers* regs) @safe {
 	import stl.text : HexInt;
 	import stl.arch.amd64.lapic : LAPIC;
 
-	size_t id = LAPIC.getCurrentID();
+	() @trusted {
+		size_t id = LAPIC.getCurrentID();
+		Log.warning("[GeneralProtectionFault: ", id, "] Validating regs:");
+		foreach (ref ubyte b; (cast(ubyte*)regs)[0 .. Registers.sizeof]) {
+			b = b;
+		}
+		Log.warning("[GeneralProtectionFault: ", id, "] regs is valid!");
+	}();
+
 	with (regs) {
+		size_t id = LAPIC.getCurrentID();
 		Log.Func func = Log.getFuncName(rip);
-		/*VGA.color = CGASlotColor(CGAColor.red, CGAColor.black);
-		VGA.writeln("===> GeneralProtectionFault (CPU ", id, ")");
-		VGA.writeln("                          | RIP = ", rip);
-		VGA.writeln("RAX = ", rax, " | RBX = ", rbx);
-		VGA.writeln("RCX = ", rcx, " | RDX = ", rdx);
-		VGA.writeln("RDI = ", rdi, " | RSI = ", rsi);
-		VGA.writeln("RSP = ", rsp, " | RBP = ", rbp);
-		VGA.writeln(" R8 = ", r8, " |  R9 = ", r9);
-		VGA.writeln("R10 = ", r10, " | R11 = ", r11);
-		VGA.writeln("R12 = ", r12, " | R13 = ", r13);
-		VGA.writeln("R14 = ", r14, " | R15 = ", r15);
-		VGA.writeln(" CS = ", cs, " |  SS = ", ss);
-		VGA.writeln("CR0 = ", cr0, " | CR2 = ", cr2);
-		VGA.writeln("CR3 = ", cr3, " | CR4 = ", cr4);
-		VGA.writeln("Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);*/
 
 		// dfmt off
-		Log.error("===> GeneralProtectionFault (CPU ", id, ")", "\n",
+		Log.fatal("===> GeneralProtectionFault (CPU ", id, ")", "\n",
 			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
 			"RAX = ", rax, " | RBX = ", rbx, "\n",
 			"RCX = ", rcx, " | RDX = ", rdx, "\n",
@@ -363,8 +350,8 @@ private void _onGPF(Registers* regs) @safe {
 			"R12 = ", r12, " | R13 = ", r13, "\n",
 			"R14 = ", r14, " | R15 = ", r15, "\n",
 			" CS = ", cs,  " |  SS = ", ss, "\n",
-			"CR0 = ",	cr0, " | CR2 = ", cr2, "\n",
-			"CR3 = ",	cr3, " | CR4 = ", cr4, "\n",
+			"CR0 = ", cr0, " | CR2 = ", cr2, "\n",
+			"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
 			"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 		// dfmt on
 
