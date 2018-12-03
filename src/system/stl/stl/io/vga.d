@@ -176,32 +176,19 @@ private static:
 	}
 
 	void _write(char ch) {
-		if (ch == '\n') {
-			_y++;
-			_x = 0;
-		} else if (ch == '\r')
-			_x = 0;
-		else if (ch == '\b') {
-			if (_x)
-				_x--;
-		} else if (ch == '\t') {
+		if (ch == '\t') {
 			uint goal = (_x + 8) & ~7;
-			for (; _x < goal; _x++)
-				(*_screen)[_y * 80 + _x] = CGAVideoSlot(' ', _color);
-			if (_x >= 80) {
-				_y++;
-				_x %= 80;
-			}
-		} else {
-			(*_screen)[_y * 80 + _x] = CGAVideoSlot(ch, _color);
-			_x++;
+			int count = goal - _x;
+			foreach (i; 0 .. goal - _x)
+				_write(' ');
 
-			if (_x >= 80) {
-				_y++;
-				_x = 0;
-			}
+			return;
 		}
 
+		if (_x >= 80) {
+			_y++;
+			_x = 0;
+		}
 		if (_y >= 25) {
 			import stl.address : memmove;
 
@@ -213,6 +200,19 @@ private static:
 				slot.ch = ' ';
 				slot.color = CGASlotColor(CGAColor.cyan, CGAColor.black); //XXX: Stupid hack to fix colors while scrolling
 			}
+		}
+
+		if (ch == '\n') {
+			_y++;
+			_x = 0;
+		} else if (ch == '\r')
+			_x = 0;
+		else if (ch == '\b') {
+			if (_x)
+				_x--;
+		} else {
+			(*_screen)[_y * 80 + _x] = CGAVideoSlot(ch, _color);
+			_x++;
 		}
 
 		// Uncomment this for prettier mouse movement!
