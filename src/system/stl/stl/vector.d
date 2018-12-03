@@ -13,17 +13,20 @@ template VectorStandardFree(T) {
 			t.__xdtor();
 		else static if (__traits(hasMember, T, "__dtor")) // Call just __dtor on object
 			t.__dtor();
+
+		const T init = T.init;
+		memcpy(&t, &init, T.sizeof);
 	}
 }
 
-@safe struct Vector(T, alias ElementFree = VectorStandardFree!T) if (!is(T == class)) {
+@safe struct Vector(T, size_t staticSize = 0, alias ElementFree = VectorStandardFree!T) if (!is(T == class)) {
 public:
-	ubyte[] vectorAllocate(size_t wantSize) @trusted {
+	private ubyte[] vectorAllocate(size_t wantSize) @trusted {
 		assert(.vectorAllocate);
 		return .vectorAllocate(wantSize);
 	}
 
-	void vectorFree(ubyte[] address) @trusted {
+	private void vectorFree(ubyte[] address) @trusted {
 		assert(.vectorFree);
 		return .vectorFree(address);
 	}
@@ -32,7 +35,8 @@ public:
 
 	~this() @trusted {
 		clear();
-		vectorFree(cast(ubyte[])_list[0 .. _listLength]);
+		static if (!staticSize)
+			vectorFree(cast(ubyte[])_list[0 .. _listLength]);
 	}
 
 	ref T put(T value) {
@@ -65,6 +69,7 @@ public:
 		memmove(&ret, &_list[index], T.sizeof);
 
 		memmove(&_list[index], &_list[index + 1], T.sizeof * (_length - index - 1));
+
 		_length--;
 
 		return ret;
@@ -198,21 +203,37 @@ public:
 	}
 
 private:
-	enum _growFactor = 16;
-
 	// Can't be T[] as this will create an __equals, which in turn needs TypeInfos;
 	// Hopefully a future DMD will fix this!
 	T* _list;
 	size_t _listLength;
 	size_t _length;
 
-	void _expand() @trusted {
-		T[] newList = cast(T[])vectorAllocate(T.sizeof * (_listLength + _growFactor));
-		if (_list) {
-			memcpy(&newList[0], &_list[0], _listLength * T.sizeof);
-			vectorFree(cast(ubyte[])_list[0 .. _listLength]);
+	static if (staticSize) {
+		ubyte[T.sizeof * staticSize] _listData = void;
+
+		void _expand() @trusted {
+			import stl.io.log;
+
+			if (!_list) {
+				_list = cast(T*)_listData.ptr;
+				_listLength = staticSize;
+			} else
+				Log.fatal("Static sized vector (size: ", staticSize, ") can't be expanded!");
 		}
-		_list = newList.ptr;
-		_listLength = newList.length;
+
+	} else {
+		enum _growFactor = 16;
+
+		void _expand() @trusted {
+			T[] newList = cast(T[])vectorAllocate(T.sizeof * (_listLength + _growFactor));
+			if (_list) {
+				memcpy(&newList[0], &_list[0], _listLength * T.sizeof);
+				vectorFree(cast(ubyte[])_list[0 .. _listLength]);
+			}
+
+			_list = newList.ptr;
+			_listLength = newList.length;
+		}
 	}
 }

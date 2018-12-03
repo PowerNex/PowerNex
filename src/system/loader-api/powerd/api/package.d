@@ -61,8 +61,8 @@ struct Version {
 	size_t ramAmount; ///
 	VirtMemoryRange kernelStack;
 
-	Vector!Module modules; ///
-	Vector!MemoryMap memoryMaps; ///
+	Vector!(Module, 64) modules; ///
+	Vector!(MemoryMap, 64) memoryMaps; ///
 
 	PowerDACPI acpi; ///
 	PowerDCPUs cpus; ///

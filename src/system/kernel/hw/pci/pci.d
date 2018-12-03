@@ -61,7 +61,7 @@ public static:
 	}
 
 private static:
-	__gshared Vector!PCIDevice _devices;
+	__gshared Vector!(PCIDevice, 128) _devices;
 
 	void _scanForDevices() {
 		for (ubyte bus = 0; bus < 255; bus++)

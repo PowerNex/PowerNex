@@ -69,8 +69,8 @@ import stl.address;
 ///
 @safe struct PowerDCPUs {
 	import stl.vector : Vector;
-	Vector!(CPUThread) cpuThreads; ///
-	Vector!(IOAPIC) ioapics; ///
+	Vector!(CPUThread, 32) cpuThreads; ///
+	Vector!(IOAPIC, 32) ioapics; ///
 
 	/// Map a IRQ to a GSI
 	uint[16 /* IRQ (0-15) */ ] irqMap = () {
