@@ -38,7 +38,7 @@ public static:
 	void init(VirtMemoryRange kernelStack) @trusted {
 		import stl.arch.amd64.lapic : LAPIC;
 
-		() @trusted{ LAPIC.externalTick = cast(LAPIC.ExternalTickFunction)&doWork; }();
+		() @trusted { LAPIC.externalTick = cast(LAPIC.ExternalTickFunction)&doWork; }();
 
 		{
 			_cpuInfo[0].enabled = true;
@@ -99,7 +99,6 @@ public static:
 			_cpuInfo[cpuID].id = cpuID;
 			_cpuInfo[cpuID].enabled = true;
 			_initIdle(&_cpuInfo[cpuID]);
-			_cpuInfo[cpuID].currentThread = _cpuInfo[cpuID].idleThread;
 			_coresActive++;
 			_cpuInfoMutex.unlock;
 		}
@@ -133,6 +132,9 @@ public static:
 		if (!cpuInfo.enabled)
 			return;
 		VMThread* thread = cpuInfo.currentThread;
+		if (!thread)
+			return;
+
 		if (!--(thread.timeSlotsLeft))
 			_switchProcess();
 	}
@@ -220,9 +222,9 @@ private static:
 
 		CPUInfo* cpuInfo = &_cpuInfo[LAPIC.getCurrentID()];
 		if (!cpuInfo.enabled)
-			return;
+			Log.fatal("CPU core is not enabled!");
 
-		if (!cpuInfo.allThread.length)
+		if (!cpuInfo.allThread.length && cpuInfo.currentThread)
 			return; // Would have switched to the same thread that is already running
 
 		{ // Saving
@@ -237,22 +239,25 @@ private static:
 			if (storeRIP == _switchMagic) // Swap is done
 				return;
 
-			with (cpuInfo.currentThread.threadState) {
-				basePtr = storeRBP;
-				stackPtr = storeRSP;
-				instructionPtr = storeRIP;
-				if (fpuEnabled) {
-					ubyte[] storeFPU = fpuStorage;
-					asm {
-						fxsave storeFPU;
+			// This will only be false the first time it is called!
+			if (cpuInfo.currentThread) {
+				with (cpuInfo.currentThread.threadState) {
+					basePtr = storeRBP;
+					stackPtr = storeRSP;
+					instructionPtr = storeRIP;
+					if (fpuEnabled) {
+						ubyte[] storeFPU = fpuStorage;
+						asm {
+							fxsave storeFPU;
+						}
+						fpuDisable();
 					}
-					fpuDisable();
 				}
-			}
 
-			if (cpuInfo.currentThread != cpuInfo.idleThread) {
-				cpuInfo.currentThread.state = VMThread.State.active;
-				cpuInfo.allThread.put(cpuInfo.currentThread);
+				if (cpuInfo.currentThread != cpuInfo.idleThread) {
+					cpuInfo.currentThread.state = VMThread.State.active;
+					cpuInfo.allThread.put(cpuInfo.currentThread);
+				}
 			}
 		}
 

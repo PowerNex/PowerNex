@@ -28,27 +28,33 @@ private __gshared TarFSBlockDevice _blockDevice;
 private __gshared TarFSSuperNode* _superNode;
 /// The initrd
 __gshared FSNode* initrdFS;
+__gshared size_t coresDone;
 
 void kmainAP(size_t id) {
 	import task.scheduler : Scheduler;
+	import stl.spinlock : SpinLock;
+
+	GDT.flush(id);
+	IDT.flush();
 
 	asm pure nothrow {
 		sti;
 	}
 
-	GDT.flush(id);
-	IDT.flush();
 	LAPIC.setup();
 
+	__gshared SpinLock spinLock;
+
+	spinLock.lock();
 	Scheduler.addCPUCore(id);
 	SyscallHandler.init(Scheduler.getCPUInfo(id));
+	coresDone++;
+	spinLock.unlock();
 
-	while (true) {
-		asm @trusted nothrow @nogc {
-			// pause;
-			db 0xf3, 0x90;
-		}
-	}
+	// This will let the AP start working on tasks
+	// This call will never return!
+	Scheduler.yield();
+	Log.fatal("Core ", id, " is dead!");
 }
 
 extern (C) void kmain(PowerDAPI* papi) {
@@ -62,30 +68,42 @@ extern (C) void kmain(PowerDAPI* papi) {
 	initFS(papi.getModule("tarfs"));
 
 	{
+		coresDone++; // Main Core
 		papi.toLoader.mainAP = &kmainAP;
 		papi.toLoader.done = true;
-		while (true) {
+		while (papi.cpus.cpuThreads.length != coresDone) {
 			LAPIC.sleep(500);
-			asm @trusted nothrow @nogc {
-				// pause;
-				db 0xf3, 0x90;
-			}
-			Scheduler.cpuInfoMutex.lock();
-			bool res = Scheduler.coresActive == papi.cpus.cpuThreads.length;
-			Scheduler.cpuInfoMutex.unlock();
-			if (res)
-				break;
 		}
 	}
 
-	Scheduler.isEnabled = true;
+	Scheduler.isEnabled = false;
 
 	size_t counter;
 	while (true) {
-		VGA.writeln("counter: ", counter++);
+		const string c = "\xB0\xB1\xB2\xDB";
+		const size_t cl = c.length;
+		VGA.color = CGASlotColor(CGAColor.yellow, CGAColor.darkGrey);
+		VGA.x = 0;
+		VGA.y = 23;
+		counter++;
+
+		size_t v = counter;
+
+		size_t pad0 = 80 / 2 - 20 / 2;
+		foreach (i; 0 .. pad0)
+			VGA.write(' ');
+
+		foreach (i; 0 .. 20) {
+			VGA.write(c[v % cl]);
+			v /= cl;
+		}
+		foreach (i; 0 .. pad0)
+			VGA.write(' ');
+
 		asm @trusted nothrow @nogc {
 			// pause;
-			db 0xf3, 0x90;
+			//db 0xf3, 0x90;
+			hlt;
 		}
 	}
 
