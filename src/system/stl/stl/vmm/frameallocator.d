@@ -22,23 +22,27 @@ public static:
 	///
 	void init(ulong maxFrames, ulong usedFrames, ulong[] bitmaps, ulong currentBitmapIdx) @trusted {
 		import stl.address : memcpy;
+
 		_maxFrames = maxFrames;
 		_usedFrames = usedFrames;
 		memcpy(&_bitmaps[0], &bitmaps[0], ulong.sizeof * _bitmaps.length);
 		_currentBitmapIdx = currentBitmapIdx;
 
-		preAllocateFrames();
+		foreach (ref ulong frame; _preallocated)
+			frame = ulong.max;
 	}
 
 	///
 	void preAllocateFrames() @trusted {
-		foreach (ref ulong frame; _preallocated)
-			frame = ulong.max;
+		_lock.lock;
+		scope (exit)
+			_lock.unlock;
 		_allocPreAlloc(); // Add some nodes to _preallocated
 	}
 
 	///
 	void markRange(PhysAddress start, PhysAddress end) @trusted {
+		_lock.lock;
 		ulong curFrame = start / 0x1000;
 		const ulong endFrame = end / 0x1000;
 
@@ -46,6 +50,7 @@ public static:
 			_bitmaps[curFrame / 64] = ulong.max;
 			curFrame += 64;
 		}
+		_lock.unlock;
 
 		for (; curFrame < endFrame; curFrame++)
 			markFrame(curFrame);
@@ -53,6 +58,9 @@ public static:
 
 	///
 	void markFrame(ulong idx) @trusted {
+		_lock.lock;
+		scope (exit)
+			_lock.unlock;
 		foreach (ref ulong frame; _preallocated)
 			if (frame == idx) {
 				frame = ulong.max;
@@ -73,7 +81,10 @@ public static:
 	}
 
 	///
-	ulong getFrame() {
+	ulong getFrame() @trusted {
+		_lock.lock;
+		scope (exit)
+			_lock.unlock;
 		ulong getFrameImpl(bool tryAgain) @trusted {
 			foreach (idx, ref ulong frame; _preallocated) {
 				if (frame != ulong.max) {
@@ -111,6 +122,9 @@ public static:
 
 	///
 	void freeFrame(ulong idx) @trusted {
+		_lock.lock;
+		scope (exit)
+			_lock.unlock;
 		if (idx == 0)
 			return;
 		foreach (ref ulong frame; _preallocated)
@@ -132,12 +146,21 @@ public static:
 	}
 
 	///
-	PhysAddress alloc() {
-		return PhysAddress(getFrame() << 12);
+	PhysAddress alloc() @trusted {
+		import stl.io.log;
+
+		auto p = PhysAddress(getFrame() << 12);
+		debug (FrameAllocator)
+			Log.debug_("Alloc: ", p);
+		return p;
 	}
 
 	/// Allocates 512 frames, returns the first one
 	PhysAddress alloc512() @trusted {
+		_lock.lock;
+		scope (exit)
+			_lock.unlock;
+
 		ulong firstGood;
 		ulong count;
 		while (_currentBitmapIdx < _maxFrames) {
@@ -160,11 +183,20 @@ public static:
 		foreach (idx; 0 .. 8)
 			_bitmaps[firstGood + idx] = ulong.max;
 
-		return PhysAddress((firstGood * 64) << 12);
+		import stl.io.log;
+
+		auto p = PhysAddress((firstGood * 64) << 12);
+		debug (FrameAllocator)
+			Log.debug_("Alloc512: ", p);
+		return p;
 	}
 
 	///
 	void free(PhysAddress memory) @trusted {
+		import stl.io.log;
+
+		debug (FrameAllocator)
+			Log.debug_("free: ", memory);
 		freeFrame(memory.num / 0x1000);
 	}
 
@@ -172,6 +204,7 @@ public static:
 	@property ulong maxFrames() @trusted {
 		return _maxFrames;
 	}
+
 	@property void maxFrames(ulong maxFrames) @trusted {
 		_maxFrames = maxFrames;
 	}
@@ -192,7 +225,11 @@ public static:
 	}
 
 private static:
+	import stl.spinlock : SpinLock;
+
 	enum ulong _maxmem = 0x100_0000_0000 - 1; //pow(2, 40)
+
+	__gshared SpinLock _lock;
 
 	__gshared ulong _maxFrames = ulong.max;
 	__gshared ulong _usedFrames;
