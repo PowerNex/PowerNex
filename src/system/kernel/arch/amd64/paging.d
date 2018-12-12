@@ -582,6 +582,8 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 
 	size_t id = LAPIC.getCurrentID();
 
+	Log.info("PF: ", regs.rip, " CR2: ", regs.cr2);
+
 	AMD64Paging paging = AMD64Paging(cpuRetCR3.PhysAddress, false);
 
 	with (regs) {

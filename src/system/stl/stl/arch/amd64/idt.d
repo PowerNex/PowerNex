@@ -338,6 +338,8 @@ private void _onGPF(Registers* regs) @safe {
 		size_t id = LAPIC.getCurrentID();
 		Log.Func func = Log.getFuncName(rip);
 
+		Log.info("GPF: ", rip);
+
 		// dfmt off
 		Log.fatal("===> GeneralProtectionFault (CPU ", id, ")", "\n",
 			"                          | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",

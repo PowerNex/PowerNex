@@ -526,6 +526,8 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 
 	size_t id = LAPIC.getCurrentID();
 
+	Log.info("PF: ", regs.rip, " CR2: ", regs.cr2);
+
 	with (regs) {
 		const ulong virtAddr = cr2.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
