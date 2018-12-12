@@ -178,10 +178,47 @@ private static:
 			 void isr` ~ id.stringof[0 .. $ - 2] ~ `() @trusted {
 				asm pure @trusted nothrow @nogc {
 					naked;
+					cli;
 					` ~ (hasError ? "" : "push -1UL;") ~ `
 					push ` ~ id.stringof ~ `;
 
-					jmp isrCommon;
+					push RAX;
+					push RBX;
+					push RCX;
+					push RDX;
+					push RSI;
+					push RDI;
+					push RBP;
+					push R8;
+					push R9;
+					push R10;
+					push R11;
+					push R12;
+					push R13;
+					push R14;
+					push R15;
+
+					mov RDI, RSP;
+					call isrHandler;
+
+					pop R15;
+					pop R14;
+					pop R13;
+					pop R12;
+					pop R11;
+					pop R10;
+					pop R9;
+					pop R8;
+					pop RBP;
+					pop RDI;
+					pop RSI;
+					pop RDX;
+					pop RCX;
+					pop RBX;
+					pop RAX;
+
+					add RSP, 16;
+					db 0x48, 0xCF; //iretq;
 				}
 			}
 		`;
@@ -220,53 +257,6 @@ private static:
 			nop;
 			nop;
 			nop;
-			sti;
-			db 0x48, 0xCF; //iretq;
-		}
-	}
-
-	extern (C) void isrCommon() @trusted {
-		asm pure nothrow {
-			naked;
-			cli;
-			push RAX;
-			push RBX;
-			push RCX;
-			push RDX;
-			push RSI;
-			push RDI;
-			push RBP;
-			push R8;
-			push R9;
-			push R10;
-			push R11;
-			push R12;
-			push R13;
-			push R14;
-			push R15;
-			sti;
-
-			mov RDI, RSP;
-			call isrHandler;
-
-			cli;
-			pop R15;
-			pop R14;
-			pop R13;
-			pop R12;
-			pop R11;
-			pop R10;
-			pop R9;
-			pop R8;
-			pop RBP;
-			pop RDI;
-			pop RSI;
-			pop RDX;
-			pop RCX;
-			pop RBX;
-			pop RAX;
-
-			add RSP, 16;
 			sti;
 			db 0x48, 0xCF; //iretq;
 		}
