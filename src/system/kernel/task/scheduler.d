@@ -61,14 +61,14 @@ public static:
 
 			while (true) {
 				*pixel = first;
-				asm @trusted nothrow @nogc {
+				asm pure @trusted nothrow @nogc {
 					mov RAX, 1; // yield
 					//syscall; /// Can't use syscall due to sysret sets CPL=3
 					int 0x80;
 				}
 
 				*pixel = second;
-				asm @trusted nothrow @nogc {
+				asm pure @trusted nothrow @nogc {
 					mov RAX, 1; // yield
 					//syscall;
 					int 0x80;
@@ -230,7 +230,7 @@ private static:
 		{ // Saving
 			ulong storeRBP = void;
 			ulong storeRSP = void;
-			asm @trusted nothrow @nogc {
+			asm pure @trusted nothrow @nogc {
 				mov storeRBP[RBP], RBP;
 				mov storeRSP[RBP], RSP;
 			}
@@ -247,7 +247,7 @@ private static:
 					instructionPtr = storeRIP;
 					if (fpuEnabled) {
 						ubyte[] storeFPU = fpuStorage;
-						asm {
+						asm pure @trusted nothrow @nogc {
 							fxsave storeFPU;
 						}
 						fpuDisable();
@@ -281,7 +281,8 @@ private static:
 
 				SyscallHandler.setKernelStack(cpuInfo);
 			}
-			asm {
+
+			asm pure @trusted nothrow @nogc {
 				mov RAX, RBP; // RBP will be overritten below
 
 				mov RBX, storeRIP[RAX];
@@ -295,7 +296,7 @@ private static:
 
 	void _initIdle(CPUInfo* cpuInfo) @trusted {
 		extern (C) static void idle() {
-			asm {
+			asm pure @trusted nothrow @nogc {
 				naked;
 			start:
 				sti;

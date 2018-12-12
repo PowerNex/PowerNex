@@ -156,7 +156,7 @@ Example ~cat~ program
 
     auto strPtr = str.ptr;
     size_t strLen = str.length;
-    asm @nogc nothrow {
+    asm pure @trusted nothrow @nogc {
       mov write, RAX;
       mov stdio, RDI;
       mov strPtr, RSI;

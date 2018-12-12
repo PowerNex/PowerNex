@@ -10,7 +10,7 @@ size_t write(StdFile fileID, string msg) {
 	size_t ret = void;
 	auto msgPtr = msg.ptr;
 	auto msgLength = msg.length;
-	asm @trusted @nogc nothrow {
+	asm pure @trusted nothrow @nogc {
 		mov RAX, 2;
 		mov RDI, fileID;
 		mov RSI, msgPtr;

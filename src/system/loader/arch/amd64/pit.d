@@ -32,7 +32,7 @@ public static:
 		size_t endAt = _counter + amount;
 
 		while (_counter < endAt) {
-			asm pure nothrow {
+			asm pure @trusted nothrow @nogc {
 				hlt;
 			}
 		}

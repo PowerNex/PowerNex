@@ -176,7 +176,7 @@ private extern (C) int _d_run_main(int argc, char** argv, MainFunc mainFunc) {
 private extern (C) int main(int argc, char** argv);
 
 private extern (C) void _start() {
-	asm @trusted @nogc nothrow {
+	asm pure @trusted nothrow @nogc {
 		naked;
 		call main;
 		mov RDI, RAX;

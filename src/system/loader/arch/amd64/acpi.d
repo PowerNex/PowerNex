@@ -825,7 +825,7 @@ public static: ///
 		import stl.text : HexInt;
 		import stl.io.vga : VGA;
 
-		asm @trusted pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			cli;
 		}
 
@@ -858,7 +858,7 @@ public static: ///
 		import powerd.api : getPowerDAPI;
 		import stl.arch.amd64.ioport : inp, outp;
 
-		asm @trusted pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			cli;
 		}
 

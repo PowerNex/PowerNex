@@ -19,7 +19,7 @@ T abs(T)(T i) {
 ///
 ulong log2(ulong value) {
 	ulong result;
-	asm pure nothrow {
+	asm pure @trusted nothrow @nogc {
 		bsr RAX, value;
 		mov result, RAX;
 	}

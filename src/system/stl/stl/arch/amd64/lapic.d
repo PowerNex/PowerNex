@@ -42,7 +42,7 @@ public static:
 		{ // check cpuid for x2apic
 			enum x2APICFlag = 1 << 21;
 			uint ecxValue = void;
-			asm pure nothrow @trusted {
+			asm pure @trusted nothrow @nogc {
 				mov EAX, 1;
 				cpuid;
 				mov ecxValue, ECX;

@@ -119,7 +119,7 @@ public static:
 private static:
 	ulong _get(MSRValue id) {
 		uint low, high;
-		asm @trusted pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			mov ECX, id;
 			rdmsr;
 			mov high, EDX;
@@ -132,7 +132,7 @@ private static:
 	void _set(MSRValue id, ulong value) {
 		uint low = cast(uint)value;
 		uint high = cast(uint)(value >> 32);
-		asm @trusted pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			mov EAX, low;
 			mov EDX, high;
 			mov ECX, id;

@@ -133,7 +133,7 @@ public static:
 			while (!_e9 && !com1.canSend()) {
 			}
 			mutex.unlock();
-			asm pure nothrow @trusted {
+			asm pure @trusted nothrow @nogc {
 			forever:
 				cli;
 				hlt;
@@ -154,7 +154,7 @@ public static:
 		import stl.address : VirtAddress;
 
 		VirtAddress rbp;
-		asm pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			mov rbp, RBP;
 		}
 

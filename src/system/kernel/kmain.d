@@ -37,7 +37,7 @@ void kmainAP(size_t id) {
 	GDT.flush(id);
 	IDT.flush();
 
-	asm pure nothrow {
+	asm pure @trusted nothrow @nogc {
 		sti;
 	}
 
@@ -62,7 +62,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 	preInit(papi);
 	welcome();
 	init(papi);
-	asm pure nothrow {
+	asm pure @trusted nothrow @nogc {
 		sti;
 	}
 	initFS(papi.getModule("tarfs"));

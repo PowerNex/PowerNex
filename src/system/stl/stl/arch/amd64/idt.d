@@ -124,7 +124,7 @@ public static:
 	///
 	void flush() @trusted {
 		void* baseAddr = cast(void*)(&base);
-		asm pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			mov RAX, baseAddr;
 			lidt [RAX];
 		}
@@ -176,7 +176,7 @@ private static:
 	template _generateJump(ulong id, bool hasError = false) {
 		enum _generateJump = `
 			 void isr` ~ id.stringof[0 .. $ - 2] ~ `() @trusted {
-				asm pure nothrow {
+				asm pure @trusted nothrow @nogc {
 					naked;
 					` ~ (hasError ? "" : "push -1UL;") ~ `
 					push ` ~ id.stringof ~ `;
@@ -214,7 +214,7 @@ private static:
 	mixin(_generateJumps!(15, 255));
 
 	void isrIgnore() @trusted {
-		asm pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			naked;
 			cli;
 			nop;
@@ -356,7 +356,7 @@ private void _onGPF(Registers* regs) @safe {
 		// dfmt on
 
 		while (true) {
-			asm @trusted pure nothrow {
+			asm pure @trusted nothrow @nogc {
 				hlt;
 			}
 		}

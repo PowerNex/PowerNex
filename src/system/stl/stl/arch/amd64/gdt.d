@@ -118,7 +118,7 @@ public static:
 	void flush(size_t cpuID) @trusted {
 		void* baseAddr = cast(void*)(&_gdtBase);
 		ushort id = cast(ushort)((_tssID + cpuID * 2) * GDTDescriptor.sizeof);
-		asm pure nothrow {
+		asm pure @trusted nothrow @nogc {
 			mov RAX, baseAddr;
 			lgdt [RAX];
 			call cpuRefreshIREQ;

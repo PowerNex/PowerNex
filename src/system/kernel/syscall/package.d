@@ -75,7 +75,7 @@ private static:
 		enum kernelStack = 0;
 		enum userStack = 8;
 
-		asm @trusted nothrow @nogc {
+		asm pure @trusted nothrow @nogc {
 			naked;
 			//swapgs;
 			db 0x0F, 0x01, 0xF8;
@@ -120,7 +120,7 @@ private static:
 	}
 
 	void _returnFromSyscall() {
-		asm @trusted nothrow @nogc {
+		asm pure @trusted nothrow @nogc {
 			naked;
 			pop R15;
 			pop R14;

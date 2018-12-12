@@ -19,7 +19,7 @@ align(1):
 
 	@property VirtAddress cr0() const {
 		ulong val = void;
-		asm @trusted pure nothrow @nogc {
+		asm pure @trusted nothrow @nogc {
 			db 0x0f, 0x20, 0xc0; // mov %cr0, %rax
 			mov val, RAX;
 		}
@@ -28,7 +28,7 @@ align(1):
 
 	@property VirtAddress cr2() const {
 		ulong val = void;
-		asm @trusted pure nothrow @nogc {
+		asm pure @trusted nothrow @nogc {
 			db 0x0f, 0x20, 0xd0; // mov %cr2, %rax
 			mov val, RAX;
 		}
@@ -37,7 +37,7 @@ align(1):
 
 	@property VirtAddress cr3() const {
 		ulong val = void;
-		asm @trusted pure nothrow @nogc {
+		asm pure @trusted nothrow @nogc {
 			db 0x0f, 0x20, 0xd8; // mov %cr3, %rax
 			mov val, RAX;
 		}
@@ -46,7 +46,7 @@ align(1):
 
 	@property VirtAddress cr4() const {
 		ulong val = void;
-		asm @trusted pure nothrow @nogc {
+		asm pure @trusted nothrow @nogc {
 			db 0x0f, 0x20, 0xe0; // mov %cr4, %rax
 			mov val, RAX;
 		}

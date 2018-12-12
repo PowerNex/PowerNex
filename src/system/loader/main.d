@@ -72,7 +72,7 @@ extern (C) void mainAP() @safe {
 
 	auto done = &getPowerDAPI().toLoader.done;
 	while (!(*done)) {
-		asm @trusted nothrow @nogc {
+		asm pure @trusted nothrow @nogc {
 			// pause;
 			db 0xf3, 0x90;
 		}
@@ -280,7 +280,7 @@ extern (C) ulong main() @safe {
 
 	outputBoth("Main: ", cast(void*)main, "\tpAPI: ", cast(void*)papi, "\tStack: ", cast(void*)stack);
 
-	asm @trusted nothrow @nogc {
+	asm pure @trusted nothrow @nogc {
 		mov RDI, papi;
 		mov RAX, main;
 		mov RSP, stack;
