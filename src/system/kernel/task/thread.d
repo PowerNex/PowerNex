@@ -16,9 +16,8 @@ import arch.paging;
 
 	VirtAddress tls;
 	bool fpuEnabled;
-	align(64) ubyte[0x2000] fpuStorage;
+	align(16) ubyte[512] fpuStorage;
 	//TLS* tls;
-
 	Paging* paging;
 }
 
@@ -44,6 +43,8 @@ import arch.paging;
 		corruptedMemory
 	}
 
+	string name;
+
 	VMProcess* process;
 
 	size_t cpuAssigned;
@@ -66,9 +67,10 @@ import arch.paging;
 	// on State.Sleeping
 	WaitEvent[] waitsFor;
 
-	align(64) ubyte[0x1000] kernelStack_;
+	//TODO: Add boundaries for this.
+	align(64) ubyte[0x4000] kernelStack_;
 	@property VirtAddress kernelStack() @trusted {
-		return kernelStack_.ptr.VirtAddress + 0x1000;
+		return kernelStack_.ptr.VirtAddress + kernelStack_.length;
 	}
 
 	void signal(SignalType signal, string error) {
