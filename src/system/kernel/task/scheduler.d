@@ -274,7 +274,7 @@ private static:
 
 			newThread.threadState.paging.bind();
 
-			MSR.fs = newThread.threadState.tls;
+			MSR.fs = newThread.threadState.tls.VirtAddress;
 
 			GDT.setRSP0(cpuInfo.id, cpuInfo.currentThread.kernelStack);
 

@@ -180,8 +180,14 @@ extern (C) void kmain(PowerDAPI* papi) {
 		auto stackPtr = stack.ptr;
 
 		//auto argv = args.ptr;
+		import task.thread;
+		import stl.arch.amd64.msr;
 
-		Scheduler.getCurrentThread().name = initFile;
+		VMThread* t = Scheduler.getCurrentThread();
+		t.name = initFile;
+		t.image.elfImage = init;
+		t.threadState.tls = TLS.init(t);
+		MSR.fs = t.threadState.tls.VirtAddress;
 
 		outputBoth("Transferring control to the init elf, Good luck!");
 

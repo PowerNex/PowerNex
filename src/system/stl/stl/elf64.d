@@ -165,6 +165,13 @@ public:
 		//_printSectionHeaders();
 	}
 
+	ELF64ProgramHeader getProgramHeader(ELF64ProgramHeader.Type type) {
+		foreach (ELF64ProgramHeader ph; programHeaders)
+			if (ph.type == type)
+				return ph;
+		return ELF64ProgramHeader();
+	}
+
 	const(char)[] lookUpSectionName(uint nameIdx) @trusted {
 		import stl.text : strlen;
 

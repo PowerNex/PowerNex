@@ -6,18 +6,57 @@ import stl.vmm.heap;
 import stl.register;
 import stl.address;
 import stl.vector;
+import stl.elf64;
 
 import arch.paging;
+
+@safe struct TLS {
+	TLS* self;
+	ubyte[] tlsData;
+	VMThread* thread;
+
+	@disable this();
+
+	static TLS* init(VMThread* thread, bool currentData = true) @trusted {
+		/*if (currentData && thread.parent)
+			return init(thread, thread.parent.threadState.tls.tlsData);
+		else*/
+
+		ELF64ProgramHeader ph = thread.image.elfImage.getProgramHeader(ELF64ProgramHeader.Type.tls);
+		return init(thread, ph.vAddr.array!ubyte(ph.memsz));
+	}
+
+	static TLS* init(VMThread* thread, ubyte[] data) @trusted {
+		//Heap.allocate(data.length + TLS.sizeof).VirtAddress;
+		VirtAddress addr = VirtAddress(0x0514_0000_0000);
+		thread.threadState.paging.mapAddress(addr, PhysAddress(), VMPageFlags.user | VMPageFlags.present | VMPageFlags.writable);
+		thread.threadState.paging.makeUserAccessable(addr);
+		addr.memcpy(data.VirtAddress, data.length);
+		TLS* tls = (addr + data.length).ptr!TLS;
+		tls.self = tls;
+		tls.tlsData = addr.ptr!ubyte[0 .. data.length];
+		tls.thread = thread;
+		return tls;
+	}
+
+	void destroy() {
+		//Heap.free(VirtAddress(tlsData).array!ubyte(tlsData.length + TLS.sizeof));
+		thread.threadState.paging.unmap(tlsData.VirtAddress, true);
+	}
+}
+
+@safe struct ImageInfo {
+	ELF64 elfImage;
+}
 
 @safe struct ThreadState {
 	VirtAddress basePtr; // rbp;
 	VirtAddress stackPtr; // rsp;
 	VirtAddress instructionPtr; // rip;
 
-	VirtAddress tls;
 	bool fpuEnabled;
 	align(16) ubyte[512] fpuStorage;
-	//TLS* tls;
+	TLS* tls;
 	Paging* paging;
 }
 
@@ -51,6 +90,7 @@ import arch.paging;
 
 	State state;
 	VirtMemoryRange stack;
+	ImageInfo image;
 
 	bool kernelTask;
 
