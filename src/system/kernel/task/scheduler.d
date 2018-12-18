@@ -77,13 +77,13 @@ public static:
 		}
 
 		static foreach (ubyte x; 0 .. 80) {
-			addKernelTask(&_cpuInfo[0], &spinner, (VirtAddress(0xb8000) + (0 * 80 + x) * 2 + 1).ptr);
-			addKernelTask(&_cpuInfo[1], &spinner, (VirtAddress(0xb8000) + (24 * 80 + x) * 2 + 1).ptr);
+			addKernelTask("CPU 0 - Spinner", &_cpuInfo[0], &spinner, (VirtAddress(0xb8000) + (0 * 80 + x) * 2 + 1).ptr);
+			addKernelTask("CPU 1 - Spinner", &_cpuInfo[1], &spinner, (VirtAddress(0xb8000) + (24 * 80 + x) * 2 + 1).ptr);
 		}
 
 		static foreach (ubyte y; 1 .. 24) {
-			addKernelTask(&_cpuInfo[2], &spinner, (VirtAddress(0xb8000) + (y * 80 + 0) * 2 + 1).ptr);
-			addKernelTask(&_cpuInfo[3], &spinner, (VirtAddress(0xb8000) + (y * 80 + 79) * 2 + 1).ptr);
+			addKernelTask("CPU 2 - Spinner", &_cpuInfo[2], &spinner, (VirtAddress(0xb8000) + (y * 80 + 0) * 2 + 1).ptr);
+			addKernelTask("CPU 3 - Spinner", &_cpuInfo[3], &spinner, (VirtAddress(0xb8000) + (y * 80 + 79) * 2 + 1).ptr);
 		}
 	}
 
@@ -143,7 +143,7 @@ public static:
 		_switchProcess();
 	}
 
-	void addKernelTask(CPUInfo* cpuInfo, KernelTaskFunction func, void* userdata) {
+	void addKernelTask(string threadName, CPUInfo* cpuInfo, KernelTaskFunction func, void* userdata) {
 		VMProcess* newProcess = newStruct!VMProcess(getKernelPaging.tableAddress);
 		enum stackSize = 0x1000 - BuddyHeader.sizeof;
 		ubyte[] taskStack_ = Heap.allocate(stackSize);
@@ -180,6 +180,7 @@ public static:
 		set(taskStackPtr, newThread.syscallRegisters);
 
 		with (newThread) {
+			name = threadName;
 			process = newProcess;
 			state = VMThread.State.active;
 			threadState.basePtr = threadState.stackPtr = taskStackPtr;
@@ -238,7 +239,6 @@ private static:
 			ulong storeRIP = getRIP();
 			if (storeRIP == _switchMagic) // Swap is done
 				return;
-
 			// This will only be false the first time it is called!
 			if (cpuInfo.currentThread) {
 				with (cpuInfo.currentThread.threadState) {
@@ -246,10 +246,13 @@ private static:
 					stackPtr = storeRSP;
 					instructionPtr = storeRIP;
 					if (fpuEnabled) {
-						ubyte[] storeFPU = fpuStorage;
+						ubyte* storeFPU = fpuStorage.ptr;
+
 						asm pure @trusted nothrow @nogc {
-							fxsave storeFPU;
+							mov RAX, storeFPU;
+							fxsave [RAX];
 						}
+
 						fpuDisable();
 					}
 				}
@@ -260,7 +263,6 @@ private static:
 				}
 			}
 		}
-
 		{ // Loading
 			VMThread* newThread = cpuInfo.currentThread = cpuInfo.allThread.length ? cpuInfo.allThread.removeAndGet(0) : cpuInfo.idleThread;
 			newThread.state = VMThread.State.running;
@@ -312,6 +314,7 @@ private static:
 
 		VMThread* idleThread = newStruct!VMThread;
 		with (idleThread) {
+			name = "Idle Thread";
 			process = idleProcess;
 			state = VMThread.State.active;
 			threadState.basePtr = threadState.stackPtr = taskStack.end;
@@ -337,10 +340,11 @@ private static:
 
 		VMThread* kernelThread = newStruct!VMThread;
 		with (kernelThread) {
+			name = "Kernel Thread";
 			process = kernelProcess;
 			cpuAssigned = 0;
 			state = VMThread.State.running;
-			threadState.paging = getKernelPaging();
+			threadState.paging = &kernelProcess.backend;
 			stack = currentStack;
 			kernelTask = false;
 		}

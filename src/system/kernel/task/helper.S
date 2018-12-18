@@ -6,7 +6,7 @@
 
 .global switchToUserMode
 .type switchToUserMode, %function
-switchToUserMode: // RIP = %rdi, RSP = %rsi
+switchToUserMode: // RIP = %rdi, RSP = %rsi, RDI = %rdx, RSI = %rcx
 	// Data segmentation registers
 	mov $USER_SS, %ax
 	mov %ax, %ds
@@ -38,12 +38,15 @@ switchToUserMode: // RIP = %rdi, RSP = %rsi
 	// Instruction pointer
 	push %rdi
 
+	// Argc
+	mov %rdx, %rdi
+	// Argv
+	mov %rcx, %rsi
+
 	mov $0, %rax
 	mov %rax, %rbx
 	mov %rax, %rcx
 	mov %rax, %rdx
-	mov %rax, %rsi
-	mov %rax, %rdi
 	mov %rax, %rbp
 	mov %rax, %r8
 	mov %rax, %r9

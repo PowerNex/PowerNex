@@ -181,7 +181,9 @@ private extern (C) void _start() {
 		call main;
 		mov RDI, RAX;
 		mov RAX, 0;
-		//syscall;
-		int 0x80;
+		syscall;
+
+	loop:
+		jmp loop;
 	}
 }

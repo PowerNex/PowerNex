@@ -40,11 +40,12 @@ public static:
 		setKernelStack(cpuInfo);
 
 		MSR.star = (_kernelCS << 32UL | _userCS << 48UL);
-		MSR.lStar = VirtAddress(onSyscallList[cpuInfo.id]);
+		MSR.lStar = VirtAddress(&_onSyscall).num;
 		MSR.cStar = 0;
 		MSR.sfMask = _eflagsInterrupt;
 
 		MSR.gsKernel = VirtAddress(&_storage[cpuInfo.id]);
+		MSR.gs = VirtAddress(&_storage[cpuInfo.id]);
 
 		IDT.register(0x80, cast(IDT.InterruptCallback)&_onSyscallHandler);
 
@@ -64,32 +65,37 @@ private static:
 	enum ulong _eflagsInterrupt = 1 << 9;
 
 	__gshared SyscallStorage[maxCPUCount] _storage;
-	__gshared void function()[] onSyscallList = () {
-		void function()[] ret;
-		static foreach (size_t i; 0 .. maxCPUCount)
-			ret ~= &_onSyscall!i;
-		return ret;
-	}();
 
-	void _onSyscall(size_t id)() {
-		enum kernelStack = 0;
-		enum userStack = 8;
+	void _onSyscall() {
+		enum kernelStack = SyscallStorage.kernelStack.offsetof;
+		enum userStack = SyscallStorage.userStack.offsetof;
 
 		asm pure @trusted nothrow @nogc {
 			naked;
 			//swapgs;
+
 			db 0x0F, 0x01, 0xF8;
 
-			mov GS : [userStack], RSP;
-			mov RSP, GS : [kernelStack];
+			//mov QWORD PTR gs:userStack, rsp
+			db 0x65, 0x48, 0x89, 0x24, 0x25;
+			di userStack;
+
+			//mov rsp, QWORD PTR gs:kernelStack
+			db 0x65, 0x48, 0x8b, 0x24, 0x25;
+			di kernelStack;
 
 			// push userStack
-			push GS : [userStack]; /// *userStack
+			// push QWORD PTR gs:userStack
+			db 0x65, 0xff, 0x34, 0x25;
+			di userStack;
 
 			push RSP;
 
 			push _userCS + 8; // SS
-			push GS : [userStack]; // RSP
+			// push QWORD PTR gs:userStack // RSP
+			db 0x65, 0xff, 0x34, 0x25;
+			di userStack;
+
 			push R11; // Flags
 			push _userCS; // CS
 			push RCX; // RIP
@@ -114,7 +120,7 @@ private static:
 			push R15;
 
 			mov RDI, RSP;
-			//call _onSyscallHandler;
+			call _onSyscallHandler;
 			jmp _returnFromSyscall;
 		}
 	}

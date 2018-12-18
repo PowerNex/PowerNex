@@ -18,6 +18,7 @@ import stl.vmm.vmm;
 import fs.tarfs;
 import task.scheduler;
 import syscall;
+import stl.elf64;
 
 import powerd.api;
 
@@ -76,10 +77,10 @@ extern (C) void kmain(PowerDAPI* papi) {
 		}
 	}
 
-	Scheduler.isEnabled = false;
+	Scheduler.isEnabled = true;
 
 	size_t counter;
-	while (true) {
+	while (false) {
 		const string c = "\xB0\xB1\xB2\xDB";
 		const size_t cl = c.length;
 		VGA.color = CGASlotColor(CGAColor.yellow, CGAColor.darkGrey);
@@ -107,7 +108,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 		}
 	}
 
-	string initFile = "/bin/init";
+	string initFile = "/binaries/init";
 	TarFSNode* initNode = cast(TarFSNode*)initrdFS.findNode(initFile);
 	if (!initNode)
 		Log.fatal("'", initFile, "' is missing, boot halted!");
@@ -116,10 +117,82 @@ extern (C) void kmain(PowerDAPI* papi) {
 		import stl.elf64;
 
 		ELF64 init = ELF64(VirtMemoryRange.fromArray(initNode.data));
-		*VirtAddress(0).ptr!size_t = 0x1337;
 
 		if (!init.isValid)
 			Log.fatal("'", initFile, "' is not a ELF, boot halted!");
+
+		ELFInstance initELF = instantiateELF(init);
+
+		void outputBoth(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) @trusted {
+			import stl.io.vga : VGA;
+			import stl.io.log : Log;
+
+			VGA.writeln(args);
+			Log.info!(Args)(args, file, func, line);
+		}
+
+		outputBoth("initELF.main: ", VirtAddress(initELF.main));
+		outputBoth("initELF.ctors: ");
+		foreach (idx, ctor; initELF.ctors)
+			outputBoth("\t", idx, ": ", VirtAddress(ctor));
+
+		outputBoth("initELF.dtors: ");
+		foreach (idx, dtor; initELF.dtors)
+			outputBoth("\t", idx, ": ", VirtAddress(dtor));
+
+		() @trusted {
+			foreach (ctor; initELF.ctors) {
+				outputBoth("\t Running: ", VirtAddress(ctor));
+				ctor();
+			}
+		}();
+
+		auto stack = newUserStack();
+
+		VirtAddress set(T)(ref VirtAddress stack, T value) {
+			import stl.trait : Unqual;
+
+			auto size = T.sizeof;
+			size = (size + 7) & ~7;
+			stack -= size;
+			*stack.ptr!(Unqual!T) = value;
+			return stack;
+		}
+
+		VirtAddress setArray(T)(ref VirtAddress stack, T[] value) {
+			import stl.trait : Unqual;
+
+			auto size = T.sizeof * value.length;
+			size = (size + 7) & ~7;
+			stack -= size;
+			stack.array!(Unqual!T)(value.length)[] = value[];
+			return stack;
+		}
+
+		size_t[4] argvArray = [
+			setArray(stack, "/binaries/init\0").num, setArray(stack, "1\0").num, setArray(stack, "2\0").num, setArray(stack, "three\0").num
+		];
+
+		auto switchToUserMode = &.switchToUserMode;
+		auto main = initELF.main;
+		auto argc = argvArray.length;
+		auto argv = setArray(stack, argvArray).ptr;
+		auto stackPtr = stack.ptr;
+
+		//auto argv = args.ptr;
+
+		Scheduler.getCurrentThread().name = initFile;
+
+		outputBoth("Transferring control to the init elf, Good luck!");
+
+		asm @trusted nothrow @nogc {
+			mov RAX, switchToUserMode;
+			mov RDI, main;
+			mov RSI, stackPtr;
+			mov RDX, argc;
+			mov RCX, argv;
+			jmp RAX;
+		}
 	}
 
 	VGA.color = CGASlotColor(CGAColor.red, CGAColor.yellow);
@@ -127,6 +200,17 @@ extern (C) void kmain(PowerDAPI* papi) {
 	Log.error("kmain functions has exited!");
 	while (true) {
 	}
+}
+
+extern extern (C) void switchToUserMode();
+extern (C) VirtAddress newUserStack() @trusted {
+	VirtAddress stack = makeAddress(255, 511, 511, 511);
+	static foreach (i; 0 .. 0x10) {
+		if (!getKernelPaging.mapAddress(stack - 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.user))
+			return VirtAddress();
+		getKernelPaging().makeUserAccessable(stack - 0x1000 * i);
+	}
+	return stack + 0x1000;
 }
 
 void preInit(PowerDAPI* papi) {
@@ -230,4 +314,78 @@ void initFS(Module* disk) @trusted {
 	_superNode = newStruct!TarFSSuperNode(&_blockDevice);
 
 	initrdFS = _superNode.base.getNode(0);
+}
+
+// TODO: Move to scheduler.d
+///
+struct ELFInstance {
+	import powerd.api : PowerDAPI;
+
+	int function(int argc, char** argv) @system main;
+	size_t function() @system[] ctors;
+	size_t function() @system[] dtors;
+}
+
+ELFInstance instantiateELF(ref ELF64 elf) @safe {
+	import stl.io.log : Log;
+	import stl.vmm.frameallocator : FrameAllocator;
+	import arch.amd64.paging : Paging, VMPageFlags;
+
+	ELFInstance instance;
+	instance.main = () @trusted { return cast(typeof(instance.main))elf.header.entry.ptr; }();
+
+	foreach (ref ELF64ProgramHeader hdr; elf.programHeaders) {
+		if (hdr.type != ELF64ProgramHeader.Type.load)
+			continue;
+
+		VirtAddress vAddr = hdr.vAddr;
+		VirtAddress data = elf.elfData.start + hdr.offset;
+		PhysAddress pData = PhysAddress(elf.elfData.start) + hdr.offset;
+
+		Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", pData, " - ", pData + hdr.memsz, "]");
+		FrameAllocator.markRange(pData, pData + hdr.memsz);
+		for (size_t offset; offset < hdr.memsz; offset += 0x1000) {
+			import stl.number : min;
+
+			VirtAddress addr = vAddr + offset;
+			PhysAddress pAddr = pData + offset;
+
+			// Map with writable
+			if (!getKernelPaging.mapAddress(addr, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false))
+				Log.fatal("Failed to map ", addr, "( to ", pAddr, ")");
+
+			// Copying the data over, and zeroing the excess
+			size_t dataLen = (offset > hdr.filesz) ? 0 : min(hdr.filesz - offset, 0x1000);
+			size_t zeroLen = min(0x1000 - dataLen, hdr.memsz - offset);
+
+			addr.memcpy(data + offset, dataLen);
+			(addr + dataLen).memset(0, zeroLen);
+
+			// Remapping with correct flags
+			VMPageFlags flags = VMPageFlags.user;
+			if (hdr.flags & ELF64ProgramHeader.Flags.r)
+				flags |= VMPageFlags.present;
+			if (hdr.flags & ELF64ProgramHeader.Flags.w)
+				flags |= VMPageFlags.writable;
+			if (hdr.flags & ELF64ProgramHeader.Flags.x)
+				flags |= VMPageFlags.execute;
+
+			if (!getKernelPaging.remap(addr, PhysAddress(), flags))
+				Log.fatal("Failed to remap ", addr);
+
+			getKernelPaging().makeUserAccessable(addr);
+		}
+	}
+
+	alias getSectionRange = (string name) {
+		foreach (ref ELF64SectionHeader section; elf.sectionHeaders)
+			if (elf.lookUpSectionName(section.name) == name)
+				return VirtMemoryRange(section.addr, section.addr + section.size).array!(size_t function() @system);
+		return null;
+	};
+
+	instance.ctors = getSectionRange(".ctors");
+	instance.dtors = getSectionRange(".dtors");
+
+	return instance;
 }
