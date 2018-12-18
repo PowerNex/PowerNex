@@ -571,15 +571,6 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 	import stl.arch.amd64.lapic : LAPIC;
 	import stl.text : HexInt;
 
-	() @trusted {
-		size_t id = LAPIC.getCurrentID();
-		Log.warning("[PageFault: ", id, "] Validating regs:");
-		foreach (ref ubyte b; (cast(ubyte*)regs)[0 .. Registers.sizeof]) {
-			b = b;
-		}
-		Log.warning("[PageFault: ", id, "] regs is valid!");
-	}();
-
 	size_t id = LAPIC.getCurrentID();
 
 	Log.info("PF: ", regs.rip, " CR2: ", regs.cr2);
@@ -635,6 +626,12 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 
 		ulong cr3 = cpuRetCR3();
 
+		import stl.arch.amd64.msr;
+
+		auto fs = MSR.fs();
+		auto gs = MSR.gs();
+		auto gsKernel = MSR.gsKernel();
+
 		//dfmt off
 		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
 			"IRQ = ", intNumber, " | RIP = ", rip, "\n",
@@ -647,8 +644,10 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 			"R12 = ", r12, " | R13 = ", r13, "\n",
 			"R14 = ", r14, " | R15 = ", r15, "\n",
 			" CS = ", cs,  " |  SS = ", ss, "\n",
-			"CR0 = ", cr0," | CR2 = ", cr2, "\n",
+			"CR0 = ", cr0, " | CR2 = ", cr2, "\n",
 			"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
+			" FS = ", fs,  "\n",
+			" GS = ", gs,  " | gsK = ", gsKernel, "\n",
 			"Flags = ", flags.num.HexInt, "\n",
 			"Errorcode: ", errorCode, " (",
 				(errorCode & (1 << 0) ? " Present" : " NotPresent"),

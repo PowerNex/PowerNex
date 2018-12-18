@@ -116,7 +116,7 @@ public static:
 
 		flush();
 
-		asm {
+		asm pure @trusted nothrow @nogc {
 			sti;
 		}
 	}
@@ -289,6 +289,12 @@ private static:
 				size_t id = LAPIC.getCurrentID();
 				Log.Func func = Log.getFuncName(rip);
 
+				import stl.arch.amd64.msr;
+
+				auto fs = MSR.fs();
+				auto gs = MSR.gs();
+				auto gsKernel = MSR.gsKernel();
+
 				// dfmt off
 				Log.error("===> Unhandled interrupt (CPU ", id, ")", "\n",
 					"IRQ = ", intNumber.num!InterruptType, " (", intNumber.HexInt, ") | RIP = ", rip, " (", func.name, '+', func.diff.HexInt, ')', "\n",
@@ -303,6 +309,8 @@ private static:
 					" CS = ", cs,  " |  SS = ", ss, "\n",
 					"CR0 = ", cr0, " | CR2 = ", cr2, "\n",
 					"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
+					" FS = ", fs,  "\n",
+					" GS = ", gs,  " | gsK = ", gsKernel, "\n",
 					"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 				// dfmt on
 			}
@@ -315,20 +323,17 @@ private void _onGPF(Registers* regs) @safe {
 	import stl.text : HexInt;
 	import stl.arch.amd64.lapic : LAPIC;
 
-	() @trusted {
-		size_t id = LAPIC.getCurrentID();
-		Log.warning("[GeneralProtectionFault: ", id, "] Validating regs:");
-		foreach (ref ubyte b; (cast(ubyte*)regs)[0 .. Registers.sizeof]) {
-			b = b;
-		}
-		Log.warning("[GeneralProtectionFault: ", id, "] regs is valid!");
-	}();
-
 	with (regs) {
 		size_t id = LAPIC.getCurrentID();
 		Log.Func func = Log.getFuncName(rip);
 
 		Log.info("GPF: ", rip);
+
+		import stl.arch.amd64.msr;
+
+		auto fs = MSR.fs();
+		auto gs = MSR.gs();
+		auto gsKernel = MSR.gsKernel();
 
 		// dfmt off
 		Log.fatal("===> GeneralProtectionFault (CPU ", id, ")", "\n",
@@ -344,6 +349,8 @@ private void _onGPF(Registers* regs) @safe {
 			" CS = ", cs,  " |  SS = ", ss, "\n",
 			"CR0 = ", cr0, " | CR2 = ", cr2, "\n",
 			"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
+			" FS = ", fs,  "\n",
+			" GS = ", gs,  " | gsK = ", gsKernel, "\n",
 			"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
 		// dfmt on
 

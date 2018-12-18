@@ -158,29 +158,6 @@ private static:
 		VMThread* thread = Scheduler.getCurrentThread();
 		//thread.inKernel = true;
 
-		if (regs.rip < 0x10_400000) {
-			size_t cpuID; // = LAPIC.getCurrentID();
-
-			Log.info("Regs: ", regs);
-
-			// dfmt off
-		with (regs)
-			Log.info("===> onSyscallHandler (CPU ", cpuID, ")", "\n",
-				"IRQ = ", intNumber.num!InterruptType, " (", intNumber.HexInt, ") | RIP = ", rip, "\n",
-				"RAX = ", rax, " | RBX = ", rbx, "\n",
-				"RCX = ", rcx, " | RDX = ", rdx, "\n",
-				"RDI = ", rdi, " | RSI = ", rsi, "\n",
-				"RSP = ", rsp, " | RBP = ", rbp, "\n",
-				" R8 = ", r8,  " |  R9 = ", r9, "\n",
-				"R10 = ", r10, " | R11 = ", r11, "\n",
-				"R12 = ", r12, " | R13 = ", r13, "\n",
-				"R14 = ", r14, " | R15 = ", r15, "\n",
-				" CS = ", cs,  " |  SS = ", ss, "\n",
-				"CR0 = ", cr0, " | CR2 = ", cr2, "\n",
-				"CR3 = ", cr3, " | CR4 = ", cr4, "\n",
-				"Flags = ", flags.num.HexInt, " | Errorcode = ", errorCode.num.HexInt);
-		// dfmt on
-		}
 		thread.syscallRegisters = *regs;
 
 		regs.rax &= 0xFF;
@@ -192,7 +169,7 @@ private static:
 					static foreach (attr; __traits(getAttributes, mixin(func))) {
 						static if (is(typeof(attr) == Syscall)) {
 		case attr.id:
-							//pragma(msg, "_generateFunctionCall!", func, " == ", _generateFunctionCall!func);
+							//pragma(msg, attr.id, ": _generateFunctionCall!", func, " == ", _generateFunctionCall!func);
 							mixin(_generateFunctionCall!("syscall.action." ~ module_ ~ "." ~ func));
 							break outer;
 						}
