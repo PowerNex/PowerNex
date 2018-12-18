@@ -103,7 +103,11 @@ import stl.address;
 		note = 4, ///
 		shlib = 5, ///
 		phdr = 6, ///
-		tls = 7 ///
+		tls = 7, ///
+
+		gnuEhFrame = 0x6474e550, /// GCC .eh_frame_hdr segment
+		gnuStack = 0x6474e551, /// Indicates stack executability
+		gnuRelRO = 0x6474e552 /// Read-only after relocation
 	}
 
 	enum Flags : uint {
@@ -137,14 +141,6 @@ struct ELF64Symbol {
 	ushort shndx; ///
 	VirtAddress value; ///
 	ulong size; ///
-}
-
-///
-@safe struct ELFInstance {
-	import powerd.api : PowerDAPI;
-
-	size_t function(PowerDAPI* powerDAPI) @system main;
-	size_t function() @system[] ctors;
 }
 
 ///

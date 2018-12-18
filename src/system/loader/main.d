@@ -78,7 +78,7 @@ extern (C) void mainAP() @safe {
 		}
 	}
 
-	() @trusted{ //
+	() @trusted { //
 		getPowerDAPI().toLoader.mainAP(id);
 	}();
 
@@ -90,13 +90,21 @@ import powerd.api.cpu : CPUThread;
 
 CPUThread* currentThread; /// The current threads structure
 
-ELFInstance instantiateELF(ref ELF64 elf) @safe {
+///
+@safe struct KernelELFInstance {
+	import powerd.api : PowerDAPI;
+
+	size_t function(PowerDAPI* powerDAPI) @system main;
+	size_t function() @system[] ctors;
+}
+
+KernelELFInstance instantiateELF(ref ELF64 elf) @safe {
 	import stl.io.log : Log;
 	import stl.vmm.frameallocator : FrameAllocator;
 	import arch.amd64.paging : Paging, VMPageFlags;
 
-	ELFInstance instance;
-	instance.main = () @trusted{ return cast(typeof(instance.main))elf.header.entry.ptr; }();
+	KernelELFInstance instance;
+	instance.main = () @trusted { return cast(typeof(instance.main))elf.header.entry.ptr; }();
 
 	foreach (ref ELF64ProgramHeader hdr; elf.programHeaders) {
 		if (hdr.type != ELF64ProgramHeader.Type.load)
@@ -163,7 +171,7 @@ extern (C) ulong main() @safe {
 	import arch.amd64.pic : PIC;
 	import arch.amd64.pit : PIT;
 	import arch.amd64.smp : SMP;
-	import stl.elf64 : ELF64, ELFInstance;
+	import stl.elf64 : ELF64;
 	import data.multiboot2 : Multiboot2;
 	import data.tls : TLS;
 	import stl.arch.amd64.com : COM;
@@ -207,10 +215,10 @@ extern (C) ulong main() @safe {
 	else
 		Log.fatal("No RSDP entry in the multiboot2 structure!");
 
-	() @trusted{ Log.warning("ct: ", &(getPowerDAPI.cpus.cpuThreads[0])); }();
+	() @trusted { Log.warning("ct: ", &(getPowerDAPI.cpus.cpuThreads[0])); }();
 	currentThread = &getPowerDAPI.cpus.cpuThreads[0];
 
-	() @trusted{ Log.warning("currentThread: ", currentThread); }();
+	() @trusted { Log.warning("currentThread: ", currentThread); }();
 
 	IOAPIC.analyze();
 
@@ -233,7 +241,7 @@ extern (C) ulong main() @safe {
 	*kELF = ELF64(kernelModule.toVirtual);
 	if (!kELF.isValid)
 		Log.fatal("Kernel ELF is not valid!");
-	ELFInstance kernel = instantiateELF(*kELF);
+	KernelELFInstance kernel = instantiateELF(*kELF);
 
 	outputBoth("kernel.main: ", VirtAddress(kernel.main));
 	outputBoth("kernel.ctors: ");
@@ -244,7 +252,7 @@ extern (C) ulong main() @safe {
 	// freeData = Heap.lastAddress(); ?
 
 	outputBoth("Kernel.ctors.length: ", kernel.ctors.length);
-	() @trusted{
+	() @trusted {
 		foreach (ctor; kernel.ctors) {
 			outputBoth("\t Running: ", VirtAddress(ctor));
 			if (VirtAddress(ctor) < 0xFFFFFFFF_80000000)
@@ -260,9 +268,9 @@ extern (C) ulong main() @safe {
 
 	auto main = kernel.main;
 	auto stack = newStackAP().ptr!ubyte;
-	auto papi = () @trusted{ return &getPowerDAPI(); }();
+	auto papi = () @trusted { return &getPowerDAPI(); }();
 
-	() @trusted{ //
+	() @trusted { //
 		papi.screenX = VGA.x;
 		papi.screenY = VGA.y;
 
