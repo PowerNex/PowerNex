@@ -461,6 +461,47 @@ public:
 		return VMPageFlags();
 	}
 
+	void makeUserAccessable(VirtAddress vAddr) {
+		const ushort pml4Idx = (vAddr.num >> 39) & 0x1FF;
+		const ushort pml3Idx = (vAddr.num >> 30) & 0x1FF;
+		const ushort pml2Idx = (vAddr.num >> 21) & 0x1FF;
+		const ushort pml1Idx = (vAddr.num >> 12) & 0x1FF;
+
+		PML4* pml4 = _getPML4();
+		PML3* pml3 = _getPML3(pml4Idx);
+		{
+			PML4.TableEntry* pml4Entry = &pml4.entries[pml4Idx];
+			if (!pml4Entry.present)
+				return;
+
+			pml4Entry.user = true;
+			_flush(pml3.VirtAddress);
+		}
+
+		PML2* pml2 = _getPML2(pml4Idx, pml3Idx);
+		{
+			PML3.TableEntry* pml3Entry = &pml3.entries[pml3Idx];
+			if (!pml3Entry.present)
+				return;
+
+			pml3Entry.user = true;
+			_flush(pml2.VirtAddress);
+		}
+
+		PML1* pml1 = _getPML1(pml4Idx, pml3Idx, pml2Idx);
+		{
+			PML2.TableEntry* pml2Entry = &pml2.entries[pml2Idx];
+			if (!pml2Entry.present)
+				return;
+
+			pml2Entry.user = true;
+			_flush(pml1.VirtAddress);
+		}
+
+		pml1.entries[pml1Idx].user = true;
+		_flush(vAddr);
+	}
+
 	@property bool isValid(VirtAddress vAddr) {
 		return vAddr && !!_getTableEntry(vAddr, false);
 	}
