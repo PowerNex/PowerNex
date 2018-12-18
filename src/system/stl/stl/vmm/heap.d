@@ -21,9 +21,11 @@ import stl.io.log : Log;
 static assert(BuddyHeader.sizeof == 2 * ulong.sizeof);
 
 T* newStruct(T, Args...)(Args args) @trusted {
+	import stl.text : HexInt;
+
 	T* p = cast(T*)Heap.allocate(T.sizeof).ptr;
 	if (!p)
-		Log.fatal("Failed to allocated ", T.stringof, " size: ", T.sizeof);
+		Log.fatal("Failed to allocated ", T.stringof, " size: ", T.sizeof.HexInt, " maxSize: ", Heap._maxSize.HexInt);
 	__gshared const T init = T.init;
 	memcpy(p, &init, T.sizeof);
 
@@ -173,7 +175,7 @@ public static:
 
 private static:
 	enum ubyte _lowerFactor = 5; // 32B
-	enum ubyte _upperFactor = 14; // 16KiB
+	enum ubyte _upperFactor = 20; // 1MiB
 	enum ulong _minSize = 2 ^^ _lowerFactor;
 	enum ulong _maxSize = 2 ^^ _upperFactor;
 	enum char[3] _magic = ['B', 'D', 'Y'];
