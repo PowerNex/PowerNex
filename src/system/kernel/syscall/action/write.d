@@ -6,7 +6,7 @@ import syscall;
 	import stl.io.vga : VGA;
 	import stl.io.log : Log;
 
-	VGA.writeln("[", fileID, "] ", msg);
+	VGA.write(msg);
 	Log.info("[", fileID, "] ", msg);
 	return msg.length;
 }
