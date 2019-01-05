@@ -230,7 +230,7 @@ private static:
 				enum generateWrapper = generateWrapper!(idx + 1, Trest) ~ data!(Trest[idx]);
 		}
 
-		enum _helperFunctions = generateWrapper!(enumMembers!LogLevel);
+		enum _helperFunctions = generateWrapper!(0, enumMembers!LogLevel);
 	}
 
 	void _printStackTrace(VirtAddress rbp, size_t skipLevels = 0) {
