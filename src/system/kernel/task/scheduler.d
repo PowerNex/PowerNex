@@ -51,23 +51,25 @@ public static:
 		_cpuInfo[0].currentThread.niceFactor = 2;
 		_cpuInfo[0].allThread.remove(0);
 
-		static ulong spinner(void* pixel_) {
-			ubyte* pixel = cast(ubyte*)pixel_;
+		import stl.io.vga : CGASlotColor, CGAColor, CGAVideoSlot;
 
+		static ulong spinner(void* pixel_) {
+			CGAVideoSlot* pixel = cast(CGAVideoSlot*)pixel_;
 			ubyte rand = cast(ubyte)pixel;
-			ubyte color = cast(ubyte)((rand + (rand & 1) * 3 + (rand % 3 == 0 ? 7 : 2)) % 7);
-			const ubyte first = cast(ubyte)(color | color << 4 | 8);
-			const ubyte second = cast(ubyte)(color | color << 4 | 8 << 4);
+			CGAColor color = cast(CGAColor)((rand + (rand & 1) * 3 + (rand % 3 == 0 ? 7 : 2)) % 7);
+
+			const CGASlotColor first = CGASlotColor(color, cast(CGAColor)(color | 8));
+			const CGASlotColor second = CGASlotColor(cast(CGAColor)(color | 8), color);
 
 			while (true) {
-				*pixel = first;
+				pixel.color = first;
 				asm pure @trusted nothrow @nogc {
 					mov RAX, 1; // yield
 					//syscall; /// Can't use syscall due to sysret sets CPL=3
 					int 0x80;
 				}
 
-				*pixel = second;
+				pixel.color = second;
 				asm pure @trusted nothrow @nogc {
 					mov RAX, 1; // yield
 					//syscall;
@@ -77,13 +79,13 @@ public static:
 		}
 
 		static foreach (ubyte x; 0 .. 80) {
-			addKernelTask("CPU 0 - Spinner", &_cpuInfo[0], &spinner, (VirtAddress(0xb8000) + (0 * 80 + x) * 2 + 1).ptr);
-			addKernelTask("CPU 1 - Spinner", &_cpuInfo[1], &spinner, (VirtAddress(0xb8000) + (24 * 80 + x) * 2 + 1).ptr);
+			addKernelTask("CPU 0 - Spinner", &_cpuInfo[0], &spinner, (VirtAddress(0xb8000) + (0 * 80 + x) * 2).ptr);
+			addKernelTask("CPU 1 - Spinner", &_cpuInfo[1], &spinner, (VirtAddress(0xb8000) + (24 * 80 + x) * 2).ptr);
 		}
 
 		static foreach (ubyte y; 1 .. 24) {
-			addKernelTask("CPU 2 - Spinner", &_cpuInfo[2], &spinner, (VirtAddress(0xb8000) + (y * 80 + 0) * 2 + 1).ptr);
-			addKernelTask("CPU 3 - Spinner", &_cpuInfo[3], &spinner, (VirtAddress(0xb8000) + (y * 80 + 79) * 2 + 1).ptr);
+			addKernelTask("CPU 2 - Spinner", &_cpuInfo[2], &spinner, (VirtAddress(0xb8000) + (y * 80 + 0) * 2).ptr);
+			addKernelTask("CPU 3 - Spinner", &_cpuInfo[3], &spinner, (VirtAddress(0xb8000) + (y * 80 + 79) * 2).ptr);
 		}
 	}
 
