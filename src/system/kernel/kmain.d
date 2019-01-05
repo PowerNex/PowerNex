@@ -115,13 +115,22 @@ extern (C) void kmain(PowerDAPI* papi) {
 
 	{
 		import stl.elf64;
+		import task.thread;
+		import stl.arch.amd64.msr;
 
 		ELF64 init = ELF64(VirtMemoryRange.fromArray(initNode.data));
 
 		if (!init.isValid)
 			Log.fatal("'", initFile, "' is not a ELF, boot halted!");
 
-		ELFInstance initELF = instantiateELF(init);
+		getKernelPaging.dump();
+
+		VMThread* thread = Scheduler.getCurrentThread;
+		VMProcess* process = thread.process;
+		process.backend = Paging.newCleanPaging();
+		process.backend.bind();
+
+		ELFInstance initELF = instantiateELF(thread.threadState.paging, init);
 
 		void outputBoth(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) @trusted {
 			import stl.io.vga : VGA;
@@ -140,6 +149,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 		foreach (idx, dtor; initELF.dtors)
 			outputBoth("\t", idx, ": ", VirtAddress(dtor));
 
+		// TODO: Have a ld.so kinda of system that runs this in usermode, not in kernelmode
 		() @trusted {
 			foreach (ctor; initELF.ctors) {
 				outputBoth("\t Running: ", VirtAddress(ctor));
@@ -147,7 +157,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 			}
 		}();
 
-		auto stack = newUserStack();
+		auto stack = newUserStack(thread.threadState.paging);
 
 		VirtAddress set(T)(ref VirtAddress stack, T value) {
 			import stl.trait : Unqual;
@@ -179,10 +189,6 @@ extern (C) void kmain(PowerDAPI* papi) {
 		auto argv = setArray(stack, argvArray).ptr;
 		auto stackPtr = stack.ptr;
 
-		//auto argv = args.ptr;
-		import task.thread;
-		import stl.arch.amd64.msr;
-
 		VMThread* t = Scheduler.getCurrentThread();
 		t.name = initFile;
 		t.image.elfImage = init;
@@ -209,12 +215,12 @@ extern (C) void kmain(PowerDAPI* papi) {
 }
 
 extern extern (C) void switchToUserMode();
-extern (C) VirtAddress newUserStack() @trusted {
+extern (C) VirtAddress newUserStack(Paging* paging) @trusted {
 	VirtAddress stack = makeAddress(255, 511, 511, 511);
 	static foreach (i; 0 .. 0x10) {
-		if (!getKernelPaging.mapAddress(stack - 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.user))
+		if (!paging.mapAddress(stack - 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.user))
 			return VirtAddress();
-		getKernelPaging().makeUserAccessable(stack - 0x1000 * i);
+		paging.makeUserAccessable(stack - 0x1000 * i);
 	}
 	return stack + 0x1000;
 }
@@ -332,7 +338,7 @@ struct ELFInstance {
 	size_t function() @system[] dtors;
 }
 
-ELFInstance instantiateELF(ref ELF64 elf) @safe {
+ELFInstance instantiateELF(Paging* paging, ref ELF64 elf) @safe {
 	import stl.io.log : Log;
 	import stl.vmm.frameallocator : FrameAllocator;
 	import arch.amd64.paging : Paging, VMPageFlags;
@@ -357,7 +363,7 @@ ELFInstance instantiateELF(ref ELF64 elf) @safe {
 			PhysAddress pAddr = pData + offset;
 
 			// Map with writable
-			if (!getKernelPaging.mapAddress(addr, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false))
+			if (!paging.mapAddress(addr, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false))
 				Log.fatal("Failed to map ", addr, "( to ", pAddr, ")");
 
 			// Copying the data over, and zeroing the excess
@@ -376,10 +382,10 @@ ELFInstance instantiateELF(ref ELF64 elf) @safe {
 			if (hdr.flags & ELF64ProgramHeader.Flags.x)
 				flags |= VMPageFlags.execute;
 
-			if (!getKernelPaging.remap(addr, PhysAddress(), flags))
+			if (!paging.remap(addr, PhysAddress(), flags))
 				Log.fatal("Failed to remap ", addr);
 
-			getKernelPaging().makeUserAccessable(addr);
+			paging.makeUserAccessable(addr);
 		}
 	}
 

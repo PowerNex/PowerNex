@@ -68,10 +68,11 @@ public static:
 
 		if (!_x2APIC) {
 			if (!_lapicAddress) {
-				import stl.vmm.paging : mapSpecialAddress;
+				import stl.vmm.paging : mapAddress, VMPageFlags, makeAddress;
 
-				_lapicAddress = mapSpecialAddress(getPowerDAPI.acpi.lapicAddress, 0x1000, true, false);
-				() @trusted{ LAPIC_address = _lapicAddress; }();
+				_lapicAddress = makeAddress(510, 0, 1, 0);
+				mapAddress(_lapicAddress, getPowerDAPI.acpi.lapicAddress, VMPageFlags.present | VMPageFlags.writable, false);
+				() @trusted { LAPIC_address = _lapicAddress; }();
 				getPowerDAPI.cpus.lapicAddress = _lapicAddress;
 			}
 			_write(Registers.logicalDestination, 1 << ((getCurrentID() % 8) + 24));
@@ -197,7 +198,7 @@ public static:
 			lvt.triggerMode = TriggerMode.edge;
 			return lvt.data;
 		}());
-		_write(Registers.localVectorTableLInt1, () { LocalVectorTable lvt; lvt.messageType = MessageType.nmi; return lvt.data;  }());
+		_write(Registers.localVectorTableLInt1, () { LocalVectorTable lvt; lvt.messageType = MessageType.nmi; return lvt.data; }());
 		_write(Registers.localVectorTableError, () { LocalVectorTable lvt; lvt.vector = 254; return lvt.data; }());
 
 		uint timerCountValue = cast(uint)(_cpuBusFreq / apicTimerHZ / divitionPower);
@@ -476,6 +477,7 @@ private static:
 
 	void _onTick(Registers* regs) @trusted {
 		import stl.io.log : Log;
+
 		_write(Registers.endOfInterrupt, 0);
 
 		_counter++;

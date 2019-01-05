@@ -249,11 +249,86 @@ public:
 	this(this) {
 		_ownsPML4 = false;
 	}
-	//TODO: maybe? void removeUserspace();
 
 	~this() {
 		if (_ownsPML4)
 			freePage(_addr);
+	}
+
+	void dump() {
+		import stl.io.log;
+
+		Log.verbose();
+		Log.verbose();
+		Log.verbose("PML4 (", _addr, ")");
+		foreach (ushort pml3Idx, PML4.TableEntry pml3; _getPML4().entries) {
+			if (!pml3.address)
+				continue;
+			Log.verbose('[', pml3Idx, ']', " PML3 (", pml3.address, ")");
+			if (pml3Idx == 509)
+				continue;
+			foreach (ushort pml2Idx, PML3.TableEntry pml2; _getPML3(pml3Idx).entries) {
+				if (!pml2.address)
+					continue;
+				Log.verbose('[', pml3Idx, ']', '[', pml2Idx, ']', " PML2 (", pml2.address, ")");
+			}
+		}
+		Log.verbose();
+		Log.verbose();
+
+		Log.debug_();
+		Log.debug_();
+		PML1* special = _getSpecial();
+		foreach (idx, const ref PML1.TableEntry entry; special.entries) {
+			if (!entry.present)
+				continue;
+			Log.debug_("[510][0][0][", idx, "]");
+		}
+		Log.debug_();
+		Log.debug_();
+	}
+
+	static Paging newCleanPaging() {
+		import stl.vmm.frameallocator;
+
+		PhysAddress pAddr = FrameAllocator.alloc();
+		PhysAddress pml3_510 = FrameAllocator.alloc();
+		PhysAddress pml2_510_0 = FrameAllocator.alloc();
+		PhysAddress pml1_510_0_0 = FrameAllocator.alloc();
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pAddr, 0x1000, true, true);
+			ulong[] pml4 = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			pml4[0] = getKernelPaging()._getPML4().entries[0]._data;
+			pml4[500] = getKernelPaging()._getPML4().entries[500]._data;
+			pml4[509] = pAddr.num!ulong + 0x3;
+			pml4[510] = pml3_510.num!ulong + 0x3;
+			//pml4[510] = getKernelPaging()._getPML4().entries[510]._data;
+			pml4[511] = getKernelPaging()._getPML4().entries[511]._data;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}
+
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml3_510, 0x1000, true, true);
+			ulong[] pml3 = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			pml3[0] = pml2_510_0.num!ulong + 0x3;
+			pml3[1] = getKernelPaging()._getPML3(510).entries[1]._data;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml2_510_0, 0x1000, true, true);
+			ulong[] pml2 = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			pml2[0] = pml1_510_0_0.num!ulong + 0x3;
+			pml2[1] = getKernelPaging()._getPML2(510, 0).entries[1]._data;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml1_510_0_0, 0x1000, true, true);
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}
+
+		// Add the possible to get and add (_getPML{4,3,2,1}) WITHOUT the PML4 being active (CR3).
+
+		return Paging(pAddr, true);
 	}
 
 	///

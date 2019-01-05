@@ -27,9 +27,14 @@ private void outputBoth(Args...)(Args args, string file = __MODULE__, string fun
 	Log.info!(Args)(args, file, func, line);
 }
 
-__gshared VirtAddress apStackLoc = _makeAddress(0, 2, 0, 0);
+__gshared VirtAddress apStackLoc = _makeAddress(510, 1, 0, 0);
 
 extern (C) VirtAddress newStackAP() @trusted {
+	import stl.io.log : Log;
+
+	if (apStackLoc + 0x10_000 > _makeAddress(510, 2, 0, 0))
+		Log.fatal("TOO MANY CORES! (How can you have ", (0x1000 / 0x10) * 512, " cores!?)");
+
 	static foreach (i; 0 .. 0x10)
 		if (!Paging.map(apStackLoc + 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable))
 			return VirtAddress();
