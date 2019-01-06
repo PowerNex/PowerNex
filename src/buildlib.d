@@ -176,13 +176,14 @@ void exec(Target t) {
 
 	import std.file : mkdirRecurse;
 	import std.path : dirName;
+	import std.string : indexOf;
 
 	with (t.output)
 		mkdirRecurse(path[$ - 1] == '/' ? path : dirName(path));
 
 	normal("Executing: ", cmd, "\n");
 	auto proc = executeShell(cmd);
-	if (proc.status != 0) {
+	if (proc.status != 0 || proc.output.indexOf("is thread local") != -1) {
 		error("====> Program returned: ", proc.status, " <====\n", proc.output);
 		exit(EXIT_FAILURE);
 	} else

@@ -69,7 +69,7 @@ extern (C) void mainAP() @safe {
 	LAPIC.setup();
 
 	TLS.aquireTLS();
-	currentThread = &getPowerDAPI.cpus.cpuThreads[id];
+	auto currentThread = &getPowerDAPI.cpus.cpuThreads[id];
 
 	outputBoth("AP ", id, " has successfully booted!");
 
@@ -90,10 +90,6 @@ extern (C) void mainAP() @safe {
 	while (true) {
 	}
 }
-
-import powerd.api.cpu : CPUThread;
-
-CPUThread* currentThread; /// The current threads structure
 
 ///
 @safe struct KernelELFInstance {
@@ -219,11 +215,6 @@ extern (C) ulong main() @safe {
 		ACPI.initOld(_);
 	else
 		Log.fatal("No RSDP entry in the multiboot2 structure!");
-
-	() @trusted { Log.warning("ct: ", &(getPowerDAPI.cpus.cpuThreads[0])); }();
-	currentThread = &getPowerDAPI.cpus.cpuThreads[0];
-
-	() @trusted { Log.warning("currentThread: ", currentThread); }();
 
 	IOAPIC.analyze();
 
