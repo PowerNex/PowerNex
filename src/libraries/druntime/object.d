@@ -5,6 +5,8 @@
 
 module object;
 
+import std.stdio;
+
 version (X86_64) {
 	alias size_t = ulong;
 	alias ptrdiff_t = long;
@@ -14,7 +16,7 @@ version (X86_64) {
 version (PowerNex) import core.sys.powernex.io;
 
 bool __equals(T1, T2)(T1[] lhs, T2[] rhs) {
-	import stl.trait : Unqual;
+	import std.traits : Unqual;
 
 	alias RealT1 = Unqual!T1;
 	alias RealT2 = Unqual!T2;
@@ -54,7 +56,7 @@ void __switch_error()(string file = __FILE__, size_t line = __LINE__) {
 }
 
 extern (C) void[] _d_arraycast(ulong toTSize, ulong fromTSize, void[] a) @trusted {
-	//import stl.io.log : Log;
+	//import std.io.log : Log;
 
 	auto len = a.length * fromTSize;
 	assert(len % toTSize == 0, "_d_arraycast failed!");
@@ -70,14 +72,12 @@ extern (C) void[] _d_arraycopy(size_t size, void[] from, void[] to) @trusted {
 }
 
 extern (C) void __assert(const char* msg_, const char* file_, int line) @trusted {
-	import rt.text;
+	import std.text;
 
 	//TODO: stderr.write("assert failed: ", msg, file, "<UNK>", line);
-	write(StdFile.stderr, "assert failed!");
 	string msg = cast(string)msg_[0 .. strlen(msg_)];
 	string file = cast(string)file_[0 .. strlen(file_)];
-	write(StdFile.stderr, msg);
-	write(StdFile.stderr, file);
+	stderr.writeln("assert failed@", file, "!\n", msg);
 
 	while (true) {
 	}
@@ -122,11 +122,7 @@ Params:
     toSize   = total size in bytes of the array being cast to
  */
 private void onArrayCastError()(string fromType, size_t fromSize, string toType, size_t toSize) @trusted {
-	import stl.io.log : Log;
-	import stl.io.e9;
-
-	E9.write("onArrayCastError failed: fromType: ", fromType, ", fromSize: ", fromSize, " toType: ", toType, ", toSize: ", toSize);
-	Log.fatal("onArrayCastError failed: fromType: ", fromType, ", fromSize: ", fromSize, " toType: ", toType, ", toSize: ", toSize);
+	stderr.writeln("onArrayCastError failed: fromType: ", fromType, ", fromSize: ", fromSize, " toType: ", toType, ", toSize: ", toSize);
 }
 
 /**
@@ -158,7 +154,7 @@ private extern (C) int _Dmain(char[][] args);
 private alias extern (C) int function(char[][] args) MainFunc;
 
 private extern (C) int _d_run_main(int argc, char** argv, MainFunc mainFunc) {
-	import rt.text;
+	import std.text;
 
 	char[][64] args = void;
 	if (argc > args.length)

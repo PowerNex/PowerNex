@@ -6,7 +6,7 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module rt.traits;
+module std.traits;
 
 ///
 template Unqual(T) {

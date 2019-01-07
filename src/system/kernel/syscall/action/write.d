@@ -7,6 +7,7 @@ import syscall;
 	import stl.io.log : Log;
 
 	VGA.write(msg);
-	Log.info("[", fileID, "] ", msg);
+
+	Log.info("[", fileID, "] ", msg[0 .. (msg[$ - 1] == '\n') ? $ - 1 : $]);
 	return msg.length;
 }

@@ -6,9 +6,18 @@
  *  (See accompanying file LICENSE)
  * Authors: $(LINK2 https://vild.io/, Dan Printzell)
  */
-module rt.text;
+module std.text;
 
-import rt.traits;
+import std.traits;
+
+@safe struct BinaryInt {
+	ulong number; ///
+}
+
+///
+@safe struct HexInt {
+	ulong number; ///
+}
 
 ///
 nothrow pure size_t strlen(const(char)* str) @trusted {
@@ -76,9 +85,8 @@ string itoa(S)(S v, char[] buf, uint base = 10, size_t padLength = 1, char padCh
 }
 
 ///
-size_t itoa(S)(S v, char* buf, ulong len, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted
-		if (isNumber!S) {
-	import stl.traits : Unqual;
+size_t itoa(S)(S v, char* buf, ulong len, uint base = 10, size_t padLength = 1, char padChar = '0') @trusted if (isNumber!S) {
+	import std.traits : Unqual;
 
 	assert(1 < base && base <= 16);
 	Unqual!S value = v;
@@ -131,7 +139,7 @@ long atoi(string str, uint base = 10) @trusted {
 }
 
 ///
-string dtoa(double v, char[] buf, uint base = 10) @trusted {
+string dtoa(double v, return char[] buf, uint base = 10) @trusted {
 	auto start = dtoa(v, buf.ptr, buf.length, base);
 	return cast(string)buf[start .. $];
 }

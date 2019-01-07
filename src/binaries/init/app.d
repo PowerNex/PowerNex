@@ -1,44 +1,29 @@
 module app;
 
-import core.sys.powernex.io;
+import std.stdio;
 
 __gshared string varGSHARED = "1: varGSHARED";
-shared string varSHARED = "2: varSHARED";
-string varTLS = "3: varTLS";
+string varTLS = "2: varTLS";
+double f = 13.37;
 
 int main(string[] args) {
-	write(StdFile.stdout, "Hello world from Userspace!\n");
+	writeln("Hello world from Userspace!");
+	writeln("The args are:");
 
-	write(StdFile.stdout, "The args are: \n");
+	foreach (arg; args)
+		writeln("\t", arg);
 
-	foreach (arg; args) {
-		write(StdFile.stdout, arg);
-		write(StdFile.stdout, "\n");
-	}
-
-	write(StdFile.stdout, "varGSHARED: ");
-	write(StdFile.stdout, varGSHARED);
-	write(StdFile.stdout, "\n");
-	write(StdFile.stdout, "varSHARED: ");
-	write(StdFile.stdout, varSHARED);
-	write(StdFile.stdout, "\n");
-	write(StdFile.stdout, "varTLS: ");
-	write(StdFile.stdout, varTLS);
-	write(StdFile.stdout, "\n");
+	writeln("varGSHARED: ", varGSHARED);
+	writeln("varTLS: ", varTLS);
+	writeln("f: ", f);
 
 	varGSHARED = "===gshared===";
-	varSHARED = "===shared===";
 	varTLS = "===tls===";
+	f *= 4.20;
 
-	write(StdFile.stdout, "varGSHARED: ");
-	write(StdFile.stdout, varGSHARED);
-	write(StdFile.stdout, "\n");
-	write(StdFile.stdout, "varSHARED: ");
-	write(StdFile.stdout, varSHARED);
-	write(StdFile.stdout, "\n");
-	write(StdFile.stdout, "varTLS: ");
-	write(StdFile.stdout, varTLS);
-	write(StdFile.stdout, "\n");
+	writeln("varGSHARED: ", varGSHARED);
+	writeln("varTLS: ", varTLS);
+	writeln("f: ", f);
 
 	return cast(int)(0xC0DE_0000 + args.length);
 }

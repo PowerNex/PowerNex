@@ -21,8 +21,9 @@ void initDRuntime() {
 		auto dFiles = files!("src/libraries/druntime/",
 			"core/sys/powernex/io.d",
 			"rt/memory.d",
-			"rt/text.d",
-			"rt/traits.d",
+			"std/stdio.d",
+			"std/text.d",
+			"std/traits.d",
 			"object.d",
 			"invariant.d"
 		);

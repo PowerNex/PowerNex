@@ -1,12 +1,14 @@
 module core.sys.powernex.io;
 
-enum StdFile : size_t {
-	stdout,
-	stderr,
-	stdin
+@safe:
+
+enum FileID : size_t {
+	stdin = 0,
+	stdout = 1,
+	stderr = 1,
 }
 
-size_t write(StdFile fileID, string msg) {
+size_t write(FileID fileID, const(char[]) msg) @trusted {
 	size_t ret = void;
 	auto msgPtr = msg.ptr;
 	auto msgLength = msg.length;
