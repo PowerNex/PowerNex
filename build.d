@@ -41,6 +41,8 @@ shared static this() {
 			dependencies ~= druntime;
 			auto init = findDependency("Init");
 			dependencies ~= init;
+			auto draw = findDependency("Draw");
+			dependencies ~= draw;
 
 			// dfmt off
 			auto initrdFiles = files!("data/initrd/data/",
@@ -52,7 +54,8 @@ shared static this() {
 				druntime.outputs["libdruntime"]
 			];
 			Target[] binaries = [
-				init.outputs["init"]
+				init.outputs["init"],
+				draw.outputs["draw"]
 			];
 
 			auto librariesDir = cp("initrd/libraries/", false, libraries);

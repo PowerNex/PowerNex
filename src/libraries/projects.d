@@ -2,6 +2,7 @@ module src.libraries.projects;
 
 void setupProject() {
 	initDRuntime();
+	initGFX();
 }
 
 private:
@@ -35,4 +36,23 @@ void initDRuntime() {
 		outputs["libdruntime"] = archive("libdruntime.a", false, [dCompiler("dcode.o", false, dFiles)]);
 	}
 	registerProject(druntime);
+}
+
+void initGFX() {
+	Project gfx = new Project("GFX", SemVer(0, 1, 337));
+	with (gfx) {
+		auto druntime = findDependency("DRuntime");
+		dependencies ~= druntime;
+		// dfmt off
+		auto dFiles = files!("src/libraries/gfx/",
+			"powernex/gfx/ppm.d",
+		);
+		// dfmt on
+
+		auto dCompiler = Processor.combine(dCompilerPath ~ dCompilerArgs ~ " -version=Target_" ~ name ~ " -defaultlib= -debuglib=");
+		auto archive = Processor.combine(archivePath ~ archiveArgs);
+
+		outputs["libgfx"] = archive("libgfx.a", false, [dCompiler("dcode.o", false, dFiles)], [druntime.outputs["libdruntime"]]);
+	}
+	registerProject(gfx);
 }
