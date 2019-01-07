@@ -156,6 +156,7 @@ void initKernel() {
 
 		// dfmt off
 		auto dFiles = files!("src/system/kernel/",
+			"arch/amd64/bga.d",
 			"arch/amd64/paging.d",
 			"arch/paging.d",
 			"hw/cmos/cmos.d",

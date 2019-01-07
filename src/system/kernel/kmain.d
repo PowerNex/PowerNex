@@ -108,6 +108,12 @@ extern (C) void kmain(PowerDAPI* papi) {
 		}
 	}
 
+	version (none) {
+		import arch.amd64.bga : BGA;
+
+		BGA.init();
+	}
+
 	string initFile = "/binaries/init";
 	TarFSNode* initNode = cast(TarFSNode*)initrdFS.findNode(initFile);
 	if (!initNode)
