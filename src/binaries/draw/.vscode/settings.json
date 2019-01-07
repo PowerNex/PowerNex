@@ -1,0 +1,5 @@
+{
+	"d.neverUseDub": true,
+	"d.stdlibPath": null,
+	"d.projectImportPaths": [".", "../../libraries/druntime", "../../libraries/gfx"]
+}

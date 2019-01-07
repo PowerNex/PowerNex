@@ -1,0 +1,18 @@
+// Place your settings in this file to overwrite default and user settings.
+{
+	"d.neverUseDub": true,
+	"files.exclude": {
+		"build": true,
+		"*.json": true,
+		"*.log": true,
+		"*.ninja": true,
+		"*.dot": true,
+		"src/binaries/*/*": true,
+		"src/libraries/*/*": true,
+		"src/system/*/*": true,
+		"*LICENSE*": true,
+		"CODE_OF_CONDUCT.md": true,
+		"*.iso": true,
+		"*.code-workspace": true,
+	}
+}

@@ -3,7 +3,6 @@ bochsout.txt
 bx_enh_dbg.ini
 /build
 COM1.log
-.vscode
 *~
 docs/generated
 docs/*.json

@@ -1,0 +1,32 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "src/system/kernel"
+		},
+		{
+			"path": "src/system/loader"
+		},
+		{
+			"path": "src/system/loader-api"
+		},
+		{
+			"path": "src/system/stl"
+		},
+		{
+			"path": "src/libraries/druntime"
+		},
+		{
+			"path": "src/libraries/gfx"
+		},
+		{
+			"path": "src/binaries/draw"
+		},
+		{
+			"path": "src/binaries/init"
+		}
+	],
+	"settings": {}
+}
