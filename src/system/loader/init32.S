@@ -89,18 +89,21 @@ longModeCheck:
 	# Check to check if we can check if x64 is supported
 	mov $0x80000000, %eax
 	cpuid
+	mov $'1', %esi
 	cmp $0x80000001, %eax
-		jb notX64Capable
+		jb notX64Capable # if it is less
 
 	# Check so that x64 is supported
 	mov $0x80000001, %eax
 	cpuid
+	mov $'2', %esi
 	test $(1 << 29), %edx
 		jz notX64Capable
 
 	# Check so that SSE3 is supported
 	mov $0x1, %eax
 	cpuid
+	mov $'3', %esi
 	test $(1 << 0), %ecx
 		jz notX64Capable
 	ret
@@ -234,9 +237,13 @@ invalidMagic:
 
 .type notX64Capable, %function
 notX64Capable:
+	mov $x64NotSupported_msg, %ebx
+	mov %esi, %eax
+	movb %eax, (%ebx)
+
 	mov $0x4A, %ah
 	mov $0xB8000, %edi
-	mov $x64NotSupported_msg, %esi
+	mov %ebx, %esi
 	call writeString
 	jmp halt
 .size notX64Capable, .-notX64Capable
