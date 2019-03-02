@@ -47,6 +47,8 @@ import arch.paging;
 
 @safe struct ImageInfo {
 	ELF64 elfImage;
+	ELF64Symbol[] symbols;
+	const(char)[] symbolStrings;
 }
 
 @safe struct ThreadState {

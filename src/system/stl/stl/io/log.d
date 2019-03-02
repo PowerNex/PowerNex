@@ -51,9 +51,19 @@ public static:
 	}
 
 	///
-	void setSymbolMap(ELF64Symbol[] symbols, char[] strings) @trusted {
-		_symbols = symbols;
-		_strings = strings;
+	void setSymbolMap(ELF64Symbol[] symbols, const(char)[] strings) @trusted {
+		_kernelSymbols = symbols;
+		_kernelStrings = strings;
+	}
+
+	///
+	void setUserspaceSymbolMap(string userspaceName, ELF64Symbol[] symbols, const(char)[] strings) @trusted {
+		import stl.arch.amd64.cpu : getCoreID;
+
+		auto id = getCoreID();
+		_userspaceName[id] = userspaceName;
+		_userspaceSymbols[id] = symbols;
+		_userspaceStrings[id] = strings;
 	}
 
 	///
@@ -130,7 +140,7 @@ public static:
 		if (level == LogLevel.fatal) {
 			printStackTrace(2);
 
-			while (!_e9 && !com1.canSend()) {
+			while (!_e9Log && !com1.canSend()) {
 			}
 			mutex.unlock();
 			asm pure @trusted nothrow @nogc {
@@ -140,7 +150,7 @@ public static:
 				jmp forever;
 			}
 		}
-		while (!_e9 && !com1.canSend()) {
+		while (!_e9Log && !com1.canSend()) {
 		}
 		mutex.unlock();
 	}
@@ -170,6 +180,7 @@ public static:
 	struct Func {
 		string name; ///
 		ulong diff; ///
+		bool kernel; /// is it from the kernel?
 	}
 
 	///
@@ -180,37 +191,49 @@ public static:
 		if (!validAddress(addr))
 			return Func("Address is not invalid", 0);
 
-		if (!_symbols)
+		if (!_kernelSymbols && !_userspaceSymbols[id])
 			return Func("No symbol map loaded", 0);
 
-		foreach (symbol; _symbols) {
-			if ((symbol.info & 0xF) != 0x2 /* Function */ )
-				continue;
+		Func findSymbol(ELF64Symbol[] symbols, const(char)[] strings) {
+			foreach (symbol; symbols) {
+				if ((symbol.info & 0xF) != 0x2 /* Function */ )
+					continue;
 
-			if (addr < symbol.value || addr > symbol.value + symbol.size)
-				continue;
+				if (addr < symbol.value || addr > symbol.value + symbol.size)
+					continue;
 
-			char* name = &_strings[symbol.name];
+				const(char)* name = &strings[symbol.name];
 
-			return Func(cast(string)name[0 .. name.strlen], (addr - symbol.value).num);
+				return Func(cast(string)name[0 .. name.strlen], (addr - symbol.value).num, true);
+			}
+			return Func();
 		}
 
-		return Func("Symbol not in map!", 0);
+		Func f = findSymbol(_kernelSymbols, _kernelStrings);
+		if (!f.name.ptr) {
+			f = findSymbol(_userspaceSymbols[id], _userspaceStrings[id]);
+			f.kernel = false;
+		}
+		return f.name.ptr ? f : Func("Symbol not in map", 0);
 	}
 
 private static:
-	debug enum _e9 = true;
-	else enum _e9 = false;
-	__gshared ELF64Symbol[] _symbols;
-	__gshared char[] _strings;
+	__gshared bool _e9Log = true;
+	__gshared ELF64Symbol[] _kernelSymbols; // Will be loaderSymbols before the kernel have been loaded
+	__gshared const(char)[] _kernelStrings;
+	__gshared string[32] _userspaceName;
+	__gshared ELF64Symbol[][32] _userspaceSymbols;
+	__gshared const(char)[][32] _userspaceStrings;
 
 	void _write(Args...)(Args args) {
 		import stl.io.e9;
 		import stl.arch.amd64.com : com1;
+		import stl.arch.amd64.ioport : inp;
 
-		if (_e9)
+		if (_e9Log)
 			E9.write(args);
-		else
+
+		if (!_e9Log || inp!ubyte(0xE9) == 0xE9)
 			com1.write(args);
 	}
 
@@ -253,19 +276,22 @@ private static:
 			if (!rip.validAddress || !(*rip.ptr!VirtAddress).validAddress)
 				break;
 
-			_write("\t[");
+			_write("  [Function: ");
 
 			{
 				import stl.text : itoa;
 
 				char[ulong.sizeof * 8] buf;
 				_write("0x");
-				_write(itoa(*rip.ptr!ulong, buf, 16));
+				_write(itoa(*rip.ptr!ulong, buf, 16, 16));
 			}
 
 			_write("] ");
 
 			Func f = getFuncName(*rip.ptr!VirtAddress);
+
+			//TODO: Get the real userspace name.
+			_write(f.kernel ? "powernex.krl" : _userspaceName[id], '!');
 
 			_write(f.name);
 			if (f.diff) {

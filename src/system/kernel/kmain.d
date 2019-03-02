@@ -272,7 +272,7 @@ void preInit(PowerDAPI* papi) {
 		ELF64Symbol[] symbols = (elf.elfData.start + symtab.offset).ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
 		char[] strings = (elf.elfData.start + strtab.offset).ptr!char[0 .. strtab.size];
 
-		Log.setSymbolMap(symbols, strings);
+		//Log.setSymbolMap(symbols, strings);
 	}
 
 	VGA.writeln("LAPIC initializing...");
@@ -355,6 +355,9 @@ struct ELFInstance {
 	int function(int argc, char** argv) @system main;
 	size_t function() @system[] ctors;
 	size_t function() @system[] dtors;
+
+	ELF64Symbol[] symbols;
+	const(char)[] symbolStrings;
 }
 
 ELFInstance instantiateELF(Paging* paging, ref ELF64 elf) @safe {

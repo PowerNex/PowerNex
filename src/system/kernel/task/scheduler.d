@@ -293,6 +293,8 @@ private static:
 				SyscallHandler.setKernelStack(cpuInfo);
 			}
 
+			Log.setUserspaceSymbolMap(newThread.name, newThread.image.symbols, newThread.image.symbolStrings);
+
 			asm pure @trusted nothrow @nogc {
 				mov RAX, RBP; // RBP will be overritten below
 

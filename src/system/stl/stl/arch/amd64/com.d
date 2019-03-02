@@ -186,7 +186,6 @@ private:
 				break;
 			default: // Will never happen!
 				assert(0);
-				break;
 			}
 			status = cast(StatusInfo)inp!ubyte(cast(ushort)(com.port + PortNumber.interruptIdentifier));
 		}
