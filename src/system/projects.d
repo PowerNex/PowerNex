@@ -177,6 +177,7 @@ void initKernel() {
 			"syscall/action/exit.d",
 			"syscall/action/yield.d",
 			"syscall/action/write.d",
+			"syscall/action/fork.d",
 			"syscall/package.d",
 			"task/scheduler.d",
 			"task/thread.d",

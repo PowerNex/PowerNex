@@ -205,6 +205,57 @@ public static:
 		cpuInfo.allThread.put(newThread);
 	}
 
+	size_t fork() @trusted {
+		import stl.arch.amd64.lapic;
+
+		VMThread* current = getCurrentThread();
+		VMThread* forkedThread = newStruct!VMThread;
+		with (forkedThread) {
+			pid = _getNextPid();
+			name = "FORKED";
+			process = current.process.fork(current);
+			cpuAssigned = current.cpuAssigned;
+			state = VMThread.State.running;
+			stack = current.stack;
+			image = current.image;
+			kernelTask = current.kernelTask;
+			niceFactor = current.niceFactor;
+			timeSlotsLeft = current.timeSlotsLeft;
+			threadState = current.threadState;
+			syscallRegisters = current.syscallRegisters;
+			syscallRegisters.rax = 0;
+			waitsFor = current.waitsFor;
+		}
+
+		void set(T = ulong)(ref VirtAddress stack, T value) {
+			auto size = T.sizeof;
+			*(stack - size).ptr!T = value;
+			stack -= size;
+		}
+
+		VirtAddress kernelStackBuilder = forkedThread.kernelStack;
+		import syscall;
+
+		set(kernelStackBuilder, SyscallHandler.getUserStack(&_cpuInfo[current.cpuAssigned]));
+		set(kernelStackBuilder, forkedThread.syscallRegisters);
+
+		with (forkedThread) {
+			threadState.instructionPtr = VirtAddress(&cloneHelperFork);
+			threadState.basePtr = threadState.stackPtr = kernelStackBuilder;
+		}
+
+		Log.warning("current: (", current, ")");
+		Log.warning("\tpid: ", current.pid);
+		Log.warning("\tname: ", current.name);
+		Log.warning("\tprocess: ", current.process);
+		Log.warning("forkedThread: (", forkedThread, ")");
+		Log.warning("\tpid: ", forkedThread.pid);
+		Log.warning("\tname: ", forkedThread.name);
+		Log.warning("\tprocess: ", forkedThread.process);
+		_cpuInfo[current.cpuAssigned].allThread.put(forkedThread);
+		return forkedThread.pid;
+	}
+
 	@property size_t coresActive() @trusted {
 		return _coresActive;
 	}
