@@ -167,6 +167,7 @@ extern (C) ulong main() @safe {
 	import stl.arch.amd64.gdt : GDT;
 	import stl.arch.amd64.idt : IDT;
 	import stl.arch.amd64.lapic : LAPIC;
+	import stl.arch.amd64.tsc : TSC;
 	import stl.arch.amd64.ioapic : IOAPIC;
 	import arch.amd64.paging : Paging;
 	import arch.amd64.pic : PIC;
@@ -225,6 +226,7 @@ extern (C) ulong main() @safe {
 	LAPIC.setup();
 
 	outputBoth("CPU bus freq: ", LAPIC.cpuBusFreq / 1_000_000, ".", LAPIC.cpuBusFreq % 1_000_000, " Mhz");
+	outputBoth("TSC freq: ", TSC.frequency, " ticks/second");
 
 	// Init data
 	SMP.init();

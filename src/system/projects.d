@@ -45,6 +45,7 @@ void initSTL() {
 			"stl/arch/amd64/ioapic.d",
 			"stl/arch/amd64/ioport.d",
 			"stl/arch/amd64/lapic.d",
+			"stl/arch/amd64/tsc.d",
 			"stl/arch/amd64/tss.d",
 			"stl/address.d",
 			"stl/elf64.d",

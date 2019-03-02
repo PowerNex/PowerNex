@@ -6,6 +6,7 @@ import stl.io.vga;
 import stl.arch.amd64.gdt;
 import stl.arch.amd64.idt;
 import stl.arch.amd64.lapic;
+import stl.arch.amd64.tsc : TSC;
 import hw.ps2.keyboard;
 import stl.vmm.frameallocator;
 import stl.address;
@@ -58,14 +59,22 @@ void kmainAP(size_t id) {
 	Log.fatal("Core ", id, " is dead!");
 }
 
+private __gshared PowerDAPI _powerdAPI;
+@property PowerDAPI* powerdAPI() {
+	return &_powerdAPI;
+}
+
+@property PowerDAPI* powerdAPI(PowerDAPI* papi) {
+	memcpy(&_powerdAPI, papi, PowerDAPI.sizeof);
+	return &_powerdAPI;
+}
+
 extern (C) void kmain(PowerDAPI* papi) {
 	assert(papi.magic == PowerDAPI.magicValue);
+	powerdAPI = papi;
 	preInit(papi);
 	welcome();
 	init(papi);
-	asm pure @trusted nothrow @nogc {
-		sti;
-	}
 	initFS(papi.getModule("tarfs"));
 
 	{
@@ -73,7 +82,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 		papi.toLoader.mainAP = &kmainAP;
 		papi.toLoader.done = true;
 		while (papi.cpus.cpuThreads.length != coresDone) {
-			LAPIC.sleep(500);
+			TSC.sleep(500);
 		}
 	}
 
@@ -270,6 +279,10 @@ void preInit(PowerDAPI* papi) {
 	Log.info("LAPIC initializing...");
 	LAPIC.init(papi.cpus.x2APIC, papi.cpus.lapicAddress, papi.cpus.cpuBusFreq);
 	LAPIC.setup();
+
+	VGA.writeln("TSC initializing...");
+	Log.info("TSC initializing...");
+	TSC.frequency = papi.cpus.tscFreq;
 
 	VGA.writeln("GDT initializing...");
 	Log.info("GDT initializing...");

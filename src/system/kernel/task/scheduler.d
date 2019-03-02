@@ -127,6 +127,9 @@ public static:
 		import stl.io.vga;
 		import stl.arch.amd64.lapic;
 
+		scope (exit)
+			LAPIC.setTimerToTrigger(4000);
+
 		if (!_isEnabled)
 			return;
 
@@ -142,6 +145,10 @@ public static:
 	}
 
 	void yield() {
+		import stl.arch.amd64.lapic;
+
+		scope (exit)
+			LAPIC.setTimerToTrigger(4000);
 		_switchProcess();
 	}
 

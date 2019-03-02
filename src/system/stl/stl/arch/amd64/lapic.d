@@ -147,11 +147,17 @@ public static:
 				static assert(pitFreq / pitHZ <= ushort.max, "PIT HZ is toooooooo fast");
 				ushort speed = cast(ushort)(pitFreq / pitHZ);
 				outp!ubyte(dataPort, cast(ubyte)(speed & 0xFF));
-				inp!ubyte(0x60); // small delay
+				cast(void)inp!ubyte(0x60); // small delay
 				outp!ubyte(dataPort, cast(ubyte)(speed >> 8));
 			}
 
 			_write(Registers.timerInitialCount, uint.max);
+
+			size_t oldTSC = 1337;
+			asm @trusted {
+				rdtsc;
+				mov oldTSC, RAX;
+			}
 
 			// reset PIT one-shot counter (start counting)
 			immutable ubyte tmp = inp!ubyte(ch2IOPort) & ~0x1;
@@ -163,6 +169,11 @@ public static:
 					break;
 			}
 			_write(Registers.localVectorTableTimer, LVTTimer.disabled.data);
+			size_t newTSC = 1337;
+			asm @trusted {
+				rdtsc;
+				mov newTSC, RAX;
+			}
 
 			immutable uint counterValue = _read(Registers.timerCurrentCount);
 			_cpuBusFreq = uint.max - counterValue + 1;
@@ -170,9 +181,19 @@ public static:
 			_cpuBusFreq *= pitHZ;
 
 			{
+				import stl.arch.amd64.tsc : TSC;
+
+				const size_t freq = (newTSC - oldTSC) / (1000 / pitHZ);
+				Log.info("TSC freq: ", freq);
+				TSC.frequency = freq;
+			}
+
+			{
 				import powerd.api : getPowerDAPI;
+				import stl.arch.amd64.tsc : TSC;
 
 				getPowerDAPI.cpus.cpuBusFreq = _cpuBusFreq;
+				getPowerDAPI.cpus.tscFreq = TSC.frequency;
 			}
 		}
 
@@ -205,14 +226,8 @@ public static:
 		if (timerCountValue < divitionPower)
 			timerCountValue = divitionPower;
 
-		_setTimer(irq(0), TimerMode.periodic, timerCountValue, divition);
-	}
-
-	void sleep(size_t milliseconds) @trusted {
-		const size_t endAt = _counter + milliseconds;
-
-		while (_counter < endAt) {
-		}
+		//_setTimer(irq(0), TimerMode.periodic, timerCountValue, divition);
+		_write(Registers.localVectorTableTimer, LVTTimer.disabled.data);
 	}
 
 	void clear() @trusted {
@@ -254,6 +269,15 @@ public static:
 	uint getCurrentID() @trusted {
 		uint id = _read(Registers.apicID);
 		return _x2APIC ? id : (id >> 24);
+	}
+
+	void setTimerToTrigger(uint msec) @trusted {
+		import stl.arch.amd64.idt : irq;
+
+		uint timerCountValue = cast(uint)((msec * _cpuBusFreq / 1000) / divitionPower);
+		if (timerCountValue < divitionPower)
+			timerCountValue = divitionPower;
+		_setTimer(irq(0), TimerMode.oneShot, timerCountValue, divition);
 	}
 
 	@property ulong cpuBusFreq() @trusted {

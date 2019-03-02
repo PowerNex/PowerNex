@@ -8,6 +8,7 @@ extern (C) extern __gshared ubyte boot16_location, boot16_start, boot16_end, boo
 public static:
 	void init() @trusted {
 		import stl.arch.amd64.lapic : LAPIC;
+		import stl.arch.amd64.tsc : TSC;
 		import powerd.api : getPowerDAPI;
 		import powerd.api.cpu : CPUThread;
 		import stl.io.log : Log;
@@ -38,23 +39,23 @@ public static:
 
 			Log.debug_("cpuThreads[", idx, "].init(): ", cpuThread.apicID);
 			LAPIC.init(cpuThread.apicID, true);
-			LAPIC.sleep(2);
+			TSC.sleep(10);
 			LAPIC.init(cpuThread.apicID, false);
-			LAPIC.sleep(10);
+			TSC.sleep(10);
 
 			Log.debug_("cpuThreads[", idx, "].startup()1: ", cpuThread.apicID, " location: ", PhysAddress32(&boot16_location));
 			LAPIC.startup(cpuThread.apicID, PhysAddress32(&boot16_location));
-			LAPIC.sleep(2); // ~1ms I guess
+			TSC.sleep(10); // ~1ms I guess
 			LAPIC.startup(cpuThread.apicID, PhysAddress32(&boot16_location));
-			LAPIC.sleep(2); // ~1ms I guess
+			TSC.sleep(10); // ~1ms I guess
 
 			size_t counter = 0;
 			while (cpuThread.state == CPUThread.State.off && counter < 1000) {
-				LAPIC.sleep(1);
+				TSC.sleep(10);
 				counter++;
 			}
 			if (counter >= 1000)
-				Log.fatal("cpuThreads[", idx, "] failed to boot!");
+				Log.error("cpuThreads[", idx, "] failed to boot! counter: ", counter);
 		}
 
 		_setupHaltInit16();

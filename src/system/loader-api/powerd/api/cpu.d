@@ -84,4 +84,5 @@ import stl.address;
 	VirtAddress lapicAddress;
 	bool x2APIC;
 	ulong cpuBusFreq;
+	ulong tscFreq;
 }
