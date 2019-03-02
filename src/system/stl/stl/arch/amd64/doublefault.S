@@ -12,15 +12,17 @@
 .global onDoubleFault
 .type onDoubleFault, %function
 onDoubleFault:
+	movb $'D', (0xb8000)
+	movb $'F', (0xb8002)
 	mov $0xE9, %dx
 	mov $'#', %al
-		outb %al, %dx
-		outb %al, %dx
-		outb %al, %dx
-		outb %al, %dx
-		outb %al, %dx
-		outb %al, %dx
-		outb %al, %dx
+	outb %al, %dx
+	outb %al, %dx
+	outb %al, %dx
+	outb %al, %dx
+	outb %al, %dx
+	outb %al, %dx
+	outb %al, %dx
 
 	mov $onDoubleFaultStr, %rsi
 	call e9Write

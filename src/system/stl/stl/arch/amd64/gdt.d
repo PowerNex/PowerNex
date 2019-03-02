@@ -214,6 +214,7 @@ private static:
 
 		_tssID = idx;
 		foreach (ref tss; _tss) {
+			tss.init();
 			setTSS(idx, tss); // Uses 2 entries
 			idx += 2;
 		}

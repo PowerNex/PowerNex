@@ -79,13 +79,15 @@ enum SystemSegmentType : ubyte {
 
 ///
 enum InterruptStackType : ushort {
-	registerStack, ///
+	registerStack = 0, ///
 	stackFault, ///
 	doubleFault, ///
-	nmi, ///
+	//nmi, ///
 	debug_, ///
-	mce ///
+	//mce ///
 }
+
+static assert(InterruptStackType.max <= 0b111);
 
 ///
 alias irq = (ubyte x) => cast(ubyte)(0x20 + x);
@@ -167,7 +169,7 @@ private static:
 	void _addAllJumps() {
 		mixin(_addJumps!(0, 255));
 		_add(3, SystemSegmentType.interruptGate, cast(ulong)&isr3, 3, InterruptStackType.debug_);
-		_add(8, SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
+		_add(8, SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.doubleFault);
 		_add(irq(1), SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
 		_add(irq(4), SystemSegmentType.interruptGate, cast(ulong)&isrIgnore, 0, InterruptStackType.registerStack);
 		_add(0x80, SystemSegmentType.interruptGate, cast(ulong)&isr128, 3, InterruptStackType.registerStack);
@@ -257,7 +259,6 @@ private static:
 			nop;
 			nop;
 			nop;
-			sti;
 			db 0x48, 0xCF; //iretq;
 		}
 	}

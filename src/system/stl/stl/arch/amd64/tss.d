@@ -5,17 +5,26 @@ import stl.address;
 
 @safe struct TSS {
 align(1):
+	import stl.arch.amd64.idt;
+
 	uint res0;
 	VirtAddress[3] rsp;
-	ulong res1;
+	uint res1;
+	uint res2;
 	VirtAddress[7] ist;
-	ulong res2;
-	ushort res3;
-	ushort ioPermBitMapOffset = ioBitmap.offsetof;
-	align(4096) ubyte[1 << 16] ioBitmap;
-	ubyte stopper = 0xFF;
+	uint res3;
+	uint res4;
+	ushort ioPermBitMapOffset = 104 /* Not used */;
+	ushort res5;
 
-	@property ref VirtAddress rsp0() return  {
+	ubyte[0x1000][InterruptStackType.max] interruptStacks;
+
+	void init() @trusted {
+		foreach (idx, ref interruptStack; interruptStacks)
+			ist[idx] = VirtAddress(&interruptStack[0]) + interruptStack.length;
+	}
+
+	@property ref VirtAddress rsp0() return {
 		return rsp[0];
 	}
 }
