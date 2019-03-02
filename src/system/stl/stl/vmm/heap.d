@@ -10,6 +10,7 @@ module stl.vmm.heap;
 
 import stl.address;
 import stl.io.log : Log;
+import stl.spinlock;
 
 ///
 @safe struct BuddyHeader {
@@ -26,13 +27,22 @@ T* newStruct(T, Args...)(Args args) @trusted {
 	T* p = cast(T*)Heap.allocate(T.sizeof).ptr;
 	if (!p)
 		Log.fatal("Failed to allocated ", T.stringof, " size: ", T.sizeof.HexInt, " maxSize: ", Heap._maxSize.HexInt);
-	__gshared const T init = T.init;
-	memcpy(p, &init, T.sizeof);
+
+	static if (__traits(isZeroInit, T))
+		memset(p, 0, T.sizeof);
+	else {
+		__gshared immutable T init = T.init;
+		memcpy(p, &init, T.sizeof);
+	}
 
 	static if (__traits(hasMember, p, "__ctor"))
 		(*p).__ctor(args);
-	else
-		*p = T(args);
+	else static if (args.length) {
+		static if (T.sizeof <= 512)
+			*p = T(args);
+		else
+			static assert(0, T.stringof ~ " is too big!");
+	}
 
 	return p;
 }
@@ -72,6 +82,7 @@ public static:
 			return null; //TODO: Solve somehow
 
 		ubyte factor = cast(ubyte)log2(size);
+		_mutex.lock();
 		BuddyHeader* buddy = _getFreeFactors(factor);
 		if (!buddy) {
 			ubyte f = factor; // Find hunk that is bigger than 'factor'
@@ -102,6 +113,7 @@ public static:
 			buddy = _getFreeFactors(factor);
 		}
 		_getFreeFactors(factor) = buddy.next;
+		_mutex.unlock();
 		return (buddy.VirtAddress + BuddyHeader.sizeof).ptr!ubyte[0 .. wantSize];
 	}
 
@@ -116,6 +128,7 @@ public static:
 			return;
 		}
 
+		_mutex.lock();
 		// Try and combine
 		VirtAddress vBuddy = buddy;
 		BuddyHeader** ptrWalker = &_getFreeFactors(buddy.factor);
@@ -145,6 +158,8 @@ public static:
 
 		buddy.next = _getFreeFactors(buddy.factor);
 		_getFreeFactors(buddy.factor) = buddy;
+
+		_mutex.unlock();
 	}
 
 	///
@@ -159,6 +174,8 @@ public static:
 		import stl.io.log : Log;
 
 		Log.info("Printing KHeap!");
+
+		_mutex.lock();
 		foreach (ubyte factor; _lowerFactor .. _upperFactor + 1) {
 			BuddyHeader* buddy = _getFreeFactors(factor);
 			if (!buddy)
@@ -170,6 +187,7 @@ public static:
 				buddy = buddy.next;
 			}
 		}
+		_mutex.unlock();
 		// TODO: Print out all the memory blocks
 	}
 
@@ -179,6 +197,7 @@ private static:
 	enum ulong _minSize = 2 ^^ _lowerFactor;
 	enum ulong _maxSize = 2 ^^ _upperFactor;
 	enum char[3] _magic = ['B', 'D', 'Y'];
+	__gshared SpinLock _mutex;
 	__gshared VirtAddress _startAddress;
 	__gshared VirtAddress _nextFreeAddress;
 	__gshared BuddyHeader*[_upperFactor - _lowerFactor + 1] _freeFactors;
@@ -188,6 +207,8 @@ private static:
 
 	void _extend() @trusted {
 		import stl.vmm.paging;
+
+		Log.debug_("Extending HEAP!");
 
 		assert(mapAddress(_nextFreeAddress, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false), "Map failed!");
 		BuddyHeader* newBuddy = _nextFreeAddress.ptr!BuddyHeader;
