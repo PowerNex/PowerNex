@@ -136,12 +136,12 @@ private static:
 	}
 
 	Redirection _ioRedirectionTable(VirtAddress address, uint irq) {
-		return Redirection(cast(ulong)_read(address, irq * 2 + 1) << 32UL | cast(ulong)_read(address, irq * 2));
+		return Redirection(cast(ulong)_read(address, 0x10 + irq * 2 + 1) << 32UL | cast(ulong)_read(address, 0x10 + irq * 2));
 	}
 
 	void _ioRedirectionTable(VirtAddress address, uint irq, Redirection redirection) {
-		_write(address, irq * 2, cast(uint)redirection.data);
-		_write(address, irq * 2 + 1, cast(uint)(redirection.data >> 32UL));
+		_write(address, 0x10 + irq * 2, cast(uint)redirection.data);
+		_write(address, 0x10 + irq * 2 + 1, cast(uint)(redirection.data >> 32UL));
 	}
 
 	Redirection _createRedirect(uint gsi) {
