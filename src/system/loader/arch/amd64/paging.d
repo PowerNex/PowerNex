@@ -522,9 +522,9 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 	import stl.io.vga : VGA, CGAColor, CGASlotColor;
 	import stl.io.log : Log;
 	import stl.text : HexInt;
-	import stl.arch.amd64.lapic : LAPIC;
+	import stl.arch.amd64.cpu : getCoreID;
 
-	size_t id = LAPIC.getCurrentID();
+	size_t id = getCoreID();
 
 	Log.info("PF: ", regs.rip, " CR2: ", regs.cr2);
 

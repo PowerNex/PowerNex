@@ -49,9 +49,9 @@ public static:
 
 		IDT.register(0x80, cast(IDT.InterruptCallback)&_onSyscallHandler);
 
-		import stl.arch.amd64.lapic : LAPIC;
+		import stl.arch.amd64.cpu : getCoreID;
 
-		Log.debug_("SyscallHandler is setup for ", LAPIC.getCurrentID);
+		Log.debug_("SyscallHandler is setup for ", getCoreID());
 		mutex.unlock();
 	}
 

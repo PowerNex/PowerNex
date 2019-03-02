@@ -40,6 +40,7 @@ void initSTL() {
 			"stl/register.d",
 			"stl/arch/amd64/msr.d",
 			"stl/arch/amd64/com.d",
+			"stl/arch/amd64/cpu.d",
 			"stl/arch/amd64/gdt.d",
 			"stl/arch/amd64/idt.d",
 			"stl/arch/amd64/ioapic.d",

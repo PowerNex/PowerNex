@@ -116,9 +116,9 @@ public static:
 	}
 
 	VMThread* getCurrentThread() @trusted {
-		import stl.arch.amd64.lapic;
+		import stl.arch.amd64.cpu;
 
-		CPUInfo* cpuInfo = &_cpuInfo[LAPIC.getCurrentID()];
+		CPUInfo* cpuInfo = &_cpuInfo[getCoreID()];
 		if (!cpuInfo.enabled)
 			return null;
 		return cpuInfo.currentThread;
@@ -126,6 +126,7 @@ public static:
 
 	void doWork(Registers* registers) @trusted {
 		import stl.io.vga;
+		import stl.arch.amd64.cpu;
 		import stl.arch.amd64.lapic;
 
 		scope (exit)
@@ -134,7 +135,7 @@ public static:
 		if (!_isEnabled)
 			return;
 
-		CPUInfo* cpuInfo = &_cpuInfo[LAPIC.getCurrentID()];
+		CPUInfo* cpuInfo = &_cpuInfo[getCoreID()];
 		if (!cpuInfo.enabled)
 			return;
 		VMThread* thread = cpuInfo.currentThread;
@@ -237,11 +238,11 @@ private static:
 	}
 
 	void _switchProcess() @trusted {
-		import stl.arch.amd64.lapic;
+		import stl.arch.amd64.cpu;
 		import stl.arch.amd64.msr;
 		import stl.arch.amd64.gdt;
 
-		CPUInfo* cpuInfo = &_cpuInfo[LAPIC.getCurrentID()];
+		CPUInfo* cpuInfo = &_cpuInfo[getCoreID()];
 		if (!cpuInfo.enabled)
 			Log.fatal("CPU core is not enabled!");
 

@@ -285,9 +285,9 @@ private static:
 		} else
 			with (regs) {
 				import stl.text : HexInt;
-				import stl.arch.amd64.lapic : LAPIC;
+				import stl.arch.amd64.cpu : getCoreID;
 
-				size_t id = LAPIC.getCurrentID();
+				size_t id = getCoreID();
 				Log.Func func = Log.getFuncName(rip);
 
 				import stl.arch.amd64.msr;
@@ -322,10 +322,10 @@ private void _onGPF(Registers* regs) @safe {
 	//import stl.io.vga : VGA, CGASlotColor, CGAColor;
 	import stl.io.log : Log;
 	import stl.text : HexInt;
-	import stl.arch.amd64.lapic : LAPIC;
+	import stl.arch.amd64.cpu : getCoreID;
 
 	with (regs) {
-		size_t id = LAPIC.getCurrentID();
+		size_t id = getCoreID();
 		Log.Func func = Log.getFuncName(rip);
 
 		Log.info("GPF: ", rip);

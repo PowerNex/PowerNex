@@ -43,9 +43,9 @@ extern (C) VirtAddress newStackAP() @trusted {
 	apStackLoc += 0x10_000;
 
 	{
-		import stl.arch.amd64.lapic : LAPIC;
+		import stl.arch.amd64.cpu : getCoreID;
 
-		size_t id = LAPIC.getCurrentID();
+		size_t id = getCoreID();
 		outputBoth("AP ", id, " stack is: ", stack);
 	}
 	return stack;
@@ -55,6 +55,7 @@ extern (C) VirtAddress newStackAP() @trusted {
 extern (C) void mainAP() @safe {
 	import powerd.api : getPowerDAPI;
 	import powerd.api.cpu : CPUThread;
+	import stl.arch.amd64.cpu : getCoreID;
 	import stl.arch.amd64.lapic : LAPIC;
 	import stl.io.log : Log;
 	import data.tls : TLS;
@@ -62,7 +63,12 @@ extern (C) void mainAP() @safe {
 	import stl.arch.amd64.idt : IDT;
 	import arch.amd64.paging : Paging;
 
-	size_t id = LAPIC.getCurrentID();
+	import stl.arch.amd64.cpu : getCoreID;
+	import stl.arch.amd64.lapic : LAPIC;
+
+	size_t id = getCoreID();
+
+	outputBoth("AP ", id, " booting...");
 	GDT.flush(id);
 	IDT.flush();
 
@@ -227,6 +233,11 @@ extern (C) ulong main() @safe {
 
 	outputBoth("CPU bus freq: ", LAPIC.cpuBusFreq / 1_000_000, ".", LAPIC.cpuBusFreq % 1_000_000, " Mhz");
 	outputBoth("TSC freq: ", TSC.frequency, " ticks/second");
+
+	import stl.arch.amd64.cpu : getCoreID;
+	import stl.arch.amd64.lapic : LAPIC;
+
+	outputBoth("BSP ID: ", getCoreID(), "\tLAPIC.getCurrentID(): ", LAPIC.getCurrentID());
 
 	// Init data
 	SMP.init();
