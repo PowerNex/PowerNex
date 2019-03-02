@@ -6,7 +6,7 @@
 
 .global switchToUserMode
 .type switchToUserMode, %function
-switchToUserMode: // RIP = %rdi, RSP = %rsi, RDI = %rdx, RSI = %rcx
+switchToUserMode: // RIP = %rdi, RSP = %rsi, RDI = %rdx, RSI = %rcx, FS = %r8
 	// Data segmentation registers
 	mov $USER_SS, %ax
 	mov %ax, %ds
@@ -42,6 +42,13 @@ switchToUserMode: // RIP = %rdi, RSP = %rsi, RDI = %rdx, RSI = %rcx
 	mov %rdx, %rdi
 	// Argv
 	mov %rcx, %rsi
+
+	// Setup FSBASE
+	mov %r8, %rax;
+	mov %rax, %rdx;
+	shr $32, %rdx
+	mov $0xC0000100, %ecx
+	wrmsr
 
 	mov $0, %rax
 	mov %rax, %rbx
@@ -88,9 +95,9 @@ fpuDisable:
 	ret
 .size fpuDisable, .-fpuDisable
 
-.global cloneHelper
-.type cloneHelper, %function
-cloneHelper:
+.global cloneHelperKernelTask
+.type cloneHelperKernelTask, %function
+cloneHelperKernelTask:
 	pop %r15
 	pop %r14
 	pop %r13
@@ -111,7 +118,35 @@ cloneHelper:
 	add $0x10, %rsp
 
 	iretq
-.size cloneHelper, .-cloneHelper
+.size cloneHelperKernelTask, .-cloneHelperKernelTask
+
+.global cloneHelperFork
+.type cloneHelperFork, %function
+cloneHelperFork:
+	pop %r15
+	pop %r14
+	pop %r13
+	pop %r12
+	pop %r11
+	pop %r10
+	pop %r9
+	pop %r8
+	pop %rbp
+	pop %rdi
+	pop %rsi
+	pop %rdx
+	pop %rcx
+	pop %rbx
+	pop %rax
+
+	add $(8 * 7), %rsp
+
+	// userstack
+	pop %rsp
+
+	swapgs
+	sysretq
+.size cloneHelperFork, .-cloneHelperFork
 
 .global exitHelper
 .type exitHelper, %function

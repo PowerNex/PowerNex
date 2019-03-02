@@ -9,9 +9,6 @@ public import stl.vmm.vmm;
 @safe interface IPaging {
 	@disable this();
 
-	/// Map virtual address $(PARAM page.vAddr) to physical address $(PARAM page.pAddr) with the flags $(PARAM page.flags).
-	/// $(PARAM clear) specifies if the memory should be cleared.
-	bool mapVMPage(VMPage* page, bool clear = false);
 	/// Map virtual address $(PARAM vAddr) to physical address $(PARAM pAddr) with the flags $(PARAM flags).
 	/// $(PARAM clear) specifies if the memory should be cleared.
 	bool mapAddress(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false);
@@ -20,10 +17,8 @@ public import stl.vmm.vmm;
 		* Changes a mappings properties
 		* Pseudocode:
 		* --------------------
-		* if (pAddr)
-		* 	map.pAddr = pAddr;
-		* if (flags) // TODO: What if you want to clear the flags?
-		* 	map.flags = flags;
+		* map.pAddr = pAddr;
+		* map.flags = flags;
 		* --------------------
 		*/
 	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags);
@@ -41,9 +36,6 @@ public import stl.vmm.vmm;
 
 	/// Bind the paging
 	void bind();
-
-	/// Get information about a zone where $(PARAM address) exists.
-	VMZoneInformation getZoneInfo(VirtAddress address);
 
 }+/
 

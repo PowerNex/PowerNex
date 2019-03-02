@@ -481,7 +481,7 @@ public static: ///
 		RSDTv1* rsdt = rsdp.rsdtAddress.toX64.VirtAddress.ptr!RSDTv1;
 		assert(rsdt.valid);
 
-		getPowerDAPI.acpi.rsdtV1 = VirtAddress(rsdt);
+		getPowerDAPI.acpi.rsdtV1 = PhysMemoryRange(PhysAddress(rsdpData.ptr), PhysAddress(rsdpData.ptr + rsdpData.length));
 		rsdt.print();
 
 		_createLookupTable(SDTNeedVersion.v1Only);
@@ -518,7 +518,7 @@ public static: ///
 		RSDTv2* rsdt = rsdp.xsdtAddress.VirtAddress.ptr!RSDTv2;
 		assert(rsdt.valid);
 
-		getPowerDAPI.acpi.rsdtV2 = VirtAddress(rsdt);
+		getPowerDAPI.acpi.rsdtV2 = PhysMemoryRange(PhysAddress(rsdpData.ptr), PhysAddress(rsdpData.ptr + rsdpData.length));
 		rsdt.print();
 
 		_createLookupTable(SDTNeedVersion.v2Only);

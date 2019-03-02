@@ -234,7 +234,7 @@ alias HWZoneIdentifier = ushort;
 private extern (C) void cpuFlushPage(ulong addr) @safe;
 private extern (C) void cpuInstallCR3(PhysAddress addr) @safe;
 
-@safe struct AMD64Paging {
+@safe struct Paging {
 public:
 	@disable this();
 	this(PhysAddress pml4Address, bool ownsPML4) {
@@ -242,7 +242,7 @@ public:
 		_ownsPML4 = ownsPML4;
 	}
 
-	this(ref AMD64Paging other) {
+	this(ref Paging other) {
 		assert(0, "copy");
 	}
 
@@ -292,33 +292,83 @@ public:
 		import stl.vmm.frameallocator;
 
 		PhysAddress pAddr = FrameAllocator.alloc();
+		PhysAddress pml3_0 = FrameAllocator.alloc();
+		PhysAddress pml2_0_0 = FrameAllocator.alloc();
+		PhysAddress pml1_0_0_0 = FrameAllocator.alloc();
+		PhysAddress page_0_0_0_0 = FrameAllocator.alloc();
+		PhysAddress page_0_0_0_184 = FrameAllocator.alloc();
 		PhysAddress pml3_510 = FrameAllocator.alloc();
 		PhysAddress pml2_510_0 = FrameAllocator.alloc();
 		PhysAddress pml1_510_0_0 = FrameAllocator.alloc();
+
+		enum kernelFlags = 1 /* present */  + 2 /* readwrite*/ ;
+		enum userFlags = kernelFlags + 4 /* user */ ;
+
 		{
 			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pAddr, 0x1000, true, true);
 			ulong[] pml4 = vAddr.array!ulong(0x1000 / ulong.sizeof);
-			pml4[0] = getKernelPaging()._getPML4().entries[0]._data;
+			//pml4[0] = getKernelPaging()._getPML4().entries[0]._data;
+			pml4[0] = pml3_0.num!ulong + userFlags;
 			pml4[500] = getKernelPaging()._getPML4().entries[500]._data;
-			pml4[509] = pAddr.num!ulong + 0x3;
-			pml4[510] = pml3_510.num!ulong + 0x3;
+			pml4[509] = pAddr.num!ulong + kernelFlags;
+			pml4[510] = pml3_510.num!ulong + kernelFlags;
 			//pml4[510] = getKernelPaging()._getPML4().entries[510]._data;
 			pml4[511] = getKernelPaging()._getPML4().entries[511]._data;
 			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
 		}
 
 		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml3_0, 0x1000, true, true);
+			ulong[] pml3 = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			pml3[0] = pml2_0_0.num!ulong + userFlags;
+			//pml3[0] = getKernelPaging()._getPML3(0).entries[0]._data;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml2_0_0, 0x1000, true, true);
+			ulong[] pml2 = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			pml2[0] = pml1_0_0_0.num!ulong + userFlags;
+			pml2[0] = getKernelPaging()._getPML2(0, 0).entries[0]._data;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml1_0_0_0, 0x1000, true, true);
+			ulong[] pml1 = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			//pml1[0] = page_0_0_0_0.num!ulong + userFlags;
+			//pml1[page_0_0_0_184] = page_0_0_0_184.num!ulong + userFlags;
+			pml1[0] = getKernelPaging()._getPML1(0, 0, 0).entries[0]._data;
+			pml1[1] = getKernelPaging()._getPML1(0, 0, 0).entries[1]._data;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		} /*
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(page_0_0_0_0, 0x1000, true, true);
+			ulong[] page = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			foreach (i; 1 .. 512)
+				page[i] = i * 0x1000 + 3;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}
+		{
+			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(page_0_0_0_184, 0x1000, true, true);
+			ulong[] page = vAddr.array!ulong(0x1000 / ulong.sizeof);
+			foreach (i; 0 .. 512)
+				page[i] = 0xB8000 + i * 0x1000 + 3;
+			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
+		}*/
+
+		{
 			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml3_510, 0x1000, true, true);
 			ulong[] pml3 = vAddr.array!ulong(0x1000 / ulong.sizeof);
-			pml3[0] = pml2_510_0.num!ulong + 0x3;
+			pml3[0] = pml2_510_0.num!ulong + kernelFlags;
 			pml3[1] = getKernelPaging()._getPML3(510).entries[1]._data;
 			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
 		}
 		{
 			VirtAddress vAddr = getKernelPaging().mapSpecialAddress(pml2_510_0, 0x1000, true, true);
 			ulong[] pml2 = vAddr.array!ulong(0x1000 / ulong.sizeof);
-			pml2[0] = pml1_510_0_0.num!ulong + 0x3;
+			pml2[0] = pml1_510_0_0.num!ulong + kernelFlags;
 			pml2[1] = getKernelPaging()._getPML2(510, 0).entries[1]._data;
+			foreach (i; 2 .. 17)
+				pml2[i] = getKernelPaging()._getPML2(510, 0).entries[i]._data;
 			getKernelPaging().unmapSpecialAddress(vAddr, 0x1000);
 		}
 		{
@@ -341,14 +391,14 @@ public:
 
 	///
 	void unmapSpecialAddress(ref VirtAddress vAddr, size_t size) {
-		long offset = vAddr.num & 0xFFF;
-		size += offset;
+		vAddr &= ~0xFFF;
+		const size_t pagesNeeded = ((size + 0xFFF) & ~0xFFF) / 0x1000;
 
-		VirtAddress tmp = vAddr & ~0xFFF;
-		while (offset > 0) {
-			unmap(tmp, false);
-			tmp += 0x1000;
-			offset -= 0x1000;
+		debug (Paging)
+			Log.info("Unmapping special [", vAddr, " - ", vAddr + pagesNeeded * 0x1000 - 1, "]");
+		foreach (i; 0 .. pagesNeeded) {
+			unmap(vAddr, false);
+			vAddr += 0x1000;
 		}
 		vAddr.addr = 0;
 	}
@@ -375,10 +425,11 @@ public:
 		}
 
 		if (freePage == size_t.max || pagesNeeded != amountFree)
-			Log.fatal("Special PML1 is full!");
+			Log.fatal("Special PML1 is full! freePage: ", freePage, "\t", pagesNeeded, " != ", amountFree);
 
 		VirtAddress vAddr = makeAddress(specialID, 0, 0, freePage);
-		Log.info("Mapping [", vAddr, " - ", vAddr + pagesNeeded * 0x1000 - 1, "]");
+		debug (Paging)
+			Log.info("Mapping special [", vAddr, " - ", vAddr + pagesNeeded * 0x1000 - 1, "]");
 		foreach (i; 0 .. pagesNeeded) {
 			PML1.TableEntry* entry = &special.entries[freePage + i];
 
@@ -395,19 +446,15 @@ public:
 		return vAddr;
 	}
 
-	bool mapVMPage(VMPage* page, bool clear = false) {
-		return mapAddress(page.vAddr, page.pAddr, page.flags, clear);
-	}
-
 	bool mapAddress(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags, bool clear = false) {
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry) {
-			Log.fatal("Table entry not found: ", vAddr);
+			Log.error("Table entry not found: ", vAddr);
 			return false;
 		}
 
 		if (entry.present) {
-			Log.fatal("Address is already mapped: ", vAddr);
+			Log.error("Address is already mapped: ", vAddr, " to: ", entry.address);
 			return false;
 		}
 
@@ -424,31 +471,15 @@ public:
 	}
 
 	/**
-		* Changes a mappings properties
-		* Pseudocode:
-		* --------------------
-		* if (pAddr)
-		* 	map.pAddr = pAddr;
-		* if (flags)
-		* 	map.flags = flags;
-		* --------------------
+		* Changes a mappings properties.
 		*/
-
 	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
-		if (!pAddr || !flags)
-			return true;
-
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
 		if (!entry)
 			return false;
 
-		if (!entry.present)
-			return false;
-
-		if (pAddr)
-			entry.address = pAddr;
-		if (flags)
-			entry.vmFlags(flags);
+		entry.address = pAddr;
+		entry.vmFlags(flags);
 		_flush(vAddr);
 		return true;
 	}
@@ -466,6 +497,7 @@ public:
 
 		entry.address = PhysAddress();
 		entry.vmFlags(VMPageFlags.none);
+
 		_flush(vAddr);
 		return true;
 	}
@@ -520,13 +552,11 @@ public:
 		cpuInstallCR3(_addr);
 	}
 
-	/// Get information about a zone where $(PARAM address) exists.
-	VMZoneInformation getZoneInfo(VirtAddress address) {
-		const HWZoneIdentifier hwZoneID = (address.num >> 39) & 0x1FF; // Aka pml4Idx
-		const VirtAddress zoneStart = makeAddress(hwZoneID, 0, 0, 0);
-		const VirtAddress zoneEnd = makeAddress(hwZoneID + 1, 0, 0, 0) - 1;
-
-		return VMZoneInformation(zoneStart, zoneEnd, hwZoneID);
+	PhysAddress getPhysAddress(VirtAddress vAddr) {
+		PML1.TableEntry* page = _getTableEntry(vAddr, false);
+		if (page)
+			return page.address();
+		return PhysAddress();
 	}
 
 	VMPageFlags getPageFlags(VirtAddress vAddr) {
@@ -534,47 +564,6 @@ public:
 		if (page)
 			return page.vmFlags();
 		return VMPageFlags();
-	}
-
-	void makeUserAccessable(VirtAddress vAddr) {
-		const ushort pml4Idx = (vAddr.num >> 39) & 0x1FF;
-		const ushort pml3Idx = (vAddr.num >> 30) & 0x1FF;
-		const ushort pml2Idx = (vAddr.num >> 21) & 0x1FF;
-		const ushort pml1Idx = (vAddr.num >> 12) & 0x1FF;
-
-		PML4* pml4 = _getPML4();
-		PML3* pml3 = _getPML3(pml4Idx);
-		{
-			PML4.TableEntry* pml4Entry = &pml4.entries[pml4Idx];
-			if (!pml4Entry.present)
-				return;
-
-			pml4Entry.user = true;
-			_flush(pml3.VirtAddress);
-		}
-
-		PML2* pml2 = _getPML2(pml4Idx, pml3Idx);
-		{
-			PML3.TableEntry* pml3Entry = &pml3.entries[pml3Idx];
-			if (!pml3Entry.present)
-				return;
-
-			pml3Entry.user = true;
-			_flush(pml2.VirtAddress);
-		}
-
-		PML1* pml1 = _getPML1(pml4Idx, pml3Idx, pml2Idx);
-		{
-			PML2.TableEntry* pml2Entry = &pml2.entries[pml2Idx];
-			if (!pml2Entry.present)
-				return;
-
-			pml2Entry.user = true;
-			_flush(pml1.VirtAddress);
-		}
-
-		pml1.entries[pml1Idx].user = true;
-		_flush(vAddr);
 	}
 
 	@property bool isValid(VirtAddress vAddr) {
@@ -625,6 +614,7 @@ private:
 		const ushort pml3Idx = (virtAddr >> 30) & 0x1FF;
 		const ushort pml2Idx = (virtAddr >> 21) & 0x1FF;
 		const ushort pml1Idx = (virtAddr >> 12) & 0x1FF;
+		const bool isUserZone = !((pml4Idx >> 8) & 0x1);
 
 		PML4* pml4 = _getPML4();
 
@@ -635,7 +625,7 @@ private:
 
 			if (!pml4Entry.present)
 				if (allocateWay)
-					_allocateTable(pml4Entry, pml3.VirtAddress); //TODO: Is it allowed to allocate a PML4 entry? Permissions!
+					_allocateTable(pml4Entry, pml3.VirtAddress, isUserZone); //TODO: Is it allowed to allocate a PML4 entry? Permissions!
 				else
 					return null;
 		}
@@ -645,7 +635,7 @@ private:
 			PML3.TableEntry* pml3Entry = &pml3.entries[pml3Idx];
 			if (!pml3Entry.present)
 				if (allocateWay)
-					_allocateTable(pml3Entry, pml2.VirtAddress);
+					_allocateTable(pml3Entry, pml2.VirtAddress, isUserZone);
 				else
 					return null;
 
@@ -656,7 +646,7 @@ private:
 			PML2.TableEntry* pml2Entry = &pml2.entries[pml2Idx];
 			if (!pml2Entry.present)
 				if (allocateWay)
-					_allocateTable(pml2Entry, pml1.VirtAddress);
+					_allocateTable(pml2Entry, pml1.VirtAddress, isUserZone);
 				else
 					return null;
 		}
@@ -669,11 +659,13 @@ private:
 		Params:
 			entry = The entry that should be allocated.
 			vAddr = The address the entry will have in ram.
+			isUserZone = If the user should have access to this.
 	*/
-	void _allocateTable(T)(PTLevel!(T).TableEntry* entry, VirtAddress vAddr) if (!is(T == Page)) {
+	void _allocateTable(T)(PTLevel!(T).TableEntry* entry, VirtAddress vAddr, bool isUserZone) if (!is(T == Page)) {
 		entry.present = true;
 		entry.address = getNextFreePage();
 		entry.readWrite = true;
+		entry.user = isUserZone;
 		_flush(vAddr);
 		memset(vAddr.ptr, 0, _pageSize);
 	}
@@ -684,16 +676,29 @@ private extern (C) ulong cpuRetCR3() @safe nothrow;
 extern (C) void onPageFault(Registers* regs) @trusted {
 	import stl.io.vga;
 	import stl.io.log;
-	import stl.arch.amd64.lapic : LAPIC;
+	import stl.arch.amd64.cpu : getCoreID;
 	import stl.text : HexInt;
 
-	size_t id = LAPIC.getCurrentID();
+	size_t id = getCoreID();
 
-	Log.info("PF: ", regs.rip, " CR2: ", regs.cr2);
-
-	AMD64Paging paging = AMD64Paging(cpuRetCR3.PhysAddress, false);
+	Paging paging = Paging(cpuRetCR3.PhysAddress, false);
 
 	with (regs) {
+		import task.thread : PageFaultStatus;
+
+		PageFaultStatus pfs;
+		{
+			import task.scheduler;
+			import task.thread;
+
+			VMThread* thread = Scheduler.getCurrentThread();
+			if (thread) {
+				pfs = thread.process.onPageFault(thread, cr2, !!(errorCode.num & 1), !!(errorCode.num & 2), !!(errorCode.num & 4));
+				if (pfs == PageFaultStatus.success)
+					return;
+			}
+		}
+
 		const ulong virtAddr = cr2.num;
 		const ushort pml4Idx = (virtAddr >> 39) & 0x1FF;
 		const ushort pml3Idx = (virtAddr >> 30) & 0x1FF;
@@ -749,7 +754,7 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 		auto gsKernel = MSR.gsKernel();
 
 		//dfmt off
-		Log.fatal("===> PAGE FAULT (CPU ", id, ")", "\n",
+		Log.error("===> PAGE FAULT (CPU ", id, ")", "\n",
 			"IRQ = ", intNumber, " | RIP = ", rip, "\n",
 			"RAX = ", rax, " | RBX = ", rbx, "\n",
 			"RCX = ", rcx, " | RDX = ", rdx, "\n",
@@ -793,5 +798,7 @@ extern (C) void onPageFault(Registers* regs) @trusted {
 				(pageFlags & VMPageFlags.execute) ? "X" : "",
 				(pageFlags & VMPageFlags.user) ? "-User" : "");
 		//dfmt on
+
+		Log.fatal("PageFaultStatus: ", pfs);
 	}
 }

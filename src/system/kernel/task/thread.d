@@ -10,6 +10,7 @@ import stl.elf64;
 
 import arch.paging;
 
+// TODO: Move this to runtime init
 @safe struct TLS {
 	TLS* self;
 	ubyte[] tlsData;
@@ -28,9 +29,10 @@ import arch.paging;
 
 	static TLS* init(VMThread* thread, ubyte[] data) @trusted {
 		//Heap.allocate(data.length + TLS.sizeof).VirtAddress;
-		VirtAddress addr = VirtAddress(0x0514_0000_0000);
-		thread.threadState.paging.mapAddress(addr, PhysAddress(), VMPageFlags.user | VMPageFlags.present | VMPageFlags.writable);
-		thread.threadState.paging.makeUserAccessable(addr);
+
+		VirtAddress addr = makeAddress(128, 0, 0, 0);
+		foreach (size_t i; 0 .. (data.length + TLS.sizeof + 0xFFF) / 0x1000)
+			thread.process.mapFreeMemory(thread, addr + i * 0x1000, VMPageFlags.user | VMPageFlags.present | VMPageFlags.writable);
 		addr.memcpy(data.VirtAddress, data.length);
 		TLS* tls = (addr + data.length).ptr!TLS;
 		tls.self = tls;
@@ -41,7 +43,7 @@ import arch.paging;
 
 	void destroy() {
 		//Heap.free(VirtAddress(tlsData).array!ubyte(tlsData.length + TLS.sizeof));
-		thread.threadState.paging.unmap(tlsData.VirtAddress, true);
+		thread.process.unmap(thread, tlsData.VirtAddress);
 	}
 }
 
@@ -59,7 +61,6 @@ import arch.paging;
 	bool fpuEnabled;
 	align(16) ubyte[512] fpuStorage;
 	TLS* tls;
-	Paging* paging;
 }
 
 @safe struct VMThread {
@@ -67,7 +68,8 @@ import arch.paging;
 		running,
 		active,
 		sleeping,
-		exited
+		exited,
+		killed
 	}
 
 	enum WaitEvent {
@@ -84,6 +86,7 @@ import arch.paging;
 		corruptedMemory
 	}
 
+	size_t pid;
 	string name;
 
 	VMProcess* process;
@@ -110,19 +113,29 @@ import arch.paging;
 	WaitEvent[] waitsFor;
 
 	//TODO: Add boundaries for this.
-	align(64) ubyte[0x4000] kernelStack_;
+	align(64) ubyte[0x4000] kernelStack_ = void;
 	@property VirtAddress kernelStack() @trusted {
 		return kernelStack_.ptr.VirtAddress + kernelStack_.length;
 	}
 
-	void signal(SignalType signal, string error) {
+	void signal(Args...)(SignalType signal, Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) {
+		import stl.io.log;
+
+		Log.error!(string, SignalType, string, size_t, string, string, string, Args)("[", signal, "][pid:", pid, "][name:",
+				name, "] ", args, file, func, line);
+		state = State.killed;
 	}
 }
 
 /// This represents one or more process address spaces (aka, for one or more threads)
 @safe struct VMProcess {
 public:
-	Vector!(VMObject*) objects; /// All the object that is associated with the process
+	VMObject* vmObject; /// All the object that is associated with the process
+
+	//TODO: Vector!(VMPage*) flattenedPages
+	//  This would require either a pointer back the owner VMObject, or add a bool to the page that tells it is it in a
+	//  locked VMObject.
+
 	Paging backend; /// The paging backend
 
 	@disable this();
@@ -130,17 +143,18 @@ public:
 	this(PhysAddress pml4) {
 		import stl.vmm.frameallocator;
 
-		if (!pml4) {
-			pml4 = FrameAllocator.alloc();
-			auto virt = mapSpecialAddress(pml4, 0x1000, true, true);
-			unmapSpecialAddress(virt, 0x1000);
-			backend = Paging(pml4, true);
-		} else
+		if (!pml4)
+			backend = Paging.newCleanPaging();
+		else
 			backend = Paging(pml4, false);
+
+		vmObject = newStruct!VMObject();
+		vmObject.refCounter = 1;
+		vmObject.state = VMObjectState.unlocked;
 	}
 
 	this(ref Paging paging) {
-		backend = Paging(paging);
+		this(paging.tableAddress);
 	}
 
 	@disable this(this);
@@ -174,343 +188,336 @@ public:
 			freeStruct(o);
 		}
 
-		foreach (obj; objects)
-			freeObject(obj);
-
-		objects.clear();
+		freeObject(vmObject);
+		vmObject = null;
 	}
 
 	void bind() @trusted {
 		backend.bind();
+		if (_needRefresh) {
+			//Log.debug_("Refreshing bind!");
+			void mapPages(VMObject* obj) {
+				if (!obj)
+					return;
+
+				mapPages(obj.parent);
+
+				foreach (VMPage* page; obj.pages) {
+					VMPageFlags flags = page.flags;
+					if (obj.state == VMObjectState.locked && page.type != VMPage.Type.manualMappedPage)
+						flags &= ~VMPageFlags.writable;
+					if (!page.pAddr && page.type == VMPage.Type.lazyAllocate)
+						flags &= ~VMPageFlags.present;
+
+					// TODO: Error checking
+					backend.unmap(page.vAddr, false);
+					backend.mapAddress(page.vAddr, page.pAddr, flags);
+					//Log.verbose("\tMapping ", page.vAddr, " ==> ", page.pAddr, "\ttype: ", page.type);
+				}
+			}
+
+			mapPages(vmObject);
+			//Log.debug_("Refreshing bind is done!");
+			_needRefresh = false;
+		}
 	}
 
-	//TODO: Return better error
-	bool addMemoryZone(VirtAddress zoneStart, VirtAddress zoneEnd, bool isManual = false) {
-		// Verify that it won't be inside another zone or contain another zone
-		//dfmt off
-		foreach (ref VMObject* object; objects)
-			if ((object.zoneStart <= zoneStart && object.zoneEnd >= zoneStart) ||	// If zoneStart is inside a existing zone
-					(object.zoneStart <= zoneEnd && object.zoneEnd >= zoneEnd) ||			// If zoneEnd is inside a existing zone
-					(zoneStart <= object.zoneStart && zoneStart >= object.zoneEnd) ||	// If object.zoneStart is inside the new zone
-					(zoneEnd <= object.zoneStart && zoneEnd >= object.zoneEnd))				// If object.zoneEnd is inside the new zone
-				return false;
-		//dfmt on
-
-		VMObject* obj = newStruct!VMObject();
-		obj.state = isManual ? VMObjectState.manual : VMObjectState.unlocked;
-		obj.zoneStart = zoneStart;
-		obj.zoneEnd = zoneEnd;
-		obj.parent = null;
-		obj.refCounter = 1;
-
-		objects.put(obj);
-		return true;
-	}
-
+	/**
+	 * Decides that to do when a pagefault happens.
+	 * Params:
+	 *  thread = The thread it happened on.
+	 *  vAddr = The address that was accessed
+	 *  present = If the page is mapped
+	 *  write = If the page is readwrite
+	 *  user = If the page is userspace accessable
+	 */
 	PageFaultStatus onPageFault(VMThread* thread, VirtAddress vAddr, bool present, bool write, bool user) {
 		vAddr &= ~0xFFF;
 
-		VMObject** rootObject = _getObjectForZone(vAddr);
-		if (!rootObject) {
-			thread.signal(VMThread.SignalType.kernelError, "Can't VMObject for address. SIGSEGV");
-			return PageFaultStatus.unknownError;
-		} else if ((*rootObject).state == VMObjectState.manual) {
-			thread.signal(VMThread.SignalType.kernelError, "Page fault on manual mapped memory");
-			return PageFaultStatus.unknownError;
-		}
+		if (!&this)
+			Log.fatal("'this' is null, thread: ", thread, "\tname(", thread.name.length, "): '", thread.name, "'");
 
+		// If present is true, that means that it could be a CoW page. Else it could be a lazy allocation
 		if (present) {
 			if (!write) {
 				if (user)
-					thread.signal(VMThread.SignalType.accessDenied, "User is trying to read to kernel page");
-				else
-					thread.signal(VMThread.SignalType.kernelError, "Kernel is trying to read to kernel page");
-				return PageFaultStatus.unknownError;
-			} else if (user) {
-				thread.signal(VMThread.SignalType.accessDenied, "User is trying to write to kernel page");
-				return PageFaultStatus.unknownError;
+					thread.signal(VMThread.SignalType.accessDenied, "User is trying to read from a kernel page");
+				else if (thread.process.backend.getPhysAddress(vAddr))
+					thread.signal(VMThread.SignalType.kernelError, "Kernel is trying to read and caused a protection fault");
+				return PageFaultStatus.permissionError;
 			}
 
-			//CoW
+			// This follow code will only happend, if a page is mapped and the user is trying to write to it.
+
 			VMPage* page;
 
-			// If page is found in rootObject && rootObject.state == VMObjectState.locked; then
-			//   Allocate new object on top
-			// Set obj to the object that should own the page
-			// Set page to the page
-
-			VMObject* o = *rootObject;
-			if (o.state == VMObjectState.unlocked)
-				o = o.parent;
-			while (o) {
+			// Find the page in the vmObject
+			VMObject* o = vmObject;
+			outerloop: while (o) {
 				foreach (VMPage* p; o.pages)
 					if (p.vAddr == vAddr && p.refCounter) {
-						if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
-							VMObject* newCurrentObject = newStruct!VMObject();
-							if (!newCurrentObject) { //TODO: Cleanup
-								thread.signal(VMThread.SignalType.noMemory, "Out of memory");
-								return PageFaultStatus.unknownError;
-							}
-							newCurrentObject.state = VMObjectState.unlocked;
-							newCurrentObject.parent = (*rootObject);
-							newCurrentObject.refCounter = 1;
-
-							(*rootObject) = newCurrentObject;
-						}
 						page = p;
-						break;
+						break outerloop;
 					}
 				o = o.parent;
 			}
 
 			if (!page) {
-				thread.signal(VMThread.SignalType.corruptedMemory, "Expected CoW allocation, but could not find page");
-				return PageFaultStatus.unknownError;
+				thread.signal(VMThread.SignalType.corruptedMemory, "Expected CoW allocation, but could not find page!");
+				return PageFaultStatus.missingPage;
+			}
+
+			if (!user && write && page.pAddr && (thread.process.backend.getPageFlags(vAddr) & VMPageFlags.writable)) {
+				thread.signal(VMThread.SignalType.kernelError, "Kernel is trying to write to a kernel page and caused a protection fault!");
+				return PageFaultStatus.permissionError;
+			}
+
+			if (!(page.flags & VMPageFlags.writable)) {
+				thread.signal(VMThread.SignalType.accessDenied, "User is trying to write to a read-only page!");
+				return PageFaultStatus.permissionError;
+			}
+
+			if (page.type != VMPage.Type.cowPage) {
+				thread.signal(VMThread.SignalType.corruptedMemory, "Expected CoW allocation, but page type is ", page.type, "!");
+				return PageFaultStatus.pageIsWrong;
+			}
+
+			bool outOfRam;
+			if (!_verifyUnlockedVMObject(thread, outOfRam) /* vmObject is already unlocked */  && o == vmObject) {
+				thread.signal(VMThread.SignalType.corruptedMemory, "Expected CoW allocation and the page was in a unlocked VMObject?!");
+				return PageFaultStatus.corruptMemory;
+			} else if (outOfRam) {
+				thread.signal(VMThread.SignalType.noMemory, "Out of memory");
+				return PageFaultStatus.outOfMemory;
 			}
 
 			VMPage* newPage = newStruct!VMPage(); // TODO: Reuse old pages
 			if (!newPage) { //TODO: Cleanup
 				thread.signal(VMThread.SignalType.noMemory, "Out of memory");
-				return PageFaultStatus.unknownError;
+				return PageFaultStatus.outOfMemory;
 			}
-			newPage.vAddr = vAddr;
+			newPage.type = page.type;
+			newPage.vAddr = page.vAddr;
 			newPage.flags = page.flags;
 			newPage.pAddr = backend.clonePage(page.pAddr);
 			newPage.refCounter = 1;
-			backend.mapVMPage(newPage);
+			if (!backend.remap(newPage.vAddr, newPage.pAddr, newPage.flags)) {
+				freeStruct(newPage);
+				return PageFaultStatus.failedRemap;
+			}
 
-			(*rootObject).pages.put(newPage);
+			vmObject.pages.put(newPage);
 		} else {
-			// Lazy allocation
-			VMPage* page;
-
+			// Here the CPU is trying to access a unmapped page
 			// Get the page that correspondence to the vAddr in a non-locked object
-			// If it is found in a locked object, allocated a new root unlocked object and
-			// allocate a vmpage in that object that will be used.
 
-			VMObject* o = *rootObject;
-			while (o) {
+			VMPage* page;
+			VMObject* o = vmObject;
+			outerloop2: while (o) {
 				foreach (VMPage* p; o.pages)
 					if (p.vAddr == vAddr && p.refCounter) {
-						if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
-							VMObject* newCurrentObject = newStruct!VMObject();
-							if (!newCurrentObject) { //TODO: Cleanup
-								thread.signal(VMThread.SignalType.noMemory, "Out of memory");
-								return PageFaultStatus.unknownError;
-							}
-							newCurrentObject.state = VMObjectState.unlocked;
-							newCurrentObject.parent = (*rootObject);
-							newCurrentObject.refCounter = 1;
-
-							(*rootObject) = newCurrentObject;
-
-							page = newStruct!VMPage(); // TODO: Reuse old pages
-							if (!page) { //TODO: Cleanup
-								thread.signal(VMThread.SignalType.noMemory, "Out of memory");
-								return PageFaultStatus.unknownError;
-							}
-							page.vAddr = p.vAddr;
-							page.flags = p.flags;
-							page.pAddr = PhysAddress(0);
-							page.refCounter = 1;
-
-							(*rootObject).pages.put(page);
-						} else
-							page = p; // Will only happen if it is found in (*rootObject) && (*rootObject).state == VMObjectState.unlocked
-						break;
+						page = p; // Will only happen if it is found in vmObject && vmObject.state == VMObjectState.unlocked
+						break outerloop2;
 					}
 				o = o.parent;
 			}
 
 			if (!page) {
-				thread.signal(VMThread.SignalType.corruptedMemory, "Expected lazy allocation, but cannot find page");
+				thread.signal(VMThread.SignalType.accessDenied, "Tried to access a unmapped page!");
+				return PageFaultStatus.permissionError;
+			}
+
+			if (!(page.flags & VMPageFlags.user) && user) {
+				thread.signal(VMThread.SignalType.accessDenied, "User is trying lazy allocate a kernel page");
+				return PageFaultStatus.permissionError;
+			}
+
+			if (page.type != VMPage.Type.lazyAllocate) {
+				thread.signal(VMThread.SignalType.accessDenied, "Expected lazy allocation, but page type is ", page.type, "!");
 				return PageFaultStatus.unknownError;
 			}
 
 			if (page.pAddr) {
-				thread.signal(VMThread.SignalType.corruptedMemory, "VMPage is corrupted! PageFault even thou the page is allocated!");
+				thread.signal(VMThread.SignalType.corruptedMemory, "VMPage is corrupted! PageFault even though the page is allocated!");
 				return PageFaultStatus.unknownError;
 			}
 
-			if (write && !(page.flags & VMPageFlags.user) && user) {
-				thread.signal(VMThread.SignalType.accessDenied, "User is trying lazy allocate a kernel page");
-				return PageFaultStatus.unknownError;
-			}
+			bool outOfRam;
+			if (_verifyUnlockedVMObject(thread, outOfRam)) {
+				VMPage* newPage = newStruct!VMPage();
+				if (!page) { //TODO: Cleanup
+					thread.signal(VMThread.SignalType.noMemory, "Out of memory");
+					return PageFaultStatus.outOfMemory;
+				}
+				newPage.vAddr = page.vAddr;
+				newPage.pAddr = backend.getNextFreePage();
+				newPage.flags = page.flags;
+				newPage.type = VMPage.Type.cowPage;
+				newPage.refCounter = 1;
 
-			page.pAddr = backend.getNextFreePage();
-			backend.mapVMPage(page, true);
+				if (!backend.remap(newPage.vAddr, newPage.pAddr, newPage.flags)) {
+					backend.freePage(newPage.pAddr);
+					freeStruct(newPage);
+					return PageFaultStatus.failedRemap;
+				}
+
+				vmObject.pages.put(newPage);
+			} else {
+				if (outOfRam) {
+					thread.signal(VMThread.SignalType.noMemory, "Out of memory");
+					return PageFaultStatus.outOfMemory;
+				}
+
+				page.pAddr = backend.getNextFreePage();
+				page.type = VMPage.Type.cowPage;
+				if (!backend.remap(page.vAddr, page.pAddr, page.flags)) {
+					backend.freePage(page.pAddr);
+					return PageFaultStatus.failedRemap;
+				}
+			}
 		}
 		return PageFaultStatus.success;
 	}
 
+	///
 	VMProcess* fork(VMThread* thread) {
-		VMProcess* newProcess = newStruct!VMProcess(backend);
+		if (!&this)
+			Log.fatal("'this' is null: ", &this);
+
+		VMProcess* newProcess = newStruct!VMProcess(PhysAddress());
 		if (!newProcess) {
 			thread.signal(VMThread.SignalType.noMemory, "Out of memory");
 			return null;
 		}
 
-		foreach (obj; objects) {
-			// VMObjectState.manual need special handling
-			if (obj.state == VMObjectState.manual) {
-				VMObject* newObj = newStruct!VMObject();
-				newObj.state = obj.state;
-				newObj.zoneStart = obj.zoneStart;
-				newObj.zoneEnd = obj.zoneEnd;
-				foreach (VMPage* p; obj.pages) {
-					VMPage* newP = newStruct!VMPage();
+		if (vmObject.state == VMObjectState.unlocked) {
+			foreach (VMPage* page; vmObject.pages)
+				if (page.flags & VMPageFlags.writable && page.type == VMPage.Type.cowPage)
+					backend.remap(page.vAddr, page.pAddr, page.flags & ~VMPageFlags.writable);
 
-					newP.vAddr = p.vAddr;
-					newP.pAddr = p.pAddr;
-					newP.flags = p.flags;
-					newP.refCounter = 1; // Because this is a new page, it should be one
-					newObj.pages.put(newP);
-				}
-				newObj.parent = null; // Will always be null
-				newObj.refCounter = obj.refCounter;
-
-				(*newProcess).objects.put(newObj);
-				continue;
-			}
-
-			// Remap all pages as R/O
-			if (obj.state == VMObjectState.unlocked) { // Optimization
-				foreach (VMPage* page; obj.pages)
-					if (page.flags & VMPageFlags.writable)
-						backend.remap(page.vAddr, PhysAddress(), page.flags & ~VMPageFlags.writable);
-				obj.state = VMObjectState.locked;
-			}
-
-			obj.refCounter++;
-
-			(*newProcess).objects.put(obj);
+			vmObject.state = VMObjectState.locked;
 		}
+		newProcess.vmObject.parent = vmObject;
+		vmObject.refCounter++;
+		newProcess._needRefresh = true;
 
 		return newProcess;
 	}
 
 	VMMappingError mapFreeMemory(VMThread* thread, VirtAddress vAddr, VMPageFlags flags) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
-		if (!rootObject)
-			return VMMappingError.noMemoryZoneAllocated;
-		else if ((*rootObject).state == VMObjectState.manual)
-			return VMMappingError.notSupportedMap; // map(vAddr, pAddr) maps are only allowed in VMObjectState.manual
-
-		if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
-			VMObject* newCurrentObject = newStruct!VMObject();
-			if (!newCurrentObject) { //TODO: Cleanup
-				thread.signal(VMThread.SignalType.noMemory, "Out of memory");
-				return VMMappingError.outOfMemory;
-			}
-			newCurrentObject.state = VMObjectState.unlocked;
-			newCurrentObject.parent = (*rootObject);
-			newCurrentObject.refCounter = 1;
-
-			(*rootObject) = newCurrentObject;
+		bool outOfRam;
+		if (!_verifyUnlockedVMObject(thread, outOfRam) && outOfRam) {
+			thread.signal(VMThread.SignalType.noMemory, "Out of memory");
+			return VMMappingError.outOfMemory;
 		}
 
-		foreach (VMPage* p; (*rootObject).pages)
+		foreach (VMPage* p; vmObject.pages)
 			if (p.vAddr == vAddr && p.refCounter)
 				return VMMappingError.alreadyMapped;
 
 		VMPage* p = newStruct!VMPage();
+		p.type = VMPage.Type.lazyAllocate;
 		p.vAddr = vAddr;
 		p.pAddr = PhysAddress(0);
 		p.flags = flags;
+		p.refCounter = 1;
 
-		(*rootObject).pages.put(p);
+		if (!backend.mapAddress(p.vAddr, p.pAddr, p.flags & ~VMPageFlags.present)) {
+			freeStruct(p);
+			return VMMappingError.alreadyMapped;
+		}
+
+		vmObject.pages.put(p);
+
 		return VMMappingError.success;
 	}
 
 	VMMappingError mapManual(VMThread* thread, VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
-		if (!rootObject)
-			return VMMappingError.noMemoryZoneAllocated;
-		else if ((*rootObject).state != VMObjectState.manual)
-			return VMMappingError.notSupportedMap; // map(vAddr, pAddr) maps are only allowed in VMObjectState.manual
+		bool outOfRam;
+		if (!_verifyUnlockedVMObject(thread, outOfRam) && outOfRam) {
+			thread.signal(VMThread.SignalType.noMemory, "Out of memory");
+			return VMMappingError.outOfMemory;
+		}
 
-		foreach (VMPage* p; (*rootObject).pages)
+		foreach (VMPage* p; vmObject.pages)
 			if (p.vAddr == vAddr && p.refCounter)
 				return VMMappingError.alreadyMapped;
 
 		VMPage* p = newStruct!VMPage();
+		p.type = VMPage.Type.manualMappedPage;
 		p.vAddr = vAddr;
 		p.pAddr = pAddr;
 		p.flags = flags;
+		p.refCounter = 1;
 
-		(*rootObject).pages.put(p);
+		if (!backend.mapAddress(p.vAddr, p.pAddr, p.flags)) {
+			freeStruct(p);
+			return VMMappingError.alreadyMapped;
+		}
+
+		vmObject.pages.put(p);
+
 		return VMMappingError.success;
 	}
 
 	VMMappingError remap(VMThread* thread, VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
-		if (!rootObject)
-			return VMMappingError.noMemoryZoneAllocated;
-
 		VMPage* page;
-		VMObject* o = *rootObject;
+		VMObject* o = vmObject;
 
 		// Search for the VMPage
 		outer_loop: while (o) {
-			foreach (VMPage* p; o.pages)
+			Log.info("Looking at: ", o);
+			foreach (VMPage* p; o.pages) {
+				Log.info("\tPage: ", p, "\tvAddr: ", p.vAddr, "\trefCounter", p.refCounter);
 				if (p.vAddr == vAddr && p.refCounter) {
 					page = p;
-					p.flags = flags;
-					if (pAddr)
-						p.pAddr = pAddr;
-					if ((*rootObject) == o && (*rootObject).state != VMObjectState.locked) //if ((!(flags & VMPageFlags.writable) && (p.flags & VMPageFlags.writable)))
-						return backend.remap(p.vAddr, pAddr, p.flags) ? VMMappingError.success : VMMappingError.unknownError;
 					break outer_loop;
 				}
+			}
 			o = o.parent;
 		}
 
 		if (!page)
 			return VMMappingError.mapNotFound;
 
-		// If the code reaches here we know that the state is VMObjectState.locked or *rootObject != o
+		bool outOfRam;
+		if (_verifyUnlockedVMObject(thread, outOfRam)) {
+			VMPage* p = newStruct!VMPage();
+			p.type = page.type;
+			p.vAddr = vAddr;
+			p.pAddr = page.pAddr;
+			p.flags = flags;
+			p.refCounter = 1;
 
-		if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
-			VMObject* newCurrentObject = newStruct!VMObject();
-			if (!newCurrentObject) { //TODO: Cleanup
+			if (!backend.remap(p.vAddr, p.pAddr, p.flags)) {
+				freeStruct(p);
+				return VMMappingError.backendMapNotFound;
+			}
+			vmObject.pages.put(p);
+		} else {
+			if (outOfRam) {
 				thread.signal(VMThread.SignalType.noMemory, "Out of memory");
 				return VMMappingError.outOfMemory;
 			}
-			newCurrentObject.state = VMObjectState.unlocked;
-			newCurrentObject.parent = (*rootObject);
-			newCurrentObject.refCounter = 1;
 
-			(*rootObject) = newCurrentObject;
+			page.flags = flags;
+			page.pAddr = pAddr;
+			if (!backend.remap(page.vAddr, pAddr, page.flags))
+				return VMMappingError.backendMapNotFound;
 		}
 
-		VMPage* p = newStruct!VMPage();
-		p.vAddr = vAddr;
-		p.pAddr = page.pAddr;
-		p.flags = flags;
-
-		(*rootObject).pages.put(p);
 		return VMMappingError.success;
 	}
 
 	VMMappingError unmap(VMThread* thread, VirtAddress vAddr) {
-		VMObject** rootObject = _getObjectForZone(vAddr);
-		if (!rootObject)
-			return VMMappingError.noMemoryZoneAllocated;
-
 		VMPage* page;
-		VMObject* o = *rootObject;
+		VMObject* o = vmObject;
+		size_t idx;
 		outer_loop: while (o) {
-			foreach (VMPage* p; o.pages)
+			foreach (i, VMPage* p; o.pages)
 				if (p.vAddr == vAddr && p.refCounter) {
 					page = p;
-					if ((*rootObject) == o && (*rootObject).state != VMObjectState.locked) {
-						if (p.pAddr) {
-							backend.freePage(p.pAddr); //TODO: check output?
-							p.pAddr = PhysAddress(0);
-						}
-						p.refCounter = 0; //TODO: Actually use refCounter
-						return VMMappingError.success;
-					}
+					idx = i;
 					break outer_loop;
 				}
 			o = o.parent;
@@ -518,39 +525,73 @@ public:
 		if (!page)
 			return VMMappingError.mapNotFound;
 
-		if ((*rootObject).state == VMObjectState.locked) { // Replace (*rootObject)
-			VMObject* newCurrentObject = newStruct!VMObject();
-			if (!newCurrentObject) { //TODO: Cleanup
-				thread.signal(VMThread.SignalType.noMemory, "Out of memory");
-				return VMMappingError.outOfMemory;
-			}
-			newCurrentObject.state = VMObjectState.unlocked;
-			newCurrentObject.parent = (*rootObject);
-			newCurrentObject.refCounter = 1;
+		if (!backend.unmap(page.vAddr))
+			return VMMappingError.mapNotFound;
 
-			(*rootObject) = newCurrentObject;
+		bool outOfRam;
+		if (_verifyUnlockedVMObject(thread, outOfRam)) {
+			VMPage* p = newStruct!VMPage();
+			p.type = VMPage.Type.free;
+			p.vAddr = vAddr;
+			p.pAddr = PhysAddress(0);
+			p.flags = VMPageFlags.none;
+			p.refCounter = 1;
+
+			vmObject.pages.put(p);
+		} else {
+			if (outOfRam)
+				return VMMappingError.unknownError;
+
+			if ((page.type == VMPage.Type.cowPage || page.type == VMPage.Type.lazyAllocate) && page.pAddr)
+				backend.freePage(page.pAddr);
+
+			if (o == vmObject)
+				freeStruct(vmObject.pages.removeAndGet(idx));
 		}
 
-		VMPage* p = newStruct!VMPage();
-		p.vAddr = vAddr;
-		p.pAddr = PhysAddress(0);
-		p.flags = VMPageFlags.none;
-		p.refCounter = 0;
-
-		(*rootObject).pages.put(p);
 		return VMMappingError.success;
 	}
 
+	bool isMapped(VMThread* thread, VirtAddress vAddr) {
+		VMObject* o = vmObject;
+		while (o) {
+			foreach (i, VMPage* p; o.pages)
+				if (p.vAddr == vAddr && p.refCounter)
+					return true;
+			o = o.parent;
+		}
+		return false;
+	}
+
 private:
-	VMObject** _getObjectForZone(VirtAddress addr) {
-		foreach (ref VMObject* object; objects)
-			if (object.zoneStart <= addr && object.zoneEnd >= addr)
-				return &object;
-		return null;
+	bool _needRefresh;
+
+	bool _verifyUnlockedVMObject(VMThread* thread, out bool outOfRam) {
+		if (vmObject.state == VMObjectState.locked) { // Replace vmObject
+			VMObject* newCurrentObject = newStruct!VMObject();
+			if (!newCurrentObject) { //TODO: Cleanup
+				thread.signal(VMThread.SignalType.noMemory, "Out of memory");
+				outOfRam = true;
+				return false;
+			}
+			newCurrentObject.state = VMObjectState.unlocked;
+			newCurrentObject.parent = vmObject;
+			newCurrentObject.refCounter = 1;
+
+			vmObject = newCurrentObject;
+			return true;
+		}
+		return false;
 	}
 }
 
 enum PageFaultStatus {
 	success = 0,
-	unknownError = -1
+	unknownError = -1,
+	outOfMemory,
+	failedRemap,
+	permissionError,
+	missingPage,
+	pageIsWrong,
+	corruptMemory
 }

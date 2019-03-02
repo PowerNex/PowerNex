@@ -143,7 +143,7 @@ KernelELFInstance instantiateELF(ref ELF64 elf) @safe {
 			if (hdr.flags & ELF64ProgramHeader.Flags.x)
 				flags |= VMPageFlags.execute;
 
-			if (!Paging.remap(addr, PhysAddress(), flags))
+			if (!Paging.remap(addr, Paging.getPhysAddress(addr), flags))
 				Log.fatal("Failed to remap ", addr);
 		}
 	}

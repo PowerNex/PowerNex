@@ -330,25 +330,18 @@ public static:
 		* Changes a mappings properties
 		* Pseudocode:
 		* --------------------
-		* if (pAddr)
-		* 	map.pAddr = pAddr;
-		* if (flags)
-		* 	map.flags = flags;
+		* map.pAddr = pAddr;
+		* map.flags = flags;
 		* --------------------
 		*/
 
 	bool remap(VirtAddress vAddr, PhysAddress pAddr, VMPageFlags flags) {
 		PML1.TableEntry* entry = _getTableEntry(vAddr);
-		if (!entry)
+		if (!entry || !entry.present)
 			return false;
 
-		if (!entry.present)
-			return false;
-
-		if (!!pAddr)
-			entry.address = pAddr;
-		if (!!flags)
-			entry.vmFlags = flags;
+		entry.address = pAddr;
+		entry.vmFlags = flags;
 		_flush(vAddr);
 		return true;
 	}
@@ -414,6 +407,13 @@ public static:
 		import stl.vmm.frameallocator : FrameAllocator;
 
 		return FrameAllocator.free(page);
+	}
+
+	PhysAddress getPhysAddress(VirtAddress vAddr) {
+		PML1.TableEntry* page = _getTableEntry(vAddr, false);
+		if (page)
+			return page.address();
+		return PhysAddress();
 	}
 
 	VMPageFlags getPageFlags(VirtAddress vAddr) {

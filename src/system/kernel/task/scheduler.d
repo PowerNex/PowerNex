@@ -20,7 +20,8 @@ enum ProcessorID maxCPUCount = maxCPUCount_;
 extern extern (C) ulong getRIP() @trusted;
 extern extern (C) void fpuEnable() @trusted;
 extern extern (C) void fpuDisable() @trusted;
-extern extern (C) void cloneHelper() @trusted;
+extern extern (C) void cloneHelperKernelTask() @trusted;
+extern extern (C) void cloneHelperFork() @trusted;
 
 @safe struct CPUInfo {
 	size_t id;
@@ -153,7 +154,7 @@ public static:
 	}
 
 	void addKernelTask(string threadName, CPUInfo* cpuInfo, KernelTaskFunction func, void* userdata) {
-		VMProcess* newProcess = newStruct!VMProcess(getKernelPaging.tableAddress);
+		VMProcess* newProcess = newStruct!VMProcess(PhysAddress());
 		enum stackSize = 0x1000 - BuddyHeader.sizeof;
 		ubyte[] taskStack_ = Heap.allocate(stackSize);
 		VirtMemoryRange taskStack = VirtMemoryRange(VirtAddress(&taskStack_[0]), VirtAddress(&taskStack_[0]) + stackSize);
@@ -176,7 +177,7 @@ public static:
 		// TODO: Change this to a magic value, to know if the thread wanted to exit instead of just jumping to null?
 		// Probably not a good idea as it is a bug, but idk.
 		set(taskStackPtr, 0); // Jump to null if it forgot to run exit.
-		set(taskStackPtr, 0x1337_DEAD_C0DE_1337);
+		set(taskStackPtr, _switchMagic);
 
 		with (newThread.syscallRegisters) {
 			rip = VirtAddress(func);
@@ -189,12 +190,13 @@ public static:
 		set(taskStackPtr, newThread.syscallRegisters);
 
 		with (newThread) {
+			pid = _getNextPid();
 			name = threadName;
 			process = newProcess;
+			cpuAssigned = cpuInfo.id;
 			state = VMThread.State.active;
 			threadState.basePtr = threadState.stackPtr = taskStackPtr;
-			threadState.instructionPtr = VirtAddress(&cloneHelper);
-			threadState.paging = &newProcess.backend;
+			threadState.instructionPtr = VirtAddress(&cloneHelperKernelTask);
 			stack = taskStack;
 			kernelTask = true;
 		}
@@ -219,11 +221,20 @@ private static:
 
 	__gshared bool _isEnabled;
 
+	__gshared size_t _pidCounter;
+	__gshared SpinLock _pidCounterMutex;
 	__gshared SpinLock _cpuInfoMutex;
 	__gshared CPUInfo[maxCPUCount] _cpuInfo;
 	__gshared size_t _coresActive;
 
 	//__gshared Vector!(VMThread*) _threads;
+
+	size_t _getNextPid() @trusted {
+		_pidCounterMutex.lock();
+		scope (exit)
+			_pidCounterMutex.unlock;
+		return ++_pidCounter;
+	}
 
 	void _switchProcess() @trusted {
 		import stl.arch.amd64.lapic;
@@ -281,7 +292,7 @@ private static:
 			ulong storeRSP = newThread.threadState.stackPtr;
 			ulong storeRIP = newThread.threadState.instructionPtr;
 
-			newThread.threadState.paging.bind();
+			newThread.process.bind();
 
 			MSR.fs = newThread.threadState.tls.VirtAddress;
 
@@ -304,6 +315,7 @@ private static:
 				mov RAX, _switchMagic;
 				jmp RBX;
 			}
+			assert(0);
 		}
 	}
 
@@ -318,21 +330,22 @@ private static:
 			}
 		}
 
-		VMProcess* idleProcess = newStruct!VMProcess(getKernelPaging.tableAddress);
+		VMProcess* idleProcess = newStruct!VMProcess(PhysAddress());
 		enum stackSize = 0x1000 - BuddyHeader.sizeof;
 		ubyte[] taskStack_ = Heap.allocate(stackSize);
 		VirtMemoryRange taskStack = VirtMemoryRange(VirtAddress(&taskStack_[0]), VirtAddress(&taskStack_[0]) + stackSize);
 
 		VMThread* idleThread = newStruct!VMThread;
 		with (idleThread) {
+			pid = _getNextPid();
 			name = "Idle Thread";
 			process = idleProcess;
 			state = VMThread.State.active;
 			threadState.basePtr = threadState.stackPtr = taskStack.end;
 			threadState.instructionPtr = VirtAddress(&idle);
-			threadState.paging = &idleProcess.backend;
 			stack = taskStack;
 			kernelTask = true;
+			cpuAssigned = cpuInfo.id;
 
 			with (syscallRegisters) {
 				rip = VirtAddress(&idle);
@@ -351,11 +364,11 @@ private static:
 
 		VMThread* kernelThread = newStruct!VMThread;
 		with (kernelThread) {
+			pid = _getNextPid();
 			name = "Kernel Thread";
 			process = kernelProcess;
 			cpuAssigned = 0;
 			state = VMThread.State.running;
-			threadState.paging = &kernelProcess.backend;
 			stack = currentStack;
 			kernelTask = false;
 		}

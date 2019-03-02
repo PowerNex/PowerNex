@@ -48,8 +48,8 @@ import stl.address;
 	Shutdown shutdown; /// Needed to shutdown the PC
 	Reboot reboot; /// Needed to reboot the PC
 
-	VirtAddress rsdtV1; /// The RSDT for ACPI V.1
-	VirtAddress rsdtV2; /// The RSDT for ACPI V.2+
+	PhysMemoryRange rsdtV1; /// The RSDT for ACPI V.1
+	PhysMemoryRange rsdtV2; /// The RSDT for ACPI V.2+
 	PhysAddress dsdt; /// The address where the DSDT structure is located
 	PhysAddress lapicAddress;
 

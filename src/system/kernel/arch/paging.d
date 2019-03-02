@@ -4,22 +4,20 @@ public import stl.vmm.paging;
 public import stl.vmm.vmm;
 
 version (X86_64) {
-	import arch.amd64.paging;
+	public import arch.amd64.paging;
 	import stl.address;
-
-	alias Paging = AMD64Paging;
 
 	private extern (C) ulong cpuRetCR3();
 	void initKernelPaging() {
-		import arch.amd64.paging : AMD64Paging;
+		import arch.amd64.paging : Paging;
 		import stl.address : PhysAddress;
 
 		PhysAddress pml4 = cpuRetCR3();
-		_kernelPaging = AMD64Paging(pml4, false);
+		_kernelPaging = Paging(pml4, false);
 	}
 
-	private __gshared AMD64Paging _kernelPaging = void;
-	extern (C) AMD64Paging* getKernelPaging() @trusted {
+	private __gshared Paging _kernelPaging = void;
+	extern (C) Paging* getKernelPaging() @trusted {
 		return &_kernelPaging;
 	}
 

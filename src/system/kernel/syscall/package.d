@@ -59,6 +59,10 @@ public static:
 		_storage[cpuInfo.id].kernelStack = cpuInfo.currentThread.kernelStack;
 	}
 
+	VirtAddress getUserStack(CPUInfo* cpuInfo) {
+		return _storage[cpuInfo.id].userStack;
+	}
+
 private static:
 	enum ulong _userCS = 0x18 | 0x3;
 	enum ulong _kernelCS = 0x8;
@@ -72,8 +76,8 @@ private static:
 
 		asm pure @trusted nothrow @nogc {
 			naked;
-			//swapgs;
 
+			//swapgs;
 			db 0x0F, 0x01, 0xF8;
 
 			//mov QWORD PTR gs:userStack, rsp
@@ -84,12 +88,9 @@ private static:
 			db 0x65, 0x48, 0x8b, 0x24, 0x25;
 			di kernelStack;
 
-			// push userStack
 			// push QWORD PTR gs:userStack
 			db 0x65, 0xff, 0x34, 0x25;
 			di userStack;
-
-			push RSP;
 
 			push _userCS + 8; // SS
 			// push QWORD PTR gs:userStack // RSP
@@ -176,7 +177,7 @@ private static:
 						static if (is(typeof(attr) == Syscall)) {
 		case attr.id:
 							//pragma(msg, attr.id, ": _generateFunctionCall!", func, " == ", _generateFunctionCall!func);
-							mixin(_generateFunctionCall!("syscall.action." ~ module_ ~ "." ~ func));
+							mixin("thread.syscallRegisters.rax = " ~ _generateFunctionCall!("syscall.action." ~ module_ ~ "." ~ func));
 							break outer;
 						}
 					}

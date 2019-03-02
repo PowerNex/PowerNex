@@ -18,6 +18,7 @@ import arch.paging;
 import stl.vmm.vmm;
 import fs.tarfs;
 import task.scheduler;
+import task.thread;
 import syscall;
 import stl.elf64;
 
@@ -141,11 +142,11 @@ extern (C) void kmain(PowerDAPI* papi) {
 		getKernelPaging.dump();
 
 		VMThread* thread = Scheduler.getCurrentThread;
-		VMProcess* process = thread.process;
-		process.backend = Paging.newCleanPaging();
-		process.backend.bind();
+		VMProcess* process = newStruct!VMProcess(PhysAddress());
+		thread.process = process;
+		process.bind();
 
-		ELFInstance initELF = instantiateELF(thread.threadState.paging, init);
+		ELFInstance initELF = instantiateELF(thread, init);
 
 		void outputBoth(Args...)(Args args, string file = __MODULE__, string func = __PRETTY_FUNCTION__, int line = __LINE__) @trusted {
 			import stl.io.vga : VGA;
@@ -172,7 +173,7 @@ extern (C) void kmain(PowerDAPI* papi) {
 			}
 		}();
 
-		auto stack = newUserStack(thread.threadState.paging);
+		auto stack = newUserStack(thread);
 
 		VirtAddress set(T)(ref VirtAddress stack, T value) {
 			import stl.trait : Unqual;
@@ -204,15 +205,25 @@ extern (C) void kmain(PowerDAPI* papi) {
 		auto argv = setArray(stack, argvArray).ptr;
 		auto stackPtr = stack.ptr;
 
-		VMThread* t = Scheduler.getCurrentThread();
-		t.name = initFile;
-		t.image.elfImage = init;
-		t.threadState.tls = TLS.init(t);
-		MSR.fs = t.threadState.tls.VirtAddress;
+		thread.name = initFile;
+		thread.image.elfImage = init;
+		thread.threadState.tls = TLS.init(thread);
+		MSR.fs = thread.threadState.tls.VirtAddress;
+		thread.image.symbols = initELF.symbols;
+		thread.image.symbolStrings = initELF.symbolStrings;
+		Log.setUserspaceSymbolMap(thread.name, thread.image.symbols, thread.image.symbolStrings);
 
 		outputBoth("Transferring control to the init elf, Good luck!");
 
+		GDT.setRSP0(0, thread.kernelStack);
+
+		SyscallHandler.setKernelStack(Scheduler.getCPUInfo(0));
+
+		size_t fsVal = thread.threadState.tls.VirtAddress.num;
+		outputBoth("FsValue", fsVal.VirtAddress);
+
 		asm @trusted nothrow @nogc {
+			mov R8, fsVal;
 			mov RAX, switchToUserMode;
 			mov RDI, main;
 			mov RSI, stackPtr;
@@ -230,12 +241,13 @@ extern (C) void kmain(PowerDAPI* papi) {
 }
 
 extern extern (C) void switchToUserMode();
-extern (C) VirtAddress newUserStack(Paging* paging) @trusted {
+extern (C) VirtAddress newUserStack(VMThread* thread) @trusted {
 	VirtAddress stack = makeAddress(255, 511, 511, 511);
-	static foreach (i; 0 .. 0x10) {
-		if (!paging.mapAddress(stack - 0x1000 * i, PhysAddress(), VMPageFlags.present | VMPageFlags.writable | VMPageFlags.user))
+	foreach (i; 0 .. 0x10) {
+		if (auto error = thread.process.mapFreeMemory(thread, stack - 0x1000 * i, VMPageFlags.present | VMPageFlags.writable | VMPageFlags.user)) {
+			Log.error("Failed to map a userstack!: ", error);
 			return VirtAddress();
-		paging.makeUserAccessable(stack - 0x1000 * i);
+		}
 	}
 	return stack + 0x1000;
 }
@@ -341,7 +353,17 @@ void init(PowerDAPI* papi) {
 }
 
 void initFS(Module* disk) @trusted {
-	_blockDevice = TarFSBlockDevice(disk.memory.toVirtual);
+	VirtAddress initRD = makeAddress(510, 0, 2, 0);
+	PhysAddress start = (disk.memory.start + 0xFFF) & ~0xFFF;
+	size_t pages = ((disk.memory.size + 0xFFF) & ~0xFFF) / 0x1000;
+	Log.info("disk.memory: [", disk.memory.start, " .. ", disk.memory.end, "]");
+	Log.info("Mapping [", initRD, " .. ", initRD + pages * 0x1000, "] to [", start, " .. ", start + pages * 0x1000, "]. Pages: ", pages);
+	foreach (i; 0 .. pages)
+		getKernelPaging().mapAddress(initRD + i * 0x1000, start + i * 0x1000, VMPageFlags.present | VMPageFlags.writable);
+
+	initRD += disk.memory.start & 0xFFF;
+
+	_blockDevice = TarFSBlockDevice(VirtMemoryRange(initRD, initRD + disk.memory.size));
 	_superNode = newStruct!TarFSSuperNode(&_blockDevice);
 
 	initrdFS = _superNode.base.getNode(0);
@@ -360,10 +382,10 @@ struct ELFInstance {
 	const(char)[] symbolStrings;
 }
 
-ELFInstance instantiateELF(Paging* paging, ref ELF64 elf) @safe {
+ELFInstance instantiateELF(VMThread* thread, ref ELF64 elf) @safe {
 	import stl.io.log : Log;
 	import stl.vmm.frameallocator : FrameAllocator;
-	import arch.amd64.paging : Paging, VMPageFlags;
+	import arch.amd64.paging : VMPageFlags;
 
 	ELFInstance instance;
 	instance.main = () @trusted { return cast(typeof(instance.main))elf.header.entry.ptr; }();
@@ -371,30 +393,28 @@ ELFInstance instantiateELF(Paging* paging, ref ELF64 elf) @safe {
 	foreach (ref ELF64ProgramHeader hdr; elf.programHeaders) {
 		if (hdr.type != ELF64ProgramHeader.Type.load)
 			continue;
-
+		//TODO: Can't expect that this is aligned
 		VirtAddress vAddr = hdr.vAddr;
 		VirtAddress data = elf.elfData.start + hdr.offset;
-		PhysAddress pData = PhysAddress(elf.elfData.start) + hdr.offset;
+		PhysAddress pData = thread.process.backend.getPhysAddress(data) + data.num & 0xFFF;
 
-		Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] to [", pData, " - ", pData + hdr.memsz, "]");
-		FrameAllocator.markRange(pData, pData + hdr.memsz);
+		Log.info("Mapping [", vAddr, " - ", vAddr + hdr.memsz, "] and copying [", data, " - ", data + hdr.memsz, "] to it.");
+		FrameAllocator.markRange(pData, pData + hdr.memsz); // Probably not needed
 		for (size_t offset; offset < hdr.memsz; offset += 0x1000) {
 			import stl.number : min;
 
 			VirtAddress addr = vAddr + offset;
-			PhysAddress pAddr = pData + offset;
 
 			// Map with writable
-			if (!paging.mapAddress(addr, PhysAddress(), VMPageFlags.present | VMPageFlags.writable, false))
-				Log.fatal("Failed to map ", addr, "( to ", pAddr, ")");
+			if (VMMappingError error = thread.process.mapFreeMemory(thread, addr & ~0xFFF, VMPageFlags.present | VMPageFlags.writable))
+				Log.fatal(error, ": Failed to map ", addr, " (to be able to copy ", data + offset, " to it)");
+		}
 
-			// Copying the data over, and zeroing the excess
-			size_t dataLen = (offset > hdr.filesz) ? 0 : min(hdr.filesz - offset, 0x1000);
-			size_t zeroLen = min(0x1000 - dataLen, hdr.memsz - offset);
+		vAddr.memcpy(data, hdr.filesz);
+		(vAddr + hdr.filesz).memset(0, hdr.memsz - hdr.filesz);
 
-			addr.memcpy(data + offset, dataLen);
-			(addr + dataLen).memset(0, zeroLen);
-
+		for (size_t offset; offset < hdr.memsz; offset += 0x1000) {
+			VirtAddress addr = vAddr + offset;
 			// Remapping with correct flags
 			VMPageFlags flags = VMPageFlags.user;
 			if (hdr.flags & ELF64ProgramHeader.Flags.r)
@@ -404,10 +424,8 @@ ELFInstance instantiateELF(Paging* paging, ref ELF64 elf) @safe {
 			if (hdr.flags & ELF64ProgramHeader.Flags.x)
 				flags |= VMPageFlags.execute;
 
-			if (!paging.remap(addr, PhysAddress(), flags))
-				Log.fatal("Failed to remap ", addr);
-
-			paging.makeUserAccessable(addr);
+			if (VMMappingError error = thread.process.remap(thread, addr & ~0xFFF, thread.process.backend.getPhysAddress(addr), flags))
+				Log.fatal(error, ": Failed to remap ", addr);
 		}
 	}
 
@@ -420,6 +438,20 @@ ELFInstance instantiateELF(Paging* paging, ref ELF64 elf) @safe {
 
 	instance.ctors = getSectionRange(".ctors");
 	instance.dtors = getSectionRange(".dtors");
+
+	const(ELF64SectionHeader)* symtab, strtab;
+	foreach (const ref ELF64SectionHeader section; elf.sectionHeaders) {
+		if (elf.lookUpSectionName(section.name) == ".symtab")
+			symtab = &section;
+		else if (elf.lookUpSectionName(section.name) == ".strtab")
+			strtab = &section;
+	}
+
+	// TODO: probably allocate space for these. These will break when the loader is unmapped! (probably)
+	() @trusted {
+		instance.symbols = (elf.elfData.start + symtab.offset).ptr!ELF64Symbol[0 .. symtab.size / ELF64Symbol.sizeof];
+		instance.symbolStrings = (elf.elfData.start + strtab.offset).ptr!(const(char))[0 .. strtab.size];
+	}();
 
 	return instance;
 }
